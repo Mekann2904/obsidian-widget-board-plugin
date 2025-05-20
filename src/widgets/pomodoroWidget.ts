@@ -3,6 +3,9 @@ import { App, MarkdownRenderer, Notice, setIcon } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main';
 
+// --- 通知音の種類の型定義 ---
+export type PomodoroSoundType = 'off' | 'default_beep' | 'bell' | 'chime'; // 他の音を追加可能
+
 // --- ポモドーロウィジェット設定インターフェース ---
 export interface PomodoroSettings {
     workMinutes: number;
@@ -11,6 +14,10 @@ export interface PomodoroSettings {
     pomodorosUntilLongBreak: number;
     backgroundImageUrl?: string;
     memoContent?: string;
+    notificationSound: PomodoroSoundType;
+    notificationVolume: number;
+    notificationSoundType?: 'default_beep' | 'custom';
+    customSoundPath?: string;
 }
 
 // --- ポモドーロウィジェットデフォルト設定 ---
@@ -21,11 +28,15 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
     pomodorosUntilLongBreak: 4,
     backgroundImageUrl: '',
     memoContent: '',
+    notificationSound: 'default_beep',
+    notificationVolume: 0.2,
+    notificationSoundType: 'default_beep',
+    customSoundPath: '',
 };
 
-// --- PomodoroWidget クラス (元のコードから該当部分をここに移動) ---
+// --- PomodoroWidget クラス ---
 export class PomodoroWidget implements WidgetImplementation {
-    id = 'pomodoro'; // WidgetImplementationインターフェースのidプロパティ
+    id = 'pomodoro';
     private config!: WidgetConfig;
     private app!: App;
     private plugin!: WidgetBoardPlugin;
@@ -56,6 +67,8 @@ export class PomodoroWidget implements WidgetImplementation {
 
     private currentSettings!: PomodoroSettings;
     private lastConfiguredId?: string;
+    private audioContext: AudioContext | null = null;
+    private currentAudioElement: HTMLAudioElement | null = null; // MP3再生用
 
     constructor() {
         this.initialized = false;
@@ -127,8 +140,8 @@ export class PomodoroWidget implements WidgetImplementation {
         this.isEditingMemo = false;
         if (newMemo !== (this.currentSettings.memoContent || '')) {
             this.currentSettings.memoContent = newMemo;
-            if (this.config.settings) this.config.settings.memoContent = newMemo; // Ensure config also reflects change
-            await this.plugin.saveSettings(); // Save all plugin settings
+            if (this.config.settings) this.config.settings.memoContent = newMemo;
+            await this.plugin.saveSettings(); 
             await this.renderMemo(newMemo);
         }
         this.updateMemoEditUI();
@@ -140,7 +153,6 @@ export class PomodoroWidget implements WidgetImplementation {
         this.updateMemoEditUI();
     }
 
-
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         const newConfigId = config.id;
         const isReconfiguringForDifferentWidget = this.initialized && this.lastConfiguredId !== newConfigId;
@@ -149,9 +161,7 @@ export class PomodoroWidget implements WidgetImplementation {
         this.app = app;
         this.plugin = plugin;
 
-        // 設定の初期化または更新
         if (!this.initialized || isReconfiguringForDifferentWidget) {
-            // 完全に新しいインスタンスとして初期化
             this.currentSettings = { ...DEFAULT_POMODORO_SETTINGS, ...(config.settings || {}) };
             this.pomodorosCompletedInCycle = 0;
             this.currentPomodoroSet = 'work';
@@ -160,13 +170,10 @@ export class PomodoroWidget implements WidgetImplementation {
             this.timerId = null;
             this.isEditingMemo = false;
         } else {
-            // 既存の設定に新しい設定をマージ
             const newSettingsFromConfig = config.settings as Partial<PomodoroSettings> || {};
             this.currentSettings = { ...this.currentSettings, ...newSettingsFromConfig };
         }
-        // WidgetConfigのsettingsも最新の状態に保つ
         config.settings = this.currentSettings;
-
 
         this.widgetEl = document.createElement('div');
         this.widgetEl.classList.add('widget', 'pomodoro-timer-widget');
@@ -175,10 +182,23 @@ export class PomodoroWidget implements WidgetImplementation {
         this.applyBackground(this.currentSettings.backgroundImageUrl);
 
         const titleEl = this.widgetEl.createEl('h4');
-        titleEl.textContent = this.config.title;
+        titleEl.textContent = this.config.title || "ポモドーロタイマー";
+        // タイトルが空白なら高さ0で非表示に
+        if (!this.config.title || this.config.title.trim() === "") {
+            titleEl.style.height = '0';
+            titleEl.style.margin = '0';
+            titleEl.style.padding = '0';
+            titleEl.style.overflow = 'hidden';
+            titleEl.style.display = 'block';
+        } else {
+            titleEl.style.removeProperty('height');
+            titleEl.style.removeProperty('margin');
+            titleEl.style.removeProperty('padding');
+            titleEl.style.removeProperty('overflow');
+            titleEl.style.removeProperty('display');
+        }
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
-
         this.timeDisplayEl = contentEl.createDiv({ cls: 'pomodoro-time-display' });
         this.statusDisplayEl = contentEl.createDiv({ cls: 'pomodoro-status-display' });
         this.cycleDisplayEl = contentEl.createDiv({ cls: 'pomodoro-cycle-display' });
@@ -191,8 +211,7 @@ export class PomodoroWidget implements WidgetImplementation {
         this.startPauseButton.onClickEvent(() => this.toggleStartPause());
         this.resetButton.onClickEvent(() => this.resetCurrentTimerConfirm());
         this.nextButton.onClickEvent(() => this.skipToNextSessionConfirm());
-
-        // Memo UI
+        
         this.memoContainerEl = contentEl.createDiv({ cls: 'pomodoro-memo-container' });
         const memoHeaderEl = this.memoContainerEl.createDiv({ cls: 'pomodoro-memo-header' });
         this.editMemoButtonEl = memoHeaderEl.createEl('button', { cls: 'pomodoro-memo-edit-button' });
@@ -211,18 +230,15 @@ export class PomodoroWidget implements WidgetImplementation {
         this.saveMemoButtonEl.onClickEvent(() => this.saveMemoChanges());
         this.cancelMemoButtonEl.onClickEvent(() => this.cancelMemoEditMode());
         
-        this.isEditingMemo = false; // 初期状態は表示モード
+        this.isEditingMemo = false;
         this.renderMemo(this.currentSettings.memoContent);
         this.updateMemoEditUI();
 
-        // タイマー状態の初期化または復元
         if (!this.initialized || isReconfiguringForDifferentWidget) {
-            this.resetTimerState(this.currentPomodoroSet, true); // 新規 or 別IDならサイクルもリセット
+            this.resetTimerState(this.currentPomodoroSet, true);
         } else if (!this.isRunning && this.lastConfiguredId === newConfigId) {
-            // 同じIDで停止中だった場合、現在のセッションの残り時間とサイクル数を維持して表示更新
-            this.resetTimerState(this.currentPomodoroSet, false); // サイクル数は維持
+            this.resetTimerState(this.currentPomodoroSet, false);
         }
-        // それ以外の場合 (実行中だった場合など) は、既存のタイマー状態をそのまま利用 (isRunning, remainingTimeなど)
 
         this.initialized = true;
         this.lastConfiguredId = newConfigId;
@@ -230,13 +246,12 @@ export class PomodoroWidget implements WidgetImplementation {
         return this.widgetEl;
     }
 
-    private formatTime(totalSeconds: number): string {
+    private formatTime(totalSeconds: number): string { /* ... (変更なし) ... */ 
         const m = Math.floor(totalSeconds / 60);
         const s = totalSeconds % 60;
         return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
-
-    private updateDisplay() {
+    private updateDisplay() { /* ... (変更なし) ... */ 
         if (!this.widgetEl || !this.timeDisplayEl || !this.startPauseButton || !this.resetButton || !this.nextButton || !this.statusDisplayEl || !this.cycleDisplayEl) return;
 
         this.timeDisplayEl.textContent = this.formatTime(this.remainingTime);
@@ -249,50 +264,32 @@ export class PomodoroWidget implements WidgetImplementation {
 
         let statusText = '';
         switch (this.currentPomodoroSet) {
-            case 'work':
-                statusText = `作業中 (${this.currentSettings.workMinutes}分)`;
-                break;
-            case 'shortBreak':
-                statusText = `短い休憩 (${this.currentSettings.shortBreakMinutes}分)`;
-                break;
-            case 'longBreak':
-                statusText = `長い休憩 (${this.currentSettings.longBreakMinutes}分)`;
-                break;
+            case 'work': statusText = `作業中 (${this.currentSettings.workMinutes}分)`; break;
+            case 'shortBreak': statusText = `短い休憩 (${this.currentSettings.shortBreakMinutes}分)`; break;
+            case 'longBreak': statusText = `長い休憩 (${this.currentSettings.longBreakMinutes}分)`; break;
         }
         this.statusDisplayEl.textContent = statusText;
         this.cycleDisplayEl.textContent = `現在のサイクル: ${this.pomodorosCompletedInCycle} / ${this.currentSettings.pomodorosUntilLongBreak}`;
     }
-
-    private toggleStartPause() {
-        if (this.isRunning) {
-            this.pauseTimer();
-        } else {
-            this.startTimer();
-        }
+    private toggleStartPause() { /* ... (変更なし) ... */ 
+        if (this.isRunning) { this.pauseTimer(); } else { this.startTimer(); }
     }
-
-    private startTimer() {
-        if (this.isRunning && this.timerId !== null) return; // 既に実行中なら何もしない
-
+    private startTimer() { /* ... (変更なし) ... */ 
+        if (this.isRunning && this.timerId !== null) return;
         if (this.remainingTime <= 0 && this.currentPomodoroSet === 'work') {
-             // 作業セッションが0秒で開始された場合（リセット直後など）は、作業時間から開始
-            this.resetTimerState('work', true); // 作業モードでサイクルもリセットして開始
+            this.resetTimerState('work', true);
         } else if (this.remainingTime <= 0) {
-            // 休憩セッションが0秒で開始しようとした場合、または何らかの理由で0秒の場合
-            this.handleSessionEnd(); // 次のセッションへ移行
-            return;
+            this.handleSessionEnd(); return;
         }
-
         this.isRunning = true;
-        if (this.timerId) clearInterval(this.timerId); // 念のため既存のタイマーをクリア
+        if (this.timerId) clearInterval(this.timerId);
         this.timerId = window.setInterval(() => this.tick(), 1000);
         this.updateDisplay();
         const statusText = this.statusDisplayEl?.textContent?.split('(')[0].trim() || '作業';
         new Notice(`${statusText} を開始しました。`);
     }
-
-    private pauseTimer() {
-        if (!this.isRunning || !this.timerId) return; // 停止中、またはタイマーIDがなければ何もしない
+    private pauseTimer() { /* ... (変更なし) ... */ 
+        if (!this.isRunning || !this.timerId) return;
         this.isRunning = false;
         clearInterval(this.timerId);
         this.timerId = null;
@@ -300,81 +297,146 @@ export class PomodoroWidget implements WidgetImplementation {
         const statusText = this.statusDisplayEl?.textContent?.split('(')[0].trim() || '作業';
         new Notice(`${statusText} を一時停止しました。`);
     }
-
-    private resetCurrentTimerConfirm() {
-        this.pauseTimer(); // まずタイマーを停止
-        this.resetTimerState(this.currentPomodoroSet, false); // 現在のモードで時間をリセット（サイクル数は変更しない）
+    private resetCurrentTimerConfirm() { /* ... (変更なし) ... */ 
+        this.pauseTimer();
+        this.resetTimerState(this.currentPomodoroSet, false);
         const statusText = this.statusDisplayEl?.textContent?.split('(')[0].trim() || '作業';
         new Notice(`${statusText} をリセットしました。`);
     }
-    
-    private resetTimerState(mode: 'work' | 'shortBreak' | 'longBreak', resetCycleCount: boolean) {
+    private resetTimerState(mode: 'work' | 'shortBreak' | 'longBreak', resetCycleCount: boolean) { /* ... (変更なし) ... */ 
         this.currentPomodoroSet = mode;
         switch (mode) {
-            case 'work':
-                this.remainingTime = this.currentSettings.workMinutes * 60;
-                break;
-            case 'shortBreak':
-                this.remainingTime = this.currentSettings.shortBreakMinutes * 60;
-                break;
-            case 'longBreak':
-                this.remainingTime = this.currentSettings.longBreakMinutes * 60;
-                break;
+            case 'work': this.remainingTime = this.currentSettings.workMinutes * 60; break;
+            case 'shortBreak': this.remainingTime = this.currentSettings.shortBreakMinutes * 60; break;
+            case 'longBreak': this.remainingTime = this.currentSettings.longBreakMinutes * 60; break;
         }
-        if (resetCycleCount) {
-            this.pomodorosCompletedInCycle = 0;
-        }
-
-        if (this.isRunning) { // 実行中だった場合は停止する
-            this.pauseTimer();
-        } else if(this.timerId) { // 停止中でタイマーIDが残っていればクリア
-            clearInterval(this.timerId);
-            this.timerId = null;
-        }
-        this.isRunning = false; // 確実に停止状態にする
+        if (resetCycleCount) { this.pomodorosCompletedInCycle = 0; }
+        if (this.isRunning) { this.pauseTimer(); }
+        else if(this.timerId) { clearInterval(this.timerId); this.timerId = null; }
         this.updateDisplay();
     }
-
-    private tick() {
+    private tick() { /* ... (変更なし) ... */ 
         if (!this.isRunning) return;
         this.remainingTime--;
         this.updateDisplay();
-        if (this.remainingTime <= 0) {
-            this.pauseTimer(); // 時間切れでタイマーを止める
-            this.handleSessionEnd();
+        if (this.remainingTime <= 0) { this.handleSessionEnd(); }
+    }
+
+    private playSoundNotification() {
+        if (this.currentSettings.notificationSound === 'off') {
+            return;
+        }
+        console.log(`[${this.config.id}] Playing sound: ${this.currentSettings.notificationSound}, Volume: ${this.currentSettings.notificationVolume}`);
+
+        // 既存の音声があれば停止（連続呼び出し対策）
+        if (this.currentAudioElement) {
+            this.currentAudioElement.pause();
+            this.currentAudioElement.currentTime = 0;
+            this.currentAudioElement = null;
+        }
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            // AudioContextで生成した音の場合、通常は都度生成・再生・停止するので、
+            // ここで特別な停止処理は不要かもしれないが、念のためコンテキストを閉じて再生成も検討
+        }
+
+
+        const volume = Math.max(0, Math.min(1, this.currentSettings.notificationVolume)); // 0.0 - 1.0 の範囲に正規化
+
+        try {
+            if (this.currentSettings.notificationSound === 'default_beep') {
+                if (!this.audioContext || this.audioContext.state === 'closed') {
+                    this.audioContext = new AudioContext();
+                }
+                if (this.audioContext.state === 'suspended') { // ユーザーインタラクションが必要な場合がある
+                    this.audioContext.resume().catch(err => console.error("Error resuming AudioContext:", err));
+                }
+
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(660, this.audioContext.currentTime); // E5 note
+                gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime); // 音量をそのまま反映
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, this.audioContext.currentTime + 0.5);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + 0.5);
+            } else {
+                // 'bell', 'chime', またはその他のMP3ファイル名の場合
+                // プラグインのassetsフォルダからの相対パスを想定
+                // Obsidian内でプラグインアセットにアクセスするための正しいURLを構築する必要がある
+                const soundFileName = `${this.currentSettings.notificationSound}.mp3`;
+                // `plugin.manifest.id` を使ってプラグイン固有のURLを構築
+                // Obsidian 1.0以降では、`app://<app-id>/<plugin-id>/<path-to-asset>` のような形式
+                // `this.app.vault.adapter.getResourcePath` はVault内のファイル用
+                // ここでは、プラグインのディレクトリからの相対パスを Obsidian が解決できるURLにする
+                // 単純な相対パスでは動作しない。絶対パスか、Obsidianが提供する特別なURLスキームが必要。
+                // `plugin.manifest.dir` はファイルシステムパス。
+                // `this.app.vault.adapter.getRealPath(plugin.manifest.dir + '/assets/' + soundFileName)`などでフルパス取得後、
+                // `app://local/` プリフィックスなどでアクセスできるか試す。
+                // もっとも簡単なのは、Obsidianがプラグインのリソースをどう提供しているか確認すること。
+                // 通常は `app://obsidian.md/${this.plugin.manifest.id}/assets/${soundFileName}` のような形式になる。
+
+                // getPluginAssetUrl のようなヘルパー関数が理想的
+                let soundUrl = `app://obsidian.md/${this.plugin.manifest.id}/assets/${soundFileName}`;
+                // もし上記URLで動作しない場合、Obsidianのバージョンや環境によって異なる可能性がある
+                // 代替案として、Base64エンコードした短い音声データを直接使う方法もあるが、ファイル管理が煩雑になる
+
+                console.log(`[${this.config.id}] Attempting to play MP3: ${soundUrl}`);
+
+                this.currentAudioElement = new Audio(soundUrl);
+                this.currentAudioElement.volume = volume;
+                this.currentAudioElement.play().catch(error => {
+                    console.error(`[${this.config.id}] Error playing MP3 (${soundFileName}):`, error);
+                    new Notice(`通知音(${soundFileName})の再生に失敗しました。ファイルが存在するか確認してください。`, 5000);
+                });
+            }
+        } catch (error) {
+            console.error(`[${this.config.id}] Error in playSoundNotification:`, error);
         }
     }
 
     private handleSessionEnd() {
+        if (this.timerId) {
+            clearInterval(this.timerId);
+            this.timerId = null;
+        }
+        this.isRunning = false;
+
         let msg = "";
+        // const previousSet = this.currentPomodoroSet; // 必要なら保持
+
         if (this.currentPomodoroSet === 'work') {
             this.pomodorosCompletedInCycle++;
             msg = `作業セッション (${this.currentSettings.workMinutes}分) が終了。`;
             if (this.pomodorosCompletedInCycle >= this.currentSettings.pomodorosUntilLongBreak) {
-                this.resetTimerState('longBreak', false); // サイクル数はリセットしない
+                this.resetTimerState('longBreak', false);
                 msg += "長い休憩を開始してください。";
             } else {
-                this.resetTimerState('shortBreak', false); // サイクル数はリセットしない
+                this.resetTimerState('shortBreak', false);
                 msg += "短い休憩を開始してください。";
             }
-        } else { // 休憩終了時
+        } else {
             if(this.currentPomodoroSet === 'shortBreak') msg = `短い休憩 (${this.currentSettings.shortBreakMinutes}分) が終了。`;
             else msg = `長い休憩 (${this.currentSettings.longBreakMinutes}分) が終了。`;
             
-            // 長い休憩が終わった時だけサイクルをリセット
             this.resetTimerState('work', this.currentPomodoroSet === 'longBreak');
             msg += "作業セッションを開始してください。";
         }
-        new Notice(msg, 7000); // 通知を7秒間表示
-        // モーダルが閉じていたら開く
+        
+        new Notice(msg, 7000);
+        this.playSoundNotification(); 
+
         if (this.plugin && (!this.plugin.widgetBoardModal || !this.plugin.widgetBoardModal.isOpen)) {
             this.plugin.openWidgetBoard();
         }
+        this.updateDisplay();
     }
     
     private skipToNextSessionConfirm() {
-        this.pauseTimer(); // 現在のタイマーを停止
-        this.handleSessionEnd(); // セッション終了処理を呼び出して次のセッションへ
+        this.handleSessionEnd();
         new Notice("次のセッションへスキップしました。");
     }
 
@@ -384,46 +446,48 @@ export class PomodoroWidget implements WidgetImplementation {
             this.timerId = null;
         }
         this.isRunning = false;
-        // 他のクリーンアップがあればここに追加
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            this.audioContext.close().catch(err => console.error("Error closing AudioContext:", err));
+        }
+        if (this.currentAudioElement) {
+            this.currentAudioElement.pause();
+            this.currentAudioElement.src = ""; // リソース解放の試み
+            this.currentAudioElement = null;
+        }
     }
     
-    public async updateExternalSettings(newSettings: PomodoroSettings, widgetId?: string) {
-        if (widgetId && this.config?.id !== widgetId) return; // 別のウィジェットインスタンスなら何もしない
+    public async updateExternalSettings(newSettings: Partial<PomodoroSettings>, widgetId?: string) {
+        if (widgetId && this.config?.id !== widgetId) return;
 
-        const oldImageUrl = this.currentSettings.backgroundImageUrl;
-        const oldMemoContent = this.currentSettings.memoContent;
+        const oldSettings = { ...this.currentSettings };
 
-        // 既存のcurrentSettingsと新しい設定をマージ
         this.currentSettings = { ...this.currentSettings, ...newSettings };
-        // WidgetConfig内のsettingsも更新
+        
         if(this.config && this.config.settings) {
-            this.config.settings = this.currentSettings;
+            Object.assign(this.config.settings, this.currentSettings);
         }
 
-        // 背景画像の更新
-        if (oldImageUrl !== this.currentSettings.backgroundImageUrl) {
+        if (oldSettings.backgroundImageUrl !== this.currentSettings.backgroundImageUrl) {
             this.applyBackground(this.currentSettings.backgroundImageUrl);
         }
-        // メモ内容の更新 (編集中でない場合のみ)
-        if (oldMemoContent !== this.currentSettings.memoContent && !this.isEditingMemo) {
+        if (oldSettings.memoContent !== this.currentSettings.memoContent && !this.isEditingMemo) {
             await this.renderMemo(this.currentSettings.memoContent);
         }
 
+        const timerRelatedSettingsChanged = 
+            oldSettings.workMinutes !== this.currentSettings.workMinutes ||
+            oldSettings.shortBreakMinutes !== this.currentSettings.shortBreakMinutes ||
+            oldSettings.longBreakMinutes !== this.currentSettings.longBreakMinutes;
 
-        // タイマーが実行中でなければ、設定変更を残り時間に反映させる
-        // (例: 作業時間が25分→30分に変更されたら、残り時間もリセットする)
-        // 実行中の場合は、現在のセッションは古い設定で継続し、次のセッションから新設定が適用されるようにする
-        // または、実行中でも即時反映させたい場合はロジック変更が必要
-        if (!this.isRunning) {
-            this.resetTimerState(this.currentPomodoroSet, false); // 現在のセッションタイプで時間をリセット (サイクル数は維持)
+        if (!this.isRunning && timerRelatedSettingsChanged) {
+            this.resetTimerState(this.currentPomodoroSet, false); 
         } else {
-             // 実行中の場合は、表示のみ更新（サイクル数やステータステキストなど）
              this.updateDisplay();
         }
 
-        // メモのUI状態を更新 (編集中でなければ)
         if (!this.isEditingMemo) {
             this.updateMemoEditUI();
         }
+        // notificationSound や notificationVolume の変更は、次回の playSoundNotification 呼び出し時に反映される。
     }
 }

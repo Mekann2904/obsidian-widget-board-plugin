@@ -1,8 +1,8 @@
 // src/settingsTab.ts
-import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, DropdownComponent, SliderComponent, TextComponent } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import { WidgetBoardModal } from './modal'; // MODES を使うためにインポート
-import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings } from './widgets/pomodoroWidget';
+import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings, PomodoroSoundType } from './widgets/pomodoroWidget';
 import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget';
 import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/calendarWidget';
 import type { WidgetConfig } from './interfaces';
@@ -209,6 +209,94 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             await this.plugin.saveSettings();
                             this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
                         }));
+                // --- 通知音の種類の選択 ---
+                let customSoundPathSetting: Setting | null = null;
+                let testSoundButton: HTMLButtonElement | null = null;
+                new Setting(settingsEl)
+                    .setName('通知音')
+                    .setDesc('セッション終了時の通知音を選択します。')
+                    .setClass('pomodoro-setting-item')
+                    .addDropdown((dropdown: DropdownComponent) => {
+                        dropdown
+                            .addOption('default_beep', 'デフォルト（ビープ音）')
+                            .addOption('custom', 'カスタム（パス指定）')
+                            .setValue(currentSettings.notificationSoundType || 'default_beep')
+                            .onChange(async (value: 'default_beep' | 'custom') => {
+                                currentSettings.notificationSoundType = value;
+                                if (value === 'custom') {
+                                    if (!currentSettings.customSoundPath) currentSettings.customSoundPath = '';
+                                }
+                                await this.plugin.saveSettings();
+                                this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
+                                if (customSoundPathSetting) {
+                                    customSoundPathSetting.settingEl.style.display = (value === 'custom') ? '' : 'none';
+                                }
+                            });
+                    })
+                    .addExtraButton(btn => {
+                        btn.setIcon('play')
+                            .setTooltip('通知音をテスト再生')
+                            .onClick(() => {
+                                const widgetImplementation = registeredWidgetImplementations.get('pomodoro');
+                                if (widgetImplementation && typeof (widgetImplementation as any).playSoundNotification === 'function') {
+                                    // ウィジェットボードが開いていれば既存インスタンスで再生
+                                    if (this.plugin.widgetBoardModal && this.plugin.widgetBoardModal.isOpen) {
+                                        (widgetImplementation as any).updateExternalSettings(currentSettings, widget.id);
+                                        (widgetImplementation as any).playSoundNotification();
+                                    } else {
+                                        // ウィジェットボードが開いていない場合は一時インスタンスで再生
+                                        try {
+                                            const tempWidget = new (widgetImplementation.constructor as any)();
+                                            tempWidget.config = { id: widget.id, settings: currentSettings };
+                                            tempWidget.plugin = this.plugin;
+                                            tempWidget.app = this.plugin.app;
+                                            tempWidget.currentSettings = { ...currentSettings };
+                                            tempWidget.playSoundNotification();
+                                        } catch (e) {
+                                            new Notice('テスト再生に失敗しました。');
+                                            console.error(e);
+                                        }
+                                    }
+                                } else {
+                                    new Notice('テスト再生機能が利用できません。');
+                                }
+                            });
+                    });
+                // --- カスタム通知音パス入力欄 ---
+                customSoundPathSetting = new Setting(settingsEl)
+                    .setName('カスタム通知音パス')
+                    .setDesc('ObsidianのVaultルートからのパス（例: assets/your-sound.mp3）')
+                    .setClass('pomodoro-setting-item')
+                    .addText((text: TextComponent) => {
+                        text
+                            .setPlaceholder('assets/your-sound.mp3')
+                            .setValue(currentSettings.customSoundPath || '')
+                            .onChange(async (value) => {
+                                currentSettings.customSoundPath = value.trim();
+                                await this.plugin.saveSettings();
+                                this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
+                            });
+                    });
+                // 初期表示時にカスタム以外なら非表示
+                if ((currentSettings.notificationSoundType || 'default_beep') !== 'custom' && customSoundPathSetting) {
+                    customSoundPathSetting.settingEl.style.display = 'none';
+                }
+                // --- 通知音の音量調整（スライダー） ---
+                new Setting(settingsEl)
+                    .setName('通知音の音量')
+                    .setDesc('通知音の音量を設定します (0-100)。')
+                    .setClass('pomodoro-setting-item')
+                    .addSlider((slider: SliderComponent) => {
+                        slider
+                            .setLimits(0, 100, 1)
+                            .setValue(Math.round((currentSettings.notificationVolume ?? 0.2) * 100))
+                            .setDynamicTooltip()
+                            .onChange(async (value) => {
+                                currentSettings.notificationVolume = value / 100;
+                                await this.plugin.saveSettings();
+                                this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
+                            });
+                    });
 
             } else if (widget.type === 'memo') {
                 widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) } as MemoWidgetSettings;
