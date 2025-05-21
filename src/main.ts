@@ -11,7 +11,7 @@ import { DEFAULT_CALENDAR_SETTINGS } from './widgets/calendarWidget';
 
 export default class WidgetBoardPlugin extends Plugin {
     settings: PluginGlobalSettings;
-    widgetBoardModal: WidgetBoardModal | null = null;
+    widgetBoardModals: Map<string, WidgetBoardModal> = new Map();
 
     async onload() {
         console.log('Widget Board Plugin: Loading...');
@@ -24,6 +24,12 @@ export default class WidgetBoardPlugin extends Plugin {
                 name: `ウィジェットボードを開く: ${board.name}`,
                 callback: () => this.openWidgetBoardById(board.id)
             });
+            // トグルコマンドも追加
+            this.addCommand({
+                id: `toggle-widget-board-${board.id}`,
+                name: `ウィジェットボードをトグル: ${board.name}`,
+                callback: () => this.toggleWidgetBoardById(board.id)
+            });
         });
 
         this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());
@@ -32,9 +38,10 @@ export default class WidgetBoardPlugin extends Plugin {
     }
 
     onunload() {
-        if (this.widgetBoardModal && this.widgetBoardModal.isOpen) {
-            this.widgetBoardModal.close();
-        }
+        this.widgetBoardModals.forEach(modal => {
+            if (modal.isOpen) modal.close();
+        });
+        this.widgetBoardModals.clear();
         registeredWidgetImplementations.forEach(widgetImpl => {
             if (widgetImpl.onunload) widgetImpl.onunload();
         });
@@ -57,11 +64,20 @@ export default class WidgetBoardPlugin extends Plugin {
     }
 
     openWidgetBoardById(boardId: string) {
-        if (this.widgetBoardModal && this.widgetBoardModal.isOpen) {
-            if (this.widgetBoardModal.currentBoardId !== boardId) {
-                this.widgetBoardModal.close();
-            } else {
-                return;
+        {
+            const modal = this.widgetBoardModals.get(boardId);
+            if (modal) {
+                if (modal.isOpen || modal.isClosing) {
+                    // 既に開いている、または閉じるアニメーション中なら何もしない
+                    return;
+                } else {
+                    // isOpen=false だがMapに残っている場合は削除
+                    this.widgetBoardModals.delete(boardId);
+                    // 古いモーダルのDOMが残っていれば即座に削除
+                    if (modal.modalEl && modal.modalEl.parentElement === document.body) {
+                        document.body.removeChild(modal.modalEl);
+                    }
+                }
             }
         }
         const boardConfig = this.settings.boards.find(b => b.id === boardId);
@@ -79,8 +95,27 @@ export default class WidgetBoardPlugin extends Plugin {
         }
         this.settings.lastOpenedBoardId = boardId;
         this.saveSettings();
-        this.widgetBoardModal = new WidgetBoardModal(this.app, this, boardConfig);
-        this.widgetBoardModal.open();
+        const modal = new WidgetBoardModal(this.app, this, boardConfig);
+        this.widgetBoardModals.set(boardId, modal);
+        // モーダルが閉じられたらMapから削除
+        const origOnClose = modal.onClose.bind(modal);
+        modal.onClose = () => {
+            this.widgetBoardModals.delete(boardId);
+            origOnClose();
+        };
+        modal.open();
+    }
+
+    /**
+     * 指定したボードIDのウィジェットボードパネルをトグル（開閉）する
+     */
+    toggleWidgetBoardById(boardId: string) {
+        const modal = this.widgetBoardModals.get(boardId);
+        if (modal && modal.isOpen) {
+            modal.close();
+            return;
+        }
+        this.openWidgetBoardById(boardId);
     }
 
     async loadSettings() {
@@ -127,15 +162,17 @@ export default class WidgetBoardPlugin extends Plugin {
 
     async saveSettings() {
         await this.saveData(this.settings);
-        if (this.widgetBoardModal && this.widgetBoardModal.isOpen && this.widgetBoardModal.currentBoardConfig) {
-            const currentBoardId = this.widgetBoardModal.currentBoardConfig.id;
-            const updatedBoardConfig = this.settings.boards.find(b => b.id === currentBoardId);
-            if (updatedBoardConfig) {
-                this.widgetBoardModal.updateBoardConfiguration(updatedBoardConfig);
-            } else {
-                this.widgetBoardModal.close();
+        this.widgetBoardModals.forEach(modal => {
+            if (modal.isOpen && modal.currentBoardConfig) {
+                const currentBoardId = modal.currentBoardConfig.id;
+                const updatedBoardConfig = this.settings.boards.find(b => b.id === currentBoardId);
+                if (updatedBoardConfig) {
+                    modal.updateBoardConfiguration(updatedBoardConfig);
+                } else {
+                    modal.close();
+                }
             }
-        }
+        });
     }
 }
 

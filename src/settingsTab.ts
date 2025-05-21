@@ -313,7 +313,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     }
 
     private notifyWidgetInstanceIfBoardOpen(boardId: string, widgetId: string, widgetType: string, newSettings: any) {
-        if (this.plugin.widgetBoardModal && this.plugin.widgetBoardModal.isOpen && this.plugin.widgetBoardModal.currentBoardId === boardId) {
+        const modal = this.plugin.widgetBoardModals?.get(boardId);
+        if (modal && modal.isOpen) {
             const widgetImplementation = registeredWidgetImplementations.get(widgetType);
             if (widgetImplementation && widgetImplementation.updateExternalSettings) {
                 widgetImplementation.updateExternalSettings(newSettings, widgetId);

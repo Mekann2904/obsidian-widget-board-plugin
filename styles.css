@@ -15,9 +15,7 @@
     margin: 0 0 0 auto;
     opacity: 0;
     /* スプリング風アニメーション */
-    transition: right 0.5s cubic-bezier(0.175, 0.885, 0.320, 1.275),
-                opacity 0.25s ease-out,
-                width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: right 0.3s ease, left 0.3s ease, top 0.3s ease, opacity 0.2s, width 0.3s, transform 0.3s;
 }
 .widget-board-panel-custom.mode-right-third {
     width: 33.33vw !important;
@@ -25,12 +23,16 @@
     min-width: 320px;
     max-width: 700px;
 }
+.widget-board-panel-custom.mode-right-third.is-open {
+    right: 0 !important;
+    opacity: 1 !important;
+}
 .widget-board-panel-custom.mode-right-half {
     width: 50vw !important;
     right: -50vw !important;
     min-width: 400px;
 }
-.widget-board-panel-custom.is-open {
+.widget-board-panel-custom.mode-right-half.is-open {
     right: 0 !important;
     opacity: 1 !important;
 }
@@ -42,12 +44,6 @@
     right: auto !important;
     min-width: 400px;
     max-width: 700px;
-    top: 0 !important;
-    height: 100vh !important;
-    position: fixed !important;
-    transition: left 0.5s cubic-bezier(0.175, 0.885, 0.320, 1.275),
-                opacity 0.25s ease-out,
-                width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .widget-board-panel-custom.mode-left-two-third.is-open {
     left: 0 !important;
@@ -57,16 +53,10 @@
 /* 左1/2表示モード */
 .widget-board-panel-custom.mode-left-half {
     width: 50vw !important;
-    left: 0 !important;
+    left: -50vw !important;
     right: auto !important;
     min-width: 320px;
     max-width: 100vw;
-    top: 0 !important;
-    height: 100vh !important;
-    position: fixed !important;
-    transition: left 0.5s cubic-bezier(0.175, 0.885, 0.320, 1.275),
-                opacity 0.25s ease-out,
-                width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 .widget-board-panel-custom.mode-left-half.is-open {
     left: 0 !important;
@@ -78,18 +68,13 @@
     width: 50vw !important;
     left: 50% !important;
     right: auto !important;
+    top: 100vh !important;
     transform: translateX(-50%) !important;
     min-width: 320px;
     max-width: 100vw;
-    top: 0 !important;
-    height: 100vh !important;
-    position: fixed !important;
-    transition: left 0.5s cubic-bezier(0.175, 0.885, 0.320, 1.275),
-                opacity 0.25s ease-out,
-                width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
-                transform 0.5s cubic-bezier(0.175, 0.885, 0.320, 1.275);
 }
 .widget-board-panel-custom.mode-center-half.is-open {
+    top: 0 !important;
     left: 50% !important;
     transform: translateX(-50%);
     opacity: 1 !important;

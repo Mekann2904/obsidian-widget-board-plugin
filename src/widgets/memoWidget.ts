@@ -207,7 +207,15 @@ export class MemoWidget implements WidgetImplementation {
             // 2. ★★★ プラグインの永続化データ内の該当ウィジェット設定を「直接」更新 ★★★
             let settingsUpdatedInGlobalStore = false;
             // モーダルが開いていれば、そのボードIDを取得 (これが最も確実なコンテキスト)
-            const currentModalBoardId = this.plugin.widgetBoardModal?.currentBoardId;
+            let currentModalBoardId: string | undefined = undefined;
+            if (this.plugin.widgetBoardModals) {
+                for (const [boardId, modal] of this.plugin.widgetBoardModals.entries()) {
+                    if (modal.isOpen) {
+                        currentModalBoardId = boardId;
+                        break;
+                    }
+                }
+            }
 
             if (!currentModalBoardId) {
                 console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Critical - currentModalBoardId is not available. Cannot reliably find the board in global settings.`);

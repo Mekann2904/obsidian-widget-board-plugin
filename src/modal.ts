@@ -1,18 +1,20 @@
 // src/modal.ts
-import { App, Modal } from 'obsidian';
+import { App } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import { registeredWidgetImplementations } from './widgetRegistry';
 import type { WidgetImplementation, BoardConfiguration, WidgetConfig } from './interfaces';
 
-export class WidgetBoardModal extends Modal {
+export class WidgetBoardModal {
     plugin: WidgetBoardPlugin;
     currentBoardConfig: BoardConfiguration;
     currentBoardId: string;
     currentMode: string;
     isOpen: boolean = false;
+    isClosing: boolean = false;
     modeButtons: HTMLButtonElement[] = [];
-    // WidgetImplementation を直接格納し、必要に応じて型ガードやメソッド存在チェックを行う
     private uiWidgetReferences: WidgetImplementation[] = [];
+    public modalEl: HTMLElement;
+    public contentEl: HTMLElement;
 
     static readonly MODES = {
         RIGHT_HALF: 'mode-right-half',
@@ -22,8 +24,7 @@ export class WidgetBoardModal extends Modal {
         CENTER_HALF: 'mode-center-half'
     } as const;
 
-    constructor(app: App, plugin: WidgetBoardPlugin, boardConfig: BoardConfiguration) {
-        super(app);
+    constructor(_app: App, plugin: WidgetBoardPlugin, boardConfig: BoardConfiguration) {
         this.plugin = plugin;
         this.currentBoardConfig = JSON.parse(JSON.stringify(boardConfig));
         this.currentBoardId = boardConfig.id;
@@ -33,10 +34,11 @@ export class WidgetBoardModal extends Modal {
         } else {
             this.currentMode = this.currentBoardConfig.defaultMode;
         }
-        this.modalEl.addClass('widget-board-panel-custom'); // カスタムスタイル用クラス
-
-        // Escapeキーで閉じるイベントを登録
-        this.scope.register([], "Escape", this.close.bind(this));
+        this.modalEl = document.createElement('div');
+        this.modalEl.classList.add('widget-board-panel-custom');
+        this.modalEl.setAttribute('data-board-id', this.currentBoardId);
+        this.contentEl = document.createElement('div');
+        this.modalEl.appendChild(this.contentEl);
     }
 
     public updateBoardConfiguration(newBoardConfig: BoardConfiguration) {
@@ -62,15 +64,17 @@ export class WidgetBoardModal extends Modal {
         }
     }
 
+    open() {
+        if (this.isOpen) return;
+        document.body.appendChild(this.modalEl);
+        this.onOpen();
+    }
+
     onOpen() {
         this.isOpen = true;
         const { contentEl, modalEl } = this;
         contentEl.empty();
         this.uiWidgetReferences = [];
-        if (this.modalEl.querySelector('.modal-bg')) {
-            const bgEl = this.modalEl.querySelector('.modal-bg') as HTMLElement;
-            bgEl.style.display = 'none'; // 背景を非表示 (パネル風にするため)
-        }
 
         this.applyMode(this.currentMode); // 現在のモードを適用
 
@@ -149,7 +153,7 @@ export class WidgetBoardModal extends Modal {
                 try {
                     // createメソッドを呼び出し、設定に基づいてHTML要素を生成・構成する
                     // このcreateメソッドは、ウィジェットの表示状態を初期化/更新する役割も持つ
-                    const widgetElement = widgetInstanceController.create(widgetConfig, this.app, this.plugin);
+                    const widgetElement = widgetInstanceController.create(widgetConfig, undefined as any, this.plugin);
                     container.appendChild(widgetElement);
                     // モーダル内で参照するために、このコントローラーインスタンスを保存
                     this.uiWidgetReferences.push(widgetInstanceController);
@@ -191,19 +195,29 @@ export class WidgetBoardModal extends Modal {
     }
 
     close() {
-        // アニメーションのために is-open クラスを削除し、その後スーパークラスの close を呼ぶ
         const { modalEl } = this;
+        this.isClosing = true;
+        // Mapから即時削除（アニメーション中の重複防止）
+        if (this.plugin.widgetBoardModals && this.plugin.widgetBoardModals.has(this.currentBoardId)) {
+            this.plugin.widgetBoardModals.delete(this.currentBoardId);
+        }
         modalEl.classList.remove('is-open');
-        
-        // アニメーション時間（例: 300ms）待ってからモーダルを閉じるスーパークラスのメソッドを呼ぶ
-        // これにより、見た目のトランジションが完了してからモーダルが非表示/破棄される
         setTimeout(() => {
-            super.close(); // この中で onClose が呼ばれる
-        }, 300); // CSSのトランジション時間と一致させる
+            this.onClose();
+            // body内の同じdata-board-idを持つ全てのパネルを削除
+            const selector = `.widget-board-panel-custom[data-board-id='${this.currentBoardId}']`;
+            document.querySelectorAll(selector).forEach(el => {
+                if (el.parentElement === document.body) {
+                    document.body.removeChild(el);
+                }
+            });
+        }, 300);
     }
 
     onClose() {
         this.isOpen = false;
+        this.isClosing = false;
+        // Mapからの削除はclose()で行う
 
         // 表示されていたウィジェットインスタンスに対して非表示処理を実行
         this.uiWidgetReferences.forEach(widgetInstance => {
@@ -212,11 +226,6 @@ export class WidgetBoardModal extends Modal {
             }
         });
         
-        // プラグイン側のモーダル参照をクリア
-        if (this.plugin.widgetBoardModal === this) {
-            this.plugin.widgetBoardModal = null;
-        }
-
         // モーダルの内容をクリア
         const { contentEl } = this;
         contentEl.empty();

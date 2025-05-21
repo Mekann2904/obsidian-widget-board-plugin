@@ -163,7 +163,15 @@ export class PomodoroWidget implements WidgetImplementation {
 
             // 2. プラグインの永続化データ内の該当ウィジェット設定を「直接」更新
             let settingsUpdatedInGlobalStore = false;
-            const currentModalBoardId = this.plugin.widgetBoardModal?.currentBoardId;
+            let currentModalBoardId: string | undefined = undefined;
+            if (this.plugin.widgetBoardModals) {
+                for (const [boardId, modal] of this.plugin.widgetBoardModals.entries()) {
+                    if (modal.isOpen) {
+                        currentModalBoardId = boardId;
+                        break;
+                    }
+                }
+            }
 
             if (!currentModalBoardId) {
                 console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Critical - currentModalBoardId is not available.`);
@@ -468,7 +476,7 @@ export class PomodoroWidget implements WidgetImplementation {
         }
         new Notice(msg, 7000);
         this.playSoundNotification(); 
-        if (this.plugin && (!this.plugin.widgetBoardModal || !this.plugin.widgetBoardModal.isOpen)) {
+        if (this.plugin && (!this.plugin.widgetBoardModals || Array.from(this.plugin.widgetBoardModals.values()).every(m => !m.isOpen))) {
             // ボードIDを指定して開くように変更 (this.config.id はこのウィジェットのIDなので、
             // これが属するボードのIDを特定する必要がある。モーダルが開いていないので難しい)
             // ここでは、最後に開いたボードを開くか、ピッカーを開くのが適切かもしれない。
