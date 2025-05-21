@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -26,8 +28,7 @@ jobs:
 
       # manifest.json の version をタグに同期
       - name: Install jq
-        run: |
-          sudo apt-get update && sudo apt-get install -y jq
+        run: sudo apt-get update && sudo apt-get install -y jq
 
       - name: Sync manifest version
         run: |
@@ -47,10 +48,7 @@ jobs:
         run: |
           TAG="${GITHUB_REF##*/}"
           gh release create "$TAG" \
-            --title="Release $TAG" \
-            --notes="New release of obsidian-widget-board-plugin" \
+            --title "Release $TAG" \
+            --notes "New release of obsidian-widget-board-plugin" \
             --draft \
-            obsidian-widget-board-plugin.zip \
-            main.js \
-            manifest.json \
-            styles.css
+            obsidian-widget-board-plugin.zip
