@@ -411,8 +411,13 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private playSoundNotification() {
-        if (this.currentSettings.notificationSound === 'off') return;
-        const volume = Math.max(0, Math.min(1, this.currentSettings.notificationVolume));
+        // グローバル設定があれば優先
+        const globalSound = this.plugin.settings.pomodoroNotificationSound;
+        const globalVolume = this.plugin.settings.pomodoroNotificationVolume;
+        const soundType = globalSound ?? this.currentSettings.notificationSound;
+        const volume = (globalVolume !== undefined ? globalVolume : this.currentSettings.notificationVolume);
+
+        if (soundType === 'off') return;
 
         if (this.currentAudioElement) {
             this.currentAudioElement.pause(); this.currentAudioElement.currentTime = 0; this.currentAudioElement = null;
@@ -425,7 +430,6 @@ export class PomodoroWidget implements WidgetImplementation {
         try {
             const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
             this.audioContext = ctx;
-            const soundType = this.currentSettings.notificationSound;
             if (soundType === 'default_beep') {
                 // シンプルなビープ
                 const osc = ctx.createOscillator();
@@ -471,7 +475,7 @@ export class PomodoroWidget implements WidgetImplementation {
                     if (i === notes.length - 1) osc.onended = () => ctx.close();
                 });
             }
-        } catch (error) { new Notice('通知音の再生中にエラーが発生しました。', 5000); }
+        } catch (e) { new Notice('音声の再生に失敗しました'); }
     }
 
     private handleSessionEnd() {

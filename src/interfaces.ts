@@ -31,4 +31,8 @@ export interface PluginGlobalSettings {
     boards: BoardConfiguration[];
     lastOpenedBoardId?: string;
     defaultBoardIdForQuickOpen?: string;
+    pomodoroNotificationSound?: import("./widgets/pomodoroWidget").PomodoroSoundType;
+    pomodoroNotificationVolume?: number;
+    timerStopwatchNotificationSound?: import("./widgets/timerStopwatchWidget").TimerSoundType;
+    timerStopwatchNotificationVolume?: number;
 }

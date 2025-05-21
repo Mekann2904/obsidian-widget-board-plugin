@@ -23,4 +23,8 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     boards: [DEFAULT_BOARD_CONFIGURATION],
     lastOpenedBoardId: initialDefaultBoardId,
     defaultBoardIdForQuickOpen: initialDefaultBoardId,
+    pomodoroNotificationSound: DEFAULT_POMODORO_SETTINGS.notificationSound,
+    pomodoroNotificationVolume: DEFAULT_POMODORO_SETTINGS.notificationVolume,
+    timerStopwatchNotificationSound: 'default_beep',
+    timerStopwatchNotificationVolume: 0.5,
 };

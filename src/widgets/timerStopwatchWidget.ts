@@ -340,8 +340,11 @@ export class TimerStopwatchWidget implements WidgetImplementation {
 
     // --- 通知音再生メソッド ---
     private playSoundNotification() {
-        const soundType = this.currentSettings.notificationSound ?? DEFAULT_TIMER_STOPWATCH_SETTINGS.notificationSound;
-        const volume = this.currentSettings.notificationVolume ?? DEFAULT_TIMER_STOPWATCH_SETTINGS.notificationVolume ?? 0.5;
+        // グローバル設定があれば優先
+        const globalSound = (this.plugin.settings as any).timerStopwatchNotificationSound;
+        const globalVolume = (this.plugin.settings as any).timerStopwatchNotificationVolume;
+        const soundType = globalSound ?? this.currentSettings.notificationSound ?? DEFAULT_TIMER_STOPWATCH_SETTINGS.notificationSound;
+        const volume = (globalVolume !== undefined ? globalVolume : (this.currentSettings.notificationVolume ?? DEFAULT_TIMER_STOPWATCH_SETTINGS.notificationVolume ?? 0.5));
 
         if (soundType === 'off') return;
 

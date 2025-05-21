@@ -9,7 +9,17 @@ import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget'
 import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/calendarWidget';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
-import { registeredWidgetImplementations } from './widgetRegistry';
+// import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
+
+// ウィジェットタイプに対応する表示名のマッピング
+const WIDGET_TYPE_DISPLAY_NAMES: { [key: string]: string } = {
+    'pomodoro': 'ポモドーロタイマー',
+    'memo': 'メモ',
+    'timer-stopwatch': 'タイマー/ストップウォッチ',
+    'calendar': 'カレンダー',
+    'recent-notes': '最近編集したノート',
+    'theme-switcher': 'テーマ切り替え',
+};
 
 export class WidgetBoardSettingTab extends PluginSettingTab {
     plugin: WidgetBoardPlugin;
@@ -28,32 +38,164 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         containerEl.empty();
         containerEl.createEl('h2', { text: 'ウィジェットボード設定' });
 
+        // --- アコーディオン生成ヘルパー (トップレベル用) ---
+        const createAccordion = (title: string, defaultOpen: boolean = false) => {
+            const acc = containerEl.createDiv({ cls: 'wb-accordion' + (defaultOpen ? ' wb-accordion-open' : '') });
+            const header = acc.createDiv({ cls: 'wb-accordion-header' });
+            const icon = header.createSpan({ cls: 'wb-accordion-icon' });
+            icon.setText('▶');
+            header.appendText(title);
+            const body = acc.createDiv({ cls: 'wb-accordion-body' });
+
+            if (defaultOpen) {
+                header.addClass('wb-accordion-open');
+                // icon.setText('▼'); // アイコンを開いた状態にする場合
+            } else {
+                body.style.display = 'none'; // 初期状態で閉じていればbodyも非表示
+            }
+
+            header.onclick = () => {
+                const isOpen = acc.classList.toggle('wb-accordion-open');
+                header.classList.toggle('wb-accordion-open');
+                // icon.setText(isOpen ? '▼' : '▶'); // アイコン切り替え
+                body.style.display = isOpen ? '' : 'none';
+            };
+            return { acc, header, body };
+        };
+
+        // --- ポモドーロ通知音（全体設定） ---
+        const pomoAcc = createAccordion('ポモドーロ通知音（全体設定）', false); // デフォルトで閉じる
+        new Setting(pomoAcc.body)
+            .setName('通知音')
+            .setDesc('全てのポモドーロタイマーで使う通知音（個別設定より優先）')
+            .addDropdown(dropdown => {
+                dropdown.addOption('off', 'なし');
+                dropdown.addOption('default_beep', 'ビープ音');
+                dropdown.addOption('bell', 'ベル');
+                dropdown.addOption('chime', 'チャイム');
+                dropdown.setValue(this.plugin.settings.pomodoroNotificationSound || 'default_beep')
+                    .onChange(async (value) => {
+                        this.plugin.settings.pomodoroNotificationSound = value as PomodoroSoundType;
+                        await this.plugin.saveSettings();
+                    });
+            })
+            .addExtraButton(btn => {
+                btn.setIcon('play');
+                btn.setTooltip('音を聞く');
+                btn.onClick(() => {
+                    playTestNotificationSound(
+                        this.plugin,
+                        this.plugin.settings.pomodoroNotificationSound || 'default_beep',
+                        this.plugin.settings.pomodoroNotificationVolume ?? 0.2
+                    );
+                });
+            });
+        new Setting(pomoAcc.body)
+            .setName('通知音量')
+            .setDesc('通知音の音量（0.0〜1.0）')
+            .addSlider(slider => {
+                slider.setLimits(0, 1, 0.01)
+                    .setValue(this.plugin.settings.pomodoroNotificationVolume ?? 0.2);
+                const valueLabel = document.createElement('span');
+                valueLabel.style.marginLeft = '12px';
+                valueLabel.style.fontWeight = 'bold';
+                valueLabel.textContent = String((this.plugin.settings.pomodoroNotificationVolume ?? 0.2).toFixed(2));
+                slider.sliderEl.parentElement?.appendChild(valueLabel);
+                slider.onChange(async (value) => {
+                    this.plugin.settings.pomodoroNotificationVolume = value;
+                    valueLabel.textContent = String(value.toFixed(2));
+                    await this.plugin.saveSettings();
+                });
+            });
+
+        // --- タイマー／ストップウォッチ通知音（全体設定） ---
+        const timerAcc = createAccordion('タイマー／ストップウォッチ通知音（全体設定）', false); // デフォルトで閉じる
+        new Setting(timerAcc.body)
+            .setName('通知音')
+            .setDesc('全てのタイマー／ストップウォッチで使う通知音（個別設定より優先）')
+            .addDropdown(dropdown => {
+                dropdown.addOption('off', 'なし');
+                dropdown.addOption('default_beep', 'ビープ音');
+                dropdown.addOption('bell', 'ベル');
+                dropdown.addOption('chime', 'チャイム');
+                dropdown.setValue(this.plugin.settings.timerStopwatchNotificationSound || 'default_beep')
+                    .onChange(async (value) => {
+                        this.plugin.settings.timerStopwatchNotificationSound = value as import("./widgets/timerStopwatchWidget").TimerSoundType;
+                        await this.plugin.saveSettings();
+                    });
+            })
+            .addExtraButton(btn => {
+                btn.setIcon('play');
+                btn.setTooltip('音を聞く');
+                btn.onClick(() => {
+                    playTestNotificationSound(
+                        this.plugin,
+                        this.plugin.settings.timerStopwatchNotificationSound || 'default_beep',
+                        this.plugin.settings.timerStopwatchNotificationVolume ?? 0.5
+                    );
+                });
+            });
+        new Setting(timerAcc.body)
+            .setName('通知音量')
+            .setDesc('通知音の音量（0.0〜1.0）')
+            .addSlider(slider => {
+                slider.setLimits(0, 1, 0.01)
+                    .setValue(this.plugin.settings.timerStopwatchNotificationVolume ?? 0.5);
+                const valueLabel = document.createElement('span');
+                valueLabel.style.marginLeft = '12px';
+                valueLabel.style.fontWeight = 'bold';
+                valueLabel.textContent = String((this.plugin.settings.timerStopwatchNotificationVolume ?? 0.5).toFixed(2));
+                slider.sliderEl.parentElement?.appendChild(valueLabel);
+                slider.onChange(async (value) => {
+                    this.plugin.settings.timerStopwatchNotificationVolume = value;
+                    valueLabel.textContent = String(value.toFixed(2));
+                    await this.plugin.saveSettings();
+                });
+            });
+
         // --- ボード管理セクション ---
-        const boardManagementSection = containerEl.createDiv({ cls: 'widget-board-management-section' });
-        this.renderBoardManagementUI(boardManagementSection);
+        const boardManagementAcc = createAccordion('ボード管理', false); // デフォルトで閉じる
+        this.renderBoardManagementUI(boardManagementAcc.body);
 
         // --- 選択されたボードの設定セクション ---
-        const selectedBoardSettingsSection = containerEl.createDiv({ cls: 'selected-board-settings-section' });
-        this.renderSelectedBoardSettingsUI(selectedBoardSettingsSection);
+        const boardDetailAcc = createAccordion('ボード詳細設定', false); // デフォルトで閉じる
+        boardDetailAcc.body.addClass('selected-board-settings-section');
+        if (this.selectedBoardId) {
+            this.renderSelectedBoardSettingsUI(boardDetailAcc.body);
+        } else {
+            // ボードが一つもない、または選択されていない場合のメッセージ
+            const msg = this.plugin.settings.boards.length === 0 ? '利用可能なボードがありません。「ボード管理」から新しいボードを追加してください。' : '設定するボードを「ボード管理」から選択してください。';
+            boardDetailAcc.body.createEl('p', { text: msg });
+        }
     }
 
     private renderBoardManagementUI(containerEl: HTMLElement) {
         containerEl.empty();
-        containerEl.createEl('h3', { text: 'ボード管理' });
 
         new Setting(containerEl)
             .setName('ボード選択')
             .setDesc('設定を編集するウィジェットボードを選択してください。')
             .addDropdown(dropdown => {
-                this.plugin.settings.boards.forEach(board => {
-                    dropdown.addOption(board.id, board.name);
-                });
-                dropdown.setValue(this.selectedBoardId || (this.plugin.settings.boards[0]?.id || ''))
-                    .onChange(value => {
+                if (this.plugin.settings.boards.length === 0) {
+                    dropdown.addOption('', '利用可能なボードがありません'); // ダミーオプション
+                    dropdown.setDisabled(true);
+                } else {
+                    this.plugin.settings.boards.forEach(board => {
+                        dropdown.addOption(board.id, board.name);
+                    });
+                    dropdown.setValue(this.selectedBoardId || this.plugin.settings.boards[0].id);
+                }
+
+                dropdown.onChange(value => {
                         this.selectedBoardId = value;
                         this.plugin.settings.lastOpenedBoardId = value;
                         this.plugin.saveSettings();
-                        this.renderSelectedBoardSettingsUI(this.containerEl.querySelector('.selected-board-settings-section')!);
+                        // ボード詳細設定セクションの内容を更新
+                        const selectedBoardSettingsContainer = this.containerEl.querySelector('.selected-board-settings-section');
+                        if (selectedBoardSettingsContainer) {
+                             this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement);
+                        }
+                        // ボード詳細設定アコーディオンを自動で開かない
                     });
             });
 
@@ -70,26 +212,31 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         widgets: []
                     };
                     this.plugin.settings.boards.push(newBoard);
-                    this.selectedBoardId = newBoardId;
+                    this.selectedBoardId = newBoardId; // 新しく追加したボードを選択状態にする
+                    this.plugin.settings.lastOpenedBoardId = newBoardId;
                     await this.plugin.saveSettings();
-                    this.display();
+                    this.display(); // 設定タブ全体を再描画して変更を反映
                 }));
     }
 
     private renderSelectedBoardSettingsUI(containerEl: HTMLElement) {
         containerEl.empty();
         if (!this.selectedBoardId) {
-            containerEl.createEl('p', { text: 'ボードを選択してください。' });
+            const msg = this.plugin.settings.boards.length === 0 ? '利用可能なボードがありません。「ボード管理」から新しいボードを追加してください。' : '設定するボードを「ボード管理」から選択してください。';
+            containerEl.createEl('p', { text: msg });
             return;
         }
         const board = this.plugin.settings.boards.find(b => b.id === this.selectedBoardId);
         if (!board) {
             containerEl.createEl('p', { text: '選択されたボードが見つかりません。' });
-            this.selectedBoardId = null;
-            this.renderBoardManagementUI(this.containerEl.querySelector('.widget-board-management-section')!);
+            this.selectedBoardId = null; // 選択を解除
+            this.plugin.settings.lastOpenedBoardId = undefined;
+            this.plugin.saveSettings();
+            // ここで display() を呼ぶと再帰や無限ループのリスクがあるので、
+            // ボード選択ドロップダウンの表示更新は display() の再実行に任せる。
             return;
         }
-        containerEl.createEl('h3', { text: `ボード「${board.name}」の設定` });
+
         new Setting(containerEl)
             .setName('ボード名')
             .addText(text => text
@@ -97,8 +244,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     board.name = value;
                     await this.plugin.saveSettings();
-                    this.renderBoardManagementUI(this.containerEl.querySelector('.widget-board-management-section')!);
-                    containerEl.querySelector('h3')!.setText(`ボード「${board.name}」の設定`);
+                    this.display(); // ボード名変更はドロップダウンも更新するため再描画
                 }));
         new Setting(containerEl)
             .setName('デフォルト表示モード')
@@ -125,12 +271,17 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 .onClick(async () => {
                     if (!confirm(`ボード「${board.name}」を本当に削除しますか？`)) return;
                     this.plugin.settings.boards = this.plugin.settings.boards.filter(b => b.id !== this.selectedBoardId);
-                    this.selectedBoardId = this.plugin.settings.boards.length > 0 ? this.plugin.settings.boards[0].id : null;
+                    const newSelectedBoardId = this.plugin.settings.boards.length > 0 ? this.plugin.settings.boards[0].id : null;
+                    this.selectedBoardId = newSelectedBoardId;
+                    this.plugin.settings.lastOpenedBoardId = newSelectedBoardId === null ? undefined : newSelectedBoardId;
                     await this.plugin.saveSettings();
-                    this.display();
+                    this.display(); // 設定タブ全体を再描画
                 }));
+
         containerEl.createEl('h4', { text: 'ウィジェット管理' });
         const addWidgetButtonsContainer = containerEl.createDiv({ cls: 'widget-add-buttons' });
+        const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list-for-board' }); // 先に定義
+
         const createAddButtonToBoard = (buttonText: string, widgetType: string, defaultWidgetSettings: any) => {
             const settingItem = new Setting(addWidgetButtonsContainer);
             settingItem.addButton(button => button
@@ -148,8 +299,9 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     };
                     currentBoard.widgets.push(newWidget);
                     await this.plugin.saveSettings();
-                    this.renderWidgetListForBoard(widgetListEl, currentBoard);
-                    new Notice(`「${widgetType}」ウィジェットがボード「${currentBoard.name}」に追加されました。`);
+                    this.renderWidgetListForBoard(widgetListEl, currentBoard); // widgetListEl は既に定義済み
+                    const widgetDisplayName = WIDGET_TYPE_DISPLAY_NAMES[widgetType] || widgetType; // 通知用にも表示名を使用
+                    new Notice(`「${widgetDisplayName}」ウィジェットがボード「${currentBoard.name}」に追加されました。`);
                 }));
             settingItem.settingEl.addClass('widget-add-button-setting-item');
             settingItem.nameEl.remove(); settingItem.descEl.remove();
@@ -160,7 +312,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         createAddButtonToBoard("最近編集したノート", "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS);
         createAddButtonToBoard("テーマ切り替え", "theme-switcher", {});
         createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS });
-        const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list-for-board' });
+
         this.renderWidgetListForBoard(widgetListEl, board);
     }
 
@@ -171,21 +323,31 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             containerEl.createEl('p', { text: 'このボードにはウィジェットがありません。「追加」ボタンで作成できます。' });
             return;
         }
+
         widgets.forEach((widget, index) => {
-            const widgetSettingContainer = containerEl.createDiv({cls: 'widget-setting-container setting-item'});
-            const displayName = widget.title || `(名称未設定 ${widget.type})`;
+            const widgetSettingContainer = containerEl.createDiv({cls: 'widget-setting-container'});
+
+            // ウィジェットタイプに応じた日本語表示名を取得
+            const widgetTypeName = WIDGET_TYPE_DISPLAY_NAMES[widget.type] || widget.type;
+            // タイトルが未設定の場合は「(名称未設定 <ウィジェット日本語名>)」とする
+            const displayName = widget.title || `(名称未設定 ${widgetTypeName})`;
+
             const titleSetting = new Setting(widgetSettingContainer)
                 .setName(displayName)
                 .setDesc(`種類: ${widget.type} | ID: ${widget.id.substring(0,8)}...`);
+
             titleSetting.addText(text => text
                 .setPlaceholder('(ウィジェット名)')
                 .setValue(widget.title)
                 .onChange(async (value) => {
                     widget.title = value.trim();
                     await this.plugin.saveSettings();
-                    titleSetting.setName(widget.title || `(名称未設定 ${widget.type})`);
+                    // タイトル変更時も同様のロジックで表示名を更新
+                    const updatedDisplayName = widget.title || `(名称未設定 ${widgetTypeName})`;
+                    titleSetting.setName(updatedDisplayName);
                     this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
                 }));
+
             titleSetting
                 .addExtraButton(cb => cb.setIcon('arrow-up').setTooltip('上に移動').setDisabled(index === 0)
                     .onClick(async () => {
@@ -207,16 +369,42 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     }))
                 .addButton(button => button.setIcon("trash").setTooltip("このウィジェットを削除").setWarning()
                     .onClick(async () => {
-                        const oldTitle = widget.title || `(名称未設定 ${widget.type})`;
+                        // 削除時の通知メッセージも同様のロジックで表示名を生成
+                        const oldWidgetTypeName = WIDGET_TYPE_DISPLAY_NAMES[widget.type] || widget.type;
+                        const oldTitle = widget.title || `(名称未設定 ${oldWidgetTypeName})`;
                         board.widgets.splice(index, 1);
                         await this.plugin.saveSettings();
                         this.renderWidgetListForBoard(containerEl, board);
                         new Notice(`ウィジェット「${oldTitle}」をボード「${board.name}」から削除しました。`);
                     }));
+
+            // 詳細設定用のアコーディオンコンテナ (titleSetting の下に配置)
             const settingsEl = widgetSettingContainer.createDiv({cls: 'widget-specific-settings'});
+
+            // --- ウィジェット個別設定のアコーディオン生成関数 ---
+            const createWidgetAccordion = (parentEl: HTMLElement, title: string = '詳細設定') => {
+                const acc = parentEl.createDiv({ cls: 'wb-accordion' });
+                const header = acc.createDiv({ cls: 'wb-accordion-header' });
+                const icon = header.createSpan({ cls: 'wb-accordion-icon' });
+                icon.setText('▶');
+                header.appendText(title);
+                const body = acc.createDiv({ cls: 'wb-accordion-body' });
+                body.style.display = 'none';
+
+                header.onclick = () => {
+                    const isOpen = acc.classList.toggle('wb-accordion-open');
+                    header.classList.toggle('wb-accordion-open');
+                    body.style.display = isOpen ? '' : 'none';
+                };
+                return { acc, header, body };
+            };
+
+
             if (widget.type === 'pomodoro') {
                 widget.settings = { ...DEFAULT_POMODORO_SETTINGS, ...(widget.settings || {}) } as PomodoroSettings;
                 const currentSettings = widget.settings as PomodoroSettings;
+                const { body: pomoDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+
                 const createNumInput = (parent: HTMLElement, label: string, desc: string, key: keyof Omit<PomodoroSettings, 'backgroundImageUrl' | 'memoContent'>) => {
                     new Setting(parent).setName(label).setDesc(desc).setClass('pomodoro-setting-item')
                         .addText(text => text
@@ -234,11 +422,12 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                 }
                             }));
                 };
-                createNumInput(settingsEl, '作業時間 (分)', 'ポモドーロの作業フェーズの時間。', 'workMinutes');
-                createNumInput(settingsEl, '短い休憩 (分)', '短い休憩フェーズの時間。', 'shortBreakMinutes');
-                createNumInput(settingsEl, '長い休憩 (分)', '長い休憩フェーズの時間。', 'longBreakMinutes');
-                createNumInput(settingsEl, 'サイクル数', '長い休憩までの作業ポモドーロ回数。', 'pomodorosUntilLongBreak');
-                new Setting(settingsEl).setName('背景画像URL').setDesc('タイマーの背景として表示する画像のURL。').setClass('pomodoro-setting-item')
+                createNumInput(pomoDetailBody, '作業時間 (分)', 'ポモドーロの作業フェーズの時間。', 'workMinutes');
+                createNumInput(pomoDetailBody, '短い休憩 (分)', '短い休憩フェーズの時間。', 'shortBreakMinutes');
+                createNumInput(pomoDetailBody, '長い休憩 (分)', '長い休憩フェーズの時間。', 'longBreakMinutes');
+                createNumInput(pomoDetailBody, 'サイクル数', '長い休憩までの作業ポモドーロ回数。', 'pomodorosUntilLongBreak');
+
+                new Setting(pomoDetailBody).setName('背景画像URL').setDesc('タイマーの背景として表示する画像のURL。').setClass('pomodoro-setting-item')
                     .addText(text => text
                         .setPlaceholder('例: https://example.com/image.jpg')
                         .setValue(currentSettings.backgroundImageUrl || '')
@@ -247,7 +436,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             await this.plugin.saveSettings();
                             this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                         }));
-                new Setting(settingsEl).setName('専用メモ (Markdown)').setDesc('このポモドーロタイマー専用のメモ。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item')
+
+                new Setting(pomoDetailBody).setName('専用メモ (Markdown)').setDesc('このポモドーロタイマー専用のメモ。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item')
                     .addTextArea(text => text
                         .setPlaceholder('今日のタスク、集中したいことなど...')
                         .setValue(currentSettings.memoContent || '')
@@ -256,54 +446,18 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             await this.plugin.saveSettings();
                             this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                         }));
-                // 通知音設定などもここに追加（省略）
-                // 通知音の種類
-                new Setting(settingsEl)
-                    .setName('通知音')
-                    .setDesc('タイマー終了時に鳴らす通知音。')
-                    .addDropdown(dropdown => {
-                        dropdown.addOption('off', 'なし');
-                        dropdown.addOption('default_beep', 'ビープ音');
-                        dropdown.addOption('bell', 'ベル');
-                        dropdown.addOption('chime', 'チャイム');
-                        dropdown.setValue(currentSettings.notificationSound || 'default_beep')
-                            .onChange(async (value) => {
-                                currentSettings.notificationSound = value as PomodoroSoundType;
-                                await this.plugin.saveSettings();
-                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
-                            });
-                    })
-                    .addExtraButton(btn => {
-                        btn.setIcon('play');
-                        btn.setTooltip('音を聞く');
-                        btn.onClick(() => {
-                            playTestNotificationSound(this.plugin, currentSettings.notificationSound || 'default_beep', currentSettings.notificationVolume ?? 0.2);
-                        });
-                    });
-                // 通知音量
-                new Setting(settingsEl)
-                    .setName('通知音量')
-                    .setDesc('通知音の音量（0.0〜1.0）')
-                    .addSlider(slider => {
-                        slider.setLimits(0, 1, 0.01)
-                            .setValue(currentSettings.notificationVolume ?? 0.2);
-                        // 値表示用span
-                        const valueLabel = document.createElement('span');
-                        valueLabel.style.marginLeft = '12px';
-                        valueLabel.style.fontWeight = 'bold';
-                        valueLabel.textContent = String((currentSettings.notificationVolume ?? 0.2).toFixed(2));
-                        slider.sliderEl.parentElement?.appendChild(valueLabel);
-                        slider.onChange(async (value) => {
-                            currentSettings.notificationVolume = value;
-                            valueLabel.textContent = String(value.toFixed(2));
-                            await this.plugin.saveSettings();
-                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
-                        });
-                    });
+
+                new Setting(pomoDetailBody)
+                    .setName('通知音（全体設定が適用されます）')
+                    .setDesc('このウィジェットの通知音・音量は「ポモドーロ通知音（全体設定）」が使われます。')
+                    .setDisabled(true);
+
             } else if (widget.type === 'memo') {
                 widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) } as MemoWidgetSettings;
                 const currentSettings = widget.settings as MemoWidgetSettings;
-                new Setting(settingsEl).setName('メモ内容 (Markdown)').setDesc('メモウィジェットに表示する内容。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item')
+                const { body: memoDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+
+                new Setting(memoDetailBody).setName('メモ内容 (Markdown)').setDesc('メモウィジェットに表示する内容。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item')
                     .addTextArea(text => text
                         .setPlaceholder('ここにメモを記述...')
                         .setValue(currentSettings.memoContent || '')
@@ -312,8 +466,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             await this.plugin.saveSettings();
                             this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
                         }));
-                // メモエリア高さモード
-                new Setting(settingsEl)
+
+                let fixedHeightSettingEl: HTMLElement | null = null;
+
+                new Setting(memoDetailBody)
                     .setName('メモエリアの高さモード')
                     .setDesc('自動調整（内容にfit）または固定高さを選択')
                     .addDropdown(dropdown => {
@@ -324,15 +480,13 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                 currentSettings.memoHeightMode = value as 'auto' | 'fixed';
                                 await this.plugin.saveSettings();
                                 this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
-                                // 固定モード選択時は下の高さ欄を有効化
-                                if (fixedHeightSetting) {
-                                    fixedHeightSetting.settingEl.style.display = (value === 'fixed') ? '' : 'none';
+                                if (fixedHeightSettingEl) {
+                                    fixedHeightSettingEl.style.display = (value === 'fixed') ? '' : 'none';
                                 }
                             });
                     });
-                // 固定高さ(px)入力欄
-                let fixedHeightSetting: Setting | null = null;
-                fixedHeightSetting = new Setting(settingsEl)
+
+                const heightSetting = new Setting(memoDetailBody)
                     .setName('固定高さ(px)')
                     .setDesc('固定モード時の高さ（px）')
                     .addText(text => {
@@ -350,58 +504,30 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                 }
                             });
                     });
-                // 初期表示時に自動モードなら非表示
-                if ((currentSettings.memoHeightMode || 'auto') !== 'fixed' && fixedHeightSetting) {
-                    fixedHeightSetting.settingEl.style.display = 'none';
+                fixedHeightSettingEl = heightSetting.settingEl;
+                if ((currentSettings.memoHeightMode || 'auto') !== 'fixed' && fixedHeightSettingEl) {
+                    fixedHeightSettingEl.style.display = 'none';
                 }
+
+
             } else if (widget.type === 'calendar') {
                 widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings || {}) } as CalendarWidgetSettings;
+                if (Object.keys(widget.settings).length > 0) {
+                    const { body: calendarDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+                     new Setting(calendarDetailBody)
+                        .setName('（設定項目なし）')
+                        .setDesc('現在、カレンダーウィジェットに個別の設定項目はありません。')
+                        .setDisabled(true);
+                }
+
             } else if (widget.type === 'timer-stopwatch') {
                 widget.settings = { ...DEFAULT_TIMER_STOPWATCH_SETTINGS, ...(widget.settings || {}) };
-                const currentSettings = widget.settings;
-                // 通知音の種類
-                new Setting(settingsEl)
-                    .setName('通知音')
-                    .setDesc('タイマー終了時に鳴らす通知音。')
-                    .addDropdown(dropdown => {
-                        dropdown.addOption('off', 'なし');
-                        dropdown.addOption('default_beep', 'ビープ音');
-                        dropdown.addOption('bell', 'ベル');
-                        dropdown.addOption('chime', 'チャイム');
-                        dropdown.setValue(currentSettings.notificationSound || 'default_beep')
-                            .onChange(async (value) => {
-                                currentSettings.notificationSound = value;
-                                await this.plugin.saveSettings();
-                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
-                            });
-                    })
-                    .addExtraButton(btn => {
-                        btn.setIcon('play');
-                        btn.setTooltip('音を聞く');
-                        btn.onClick(() => {
-                            playTestNotificationSound(this.plugin, currentSettings.notificationSound || 'default_beep', currentSettings.notificationVolume ?? 0.5);
-                        });
-                    });
-                // 通知音量
-                new Setting(settingsEl)
-                    .setName('通知音量')
-                    .setDesc('通知音の音量（0.0〜1.0）')
-                    .addSlider(slider => {
-                        slider.setLimits(0, 1, 0.01)
-                            .setValue(currentSettings.notificationVolume ?? 0.5);
-                        // 値表示用span
-                        const valueLabel = document.createElement('span');
-                        valueLabel.style.marginLeft = '12px';
-                        valueLabel.style.fontWeight = 'bold';
-                        valueLabel.textContent = String((currentSettings.notificationVolume ?? 0.5).toFixed(2));
-                        slider.sliderEl.parentElement?.appendChild(valueLabel);
-                        slider.onChange(async (value) => {
-                            currentSettings.notificationVolume = value;
-                            valueLabel.textContent = String(value.toFixed(2));
-                            await this.plugin.saveSettings();
-                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
-                        });
-                    });
+                const { body: timerStopwatchDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+
+                new Setting(timerStopwatchDetailBody)
+                    .setName('通知音（全体設定が適用されます）')
+                    .setDesc('このウィジェットの通知音・音量は「タイマー／ストップウォッチ通知音（全体設定）」が使われます。')
+                    .setDisabled(true);
             }
         });
     }
@@ -409,7 +535,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     private notifyWidgetInstanceIfBoardOpen(boardId: string, widgetId: string, widgetType: string, newSettings: any) {
         const modal = this.plugin.widgetBoardModals?.get(boardId);
         if (modal && modal.isOpen) {
-            // modal内のuiWidgetReferencesから該当widgetIdのインスタンスを探す
             const widgetInstance = modal.uiWidgetReferences.find(w => (w as any).config?.id === widgetId);
             if (widgetInstance && typeof widgetInstance.updateExternalSettings === 'function') {
                 widgetInstance.updateExternalSettings(newSettings, widgetId);
@@ -418,11 +543,9 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     }
 }
 
-// --- 共通: テスト再生関数 ---
 function playTestNotificationSound(plugin: any, soundType: string, volume: number) {
     try {
         if (soundType === 'off') return;
-        // 既存の音声を停止
         if ((window as any)._testTimerAudio) {
             (window as any)._testTimerAudio.pause();
             (window as any)._testTimerAudio = null;
@@ -434,7 +557,6 @@ function playTestNotificationSound(plugin: any, soundType: string, volume: numbe
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         (window as any)._testTimerAudioCtx = ctx;
         if (soundType === 'default_beep') {
-            // シンプルなビープ
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
             osc.type = 'sine';
@@ -446,24 +568,22 @@ function playTestNotificationSound(plugin: any, soundType: string, volume: numbe
             osc.stop(ctx.currentTime + 0.7);
             osc.onended = () => ctx.close();
         } else if (soundType === 'bell') {
-            // ベル音: 2つの三角波を重ねる
             const osc1 = ctx.createOscillator();
             const osc2 = ctx.createOscillator();
             const gain = ctx.createGain();
             osc1.type = 'triangle';
             osc2.type = 'triangle';
-            osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5
-            osc2.frequency.setValueAtTime(1320, ctx.currentTime); // E6
+            osc1.frequency.setValueAtTime(880, ctx.currentTime);
+            osc2.frequency.setValueAtTime(1320, ctx.currentTime);
             gain.gain.setValueAtTime(Math.max(0.0001, Math.min(1, volume)), ctx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
             osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
             osc1.start(ctx.currentTime); osc2.start(ctx.currentTime);
             osc1.stop(ctx.currentTime + 0.8); osc2.stop(ctx.currentTime + 0.8);
-            osc2.detune.setValueAtTime(5, ctx.currentTime + 0.2); // 少し揺らす
+            osc2.detune.setValueAtTime(5, ctx.currentTime + 0.2);
             osc1.onended = () => ctx.close();
         } else if (soundType === 'chime') {
-            // チャイム音: 3音アルペジオ
-            const notes = [523.25, 659.25, 784.0]; // C5, E5, G5
+            const notes = [523.25, 659.25, 784.0];
             const now = ctx.currentTime;
             notes.forEach((freq, i) => {
                 const osc = ctx.createOscillator();
