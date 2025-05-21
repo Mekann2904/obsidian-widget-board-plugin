@@ -37,10 +37,15 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp.json
           mv manifest.tmp.json manifest.json
 
-      # 必要なファイルを ZIP にまとめる（ルート直下に配置）
+      # 必要なファイルを ZIP にまとめる（pdf mistral と同様のネスト構造）
       - name: Package plugin
         run: |
-          zip obsidian-widget-board-plugin.zip main.js manifest.json styles.css
+          PLUGIN_NAME="obsidian-widget-board-plugin"
+          mkdir -p "$PLUGIN_NAME"
+          cp main.js "$PLUGIN_NAME/"
+          cp manifest.json "$PLUGIN_NAME/"
+          cp styles.css "$PLUGIN_NAME/"
+          zip -r "$PLUGIN_NAME.zip" "$PLUGIN_NAME/"
 
       - name: Create GitHub release
         env:
@@ -49,6 +54,6 @@ jobs:
           TAG="${GITHUB_REF##*/}"
           gh release create "$TAG" \
             --title "Release $TAG" \
-            --notes "New release of obsidian-widget-board-plugin" \
+            --notes "New release of $PLUGIN_NAME" \
             --draft \
-            obsidian-widget-board-plugin.zip
+            "$PLUGIN_NAME.zip"
