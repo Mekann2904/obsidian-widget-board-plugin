@@ -104,11 +104,11 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             .setName('デフォルト表示モード')
             .setDesc('このボードを開いたときの初期表示モード。')
             .addDropdown(dropdown => {
-                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_THIRD, '右パネル（33vw）');
-                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, '右パネル（50vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.LEFT_TWO_THIRD, '左パネル（66vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.LEFT_HALF, '左パネル（50vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.CENTER_HALF, '中央パネル（50vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, '右パネル（50vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_THIRD, '右パネル（33vw）');
                 dropdown.setValue(board.defaultMode)
                     .onChange(async (value) => {
                         if (Object.values(WidgetBoardModal.MODES).includes(value as any)) {

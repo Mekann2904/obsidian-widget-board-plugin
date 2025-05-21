@@ -93,8 +93,15 @@ export class WidgetBoardModal {
         };
         controlsEl.classList.remove('is-visible'); // 初期は非表示
 
-        Object.entries(WidgetBoardModal.MODES).forEach(([key, modeClassValue]) => {
-            const modeClass = modeClassValue as typeof WidgetBoardModal.MODES[keyof typeof WidgetBoardModal.MODES];
+        // 表示モード切替ボタンの順序を「左→中央→右」に
+        const modeButtonOrder = [
+            WidgetBoardModal.MODES.LEFT_TWO_THIRD,
+            WidgetBoardModal.MODES.LEFT_HALF,
+            WidgetBoardModal.MODES.CENTER_HALF,
+            WidgetBoardModal.MODES.RIGHT_HALF,
+            WidgetBoardModal.MODES.RIGHT_THIRD
+        ];
+        modeButtonOrder.forEach(modeClass => {
             let buttonText = '';
             if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
             else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = '右パネル（50vw）';
