@@ -1,0 +1,60 @@
+name: Release Obsidian Plugin
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18.x"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build plugin
+        run: npm run build
+
+      # manifest.json の version をタグに同期
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Sync manifest version
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          VERSION="${TAG#v}"
+          jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp.json
+          mv manifest.tmp.json manifest.json
+
+      # 必要なファイルを ZIP にまとめる
+      - name: Package plugin
+        run: |
+          PLUGIN_NAME="obsidian-widget-board-plugin"
+          mkdir -p "$PLUGIN_NAME"
+          cp main.js "$PLUGIN_NAME/"
+          cp manifest.json "$PLUGIN_NAME/"
+          cp styles.css "$PLUGIN_NAME/"
+          zip -r "$PLUGIN_NAME.zip" "$PLUGIN_NAME/"
+
+      - name: Create GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          gh release create "$TAG" \
+            --title="Release $TAG" \
+            --notes="New release of $PLUGIN_NAME" \
+            --draft \
+            obsidian-widget-board-plugin.zip \
+            main.js \
+            manifest.json \
+            styles.css
