@@ -7,6 +7,7 @@ import { WidgetBoardModal } from './modal';
 import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings, PomodoroSoundType } from './widgets/pomodoroWidget';
 import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget';
 import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/calendarWidget';
+import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
 import { registeredWidgetImplementations } from './widgetRegistry';
 
 export class WidgetBoardSettingTab extends PluginSettingTab {
@@ -155,6 +156,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         createAddButtonToBoard("ポモドーロ追加", "pomodoro", DEFAULT_POMODORO_SETTINGS);
         createAddButtonToBoard("メモ追加", "memo", DEFAULT_MEMO_SETTINGS);
         createAddButtonToBoard("カレンダー追加", "calendar", DEFAULT_CALENDAR_SETTINGS);
+        createAddButtonToBoard("最近編集したノート", "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS);
         const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list-for-board' });
         this.renderWidgetListForBoard(widgetListEl, board);
     }

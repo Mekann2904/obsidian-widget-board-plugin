@@ -152,7 +152,7 @@ export class WidgetBoardModal {
                 try {
                     // newしてからcreateメソッドを呼ぶ
                     const widgetInstance = new WidgetClass();
-                    const widgetElement = widgetInstance.create(widgetConfig, undefined as any, this.plugin);
+                    const widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
                     container.appendChild(widgetElement);
                     // モーダル内で参照するために、このインスタンスを保存
                     this.uiWidgetReferences.push(widgetInstance);
