@@ -102,10 +102,10 @@ export class MemoWidget implements WidgetImplementation {
                 this.memoEditAreaEl.style.resize = 'none';
             }
         } else { // 'auto' mode
-            this.memoContainerEl.style.height = ''; // Rely on flex-grow
+            this.memoContainerEl.style.height = '';
             this.memoContainerEl.style.minHeight = '80px';
-            this.memoContainerEl.style.maxHeight = '450px';
-            this.memoContainerEl.style.overflowY = 'auto';
+            this.memoContainerEl.style.maxHeight = '';
+            this.memoContainerEl.style.overflowY = 'visible';
 
             if (this.memoDisplayEl && !this.isEditingMemo) {
                 this.memoDisplayEl.style.maxHeight = 'none'; // Explicitly remove max-height if set by CSS
