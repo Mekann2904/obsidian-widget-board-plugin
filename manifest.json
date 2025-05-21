@@ -1,5 +1,5 @@
 {
-	"id": "widget-board-plugin",
+	"id": "obsidian-widget-board-plugin",
 	"name": "widget-board",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
