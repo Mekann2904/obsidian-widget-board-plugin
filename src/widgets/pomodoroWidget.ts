@@ -412,48 +412,66 @@ export class PomodoroWidget implements WidgetImplementation {
 
     private playSoundNotification() {
         if (this.currentSettings.notificationSound === 'off') return;
-        const widgetIdLog = `[${this.config.id}]`;
-        // console.log(`${widgetIdLog} Playing sound: ${this.currentSettings.notificationSound}, Volume: ${this.currentSettings.notificationVolume}`);
+        const volume = Math.max(0, Math.min(1, this.currentSettings.notificationVolume));
 
         if (this.currentAudioElement) {
             this.currentAudioElement.pause(); this.currentAudioElement.currentTime = 0; this.currentAudioElement = null;
         }
-        // AudioContextのクローズ処理はonunloadで行う
-
-        const volume = Math.max(0, Math.min(1, this.currentSettings.notificationVolume));
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            this.audioContext.close().catch(() => {});
+            this.audioContext = null;
+        }
 
         try {
-            if (this.currentSettings.notificationSound === 'default_beep') {
-                if (!this.audioContext || this.audioContext.state === 'closed') {
-                    this.audioContext = new AudioContext();
-                }
-                if (this.audioContext.state === 'suspended') {
-                    this.audioContext.resume().catch(err => console.error(`${widgetIdLog} Error resuming AudioContext:`, err));
-                }
-                const oscillator = this.audioContext.createOscillator();
-                const gainNode = this.audioContext.createGain();
-                oscillator.type = 'sine';
-                oscillator.frequency.setValueAtTime(660, this.audioContext.currentTime);
-                gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, this.audioContext.currentTime + 0.5);
-                oscillator.connect(gainNode); gainNode.connect(this.audioContext.destination);
-                oscillator.start(this.audioContext.currentTime);
-                oscillator.stop(this.audioContext.currentTime + 0.5);
-            } else {
-                const soundFileName = `${this.currentSettings.notificationSound}.mp3`;
-                // プラグインIDを manifest から取得する
-                const pluginId = this.plugin.manifest.id;
-                const soundUrl = `app://obsidian.md/${pluginId}/assets/${soundFileName}`;
-                // console.log(`${widgetIdLog} Attempting to play MP3: ${soundUrl}`);
-
-                this.currentAudioElement = new Audio(soundUrl);
-                this.currentAudioElement.volume = volume;
-                this.currentAudioElement.play().catch(error => {
-                    console.error(`${widgetIdLog} Error playing MP3 (${soundFileName}) from URL ${soundUrl}:`, error);
-                    new Notice(`通知音(${soundFileName})の再生に失敗しました。ファイルを確認してください。`, 5000);
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            this.audioContext = ctx;
+            const soundType = this.currentSettings.notificationSound;
+            if (soundType === 'default_beep') {
+                // シンプルなビープ
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime);
+                gain.gain.setValueAtTime(volume, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.7);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(ctx.currentTime);
+                osc.stop(ctx.currentTime + 0.7);
+                osc.onended = () => ctx.close();
+            } else if (soundType === 'bell') {
+                // ベル音: 2つの三角波を重ねる
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc1.type = 'triangle';
+                osc2.type = 'triangle';
+                osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5
+                osc2.frequency.setValueAtTime(1320, ctx.currentTime); // E6
+                gain.gain.setValueAtTime(volume, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
+                osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+                osc1.start(ctx.currentTime); osc2.start(ctx.currentTime);
+                osc1.stop(ctx.currentTime + 0.8); osc2.stop(ctx.currentTime + 0.8);
+                osc2.detune.setValueAtTime(5, ctx.currentTime + 0.2); // 少し揺らす
+                osc1.onended = () => ctx.close();
+            } else if (soundType === 'chime') {
+                // チャイム音: 3音アルペジオ
+                const notes = [523.25, 659.25, 784.0]; // C5, E5, G5
+                const now = ctx.currentTime;
+                notes.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.18);
+                    gain.gain.setValueAtTime(volume, now + i * 0.18);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.18 + 0.22);
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.start(now + i * 0.18);
+                    osc.stop(now + i * 0.18 + 0.22);
+                    if (i === notes.length - 1) osc.onended = () => ctx.close();
                 });
             }
-        } catch (error) { console.error(`${widgetIdLog} Error in playSoundNotification:`, error); }
+        } catch (error) { new Notice('通知音の再生中にエラーが発生しました。', 5000); }
     }
 
     private handleSessionEnd() {

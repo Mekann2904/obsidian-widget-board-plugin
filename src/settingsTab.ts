@@ -8,6 +8,7 @@ import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings, PomodoroSoundType } from '
 import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget';
 import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/calendarWidget';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
+import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
 import { registeredWidgetImplementations } from './widgetRegistry';
 
 export class WidgetBoardSettingTab extends PluginSettingTab {
@@ -158,6 +159,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         createAddButtonToBoard("カレンダー追加", "calendar", DEFAULT_CALENDAR_SETTINGS);
         createAddButtonToBoard("最近編集したノート", "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS);
         createAddButtonToBoard("テーマ切り替え", "theme-switcher", {});
+        createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS });
         const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list-for-board' });
         this.renderWidgetListForBoard(widgetListEl, board);
     }
@@ -255,6 +257,49 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                         }));
                 // 通知音設定などもここに追加（省略）
+                // 通知音の種類
+                new Setting(settingsEl)
+                    .setName('通知音')
+                    .setDesc('タイマー終了時に鳴らす通知音。')
+                    .addDropdown(dropdown => {
+                        dropdown.addOption('off', 'なし');
+                        dropdown.addOption('default_beep', 'ビープ音');
+                        dropdown.addOption('bell', 'ベル');
+                        dropdown.addOption('chime', 'チャイム');
+                        dropdown.setValue(currentSettings.notificationSound || 'default_beep')
+                            .onChange(async (value) => {
+                                currentSettings.notificationSound = value as PomodoroSoundType;
+                                await this.plugin.saveSettings();
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            });
+                    })
+                    .addExtraButton(btn => {
+                        btn.setIcon('play');
+                        btn.setTooltip('音を聞く');
+                        btn.onClick(() => {
+                            playTestNotificationSound(this.plugin, currentSettings.notificationSound || 'default_beep', currentSettings.notificationVolume ?? 0.2);
+                        });
+                    });
+                // 通知音量
+                new Setting(settingsEl)
+                    .setName('通知音量')
+                    .setDesc('通知音の音量（0.0〜1.0）')
+                    .addSlider(slider => {
+                        slider.setLimits(0, 1, 0.01)
+                            .setValue(currentSettings.notificationVolume ?? 0.2);
+                        // 値表示用span
+                        const valueLabel = document.createElement('span');
+                        valueLabel.style.marginLeft = '12px';
+                        valueLabel.style.fontWeight = 'bold';
+                        valueLabel.textContent = String((currentSettings.notificationVolume ?? 0.2).toFixed(2));
+                        slider.sliderEl.parentElement?.appendChild(valueLabel);
+                        slider.onChange(async (value) => {
+                            currentSettings.notificationVolume = value;
+                            valueLabel.textContent = String(value.toFixed(2));
+                            await this.plugin.saveSettings();
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                        });
+                    });
             } else if (widget.type === 'memo') {
                 widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) } as MemoWidgetSettings;
                 const currentSettings = widget.settings as MemoWidgetSettings;
@@ -311,6 +356,52 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 }
             } else if (widget.type === 'calendar') {
                 widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings || {}) } as CalendarWidgetSettings;
+            } else if (widget.type === 'timer-stopwatch') {
+                widget.settings = { ...DEFAULT_TIMER_STOPWATCH_SETTINGS, ...(widget.settings || {}) };
+                const currentSettings = widget.settings;
+                // 通知音の種類
+                new Setting(settingsEl)
+                    .setName('通知音')
+                    .setDesc('タイマー終了時に鳴らす通知音。')
+                    .addDropdown(dropdown => {
+                        dropdown.addOption('off', 'なし');
+                        dropdown.addOption('default_beep', 'ビープ音');
+                        dropdown.addOption('bell', 'ベル');
+                        dropdown.addOption('chime', 'チャイム');
+                        dropdown.setValue(currentSettings.notificationSound || 'default_beep')
+                            .onChange(async (value) => {
+                                currentSettings.notificationSound = value;
+                                await this.plugin.saveSettings();
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            });
+                    })
+                    .addExtraButton(btn => {
+                        btn.setIcon('play');
+                        btn.setTooltip('音を聞く');
+                        btn.onClick(() => {
+                            playTestNotificationSound(this.plugin, currentSettings.notificationSound || 'default_beep', currentSettings.notificationVolume ?? 0.5);
+                        });
+                    });
+                // 通知音量
+                new Setting(settingsEl)
+                    .setName('通知音量')
+                    .setDesc('通知音の音量（0.0〜1.0）')
+                    .addSlider(slider => {
+                        slider.setLimits(0, 1, 0.01)
+                            .setValue(currentSettings.notificationVolume ?? 0.5);
+                        // 値表示用span
+                        const valueLabel = document.createElement('span');
+                        valueLabel.style.marginLeft = '12px';
+                        valueLabel.style.fontWeight = 'bold';
+                        valueLabel.textContent = String((currentSettings.notificationVolume ?? 0.5).toFixed(2));
+                        slider.sliderEl.parentElement?.appendChild(valueLabel);
+                        slider.onChange(async (value) => {
+                            currentSettings.notificationVolume = value;
+                            valueLabel.textContent = String(value.toFixed(2));
+                            await this.plugin.saveSettings();
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                        });
+                    });
             }
         });
     }
@@ -325,4 +416,67 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             }
         }
     }
+}
+
+// --- 共通: テスト再生関数 ---
+function playTestNotificationSound(plugin: any, soundType: string, volume: number) {
+    try {
+        if (soundType === 'off') return;
+        // 既存の音声を停止
+        if ((window as any)._testTimerAudio) {
+            (window as any)._testTimerAudio.pause();
+            (window as any)._testTimerAudio = null;
+        }
+        if ((window as any)._testTimerAudioCtx && (window as any)._testTimerAudioCtx.state !== 'closed') {
+            (window as any)._testTimerAudioCtx.close();
+            (window as any)._testTimerAudioCtx = null;
+        }
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        (window as any)._testTimerAudioCtx = ctx;
+        if (soundType === 'default_beep') {
+            // シンプルなビープ
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            gain.gain.setValueAtTime(Math.max(0.0001, Math.min(1, volume)), ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.7);
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.7);
+            osc.onended = () => ctx.close();
+        } else if (soundType === 'bell') {
+            // ベル音: 2つの三角波を重ねる
+            const osc1 = ctx.createOscillator();
+            const osc2 = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc1.type = 'triangle';
+            osc2.type = 'triangle';
+            osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5
+            osc2.frequency.setValueAtTime(1320, ctx.currentTime); // E6
+            gain.gain.setValueAtTime(Math.max(0.0001, Math.min(1, volume)), ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
+            osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+            osc1.start(ctx.currentTime); osc2.start(ctx.currentTime);
+            osc1.stop(ctx.currentTime + 0.8); osc2.stop(ctx.currentTime + 0.8);
+            osc2.detune.setValueAtTime(5, ctx.currentTime + 0.2); // 少し揺らす
+            osc1.onended = () => ctx.close();
+        } else if (soundType === 'chime') {
+            // チャイム音: 3音アルペジオ
+            const notes = [523.25, 659.25, 784.0]; // C5, E5, G5
+            const now = ctx.currentTime;
+            notes.forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now + i * 0.18);
+                gain.gain.setValueAtTime(Math.max(0.0001, Math.min(1, volume)), now + i * 0.18);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.18 + 0.22);
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.start(now + i * 0.18);
+                osc.stop(now + i * 0.18 + 0.22);
+                if (i === notes.length - 1) osc.onended = () => ctx.close();
+            });
+        }
+    } catch (e) { new Notice('音声の再生に失敗しました'); }
 }
