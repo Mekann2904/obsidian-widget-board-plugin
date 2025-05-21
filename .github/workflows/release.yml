@@ -26,7 +26,8 @@ jobs:
 
       # manifest.json の version をタグに同期
       - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
+        run: |
+          sudo apt-get update && sudo apt-get install -y jq
 
       - name: Sync manifest version
         run: |
@@ -35,15 +36,10 @@ jobs:
           jq --arg v "$VERSION" '.version = $v' manifest.json > manifest.tmp.json
           mv manifest.tmp.json manifest.json
 
-      # 必要なファイルを ZIP にまとめる
+      # 必要なファイルを ZIP にまとめる（ルート直下に配置）
       - name: Package plugin
         run: |
-          PLUGIN_NAME="obsidian-widget-board-plugin"
-          mkdir -p "$PLUGIN_NAME"
-          cp main.js "$PLUGIN_NAME/"
-          cp manifest.json "$PLUGIN_NAME/"
-          cp styles.css "$PLUGIN_NAME/"
-          zip -r "$PLUGIN_NAME.zip" "$PLUGIN_NAME/"
+          zip obsidian-widget-board-plugin.zip main.js manifest.json styles.css
 
       - name: Create GitHub release
         env:
@@ -52,7 +48,7 @@ jobs:
           TAG="${GITHUB_REF##*/}"
           gh release create "$TAG" \
             --title="Release $TAG" \
-            --notes="New release of $PLUGIN_NAME" \
+            --notes="New release of obsidian-widget-board-plugin" \
             --draft \
             obsidian-widget-board-plugin.zip \
             main.js \
