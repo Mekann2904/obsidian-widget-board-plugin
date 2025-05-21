@@ -52,6 +52,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF##*/}"
+          PLUGIN_NAME="obsidian-widget-board-plugin"
           gh release create "$TAG" \
             --title "Release $TAG" \
             --notes "New release of $PLUGIN_NAME" \
