@@ -4,12 +4,12 @@ import { PomodoroWidget } from './widgets/pomodoroWidget';
 import { MemoWidget } from './widgets/memoWidget';
 import { CalendarWidget } from './widgets/calendarWidget';
 
-export const registeredWidgetImplementations: Map<string, WidgetImplementation> = new Map();
+export const registeredWidgetImplementations: Map<string, new () => WidgetImplementation> = new Map();
 
 // 各ウィジェットを登録
-registeredWidgetImplementations.set('pomodoro', new PomodoroWidget());
-registeredWidgetImplementations.set('memo', new MemoWidget());
-registeredWidgetImplementations.set('calendar', new CalendarWidget());
+registeredWidgetImplementations.set('pomodoro', PomodoroWidget);
+registeredWidgetImplementations.set('memo', MemoWidget);
+registeredWidgetImplementations.set('calendar', CalendarWidget);
 
 // 新しいウィジェットを追加する場合：
 // 1. src/widgets/に新しいウィジェットファイルを作成 (例: newWidget.ts)

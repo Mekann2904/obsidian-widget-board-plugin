@@ -42,9 +42,6 @@ export default class WidgetBoardPlugin extends Plugin {
             if (modal.isOpen) modal.close();
         });
         this.widgetBoardModals.clear();
-        registeredWidgetImplementations.forEach(widgetImpl => {
-            if (widgetImpl.onunload) widgetImpl.onunload();
-        });
         console.log('Widget Board Plugin: Unloaded.');
     }
 

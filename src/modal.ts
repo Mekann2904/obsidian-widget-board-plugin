@@ -12,7 +12,7 @@ export class WidgetBoardModal {
     isOpen: boolean = false;
     isClosing: boolean = false;
     modeButtons: HTMLButtonElement[] = [];
-    private uiWidgetReferences: WidgetImplementation[] = [];
+    public uiWidgetReferences: WidgetImplementation[] = [];
     public modalEl: HTMLElement;
     public contentEl: HTMLElement;
 
@@ -146,17 +146,16 @@ export class WidgetBoardModal {
         }
 
         widgetsToLoad.forEach(widgetConfig => {
-            // registeredWidgetImplementations には、各ウィジェットタイプの「シングルトン」インスタンスが格納されている
-            const widgetInstanceController = registeredWidgetImplementations.get(widgetConfig.type);
-            
-            if (widgetInstanceController) {
+            // registeredWidgetImplementations には、各ウィジェットタイプの「クラス（コンストラクタ）」が格納されている
+            const WidgetClass = registeredWidgetImplementations.get(widgetConfig.type) as (new () => WidgetImplementation) | undefined;
+            if (WidgetClass) {
                 try {
-                    // createメソッドを呼び出し、設定に基づいてHTML要素を生成・構成する
-                    // このcreateメソッドは、ウィジェットの表示状態を初期化/更新する役割も持つ
-                    const widgetElement = widgetInstanceController.create(widgetConfig, undefined as any, this.plugin);
+                    // newしてからcreateメソッドを呼ぶ
+                    const widgetInstance = new WidgetClass();
+                    const widgetElement = widgetInstance.create(widgetConfig, undefined as any, this.plugin);
                     container.appendChild(widgetElement);
-                    // モーダル内で参照するために、このコントローラーインスタンスを保存
-                    this.uiWidgetReferences.push(widgetInstanceController);
+                    // モーダル内で参照するために、このインスタンスを保存
+                    this.uiWidgetReferences.push(widgetInstance);
                 } catch (e: any) {
                     console.error(`Widget Board: Failed to create widget type '${widgetConfig.type}' (ID: ${widgetConfig.id}, Title: ${widgetConfig.title}). Error:`, e);
                     const errorEl = container.createDiv({cls: 'widget widget-error'});
