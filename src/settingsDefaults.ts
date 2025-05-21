@@ -1,17 +1,26 @@
 // src/settingsDefaults.ts
-import type { WidgetBoardSettings } from './interfaces';
+import type { PluginGlobalSettings, BoardConfiguration } from './interfaces';
 import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoroWidget';
 // 他のウィジェットのデフォルト設定もインポートする場合はここに追加
 // import { DEFAULT_MEMO_SETTINGS } from './widgets/memoWidget';
 
-export const DEFAULT_SETTINGS: WidgetBoardSettings = {
-    defaultMode: 'mode-right-third', // デフォルトの表示モード
-    widgets: [ // デフォルトで表示されるウィジェットの初期リスト
+const initialDefaultBoardId = 'default-board-' + Date.now();
+export const DEFAULT_BOARD_CONFIGURATION: BoardConfiguration = {
+    id: initialDefaultBoardId,
+    name: 'マイウィジェットボード',
+    defaultMode: 'mode-center-half',
+    widgets: [
         {
-            id: 'default-pomodoro-' + Date.now(), // ユニークID
-            type: 'pomodoro',                     // ウィジェットタイプ
-            title: 'ポモドーロタイマー',             // ウィジェットのタイトル
-            settings: { ...DEFAULT_POMODORO_SETTINGS } // ウィジェット固有設定
+            id: 'default-pomodoro-' + Date.now(),
+            type: 'pomodoro',
+            title: 'ポモドーロタイマー',
+            settings: { ...DEFAULT_POMODORO_SETTINGS }
         }
     ]
+};
+
+export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
+    boards: [DEFAULT_BOARD_CONFIGURATION],
+    lastOpenedBoardId: initialDefaultBoardId,
+    defaultBoardIdForQuickOpen: initialDefaultBoardId,
 };

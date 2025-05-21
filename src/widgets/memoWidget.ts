@@ -1,24 +1,28 @@
 // src/widgets/memoWidget.ts
-import { App, MarkdownRenderer, setIcon } from 'obsidian';
+import { App, MarkdownRenderer, setIcon, Notice } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
-import type WidgetBoardPlugin from '../main';
+import type WidgetBoardPlugin from '../main'; // main.ts の WidgetBoardPlugin クラスをインポート
 
 // --- メモウィジェット設定インターフェース ---
 export interface MemoWidgetSettings {
     memoContent?: string;
+    memoHeightMode?: 'auto' | 'fixed';
+    fixedHeightPx?: number;
 }
 
 // --- メモウィジェットデフォルト設定 ---
 export const DEFAULT_MEMO_SETTINGS: MemoWidgetSettings = {
     memoContent: '',
+    memoHeightMode: 'auto',
+    fixedHeightPx: 120,
 };
 
-// --- MemoWidget クラス (元のコードから該当部分をここに移動) ---
+// --- MemoWidget クラス ---
 export class MemoWidget implements WidgetImplementation {
     id = 'memo';
-    private config!: WidgetConfig;
+    private config!: WidgetConfig; // このウィジェットインスタンスが作成されたときのconfig
     private app!: App;
-    private plugin!: WidgetBoardPlugin;
+    private plugin!: WidgetBoardPlugin; // WidgetBoardPlugin のインスタンスへの参照
     private widgetEl!: HTMLElement;
     private memoContainerEl!: HTMLElement;
     private memoDisplayEl!: HTMLElement;
@@ -28,89 +32,269 @@ export class MemoWidget implements WidgetImplementation {
     private saveMemoButtonEl!: HTMLButtonElement;
     private cancelMemoButtonEl!: HTMLButtonElement;
     private isEditingMemo: boolean = false;
-    private currentSettings!: MemoWidgetSettings;
+    private currentSettings!: MemoWidgetSettings; // このインスタンスの現在の作業用設定
+
+    private _memoEditAreaInputListener: (() => void) | null = null;
+
+    // ウィジェットインスタンス管理のための静的マップ (前回から)
+    private static widgetInstances: Map<string, MemoWidget> = new Map();
+
 
     constructor() {
         this.isEditingMemo = false;
     }
 
     private async renderMemo(markdownContent?: string) {
-        if (!this.memoDisplayEl) return;
+        if (!this.memoDisplayEl) {
+            // console.log(`[${this.config?.id}] renderMemo: memoDisplayEl is null.`);
+            return;
+        }
         this.memoDisplayEl.empty();
         const trimmedContent = markdownContent?.trim();
+
         if (trimmedContent && !this.isEditingMemo) {
-            this.memoDisplayEl.style.display = '';
+            this.memoDisplayEl.style.display = 'block';
             await MarkdownRenderer.render(this.app, trimmedContent, this.memoDisplayEl, this.config.id, this.plugin);
-        } else if (!this.isEditingMemo) { //編集中でもなく、内容も空なら非表示
+        } else if (!this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'none';
         }
     }
 
+    private applyContainerHeightStyles() {
+        if (!this.memoContainerEl) return;
+        const widgetIdLog = `[${this.config?.id || 'MemoWidget'}]`;
+
+        // Reset styles
+        this.memoContainerEl.style.height = '';
+        this.memoContainerEl.style.minHeight = '';
+        this.memoContainerEl.style.maxHeight = '';
+        this.memoContainerEl.style.overflowY = 'hidden';
+
+        if (this.memoDisplayEl) {
+            this.memoDisplayEl.style.height = '';
+            this.memoDisplayEl.style.minHeight = '';
+            this.memoDisplayEl.style.maxHeight = 'none'; // Override potential CSS max-height in auto mode
+        }
+        if (this.memoEditAreaEl) {
+            this.memoEditAreaEl.style.height = '';
+            this.memoEditAreaEl.style.minHeight = '';
+            this.memoEditAreaEl.style.maxHeight = '';
+            this.memoEditAreaEl.style.resize = 'none';
+        }
+        this.removeMemoEditAreaAutoResizeListener();
+
+        if (this.currentSettings.memoHeightMode === 'fixed') {
+            const fixedHeight = Math.max(60, (this.currentSettings.fixedHeightPx || DEFAULT_MEMO_SETTINGS.fixedHeightPx || 120));
+            this.memoContainerEl.style.height = `${fixedHeight}px`;
+            this.memoContainerEl.style.minHeight = `${fixedHeight}px`;
+            this.memoContainerEl.style.maxHeight = `${fixedHeight}px`;
+            this.memoContainerEl.style.overflowY = 'hidden';
+
+            if (this.memoDisplayEl && !this.isEditingMemo) {
+                this.memoDisplayEl.style.height = '100%';
+                this.memoDisplayEl.style.overflowY = 'auto';
+            }
+            if (this.memoEditContainerEl && this.isEditingMemo) {
+                // this.memoEditContainerEl.style.height = '100%'; (flex-grow handles this)
+            }
+            if (this.memoEditAreaEl && this.isEditingMemo) {
+                this.memoEditAreaEl.style.height = '100%'; // Will be constrained by parent
+                this.memoEditAreaEl.style.resize = 'none';
+            }
+        } else { // 'auto' mode
+            this.memoContainerEl.style.height = ''; // Rely on flex-grow
+            this.memoContainerEl.style.minHeight = '80px';
+            this.memoContainerEl.style.maxHeight = '450px';
+            this.memoContainerEl.style.overflowY = 'auto';
+
+            if (this.memoDisplayEl && !this.isEditingMemo) {
+                this.memoDisplayEl.style.maxHeight = 'none'; // Explicitly remove max-height if set by CSS
+                // height is determined by flex-grow and content
+            }
+            if (this.memoEditAreaEl && this.isEditingMemo) {
+                this.memoEditAreaEl.style.minHeight = '60px';
+                this.memoEditAreaEl.style.maxHeight = '300px';
+                this.memoEditAreaEl.style.resize = 'vertical';
+                this.addMemoEditAreaAutoResizeListener();
+                setTimeout(() => {
+                    if (this.memoEditAreaEl && this.isEditingMemo) this.memoEditAreaEl.dispatchEvent(new Event('input'));
+                }, 0);
+            }
+        }
+    }
+    
+    private addMemoEditAreaAutoResizeListener() {
+        if (!this.memoEditAreaEl || this._memoEditAreaInputListener) return;
+        if (this.currentSettings.memoHeightMode === 'auto') {
+            this._memoEditAreaInputListener = () => {
+                if (!this.memoEditAreaEl || this.currentSettings.memoHeightMode !== 'auto') return;
+                this.memoEditAreaEl.style.height = 'auto';
+                const maxHeight = parseInt(this.memoEditAreaEl.style.maxHeight, 10) || 300;
+                this.memoEditAreaEl.style.height = Math.min(this.memoEditAreaEl.scrollHeight, maxHeight) + 'px';
+            };
+            this.memoEditAreaEl.addEventListener('input', this._memoEditAreaInputListener);
+        }
+    }
+
+    private removeMemoEditAreaAutoResizeListener() {
+        if (this.memoEditAreaEl && this._memoEditAreaInputListener) {
+            this.memoEditAreaEl.removeEventListener('input', this._memoEditAreaInputListener);
+            this._memoEditAreaInputListener = null;
+        }
+    }
+
     private updateMemoEditUI() {
-        if (!this.memoDisplayEl || !this.memoEditContainerEl || !this.editMemoButtonEl) return;
+        if (!this.memoDisplayEl || !this.memoEditContainerEl || !this.editMemoButtonEl) {
+            console.error(`[${this.config?.id}] updateMemoEditUI: One or more UI elements are null.`);
+            return;
+        }
+        const widgetIdLog = `[${this.config.id}]`;
+        // console.log(`${widgetIdLog} updateMemoEditUI: isEditingMemo=${this.isEditingMemo}`);
 
         const hasMemoContent = this.currentSettings.memoContent && this.currentSettings.memoContent.trim() !== '';
 
-        this.memoDisplayEl.style.display = this.isEditingMemo ? 'none' : (hasMemoContent ? '' : 'none');
-        this.memoEditContainerEl.style.display = this.isEditingMemo ? '' : 'none';
+        this.memoDisplayEl.style.display = this.isEditingMemo ? 'none' : (hasMemoContent ? 'block' : 'none');
+        this.memoEditContainerEl.style.display = this.isEditingMemo ? 'flex' : 'none';
         this.editMemoButtonEl.style.display = this.isEditingMemo ? 'none' : '';
-
-        if (!this.isEditingMemo && !hasMemoContent) { // 非編集モードで内容がない場合
-            this.memoDisplayEl.style.display = 'none'; // 表示エリアも隠す
-        }
         
         if (this.isEditingMemo) {
-            this.memoEditAreaEl.focus();
+            this.applyContainerHeightStyles();
+            if (this.memoEditAreaEl) {
+                this.memoEditAreaEl.focus();
+                if (this.currentSettings.memoHeightMode === 'auto') {
+                    setTimeout(() => {
+                        if (this.memoEditAreaEl) this.memoEditAreaEl.dispatchEvent(new Event('input'));
+                    }, 50);
+                }
+            }
         } else {
-            // 非編集モードに戻った時、改めてメモをレンダリング
-            this.renderMemo(this.currentSettings.memoContent);
+            this.renderMemo(this.currentSettings.memoContent).then(() => {
+                this.applyContainerHeightStyles();
+            }).catch(error => {
+                console.error(`${widgetIdLog} Error rendering memo in updateMemoEditUI:`, error);
+                this.applyContainerHeightStyles();
+            });
         }
     }
 
     private enterMemoEditMode() {
         this.isEditingMemo = true;
-        this.memoEditAreaEl.value = this.currentSettings.memoContent || '';
+        if(this.memoEditAreaEl) {
+            this.memoEditAreaEl.value = this.currentSettings.memoContent || '';
+        } else {
+            console.warn(`[${this.config.id}] enterMemoEditMode: memoEditAreaEl is null.`);
+        }
         this.updateMemoEditUI();
     }
 
     private async saveMemoChanges() {
-        const newMemo = this.memoEditAreaEl.value;
-        this.isEditingMemo = false; //先に編集モードを解除
-        if (newMemo !== (this.currentSettings.memoContent || '')) {
-            this.currentSettings.memoContent = newMemo;
-            if(this.config.settings) this.config.settings.memoContent = newMemo; // WidgetConfigも更新
-            await this.plugin.saveSettings(); // プラグイン全体の設定を保存
-            await this.renderMemo(newMemo); // 保存後に表示を更新
+        const widgetIdLog = `[${this.config.id} (${this.config.title || 'Memo'})]`;
+
+        if (!this.memoEditAreaEl) {
+            console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: memoEditAreaEl is null! Cannot get new content.`);
+            this.isEditingMemo = false; 
+            this.updateMemoEditUI();
+            return;
         }
-        this.updateMemoEditUI(); // UI全体の状態を更新
+
+        const newMemo = this.memoEditAreaEl.value;
+        this.isEditingMemo = false; // UIを編集中でなくす
+
+        if (newMemo !== (this.currentSettings.memoContent || '')) {
+            console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Content WILL change. Old: "${this.currentSettings.memoContent}", New: "${newMemo}"`);
+            this.currentSettings.memoContent = newMemo; // 1. インスタンスの作業用設定を更新
+
+            // 2. ★★★ プラグインの永続化データ内の該当ウィジェット設定を「直接」更新 ★★★
+            let settingsUpdatedInGlobalStore = false;
+            // モーダルが開いていれば、そのボードIDを取得 (これが最も確実なコンテキスト)
+            const currentModalBoardId = this.plugin.widgetBoardModal?.currentBoardId;
+
+            if (!currentModalBoardId) {
+                console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Critical - currentModalBoardId is not available. Cannot reliably find the board in global settings.`);
+                new Notice("エラー: 現在のボードを特定できず、メモを保存できませんでした。", 7000);
+                // updateMemoEditUIは最後に呼ぶので、ここではUIは表示モードに戻るが、保存は失敗
+                this.updateMemoEditUI();
+                return;
+            }
+
+            console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Targeting board ID '${currentModalBoardId}' in global plugin settings.`);
+            const boardInGlobalSettings = this.plugin.settings.boards.find(b => b.id === currentModalBoardId);
+
+            if (boardInGlobalSettings) {
+                // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Found board '${boardInGlobalSettings.name}' in global settings.`);
+                // this.config.id は、このウィジェットインスタンスが作られた時の設定ID (コピー元のIDと同一のはず)
+                const widgetInGlobalSettings = boardInGlobalSettings.widgets.find(w => w.id === this.config.id);
+
+                if (widgetInGlobalSettings) {
+                    // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Found widget '${widgetInGlobalSettings.title}' (ID: ${widgetInGlobalSettings.id}) in global board settings.`);
+                    if (!widgetInGlobalSettings.settings) {
+                        console.warn(`${widgetIdLog} SAVE_MEMO_CHANGES: widgetInGlobalSettings.settings was undefined. Initializing.`);
+                        widgetInGlobalSettings.settings = { ...DEFAULT_MEMO_SETTINGS };
+                    }
+                    // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: memoContent in global store (BEFORE update): "${widgetInGlobalSettings.settings.memoContent}"`);
+                    widgetInGlobalSettings.settings.memoContent = newMemo; // ★★★ 実際のグローバル設定オブジェクトを更新
+                    settingsUpdatedInGlobalStore = true;
+                    // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: memoContent in global store (AFTER update): "${widgetInGlobalSettings.settings.memoContent}"`);
+                } else {
+                    console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Widget with ID '${this.config.id}' NOT FOUND in global board settings for board '${boardInGlobalSettings.name}'. This is a critical error if save is expected.`);
+                }
+            } else {
+                console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Board with ID '${currentModalBoardId}' NOT FOUND in global plugin settings. This is a critical error.`);
+            }
+
+            if (settingsUpdatedInGlobalStore) {
+                console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Calling this.plugin.saveSettings() to persist all changes.`);
+                // this.plugin.saveSettings() は this.plugin.settings 全体を保存する
+                await this.plugin.saveSettings(); 
+                // new Notice(`メモ「${this.config.title || '無題'}」を保存しました。`); // 保存成功通知
+            } else {
+                console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Did not update global settings store due to lookup failure. Save not fully effective.`);
+                new Notice("メモの保存に失敗しました (データ不整合の可能性あり)。", 5000);
+            }
+        } else {
+            // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Memo content did not change. No save action taken.`);
+        }
+        this.updateMemoEditUI(); // UIを（表示モードに）更新
     }
 
     private cancelMemoEditMode() {
         this.isEditingMemo = false;
-        // キャンセル時は現在の設定内容で再レンダリング
-        this.renderMemo(this.currentSettings.memoContent);
+        // テキストエリアの内容は破棄され、currentSettings.memoContent (保存済みの値) で再表示される
         this.updateMemoEditUI();
     }
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
-        this.config = config;
+        (this.constructor as typeof MemoWidget).widgetInstances.set(config.id, this);
+
+        this.config = config; // このconfigはモーダルから渡される「コピー」である可能性に注意
         this.app = app;
         this.plugin = plugin;
-
+        
+        // currentSettings は、このウィジェットインスタンスの現在の状態を保持する。
+        // create時には、渡されたconfig.settings（ディープコピーされたもの）をベースに初期化。
         this.currentSettings = { ...DEFAULT_MEMO_SETTINGS, ...(config.settings || {}) };
-        config.settings = this.currentSettings; // Ensure config object is updated
+        // インスタンスが保持するconfigオブジェクトのsettingsプロパティも、このcurrentSettingsを指すようにする。
+        // ただし、このthis.config.settingsへの変更がグローバル設定に直接反映されるわけではない。
+        config.settings = this.currentSettings;
 
         this.widgetEl = document.createElement('div');
         this.widgetEl.classList.add('widget', 'memo-widget');
         this.widgetEl.setAttribute('data-widget-id', config.id);
+        this.widgetEl.style.display = 'flex';
+        this.widgetEl.style.flexDirection = 'column';
+        this.widgetEl.style.minHeight = '0'; // flexコンテナ内のアイテムとして縮小できるように
 
         const titleEl = this.widgetEl.createEl('h4');
-        titleEl.textContent = this.config.title;
+        titleEl.textContent = (this.config.title && this.config.title.trim() !== "") ? this.config.title : "";
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
+        // CSS で .widget-content に display:flex, flex-direction:column, flex-grow:1, min-height:0 が設定されている前提
         
         this.memoContainerEl = contentEl.createDiv({ cls: 'memo-widget-container' });
+        // CSS で .memo-widget-container に display:flex, flex-direction:column, flex-grow:1, min-height:0 が設定されている前提
+
         const memoHeaderEl = this.memoContainerEl.createDiv({ cls: 'memo-widget-header' });
+        // CSS で .memo-widget-header に flex-shrink:0 が設定されている前提
         
         this.editMemoButtonEl = memoHeaderEl.createEl('button', { cls: 'memo-widget-edit-button' });
         setIcon(this.editMemoButtonEl, 'pencil');
@@ -118,11 +302,18 @@ export class MemoWidget implements WidgetImplementation {
         this.editMemoButtonEl.onClickEvent(() => this.enterMemoEditMode());
 
         this.memoDisplayEl = this.memoContainerEl.createDiv({ cls: 'memo-widget-display' });
-        
+        // CSS で .memo-widget-display に flex-grow:1, overflow-y:auto が設定されている前提
+
         this.memoEditContainerEl = this.memoContainerEl.createDiv({ cls: 'memo-widget-edit-container' });
-        this.memoEditAreaEl = this.memoEditContainerEl.createEl('textarea', { cls: 'memo-widget-edit-area' });
+        this.memoEditContainerEl.style.display = 'none'; // 初期は非表示
+        // CSS で .memo-widget-edit-container に display:flex (JSで制御), flex-direction:column, flex-grow:1 が設定されている前提
+
+        this.memoEditAreaEl = this.memoEditContainerEl.createEl('textarea', { cls: 'memo-edit-area' });
+        // CSS で .memo-edit-area に flex-grow:1, width:100% などが設定されている前提
         
         const memoEditControlsEl = this.memoEditContainerEl.createDiv({ cls: 'memo-widget-edit-controls' });
+        // CSS で .memo-widget-edit-controls に flex-shrink:0 が設定されている前提
+
         this.saveMemoButtonEl = memoEditControlsEl.createEl('button', { text: '保存' });
         this.saveMemoButtonEl.addClass('mod-cta');
         this.cancelMemoButtonEl = memoEditControlsEl.createEl('button', { text: 'キャンセル' });
@@ -130,33 +321,61 @@ export class MemoWidget implements WidgetImplementation {
         this.saveMemoButtonEl.onClickEvent(() => this.saveMemoChanges());
         this.cancelMemoButtonEl.onClickEvent(() => this.cancelMemoEditMode());
 
-        this.isEditingMemo = false; // 初期状態は表示モード
-        this.renderMemo(this.currentSettings.memoContent);
-        this.updateMemoEditUI();
-
+        this.isEditingMemo = false;
+        this.updateMemoEditUI(); // 初期UI状態設定（これがrenderMemoとapplyContainerHeightStylesを呼ぶ）
+        
         return this.widgetEl;
     }
 
-    public async updateExternalSettings(newSettings: MemoWidgetSettings, widgetId?: string) {
+    public async updateExternalSettings(newSettings: Partial<MemoWidgetSettings>, widgetId?: string) {
         if (widgetId && this.config?.id !== widgetId) return;
+        const widgetIdLog = `[${this.config.id}]`;
+        // console.log(`${widgetIdLog} UPDATE_EXTERNAL_SETTINGS: Received new settings:`, JSON.parse(JSON.stringify(newSettings)));
+        // console.log(`${widgetIdLog} UPDATE_EXTERNAL_SETTINGS: Current settings BEFORE merge:`, JSON.parse(JSON.stringify(this.currentSettings)));
 
-        const oldMemoContent = this.currentSettings.memoContent;
+        // インスタンスの作業用設定(currentSettings)を更新
         this.currentSettings = { ...this.currentSettings, ...newSettings };
-        if(this.config && this.config.settings) {
-            this.config.settings = this.currentSettings; // WidgetConfigも更新
+        
+        // インスタンスが保持しているconfigオブジェクトのsettingsプロパティも同期 (主にcreateで同じ参照になっているため)
+        // これは、このウィジェットインスタンスが再利用される場合に、config経由で最新の設定を参照できるようにするため。
+        // ただし、このconfig自体がグローバル設定のコピーである点に注意。
+        if (this.config && this.config.settings) {
+            Object.assign(this.config.settings, this.currentSettings);
+        } else if (this.config) {
+            this.config.settings = { ...this.currentSettings };
         }
+        // console.log(`${widgetIdLog} UPDATE_EXTERNAL_SETTINGS: Merged currentSettings AFTER merge:`, JSON.parse(JSON.stringify(this.currentSettings)));
 
-        if (oldMemoContent !== this.currentSettings.memoContent && !this.isEditingMemo) {
-            await this.renderMemo(this.currentSettings.memoContent);
-        }
-        // 編集中でない場合のみUI全体を更新
-        if (!this.isEditingMemo) {
-            this.updateMemoEditUI();
-        }
+        this.updateMemoEditUI(); // UIに新しい設定を反映
+
+        // ★重要: updateExternalSettings は、通常 plugin.saveSettings() が呼び出された結果としてモーダル更新のために呼び出される。
+        // ここで再度 plugin.saveSettings() を呼ぶと無限ループや予期せぬ動作の原因になる。
+        // 設定の永続化は、ユーザーが設定タブで操作した際や、ウィジェット内で「保存」アクションを行った際に行うべき。
     }
 
     onunload(): void {
-        // クリーンアップ処理があればここに記述
-        this.isEditingMemo = false; // 念のため
+        const widgetIdLog = `[${this.config?.id || 'MemoWidget'}]`;
+        // console.log(`${widgetIdLog} onunload: Removing instance from static map.`);
+        this.removeMemoEditAreaAutoResizeListener();
+        (this.constructor as typeof MemoWidget).widgetInstances.delete(this.config.id);
+        this.isEditingMemo = false;
+    }
+    
+    // 静的メソッド
+    public static removePersistentInstance(widgetId: string, plugin: WidgetBoardPlugin): void {
+        const instance = MemoWidget.widgetInstances.get(widgetId);
+        if (instance) {
+            // instance.onunload(); // 必要に応じてインスタンス固有のクリーンアップを呼ぶことも検討
+            MemoWidget.widgetInstances.delete(widgetId);
+        }
+        // console.log(`[${widgetId}] Static removePersistentInstance for MemoWidget (map size: ${MemoWidget.widgetInstances.size})`);
+    }
+
+    public static cleanupAllPersistentInstances(plugin: WidgetBoardPlugin): void {
+        // console.log("Cleaning up all MemoWidget instances from static map.");
+        MemoWidget.widgetInstances.forEach(instance => {
+            // instance.onunload(); // もし必要なら
+        });
+        MemoWidget.widgetInstances.clear();
     }
 }

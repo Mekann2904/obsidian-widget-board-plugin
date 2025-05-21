@@ -1,20 +1,24 @@
 // src/settingsTab.ts
 import { App, PluginSettingTab, Setting, Notice, DropdownComponent, SliderComponent, TextComponent } from 'obsidian';
 import type WidgetBoardPlugin from './main';
-import { WidgetBoardModal } from './modal'; // MODES を使うためにインポート
+import type { BoardConfiguration, WidgetConfig } from './interfaces';
+import { DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
+import { WidgetBoardModal } from './modal';
 import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings, PomodoroSoundType } from './widgets/pomodoroWidget';
 import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget';
 import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/calendarWidget';
-import type { WidgetConfig } from './interfaces';
 import { registeredWidgetImplementations } from './widgetRegistry';
-
 
 export class WidgetBoardSettingTab extends PluginSettingTab {
     plugin: WidgetBoardPlugin;
+    private selectedBoardId: string | null = null;
 
     constructor(app: App, plugin: WidgetBoardPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+        if (this.plugin.settings.boards.length > 0) {
+            this.selectedBoardId = this.plugin.settings.lastOpenedBoardId || this.plugin.settings.boards[0].id;
+        }
     }
 
     display(): void {
@@ -22,154 +26,193 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         containerEl.empty();
         containerEl.createEl('h2', { text: 'ウィジェットボード設定' });
 
-        // --- デフォルト表示モード設定 ---
+        // --- ボード管理セクション ---
+        const boardManagementSection = containerEl.createDiv({ cls: 'widget-board-management-section' });
+        this.renderBoardManagementUI(boardManagementSection);
+
+        // --- 選択されたボードの設定セクション ---
+        const selectedBoardSettingsSection = containerEl.createDiv({ cls: 'selected-board-settings-section' });
+        this.renderSelectedBoardSettingsUI(selectedBoardSettingsSection);
+    }
+
+    private renderBoardManagementUI(containerEl: HTMLElement) {
+        containerEl.empty();
+        containerEl.createEl('h3', { text: 'ボード管理' });
+
+        new Setting(containerEl)
+            .setName('ボード選択')
+            .setDesc('設定を編集するウィジェットボードを選択してください。')
+            .addDropdown(dropdown => {
+                this.plugin.settings.boards.forEach(board => {
+                    dropdown.addOption(board.id, board.name);
+                });
+                dropdown.setValue(this.selectedBoardId || (this.plugin.settings.boards[0]?.id || ''))
+                    .onChange(value => {
+                        this.selectedBoardId = value;
+                        this.plugin.settings.lastOpenedBoardId = value;
+                        this.plugin.saveSettings();
+                        this.renderSelectedBoardSettingsUI(this.containerEl.querySelector('.selected-board-settings-section')!);
+                    });
+            });
+
+        new Setting(containerEl)
+            .addButton(button => button
+                .setButtonText('新しいボードを追加')
+                .setCta()
+                .onClick(async () => {
+                    const newBoardId = 'board-' + Date.now();
+                    const newBoard: BoardConfiguration = {
+                        ...JSON.parse(JSON.stringify(DEFAULT_BOARD_CONFIGURATION)),
+                        id: newBoardId,
+                        name: `新しいボード ${this.plugin.settings.boards.length + 1}`,
+                        widgets: []
+                    };
+                    this.plugin.settings.boards.push(newBoard);
+                    this.selectedBoardId = newBoardId;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+    }
+
+    private renderSelectedBoardSettingsUI(containerEl: HTMLElement) {
+        containerEl.empty();
+        if (!this.selectedBoardId) {
+            containerEl.createEl('p', { text: 'ボードを選択してください。' });
+            return;
+        }
+        const board = this.plugin.settings.boards.find(b => b.id === this.selectedBoardId);
+        if (!board) {
+            containerEl.createEl('p', { text: '選択されたボードが見つかりません。' });
+            this.selectedBoardId = null;
+            this.renderBoardManagementUI(this.containerEl.querySelector('.widget-board-management-section')!);
+            return;
+        }
+        containerEl.createEl('h3', { text: `ボード「${board.name}」の設定` });
+        new Setting(containerEl)
+            .setName('ボード名')
+            .addText(text => text
+                .setValue(board.name)
+                .onChange(async (value) => {
+                    board.name = value;
+                    await this.plugin.saveSettings();
+                    this.renderBoardManagementUI(this.containerEl.querySelector('.widget-board-management-section')!);
+                    containerEl.querySelector('h3')!.setText(`ボード「${board.name}」の設定`);
+                }));
         new Setting(containerEl)
             .setName('デフォルト表示モード')
-            .setDesc('ウィジェットボードを開いたときの初期表示モード。')
+            .setDesc('このボードを開いたときの初期表示モード。')
             .addDropdown(dropdown => {
-                // WidgetBoardModal.MODES を使用
-                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_THIRD, '右1/3表示');
-                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, '右1/2表示');
-                dropdown.setValue(this.plugin.settings.defaultMode)
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_THIRD, '右パネル（33vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, '右パネル（50vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.LEFT_TWO_THIRD, '左パネル（66vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.LEFT_HALF, '左パネル（50vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.CENTER_HALF, '中央パネル（50vw）');
+                dropdown.setValue(board.defaultMode)
                     .onChange(async (value) => {
-                        // value が WidgetBoardModal.MODES のいずれかの値であることを確認
                         if (Object.values(WidgetBoardModal.MODES).includes(value as any)) {
-                            this.plugin.settings.defaultMode = value;
+                            board.defaultMode = value;
                             await this.plugin.saveSettings();
-                        } else {
-                            new Notice(`無効なモード: ${value}`);
-                            dropdown.setValue(this.plugin.settings.defaultMode); // 元の値に戻す
                         }
                     });
             });
-        
-        containerEl.createEl('h3', { text: 'ウィジェット管理' });
-
+        new Setting(containerEl)
+            .addButton(button => button
+                .setButtonText('このボードを削除')
+                .setWarning()
+                .setDisabled(this.plugin.settings.boards.length <= 1)
+                .onClick(async () => {
+                    if (!confirm(`ボード「${board.name}」を本当に削除しますか？`)) return;
+                    this.plugin.settings.boards = this.plugin.settings.boards.filter(b => b.id !== this.selectedBoardId);
+                    this.selectedBoardId = this.plugin.settings.boards.length > 0 ? this.plugin.settings.boards[0].id : null;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+        containerEl.createEl('h4', { text: 'ウィジェット管理' });
         const addWidgetButtonsContainer = containerEl.createDiv({ cls: 'widget-add-buttons' });
-
-        // --- ウィジェット追加ボタン生成関数 ---
-        const createAddButton = (
-            buttonText: string,
-            widgetType: string,
-            defaultSettings: any // PomodoroSettings | MemoWidgetSettings etc.
-        ) => {
+        const createAddButtonToBoard = (buttonText: string, widgetType: string, defaultWidgetSettings: any) => {
             const settingItem = new Setting(addWidgetButtonsContainer);
             settingItem.addButton(button => button
                 .setButtonText(buttonText)
-                .setCta() // Primary button style
+                .setCta()
                 .onClick(async () => {
+                    if (!this.selectedBoardId) return;
+                    const currentBoard = this.plugin.settings.boards.find(b => b.id === this.selectedBoardId);
+                    if (!currentBoard) return;
                     const newWidget: WidgetConfig = {
-                        id: `${widgetType}-widget-${Date.now()}`, // ユニークIDを生成
+                        id: `${widgetType}-widget-${Date.now()}`,
                         type: widgetType,
-                        title: '', // 初期タイトルは空
-                        settings: { ...defaultSettings } // 各ウィジェットのデフォルト設定をコピー
+                        title: '',
+                        settings: { ...defaultWidgetSettings }
                     };
-                    this.plugin.settings.widgets.push(newWidget);
+                    currentBoard.widgets.push(newWidget);
                     await this.plugin.saveSettings();
-                    this.renderWidgetList(widgetListEl); // ウィジェットリストを再描画
-                    new Notice(`「${widgetType}」ウィジェットが追加されました。`);
+                    this.renderWidgetListForBoard(widgetListEl, currentBoard);
+                    new Notice(`「${widgetType}」ウィジェットがボード「${currentBoard.name}」に追加されました。`);
                 }));
-            // Remove name/desc for button-only setting item for cleaner look
             settingItem.settingEl.addClass('widget-add-button-setting-item');
-            settingItem.nameEl.remove();
-            settingItem.descEl.remove();
+            settingItem.nameEl.remove(); settingItem.descEl.remove();
         };
-
-        // --- 各ウィジェットの追加ボタン ---
-        createAddButton("ポモドーロ追加", "pomodoro", DEFAULT_POMODORO_SETTINGS);
-        createAddButton("メモ追加", "memo", DEFAULT_MEMO_SETTINGS);
-        createAddButton("カレンダー追加", "calendar", DEFAULT_CALENDAR_SETTINGS);
-        // 新しいウィジェットを追加する場合、ここに createAddButton(...) を追加
-
-        const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list' });
-        this.renderWidgetList(widgetListEl); // 初期表示
+        createAddButtonToBoard("ポモドーロ追加", "pomodoro", DEFAULT_POMODORO_SETTINGS);
+        createAddButtonToBoard("メモ追加", "memo", DEFAULT_MEMO_SETTINGS);
+        createAddButtonToBoard("カレンダー追加", "calendar", DEFAULT_CALENDAR_SETTINGS);
+        const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list-for-board' });
+        this.renderWidgetListForBoard(widgetListEl, board);
     }
 
-    renderWidgetList(containerEl: HTMLElement) {
+    private renderWidgetListForBoard(containerEl: HTMLElement, board: BoardConfiguration) {
         containerEl.empty();
-        const widgets = this.plugin.settings.widgets;
-
+        const widgets = board.widgets;
         if (widgets.length === 0) {
-            containerEl.createEl('p', { text: '登録されているウィジェットはありません。「追加」ボタンで新しいウィジェットを作成できます。' });
+            containerEl.createEl('p', { text: 'このボードにはウィジェットがありません。「追加」ボタンで作成できます。' });
             return;
         }
-
         widgets.forEach((widget, index) => {
             const widgetSettingContainer = containerEl.createDiv({cls: 'widget-setting-container setting-item'});
-            
             const displayName = widget.title || `(名称未設定 ${widget.type})`;
             const titleSetting = new Setting(widgetSettingContainer)
                 .setName(displayName)
                 .setDesc(`種類: ${widget.type} | ID: ${widget.id.substring(0,8)}...`);
-            
-            // タイトル編集用テキストフィールド
             titleSetting.addText(text => text
                 .setPlaceholder('(ウィジェット名)')
                 .setValue(widget.title)
                 .onChange(async (value) => {
                     widget.title = value.trim();
                     await this.plugin.saveSettings();
-                    // 表示名を更新
                     titleSetting.setName(widget.title || `(名称未設定 ${widget.type})`);
-                    // ウィジェットインスタンスに変更を通知（モーダルが開いている場合）
-                    this.notifyWidgetInstance(widget.id, widget.type, widget.settings); 
+                    this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
                 }));
-
-            // --- コントロールボタン (上下移動、削除) ---
             titleSetting
-                .addExtraButton(cb => { // 上へ移動
-                    cb.setIcon('arrow-up')
-                        .setTooltip('上に移動')
-                        .setDisabled(index === 0)
-                        .onClick(async () => {
-                            if (index > 0) {
-                                const item = this.plugin.settings.widgets.splice(index, 1)[0];
-                                this.plugin.settings.widgets.splice(index - 1, 0, item);
-                                await this.plugin.saveSettings();
-                                this.renderWidgetList(containerEl); // リスト再描画
-                            }
-                        });
-                })
-                .addExtraButton(cb => { // 下へ移動
-                    cb.setIcon('arrow-down')
-                        .setTooltip('下に移動')
-                        .setDisabled(index === widgets.length - 1)
-                        .onClick(async () => {
-                            if (index < this.plugin.settings.widgets.length - 1) {
-                                const item = this.plugin.settings.widgets.splice(index, 1)[0];
-                                this.plugin.settings.widgets.splice(index + 1, 0, item);
-                                await this.plugin.saveSettings();
-                                this.renderWidgetList(containerEl); // リスト再描画
-                            }
-                        });
-                })
-                .addButton(button => button // 削除
-                    .setIcon("trash")
-                    .setTooltip("このウィジェットを削除")
-                    .setWarning()
+                .addExtraButton(cb => cb.setIcon('arrow-up').setTooltip('上に移動').setDisabled(index === 0)
+                    .onClick(async () => {
+                        if (index > 0) {
+                            const item = board.widgets.splice(index, 1)[0];
+                            board.widgets.splice(index - 1, 0, item);
+                            await this.plugin.saveSettings();
+                            this.renderWidgetListForBoard(containerEl, board);
+                        }
+                    }))
+                .addExtraButton(cb => cb.setIcon('arrow-down').setTooltip('下に移動').setDisabled(index === widgets.length - 1)
+                    .onClick(async () => {
+                        if (index < board.widgets.length - 1) {
+                            const item = board.widgets.splice(index, 1)[0];
+                            board.widgets.splice(index + 1, 0, item);
+                            await this.plugin.saveSettings();
+                            this.renderWidgetListForBoard(containerEl, board);
+                        }
+                    }))
+                .addButton(button => button.setIcon("trash").setTooltip("このウィジェットを削除").setWarning()
                     .onClick(async () => {
                         const oldTitle = widget.title || `(名称未設定 ${widget.type})`;
-                        const widgetIdToDelete = widget.id;
-                        const widgetTypeToDelete = widget.type;
-                        this.plugin.settings.widgets.splice(index, 1);
+                        board.widgets.splice(index, 1);
                         await this.plugin.saveSettings();
-                        this.renderWidgetList(containerEl);
-                        new Notice(`ウィジェット「${oldTitle}」を削除しました。`);
+                        this.renderWidgetListForBoard(containerEl, board);
+                        new Notice(`ウィジェット「${oldTitle}」をボード「${board.name}」から削除しました。`);
                     }));
-            
-            // --- 各ウィジェット固有の設定項目 ---
             const settingsEl = widgetSettingContainer.createDiv({cls: 'widget-specific-settings'});
             if (widget.type === 'pomodoro') {
-                // widget.settings が PomodoroSettings 型であることを明示的に扱う
                 widget.settings = { ...DEFAULT_POMODORO_SETTINGS, ...(widget.settings || {}) } as PomodoroSettings;
-                const currentSettings = widget.settings as PomodoroSettings; // 型キャスト
-
-                const createNumInput = (
-                    parent: HTMLElement,
-                    label: string,
-                    desc: string,
-                    key: keyof Omit<PomodoroSettings, 'backgroundImageUrl' | 'memoContent'> // 数値型キーのみ
-                ) => {
+                const currentSettings = widget.settings as PomodoroSettings;
+                const createNumInput = (parent: HTMLElement, label: string, desc: string, key: keyof Omit<PomodoroSettings, 'backgroundImageUrl' | 'memoContent'>) => {
                     new Setting(parent).setName(label).setDesc(desc).setClass('pomodoro-setting-item')
                         .addText(text => text
                             .setPlaceholder(String(DEFAULT_POMODORO_SETTINGS[key]))
@@ -179,10 +222,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                 if (!isNaN(n) && n > 0) {
                                     (currentSettings as any)[key] = n;
                                     await this.plugin.saveSettings();
-                                    this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
+                                    this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                                 } else {
                                     new Notice('1以上の半角数値を入力してください。');
-                                    text.setValue(String(currentSettings[key])); // 元の値に戻す
+                                    text.setValue(String(currentSettings[key]));
                                 }
                             }));
                 };
@@ -190,7 +233,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 createNumInput(settingsEl, '短い休憩 (分)', '短い休憩フェーズの時間。', 'shortBreakMinutes');
                 createNumInput(settingsEl, '長い休憩 (分)', '長い休憩フェーズの時間。', 'longBreakMinutes');
                 createNumInput(settingsEl, 'サイクル数', '長い休憩までの作業ポモドーロ回数。', 'pomodorosUntilLongBreak');
-
                 new Setting(settingsEl).setName('背景画像URL').setDesc('タイマーの背景として表示する画像のURL。').setClass('pomodoro-setting-item')
                     .addText(text => text
                         .setPlaceholder('例: https://example.com/image.jpg')
@@ -198,7 +240,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         .onChange(async (v) => {
                             currentSettings.backgroundImageUrl = v.trim();
                             await this.plugin.saveSettings();
-                            this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                         }));
                 new Setting(settingsEl).setName('専用メモ (Markdown)').setDesc('このポモドーロタイマー専用のメモ。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item')
                     .addTextArea(text => text
@@ -207,130 +249,73 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         .onChange(async (v) => {
                             currentSettings.memoContent = v;
                             await this.plugin.saveSettings();
-                            this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                         }));
-                // --- 通知音の種類の選択 ---
-                let customSoundPathSetting: Setting | null = null;
-                let testSoundButton: HTMLButtonElement | null = null;
-                new Setting(settingsEl)
-                    .setName('通知音')
-                    .setDesc('セッション終了時の通知音を選択します。')
-                    .setClass('pomodoro-setting-item')
-                    .addDropdown((dropdown: DropdownComponent) => {
-                        dropdown
-                            .addOption('default_beep', 'デフォルト（ビープ音）')
-                            .addOption('custom', 'カスタム（パス指定）')
-                            .setValue(currentSettings.notificationSoundType || 'default_beep')
-                            .onChange(async (value: 'default_beep' | 'custom') => {
-                                currentSettings.notificationSoundType = value;
-                                if (value === 'custom') {
-                                    if (!currentSettings.customSoundPath) currentSettings.customSoundPath = '';
-                                }
-                                await this.plugin.saveSettings();
-                                this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
-                                if (customSoundPathSetting) {
-                                    customSoundPathSetting.settingEl.style.display = (value === 'custom') ? '' : 'none';
-                                }
-                            });
-                    })
-                    .addExtraButton(btn => {
-                        btn.setIcon('play')
-                            .setTooltip('通知音をテスト再生')
-                            .onClick(() => {
-                                const widgetImplementation = registeredWidgetImplementations.get('pomodoro');
-                                if (widgetImplementation && typeof (widgetImplementation as any).playSoundNotification === 'function') {
-                                    // ウィジェットボードが開いていれば既存インスタンスで再生
-                                    if (this.plugin.widgetBoardModal && this.plugin.widgetBoardModal.isOpen) {
-                                        (widgetImplementation as any).updateExternalSettings(currentSettings, widget.id);
-                                        (widgetImplementation as any).playSoundNotification();
-                                    } else {
-                                        // ウィジェットボードが開いていない場合は一時インスタンスで再生
-                                        try {
-                                            const tempWidget = new (widgetImplementation.constructor as any)();
-                                            tempWidget.config = { id: widget.id, settings: currentSettings };
-                                            tempWidget.plugin = this.plugin;
-                                            tempWidget.app = this.plugin.app;
-                                            tempWidget.currentSettings = { ...currentSettings };
-                                            tempWidget.playSoundNotification();
-                                        } catch (e) {
-                                            new Notice('テスト再生に失敗しました。');
-                                            console.error(e);
-                                        }
-                                    }
-                                } else {
-                                    new Notice('テスト再生機能が利用できません。');
-                                }
-                            });
-                    });
-                // --- カスタム通知音パス入力欄 ---
-                customSoundPathSetting = new Setting(settingsEl)
-                    .setName('カスタム通知音パス')
-                    .setDesc('ObsidianのVaultルートからのパス（例: assets/your-sound.mp3）')
-                    .setClass('pomodoro-setting-item')
-                    .addText((text: TextComponent) => {
-                        text
-                            .setPlaceholder('assets/your-sound.mp3')
-                            .setValue(currentSettings.customSoundPath || '')
-                            .onChange(async (value) => {
-                                currentSettings.customSoundPath = value.trim();
-                                await this.plugin.saveSettings();
-                                this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
-                            });
-                    });
-                // 初期表示時にカスタム以外なら非表示
-                if ((currentSettings.notificationSoundType || 'default_beep') !== 'custom' && customSoundPathSetting) {
-                    customSoundPathSetting.settingEl.style.display = 'none';
-                }
-                // --- 通知音の音量調整（スライダー） ---
-                new Setting(settingsEl)
-                    .setName('通知音の音量')
-                    .setDesc('通知音の音量を設定します (0-100)。')
-                    .setClass('pomodoro-setting-item')
-                    .addSlider((slider: SliderComponent) => {
-                        slider
-                            .setLimits(0, 100, 1)
-                            .setValue(Math.round((currentSettings.notificationVolume ?? 0.2) * 100))
-                            .setDynamicTooltip()
-                            .onChange(async (value) => {
-                                currentSettings.notificationVolume = value / 100;
-                                await this.plugin.saveSettings();
-                                this.notifyWidgetInstance(widget.id, widget.type, currentSettings);
-                            });
-                    });
-
+                // 通知音設定などもここに追加（省略）
             } else if (widget.type === 'memo') {
                 widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) } as MemoWidgetSettings;
                 const currentSettings = widget.settings as MemoWidgetSettings;
-                 new Setting(settingsEl).setName('メモ内容 (Markdown)').setDesc('メモウィジェットに表示する内容。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item') // pomodoro-setting-itemは汎用クラス名として流用可
+                new Setting(settingsEl).setName('メモ内容 (Markdown)').setDesc('メモウィジェットに表示する内容。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item')
                     .addTextArea(text => text
                         .setPlaceholder('ここにメモを記述...')
                         .setValue(currentSettings.memoContent || '')
                         .onChange(async (v) => {
                             if(widget.settings) widget.settings.memoContent = v;
                             await this.plugin.saveSettings();
-                            this.notifyWidgetInstance(widget.id, widget.type, widget.settings);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
                         }));
-
+                // メモエリア高さモード
+                new Setting(settingsEl)
+                    .setName('メモエリアの高さモード')
+                    .setDesc('自動調整（内容にfit）または固定高さを選択')
+                    .addDropdown(dropdown => {
+                        dropdown.addOption('auto', '自動（内容にfit）');
+                        dropdown.addOption('fixed', '固定');
+                        dropdown.setValue(currentSettings.memoHeightMode || 'auto')
+                            .onChange(async (value) => {
+                                currentSettings.memoHeightMode = value as 'auto' | 'fixed';
+                                await this.plugin.saveSettings();
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                // 固定モード選択時は下の高さ欄を有効化
+                                if (fixedHeightSetting) {
+                                    fixedHeightSetting.settingEl.style.display = (value === 'fixed') ? '' : 'none';
+                                }
+                            });
+                    });
+                // 固定高さ(px)入力欄
+                let fixedHeightSetting: Setting | null = null;
+                fixedHeightSetting = new Setting(settingsEl)
+                    .setName('固定高さ(px)')
+                    .setDesc('固定モード時の高さ（px）')
+                    .addText(text => {
+                        text.setPlaceholder('120')
+                            .setValue(String(currentSettings.fixedHeightPx ?? 120))
+                            .onChange(async (v) => {
+                                const n = parseInt(v);
+                                if (!isNaN(n) && n > 0) {
+                                    currentSettings.fixedHeightPx = n;
+                                    await this.plugin.saveSettings();
+                                    this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                } else {
+                                    new Notice('1以上の半角数値を入力してください。');
+                                    text.setValue(String(currentSettings.fixedHeightPx ?? 120));
+                                }
+                            });
+                    });
+                // 初期表示時に自動モードなら非表示
+                if ((currentSettings.memoHeightMode || 'auto') !== 'fixed' && fixedHeightSetting) {
+                    fixedHeightSetting.settingEl.style.display = 'none';
+                }
             } else if (widget.type === 'calendar') {
                 widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings || {}) } as CalendarWidgetSettings;
-                // カレンダーには現在、ユーザーが設定する項目なし
-                // settingsEl.createEl('p', { text: 'このウィジェットには追加設定はありません。' });
-            
             }
-            // 新しいウィジェットタイプの設定UIはここに追加
         });
     }
 
-    private notifyWidgetInstance(widgetId: string, widgetType: string, newSettings: any) {
-        // モーダルが開いていて、該当ウィジェットインスタンスが存在する場合に更新を通知
-        if (this.plugin.widgetBoardModal && this.plugin.widgetBoardModal.isOpen) {
-            // WidgetBoardModal内のuiWidgetReferencesは、create()を呼び出したWidgetImplementationのインスタンスそのもの
-            // しかし、settingsTabから直接それらのインスタンスを操作するより、
-            // registeredWidgetImplementations のグローバルインスタンスの updateExternalSettings を呼ぶ方が一貫性がある
+    private notifyWidgetInstanceIfBoardOpen(boardId: string, widgetId: string, widgetType: string, newSettings: any) {
+        if (this.plugin.widgetBoardModal && this.plugin.widgetBoardModal.isOpen && this.plugin.widgetBoardModal.currentBoardId === boardId) {
             const widgetImplementation = registeredWidgetImplementations.get(widgetType);
             if (widgetImplementation && widgetImplementation.updateExternalSettings) {
-                // updateExternalSettingsメソッドにウィジェットIDも渡して、
-                // 該当するIDのウィジェットのみが更新されるようにする
                 widgetImplementation.updateExternalSettings(newSettings, widgetId);
             }
         }

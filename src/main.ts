@@ -1,7 +1,7 @@
 // src/main.ts
-import { Plugin, Notice } from 'obsidian';
-import type { WidgetBoardSettings, WidgetConfig } from './interfaces';
-import { DEFAULT_SETTINGS } from './settingsDefaults';
+import { Plugin, Notice, Modal as ObsidianModal } from 'obsidian';
+import type { PluginGlobalSettings, BoardConfiguration, WidgetConfig } from './interfaces';
+import { DEFAULT_PLUGIN_SETTINGS, DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
 import { WidgetBoardModal } from './modal';
 import { WidgetBoardSettingTab } from './settingsTab';
 import { registeredWidgetImplementations } from './widgetRegistry';
@@ -10,23 +10,24 @@ import { DEFAULT_MEMO_SETTINGS } from './widgets/memoWidget';
 import { DEFAULT_CALENDAR_SETTINGS } from './widgets/calendarWidget';
 
 export default class WidgetBoardPlugin extends Plugin {
-    settings: WidgetBoardSettings;
+    settings: PluginGlobalSettings;
     widgetBoardModal: WidgetBoardModal | null = null;
 
     async onload() {
         console.log('Widget Board Plugin: Loading...');
-        
         await this.loadSettings();
 
-        this.addCommand({
-            id: 'open-widget-board',
-            name: 'ウィジェットボードを開く (Open Widget Board)',
-            callback: () => this.openWidgetBoard()
+        // ボードごとにコマンドを動的登録
+        this.settings.boards.forEach(board => {
+            this.addCommand({
+                id: `open-widget-board-${board.id}`,
+                name: `ウィジェットボードを開く: ${board.name}`,
+                callback: () => this.openWidgetBoardById(board.id)
+            });
         });
 
-        this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openWidgetBoard());
+        this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());
         this.addSettingTab(new WidgetBoardSettingTab(this.app, this));
-        
         console.log('Widget Board Plugin: Loaded.');
     }
 
@@ -34,66 +35,133 @@ export default class WidgetBoardPlugin extends Plugin {
         if (this.widgetBoardModal && this.widgetBoardModal.isOpen) {
             this.widgetBoardModal.close();
         }
-
         registeredWidgetImplementations.forEach(widgetImpl => {
-            if (widgetImpl.onunload) {
-                widgetImpl.onunload();
-            }
+            if (widgetImpl.onunload) widgetImpl.onunload();
         });
-
         console.log('Widget Board Plugin: Unloaded.');
+    }
+
+    openBoardPicker() {
+        if (this.settings.boards.length === 0) {
+            new Notice('設定されているウィジェットボードがありません。設定画面から作成してください。');
+            return;
+        }
+        if (this.settings.boards.length === 1) {
+            this.openWidgetBoardById(this.settings.boards[0].id);
+            return;
+        }
+        const modal = new BoardPickerModal(this.app, this.settings.boards, (boardId) => {
+            this.openWidgetBoardById(boardId);
+        });
+        modal.open();
+    }
+
+    openWidgetBoardById(boardId: string) {
+        if (this.widgetBoardModal && this.widgetBoardModal.isOpen) {
+            if (this.widgetBoardModal.currentBoardId !== boardId) {
+                this.widgetBoardModal.close();
+            } else {
+                return;
+            }
+        }
+        const boardConfig = this.settings.boards.find(b => b.id === boardId);
+        if (!boardConfig) {
+            new Notice(`ID '${boardId}' のウィジェットボードが見つかりません。`);
+            if (this.settings.boards.length > 0) {
+                this.openWidgetBoardById(this.settings.boards[0].id);
+            }
+            return;
+        }
+        const validModes = Object.values(WidgetBoardModal.MODES);
+        if (!validModes.includes(boardConfig.defaultMode as any)) {
+            new Notice(`ボード「${boardConfig.name}」の無効なデフォルトモード '${boardConfig.defaultMode}'。フォールバックします。`);
+            boardConfig.defaultMode = WidgetBoardModal.MODES.RIGHT_THIRD;
+        }
+        this.settings.lastOpenedBoardId = boardId;
+        this.saveSettings();
+        this.widgetBoardModal = new WidgetBoardModal(this.app, this, boardConfig);
+        this.widgetBoardModal.open();
     }
 
     async loadSettings() {
         const loadedData = await this.loadData();
-        const defaultSettingsCopy = JSON.parse(JSON.stringify(DEFAULT_SETTINGS));
-        this.settings = Object.assign({}, defaultSettingsCopy, loadedData);
-
-        if (!this.settings.widgets || !Array.isArray(this.settings.widgets)) {
-            this.settings.widgets = [];
+        if (loadedData && !loadedData.boards && loadedData.widgets) {
+            // 旧形式からのマイグレーション
+            const oldBoard: BoardConfiguration = {
+                id: DEFAULT_BOARD_CONFIGURATION.id,
+                name: 'マイウィジェットボード (旧設定)',
+                defaultMode: loadedData.defaultMode || DEFAULT_BOARD_CONFIGURATION.defaultMode,
+                widgets: loadedData.widgets || []
+            };
+            this.settings = {
+                boards: [oldBoard],
+                lastOpenedBoardId: oldBoard.id,
+                defaultBoardIdForQuickOpen: oldBoard.id
+            };
+        } else if (loadedData && loadedData.boards) {
+            this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, loadedData);
+        } else {
+            this.settings = JSON.parse(JSON.stringify(DEFAULT_PLUGIN_SETTINGS));
         }
-        if (loadedData?.widgets === undefined && this.settings.widgets.length === 0 && defaultSettingsCopy.widgets.length > 0) {
-            const defaultWidgetToAdd = JSON.parse(JSON.stringify(defaultSettingsCopy.widgets[0]));
-            defaultWidgetToAdd.id = `${defaultWidgetToAdd.type}-widget-${Date.now()}`;
-            this.settings.widgets.push(defaultWidgetToAdd);
+        if (!this.settings.boards || !Array.isArray(this.settings.boards)) {
+            this.settings.boards = [JSON.parse(JSON.stringify(DEFAULT_BOARD_CONFIGURATION))];
         }
-        
-        this.settings.widgets.forEach((widget: WidgetConfig) => {
-            if (widget.type === 'pomodoro') {
-                widget.settings = { ...DEFAULT_POMODORO_SETTINGS, ...(widget.settings || {}) };
-            } else if (widget.type === 'memo') {
-                widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) };
-            } else if (widget.type === 'calendar') {
-                widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings || {}) };
+        if (this.settings.boards.length === 0) {
+            this.settings.boards.push(JSON.parse(JSON.stringify(DEFAULT_BOARD_CONFIGURATION)));
+        }
+        this.settings.boards.forEach(board => {
+            if (!board.widgets || !Array.isArray(board.widgets)) {
+                board.widgets = [];
             }
+            board.widgets.forEach((widget: WidgetConfig) => {
+                if (widget.type === 'pomodoro') {
+                    widget.settings = { ...DEFAULT_POMODORO_SETTINGS, ...(widget.settings || {}) };
+                } else if (widget.type === 'memo') {
+                    widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) };
+                } else if (widget.type === 'calendar') {
+                    widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings || {}) };
+                }
+            });
         });
     }
 
     async saveSettings() {
         await this.saveData(this.settings);
-        if (this.widgetBoardModal && this.widgetBoardModal.isOpen) {
-            if (this.widgetBoardModal.currentMode !== this.settings.defaultMode) {
-                this.widgetBoardModal.applyMode(this.settings.defaultMode);
-            }
-            const widgetContainer = this.widgetBoardModal.contentEl.querySelector('.wb-widget-container');
-            if (widgetContainer instanceof HTMLElement) {
-                this.widgetBoardModal.loadWidgets(widgetContainer);
+        if (this.widgetBoardModal && this.widgetBoardModal.isOpen && this.widgetBoardModal.currentBoardConfig) {
+            const currentBoardId = this.widgetBoardModal.currentBoardConfig.id;
+            const updatedBoardConfig = this.settings.boards.find(b => b.id === currentBoardId);
+            if (updatedBoardConfig) {
+                this.widgetBoardModal.updateBoardConfiguration(updatedBoardConfig);
+            } else {
+                this.widgetBoardModal.close();
             }
         }
     }
+}
 
-    openWidgetBoard() {
-        if (this.widgetBoardModal && this.widgetBoardModal.isOpen) {
-            return;
-        }
-
-        const validModes = Object.values(WidgetBoardModal.MODES);
-        if (!validModes.includes(this.settings.defaultMode as typeof WidgetBoardModal.MODES[keyof typeof WidgetBoardModal.MODES])) {
-            new Notice(`無効なデフォルトモード '${this.settings.defaultMode}'。'${WidgetBoardModal.MODES.RIGHT_THIRD}' にフォールバックします。`);
-            this.settings.defaultMode = WidgetBoardModal.MODES.RIGHT_THIRD;
-        }
-
-        this.widgetBoardModal = new WidgetBoardModal(this.app, this, this.settings.defaultMode);
-        this.widgetBoardModal.open();
+class BoardPickerModal extends ObsidianModal {
+    constructor(
+        app: any,
+        private boards: BoardConfiguration[],
+        private onChoose: (boardId: string) => void
+    ) {
+        super(app);
+    }
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('h2', { text: 'ウィジェットボードを選択' });
+        const listEl = contentEl.createDiv({ cls: 'widget-board-picker-list' });
+        this.boards.forEach(board => {
+            const boardItemEl = listEl.createDiv({ cls: 'widget-board-picker-item' });
+            boardItemEl.setText(board.name);
+            boardItemEl.onClickEvent(() => {
+                this.onChoose(board.id);
+                this.close();
+            });
+        });
+    }
+    onClose() {
+        this.contentEl.empty();
     }
 }

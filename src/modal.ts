@@ -2,10 +2,12 @@
 import { App, Modal } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import { registeredWidgetImplementations } from './widgetRegistry';
-import type { WidgetImplementation } from './interfaces';
+import type { WidgetImplementation, BoardConfiguration, WidgetConfig } from './interfaces';
 
 export class WidgetBoardModal extends Modal {
     plugin: WidgetBoardPlugin;
+    currentBoardConfig: BoardConfiguration;
+    currentBoardId: string;
     currentMode: string;
     isOpen: boolean = false;
     modeButtons: HTMLButtonElement[] = [];
@@ -14,31 +16,57 @@ export class WidgetBoardModal extends Modal {
 
     static readonly MODES = {
         RIGHT_HALF: 'mode-right-half',
-        RIGHT_THIRD: 'mode-right-third'
+        RIGHT_THIRD: 'mode-right-third',
+        LEFT_TWO_THIRD: 'mode-left-two-third',
+        LEFT_HALF: 'mode-left-half',
+        CENTER_HALF: 'mode-center-half'
     } as const;
 
-    constructor(app: App, plugin: WidgetBoardPlugin, initialMode: string) {
+    constructor(app: App, plugin: WidgetBoardPlugin, boardConfig: BoardConfiguration) {
         super(app);
         this.plugin = plugin;
-
+        this.currentBoardConfig = JSON.parse(JSON.stringify(boardConfig));
+        this.currentBoardId = boardConfig.id;
         const validModes = Object.values(WidgetBoardModal.MODES);
-        if (!validModes.includes(initialMode as typeof WidgetBoardModal.MODES[keyof typeof WidgetBoardModal.MODES])) {
-            this.currentMode = WidgetBoardModal.MODES.RIGHT_THIRD; // フォールバック
+        if (!validModes.includes(this.currentBoardConfig.defaultMode as any)) {
+            this.currentMode = WidgetBoardModal.MODES.RIGHT_THIRD;
         } else {
-            this.currentMode = initialMode;
+            this.currentMode = this.currentBoardConfig.defaultMode;
         }
-        
         this.modalEl.addClass('widget-board-panel-custom'); // カスタムスタイル用クラス
 
         // Escapeキーで閉じるイベントを登録
         this.scope.register([], "Escape", this.close.bind(this));
     }
 
+    public updateBoardConfiguration(newBoardConfig: BoardConfiguration) {
+        if (!this.isOpen) return;
+        this.currentBoardConfig = JSON.parse(JSON.stringify(newBoardConfig));
+        this.currentBoardId = newBoardConfig.id;
+        if (this.currentMode !== this.currentBoardConfig.defaultMode) {
+            const validModes = Object.values(WidgetBoardModal.MODES);
+            if (validModes.includes(this.currentBoardConfig.defaultMode as any)) {
+                this.currentMode = this.currentBoardConfig.defaultMode;
+                this.applyMode(this.currentMode);
+            }
+        }
+        const widgetContainerEl = this.contentEl.querySelector('.wb-widget-container');
+        if (widgetContainerEl instanceof HTMLElement) {
+            this.loadWidgets(widgetContainerEl);
+        } else {
+            this.onOpen();
+        }
+        const headerTitleEl = this.contentEl.querySelector('.wb-panel-header h3');
+        if (headerTitleEl) {
+            headerTitleEl.setText(`ウィジェットボード: ${this.currentBoardConfig.name}`);
+        }
+    }
+
     onOpen() {
         this.isOpen = true;
         const { contentEl, modalEl } = this;
         contentEl.empty();
-        // uiWidgetReferences は loadWidgets の開始時にクリア
+        this.uiWidgetReferences = [];
         if (this.modalEl.querySelector('.modal-bg')) {
             const bgEl = this.modalEl.querySelector('.modal-bg') as HTMLElement;
             bgEl.style.display = 'none'; // 背景を非表示 (パネル風にするため)
@@ -48,25 +76,37 @@ export class WidgetBoardModal extends Modal {
 
         // ヘッダー
         const headerEl = contentEl.createDiv({ cls: 'wb-panel-header' });
-        headerEl.createEl('h3', { text: 'ウィジェットボード' });
+        headerEl.createEl('h3', { text: `ウィジェットボード: ${this.currentBoardConfig.name}` });
 
         // コントロール（表示モード切り替えボタンなど）
         const controlsEl = contentEl.createDiv({ cls: 'wb-panel-controls' });
         controlsEl.createEl('p', { text: '表示モード:' });
         this.modeButtons = [];
 
+        const controlsToggleBtn = contentEl.createEl('button', { cls: 'wb-panel-controls-toggle', text: '表示モード' });
+        controlsToggleBtn.onclick = () => {
+            controlsEl.classList.toggle('is-visible');
+        };
+        controlsEl.classList.remove('is-visible'); // 初期は非表示
+
         Object.entries(WidgetBoardModal.MODES).forEach(([key, modeClassValue]) => {
             const modeClass = modeClassValue as typeof WidgetBoardModal.MODES[keyof typeof WidgetBoardModal.MODES];
             let buttonText = '';
-            if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右1/3';
-            else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = '右1/2';
+            if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
+            else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = '右パネル（50vw）';
+            else if (modeClass === WidgetBoardModal.MODES.LEFT_TWO_THIRD) buttonText = '左パネル（66vw）';
+            else if (modeClass === WidgetBoardModal.MODES.LEFT_HALF) buttonText = '左パネル（50vw）';
+            else if (modeClass === WidgetBoardModal.MODES.CENTER_HALF) buttonText = '中央パネル（50vw）';
 
             const button = controlsEl.createEl('button', { text: buttonText });
             button.dataset.mode = modeClass;
             button.onClickEvent(async () => {
                 this.applyMode(modeClass);
-                this.plugin.settings.defaultMode = modeClass; // 設定に保存
-                await this.plugin.saveSettings();
+                const boardToUpdate = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
+                if (boardToUpdate) {
+                    boardToUpdate.defaultMode = modeClass;
+                    await this.plugin.saveSettings();
+                }
             });
             this.modeButtons.push(button);
         });
@@ -95,12 +135,13 @@ export class WidgetBoardModal extends Modal {
         container.empty();
         this.uiWidgetReferences = []; // 既存の参照をクリア
 
-        if (!this.plugin.settings.widgets || this.plugin.settings.widgets.length === 0) {
-            container.createEl('p', {text: '表示するウィジェットがありません。プラグイン設定でウィジェットを追加してください。'});
+        const widgetsToLoad = this.currentBoardConfig.widgets;
+        if (!widgetsToLoad || widgetsToLoad.length === 0) {
+            container.createEl('p', {text: 'このボードに表示するウィジェットがありません。プラグイン設定でウィジェットを追加してください。'});
             return;
         }
 
-        this.plugin.settings.widgets.forEach(widgetConfig => {
+        widgetsToLoad.forEach(widgetConfig => {
             // registeredWidgetImplementations には、各ウィジェットタイプの「シングルトン」インスタンスが格納されている
             const widgetInstanceController = registeredWidgetImplementations.get(widgetConfig.type);
             
