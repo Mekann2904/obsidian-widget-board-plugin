@@ -381,3 +381,64 @@
     color: var(--text-faint);
     font-size: 12px;
 }
+
+/* テーマ切り替えウィジェット */
+.theme-switcher-widget .widget-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+}
+.theme-switcher-current {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+.theme-switcher-select {
+    font-size: 15px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-secondary);
+    color: var(--text-normal);
+}
+.theme-switcher-apply {
+    font-size: 14px;
+    padding: 4px 14px;
+    border-radius: 4px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.theme-switcher-apply:hover {
+    background: var(--interactive-accent-hover);
+}
+
+.theme-switcher-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+}
+.theme-switcher-item {
+    padding: 7px 12px;
+    margin-bottom: 4px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 15px;
+    color: var(--text-normal);
+    background: var(--background-secondary);
+    transition: background 0.15s, color 0.15s;
+}
+.theme-switcher-item:hover {
+    background: var(--interactive-accent-hover);
+    color: var(--text-on-accent);
+}
+.theme-switcher-item.active {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    font-weight: bold;
+}

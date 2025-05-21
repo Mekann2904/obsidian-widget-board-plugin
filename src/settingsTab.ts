@@ -157,6 +157,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         createAddButtonToBoard("メモ追加", "memo", DEFAULT_MEMO_SETTINGS);
         createAddButtonToBoard("カレンダー追加", "calendar", DEFAULT_CALENDAR_SETTINGS);
         createAddButtonToBoard("最近編集したノート", "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS);
+        createAddButtonToBoard("テーマ切り替え", "theme-switcher", {});
         const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list-for-board' });
         this.renderWidgetListForBoard(widgetListEl, board);
     }
