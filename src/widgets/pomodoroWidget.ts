@@ -195,7 +195,26 @@ export class PomodoroWidget implements WidgetImplementation {
         this.nextButton.onClickEvent(() => this.skipToNextSessionConfirm());
         
         // --- メモウィジェットを生成 ---
-        this.memoWidget = new PomodoroMemoWidget(app, contentEl, { memoContent: this.currentSettings.memoContent });
+        this.memoWidget = new PomodoroMemoWidget(app, contentEl, { memoContent: this.currentSettings.memoContent }, async (newMemo: string) => {
+            this.currentSettings.memoContent = newMemo;
+            if (this.config && this.config.settings) {
+                this.config.settings.memoContent = newMemo;
+            }
+            // グローバル設定（plugin.settings）にも反映
+            if (this.plugin && this.plugin.settings && Array.isArray(this.plugin.settings.boards)) {
+                const board = this.plugin.settings.boards.find(b => b.widgets?.some(w => w.id === this.config.id));
+                if (board) {
+                    const widget = board.widgets.find(w => w.id === this.config.id);
+                    if (widget && widget.settings) {
+                        widget.settings.memoContent = newMemo;
+                    }
+                }
+            }
+            if (this.plugin && typeof this.plugin.saveSettings === 'function') {
+                await this.plugin.saveSettings();
+            }
+            this.updateMemoEditUI();
+        });
 
         if (!this.initialized) {
             this.resetTimerState(this.currentPomodoroSet, true); 
@@ -460,6 +479,10 @@ export class PomodoroWidget implements WidgetImplementation {
             this.currentAudioElement.pause(); this.currentAudioElement.src = ""; this.currentAudioElement = null;
         }
         (this.constructor as typeof PomodoroWidget).widgetInstances.delete(this.config?.id);
+        // メモ編集中で未保存内容があれば保存
+        if (this.memoWidget && this.memoWidget.isEditing) {
+            this.memoWidget.saveChanges();
+        }
     }
     
     public async updateExternalSettings(newSettingsFromPlugin: Partial<PomodoroSettings>, widgetId?: string) {

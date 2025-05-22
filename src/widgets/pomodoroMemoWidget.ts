@@ -15,11 +15,13 @@ export class PomodoroMemoWidget {
     private cancelMemoButtonEl: HTMLButtonElement;
     private isEditingMemo: boolean = false;
     private settings: PomodoroMemoSettings;
+    private onSave: ((newMemo: string) => void) | null = null;
 
-    constructor(app: App, parentEl: HTMLElement, settings: PomodoroMemoSettings) {
+    constructor(app: App, parentEl: HTMLElement, settings: PomodoroMemoSettings, onSave?: (newMemo: string) => void) {
         this.app = app;
         this.settings = settings;
         this.containerEl = parentEl.createDiv({ cls: 'pomodoro-memo-container' });
+        this.onSave = onSave || null;
         this.render();
     }
 
@@ -63,8 +65,10 @@ export class PomodoroMemoWidget {
         this.memoEditContainerEl.style.display = this.isEditingMemo ? 'flex' : 'none';
         this.editMemoButtonEl.style.display = this.isEditingMemo ? 'none' : '';
         if (this.isEditingMemo) {
-            this.memoEditAreaEl.value = this.settings.memoContent || '';
-            this.memoEditAreaEl.focus();
+            if (document.activeElement !== this.memoEditAreaEl) {
+                this.memoEditAreaEl.value = this.settings.memoContent || '';
+                this.memoEditAreaEl.focus();
+            }
         } else {
             this.renderMemo(this.settings.memoContent);
         }
@@ -72,15 +76,24 @@ export class PomodoroMemoWidget {
 
     private enterMemoEditMode() {
         this.isEditingMemo = true;
+        (window as any).__WB_MEMO_EDITING__ = true;
         this.updateMemoEditUI();
     }
 
     private async saveMemoChanges() {
         const newMemo = this.memoEditAreaEl.value;
         this.isEditingMemo = false;
+        (window as any).__WB_MEMO_EDITING__ = false;
         if (newMemo !== (this.settings.memoContent || '')) {
             this.settings.memoContent = newMemo;
-            // TODO: 永続化処理（親からコールバックで受け取る or 独自に保存）
+            if (typeof this.onSave === 'function') {
+                try {
+                    await this.onSave(newMemo);
+                } catch (e) {
+                    new Notice('メモの保存に失敗しました');
+                    console.error(e);
+                }
+            }
             new Notice('メモを保存しました');
         }
         this.updateMemoEditUI();
@@ -88,6 +101,7 @@ export class PomodoroMemoWidget {
 
     private cancelMemoEditMode() {
         this.isEditingMemo = false;
+        (window as any).__WB_MEMO_EDITING__ = false;
         this.updateMemoEditUI();
     }
 
@@ -96,6 +110,7 @@ export class PomodoroMemoWidget {
     }
 
     public setMemoContent(content: string) {
+        if (this.isEditingMemo) return;
         this.settings.memoContent = content;
         this.updateMemoEditUI();
     }

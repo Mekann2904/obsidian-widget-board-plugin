@@ -136,6 +136,19 @@ export class WidgetBoardModal {
         // モードボタンのアクティブ状態を更新
         this.updateModeButtonsActiveState();
 
+        // 検索バーinputへのfocusガード
+        setTimeout(() => {
+            const searchInput = this.contentEl.querySelector('.wb-page-search-bar-input') as HTMLInputElement | null;
+            if (searchInput) {
+                searchInput.addEventListener('focus', (e) => {
+                    if ((window as any).__WB_MEMO_EDITING__) {
+                        e.preventDefault();
+                        searchInput.blur();
+                    }
+                });
+            }
+        }, 0);
+
         // 開くときのアニメーション用クラス（requestAnimationFrameで若干遅延させる）
         requestAnimationFrame(() => {
             modalEl.classList.add('is-open');
