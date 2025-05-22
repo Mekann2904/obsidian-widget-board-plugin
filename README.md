@@ -120,7 +120,7 @@ Obsidian Widget Board Pluginの導入方法は主に2つあります。
 ### 1. GitHubリリースから手動インストール
 
 1. [GitHubリリースページ](https://github.com/Mekann2904/obsidian-widget-board-plugin/releases)から`obsidian-widget-board-plugin.zip`をダウンロードします。
-2. zipファイルを解凍し、中身（`main.js`, `manifest.json`, `styles.css`など）をObsidianのプラグインフォルダ（`<Vault>/.obsidian/plugins/obsidian-widget-board-plugin/`）にコピーします。
+2. zipファイルを解凍し、Obsidianのプラグインフォルダ（`<Vault>/.obsidian/plugins/obsidian-widget-board-plugin/`）に移動させます。
 3. Obsidianの設定画面から本プラグインを有効化してください。
 
 ### 2. BRATプラグインを使ってインストール（おすすめ）
