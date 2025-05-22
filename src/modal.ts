@@ -208,7 +208,9 @@ export class WidgetBoardModal {
                     await this.plugin.saveSettings();
                 }
                 // ボタンのアクティブ状態更新
-                Array.from(customWidthAnchorBtnContainer.children).forEach(btn => btn.classList.remove('active'));
+                if (customWidthAnchorBtnContainer) {
+                    Array.from(customWidthAnchorBtnContainer.children).forEach(btn => btn.classList.remove('active'));
+                }
                 anchorBtn.classList.add('active');
                 this.applyMode(WidgetBoardModal.MODES.CUSTOM_WIDTH);
             };
