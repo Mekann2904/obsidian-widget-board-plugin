@@ -147,52 +147,82 @@ export class WidgetBoardModal {
         };
         controlsEl.classList.remove('is-visible'); // 初期は非表示
 
-        // カスタム幅基準位置ボタンUI（forEachより前に生成し、nullにならないようにする）
+        // 表示モード切替ボタンをグループ化してラベル付きで並べる
+        const modeGroups = [
+            {
+                label: '左パネル',
+                modes: [
+                    WidgetBoardModal.MODES.LEFT_THIRD,
+                    WidgetBoardModal.MODES.LEFT_HALF,
+                    WidgetBoardModal.MODES.LEFT_TWO_THIRD,
+                ]
+            },
+            {
+                label: '中央パネル',
+                modes: [
+                    WidgetBoardModal.MODES.CENTER_THIRD,
+                    WidgetBoardModal.MODES.CENTER_HALF,
+                ]
+            },
+            {
+                label: '右パネル',
+                modes: [
+                    WidgetBoardModal.MODES.RIGHT_THIRD,
+                    WidgetBoardModal.MODES.RIGHT_HALF,
+                    WidgetBoardModal.MODES.RIGHT_TWO_THIRD,
+                ]
+            },
+            {
+                label: 'カスタム',
+                modes: [
+                    WidgetBoardModal.MODES.CUSTOM_WIDTH
+                ]
+            }
+        ];
         let customWidthAnchorBtnContainer: HTMLElement;
         customWidthAnchorBtnContainer = controlsEl.createDiv({cls: 'custom-width-anchor-btns'});
         customWidthAnchorBtnContainer.style.display = 'none'; // 初期は非表示
 
-        // 表示モード切替ボタンの順序を「左33→左50→左66→中央→右66→右50→右33→カスタム幅」に
-        const modeButtonOrder = [
-            WidgetBoardModal.MODES.LEFT_THIRD,
-            WidgetBoardModal.MODES.LEFT_HALF,
-            WidgetBoardModal.MODES.LEFT_TWO_THIRD,
-            WidgetBoardModal.MODES.CENTER_THIRD,
-            WidgetBoardModal.MODES.CENTER_HALF,
-            WidgetBoardModal.MODES.RIGHT_TWO_THIRD,
-            WidgetBoardModal.MODES.RIGHT_HALF,
-            WidgetBoardModal.MODES.RIGHT_THIRD,
-            WidgetBoardModal.MODES.CUSTOM_WIDTH
-        ];
-        modeButtonOrder.forEach(modeClass => {
-            let buttonText = '';
-            if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
-            else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = '右パネル（50vw）';
-            else if (modeClass === WidgetBoardModal.MODES.RIGHT_TWO_THIRD) buttonText = '右パネル（66vw）';
-            else if (modeClass === WidgetBoardModal.MODES.LEFT_TWO_THIRD) buttonText = '左パネル（66vw）';
-            else if (modeClass === WidgetBoardModal.MODES.LEFT_HALF) buttonText = '左パネル（50vw）';
-            else if (modeClass === WidgetBoardModal.MODES.LEFT_THIRD) buttonText = '左パネル（33vw）';
-            else if (modeClass === WidgetBoardModal.MODES.CENTER_HALF) buttonText = '中央パネル（50vw）';
-            else if (modeClass === WidgetBoardModal.MODES.CENTER_THIRD) buttonText = '中央パネル（33vw）';
-            else if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) buttonText = 'カスタム幅';
+        modeGroups.forEach((group, groupIdx) => {
+            // グループ用div
+            const groupDiv = controlsEl.createDiv({ cls: 'wb-mode-group' });
+            // グループラベル
+            groupDiv.createEl('span', { text: group.label, cls: 'wb-mode-group-label' });
+            // ボタン
+            group.modes.forEach(modeClass => {
+                let buttonText = '';
+                if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
+                else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = '右パネル（50vw）';
+                else if (modeClass === WidgetBoardModal.MODES.RIGHT_TWO_THIRD) buttonText = '右パネル（66vw）';
+                else if (modeClass === WidgetBoardModal.MODES.LEFT_TWO_THIRD) buttonText = '左パネル（66vw）';
+                else if (modeClass === WidgetBoardModal.MODES.LEFT_HALF) buttonText = '左パネル（50vw）';
+                else if (modeClass === WidgetBoardModal.MODES.LEFT_THIRD) buttonText = '左パネル（33vw）';
+                else if (modeClass === WidgetBoardModal.MODES.CENTER_HALF) buttonText = '中央パネル（50vw）';
+                else if (modeClass === WidgetBoardModal.MODES.CENTER_THIRD) buttonText = '中央パネル（33vw）';
+                else if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) buttonText = 'カスタム幅';
 
-            const button = controlsEl.createEl('button', { text: buttonText });
-            button.dataset.mode = modeClass;
-            button.onClickEvent(async () => {
-                this.applyMode(modeClass);
-                const boardToUpdate = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
-                if (boardToUpdate) {
-                    boardToUpdate.defaultMode = modeClass;
-                    await this.plugin.saveSettings();
-                }
-                // カスタム幅選択時は基準位置ボタンUIを表示
-                if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) {
-                    customWidthAnchorBtnContainer.style.display = '';
-                } else {
-                    customWidthAnchorBtnContainer.style.display = 'none';
-                }
+                const button = groupDiv.createEl('button', { text: buttonText });
+                button.dataset.mode = modeClass;
+                button.onClickEvent(async () => {
+                    this.applyMode(modeClass);
+                    const boardToUpdate = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
+                    if (boardToUpdate) {
+                        boardToUpdate.defaultMode = modeClass;
+                        await this.plugin.saveSettings();
+                    }
+                    // カスタム幅選択時は基準位置ボタンUIを表示
+                    if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) {
+                        customWidthAnchorBtnContainer.style.display = '';
+                    } else {
+                        customWidthAnchorBtnContainer.style.display = 'none';
+                    }
+                });
+                this.modeButtons.push(button);
             });
-            this.modeButtons.push(button);
+            // グループ間スペース
+            if (groupIdx < modeGroups.length - 1) {
+                controlsEl.createEl('span', { text: '', cls: 'wb-mode-group-gap' });
+            }
         });
         // カスタム幅基準位置ボタンUI
         const anchors: Array<{key: 'left'|'center'|'right', label: string}> = [

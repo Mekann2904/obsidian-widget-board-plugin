@@ -174,8 +174,7 @@
     display: none;
 }
 .wb-panel-controls.is-visible {
-    display: flex;
-    flex-wrap: wrap;
+    display: block;
 }
 .wb-panel-controls-toggle {
     position: absolute;
@@ -598,4 +597,22 @@
 
 .widget-board-panel-custom.no-transition {
   transition: none !important;
+}
+
+.wb-mode-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.wb-mode-group-label {
+  margin-right: 8px;
+  font-weight: bold;
+  min-width: 70px;
+  margin-top: 0;
+  display: inline-block;
+}
+.wb-mode-group-gap {
+  display: inline-block;
+  width: 16px;
 }
