@@ -640,7 +640,7 @@ export class PomodoroWidget implements WidgetImplementation {
                 content = JSON.stringify(allLogs, null, 2);
             } else if (format === 'markdown') {
                 content = '| date | start | end | memo |\n|---|---|---|---|\n' + allLogs.map(log => 
-                    `| ${log.date} | ${log.start} | ${log.end} | ${(log.memo || '').replace(/\|/g, '\\|')} |`
+                    `| ${log.date} | ${log.start} | ${log.end} | ${(log.memo || '').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>')} |`
                 ).join('\n');
             }
             await this.app.vault.adapter.write(filePath, content);
