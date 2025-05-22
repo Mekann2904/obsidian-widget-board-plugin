@@ -147,6 +147,11 @@ export class WidgetBoardModal {
         };
         controlsEl.classList.remove('is-visible'); // 初期は非表示
 
+        // カスタム幅基準位置ボタンUI（forEachより前に生成し、nullにならないようにする）
+        let customWidthAnchorBtnContainer: HTMLElement;
+        customWidthAnchorBtnContainer = controlsEl.createDiv({cls: 'custom-width-anchor-btns'});
+        customWidthAnchorBtnContainer.style.display = 'none'; // 初期は非表示
+
         // 表示モード切替ボタンの順序を「左33→左50→左66→中央→右66→右50→右33→カスタム幅」に
         const modeButtonOrder = [
             WidgetBoardModal.MODES.LEFT_THIRD,
@@ -159,7 +164,6 @@ export class WidgetBoardModal {
             WidgetBoardModal.MODES.RIGHT_THIRD,
             WidgetBoardModal.MODES.CUSTOM_WIDTH
         ];
-        let customWidthAnchorBtnContainer: HTMLElement | null = null;
         modeButtonOrder.forEach(modeClass => {
             let buttonText = '';
             if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
@@ -182,16 +186,15 @@ export class WidgetBoardModal {
                     await this.plugin.saveSettings();
                 }
                 // カスタム幅選択時は基準位置ボタンUIを表示
-                if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH && customWidthAnchorBtnContainer) {
+                if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) {
                     customWidthAnchorBtnContainer.style.display = '';
-                } else if (customWidthAnchorBtnContainer) {
+                } else {
                     customWidthAnchorBtnContainer.style.display = 'none';
                 }
             });
             this.modeButtons.push(button);
         });
         // カスタム幅基準位置ボタンUI
-        customWidthAnchorBtnContainer = controlsEl.createDiv({cls: 'custom-width-anchor-btns'});
         const anchors: Array<{key: 'left'|'center'|'right', label: string}> = [
             {key: 'left', label: '左'},
             {key: 'center', label: '中央'},
@@ -215,12 +218,6 @@ export class WidgetBoardModal {
                 this.applyMode(WidgetBoardModal.MODES.CUSTOM_WIDTH);
             };
         });
-        // 初期表示制御
-        if (this.currentMode === WidgetBoardModal.MODES.CUSTOM_WIDTH) {
-            customWidthAnchorBtnContainer.style.display = '';
-        } else {
-            customWidthAnchorBtnContainer.style.display = 'none';
-        }
         
         // ウィジェットコンテナ
         const widgetContainerEl = contentEl.createDiv({ cls: 'wb-widget-container' });
