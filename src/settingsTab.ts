@@ -24,6 +24,7 @@ const WIDGET_TYPE_DISPLAY_NAMES: { [key: string]: string } = {
 export class WidgetBoardSettingTab extends PluginSettingTab {
     plugin: WidgetBoardPlugin;
     private selectedBoardId: string | null = null;
+    private boardDropdownEl: HTMLSelectElement | null = null;
 
     constructor(app: App, plugin: WidgetBoardPlugin) {
         super(app, plugin);
@@ -54,12 +55,14 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 body.style.display = 'none'; // 初期状態で閉じていればbodyも非表示
             }
 
-            header.onclick = () => {
+            header.addEventListener('click', (event) => {
+                // ヘッダー自身がクリックされた場合のみ開閉
+                if (event.currentTarget !== event.target) return;
                 const isOpen = acc.classList.toggle('wb-accordion-open');
                 header.classList.toggle('wb-accordion-open');
                 // icon.setText(isOpen ? '▼' : '▶'); // アイコン切り替え
                 body.style.display = isOpen ? '' : 'none';
-            };
+            });
             return { acc, header, body };
         };
 
@@ -185,18 +188,19 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
                     dropdown.setValue(this.selectedBoardId || this.plugin.settings.boards[0].id);
                 }
-
+                // ここで参照を保存
+                this.boardDropdownEl = dropdown.selectEl;
                 dropdown.onChange(value => {
-                        this.selectedBoardId = value;
-                        this.plugin.settings.lastOpenedBoardId = value;
-                        this.plugin.saveSettings();
-                        // ボード詳細設定セクションの内容を更新
-                        const selectedBoardSettingsContainer = this.containerEl.querySelector('.selected-board-settings-section');
-                        if (selectedBoardSettingsContainer) {
-                             this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement);
-                        }
-                        // ボード詳細設定アコーディオンを自動で開かない
-                    });
+                    this.selectedBoardId = value;
+                    this.plugin.settings.lastOpenedBoardId = value;
+                    this.plugin.saveSettings();
+                    // ボード詳細設定セクションの内容を更新
+                    const selectedBoardSettingsContainer = this.containerEl.querySelector('.selected-board-settings-section');
+                    if (selectedBoardSettingsContainer) {
+                        this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement);
+                    }
+                    // ボード詳細設定アコーディオンを自動で開かない
+                });
             });
 
         new Setting(containerEl)
@@ -212,10 +216,22 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         widgets: []
                     };
                     this.plugin.settings.boards.push(newBoard);
-                    this.selectedBoardId = newBoardId; // 新しく追加したボードを選択状態にする
+                    this.selectedBoardId = newBoardId;
                     this.plugin.settings.lastOpenedBoardId = newBoardId;
                     await this.plugin.saveSettings();
-                    this.display(); // 設定タブ全体を再描画して変更を反映
+                    // boardDropdownElを直接操作
+                    if (this.boardDropdownEl) {
+                        const option = document.createElement('option');
+                        option.value = newBoardId;
+                        option.textContent = newBoard.name;
+                        this.boardDropdownEl.appendChild(option);
+                        this.boardDropdownEl.value = newBoardId;
+                    }
+                    // ボード詳細設定セクションだけ再描画
+                    const selectedBoardSettingsContainer = this.containerEl.querySelector('.selected-board-settings-section');
+                    if (selectedBoardSettingsContainer) {
+                        this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement);
+                    }
                 }));
     }
 
@@ -244,7 +260,14 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 .onChange(async (value) => {
                     board.name = value;
                     await this.plugin.saveSettings();
-                    this.display(); // ボード名変更はドロップダウンも更新するため再描画
+                    // boardDropdownElを直接操作
+                    if (this.boardDropdownEl) {
+                        for (const option of Array.from(this.boardDropdownEl.options)) {
+                            if (option.value === board.id) {
+                                option.textContent = value;
+                            }
+                        }
+                    }
                 }));
         new Setting(containerEl)
             .setName('デフォルト表示モード')
@@ -275,7 +298,20 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     this.selectedBoardId = newSelectedBoardId;
                     this.plugin.settings.lastOpenedBoardId = newSelectedBoardId === null ? undefined : newSelectedBoardId;
                     await this.plugin.saveSettings();
-                    this.display(); // 設定タブ全体を再描画
+                    // boardDropdownElを直接操作
+                    if (this.boardDropdownEl) {
+                        for (const option of Array.from(this.boardDropdownEl.options)) {
+                            if (option.value === board.id) {
+                                this.boardDropdownEl.removeChild(option);
+                            }
+                        }
+                        this.boardDropdownEl.value = this.selectedBoardId || '';
+                    }
+                    // ボード詳細設定セクションだけ再描画
+                    const selectedBoardSettingsContainer = this.containerEl.querySelector('.selected-board-settings-section');
+                    if (selectedBoardSettingsContainer) {
+                        this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement);
+                    }
                 }));
 
         containerEl.createEl('h4', { text: 'ウィジェット管理' });
@@ -391,11 +427,14 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 const body = acc.createDiv({ cls: 'wb-accordion-body' });
                 body.style.display = 'none';
 
-                header.onclick = () => {
+                header.addEventListener('click', (event) => {
+                    // ヘッダー自身がクリックされた場合のみ開閉
+                    if (event.currentTarget !== event.target) return;
                     const isOpen = acc.classList.toggle('wb-accordion-open');
                     header.classList.toggle('wb-accordion-open');
+                    // icon.setText(isOpen ? '▼' : '▶'); // アイコン切り替え
                     body.style.display = isOpen ? '' : 'none';
-                };
+                });
                 return { acc, header, body };
             };
 

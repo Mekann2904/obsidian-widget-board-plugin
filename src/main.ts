@@ -19,12 +19,7 @@ export default class WidgetBoardPlugin extends Plugin {
 
         // ボードごとにコマンドを動的登録
         this.settings.boards.forEach(board => {
-            this.addCommand({
-                id: `open-widget-board-${board.id}`,
-                name: `ウィジェットボードを開く: ${board.name}`,
-                callback: () => this.openWidgetBoardById(board.id)
-            });
-            // トグルコマンドも追加
+            // トグルコマンドのみ追加
             this.addCommand({
                 id: `toggle-widget-board-${board.id}`,
                 name: `ウィジェットボードをトグル: ${board.name}`,
