@@ -112,6 +112,48 @@
     opacity: 1 !important;
 }
 
+/* カスタム幅モード（右基準） */
+.widget-board-panel-custom.custom-width-right {
+    right: calc(-1 * var(--custom-width, 40vw)) !important;
+    left: auto !important;
+    top: 0 !important;
+    opacity: 0;
+}
+.widget-board-panel-custom.custom-width-right.is-open {
+    right: 0 !important;
+    left: auto !important;
+    top: 0 !important;
+    opacity: 1 !important;
+}
+/* カスタム幅モード（左基準） */
+.widget-board-panel-custom.custom-width-left {
+    left: calc(-1 * var(--custom-width, 40vw)) !important;
+    right: auto !important;
+    top: 0 !important;
+    opacity: 0;
+}
+.widget-board-panel-custom.custom-width-left.is-open {
+    left: 0 !important;
+    right: auto !important;
+    top: 0 !important;
+    opacity: 1 !important;
+}
+/* カスタム幅モード（中央基準） */
+.widget-board-panel-custom.custom-width-center {
+    left: 50% !important;
+    right: auto !important;
+    top: 100vh !important;
+    transform: translateX(-50%) !important;
+    opacity: 0;
+}
+.widget-board-panel-custom.custom-width-center.is-open {
+    left: 50% !important;
+    right: auto !important;
+    top: 0 !important;
+    transform: translateX(-50%) !important;
+    opacity: 1 !important;
+}
+
 /* Panel Header and Controls */
 .wb-panel-header {
     display: flex;
@@ -133,6 +175,7 @@
 }
 .wb-panel-controls.is-visible {
     display: flex;
+    flex-wrap: wrap;
 }
 .wb-panel-controls-toggle {
     position: absolute;
@@ -536,4 +579,23 @@
   height: 4px;
   background: var(--divider-color, #888);
   border-radius: 2px;
+}
+
+.wb-panel-resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+    z-index: 20;
+    background: transparent;
+    transition: background 0.2s;
+}
+.wb-panel-resize-handle:hover {
+    background: rgba(120,120,120,0.15);
+}
+
+.widget-board-panel-custom.no-transition {
+  transition: none !important;
 }

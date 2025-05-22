@@ -281,14 +281,66 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 dropdown.addOption(WidgetBoardModal.MODES.RIGHT_THIRD, '右パネル（33vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, '右パネル（50vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.RIGHT_TWO_THIRD, '右パネル（66vw）');
+                dropdown.addOption('custom-width', 'カスタム幅（vw）');
                 dropdown.setValue(board.defaultMode)
                     .onChange(async (value) => {
-                        if (Object.values(WidgetBoardModal.MODES).includes(value as any)) {
+                        if (Object.values(WidgetBoardModal.MODES).includes(value as any) || value === 'custom-width') {
                             board.defaultMode = value;
                             await this.plugin.saveSettings();
+                            // カスタム幅選択時は下の入力欄を表示
+                            if (value === 'custom-width' && customWidthSettingEl) {
+                                customWidthSettingEl.style.display = '';
+                            } else if (customWidthSettingEl) {
+                                customWidthSettingEl.style.display = 'none';
+                            }
                         }
                     });
             });
+        // カスタム幅入力欄
+        let customWidthSettingEl: HTMLElement | null = null;
+        const customWidthSetting = new Setting(containerEl)
+            .setName('カスタム幅（vw）')
+            .setDesc('パネルの幅をvw単位で指定します（例: 40）')
+            .addText(text => {
+                text.setPlaceholder('例: 40')
+                    .setValue(board.customWidth ? String(board.customWidth) : '')
+                    .onChange(async (v) => {
+                        const n = parseFloat(v);
+                        if (!isNaN(n)) {
+                            board.customWidth = n;
+                            await this.plugin.saveSettings();
+                            if (n <= 0 || n > 100) {
+                                new Notice('1〜100の範囲でvwを指定することを推奨します。');
+                            }
+                        } else {
+                            new Notice('数値を入力してください（vw単位）');
+                        }
+                    });
+            });
+        customWidthSettingEl = customWidthSetting.settingEl;
+        // カスタム幅基準位置ドロップダウン
+        let customWidthAnchorSettingEl: HTMLElement | null = null;
+        const customWidthAnchorSetting = new Setting(containerEl)
+            .setName('カスタム幅の基準位置')
+            .setDesc('カスタム幅パネルの表示基準（左・中央・右）')
+            .addDropdown(dropdown => {
+                dropdown.addOption('right', '右（デフォルト）');
+                dropdown.addOption('center', '中央');
+                dropdown.addOption('left', '左');
+                dropdown.setValue(board.customWidthAnchor || 'right')
+                    .onChange(async (value) => {
+                        board.customWidthAnchor = value as 'left' | 'center' | 'right';
+                        await this.plugin.saveSettings();
+                    });
+            });
+        customWidthAnchorSettingEl = customWidthAnchorSetting.settingEl;
+        // 初期表示制御
+        if (board.defaultMode !== 'custom-width' && customWidthSettingEl) {
+            customWidthSettingEl.style.display = 'none';
+        }
+        if (board.defaultMode !== 'custom-width' && customWidthAnchorSettingEl) {
+            customWidthAnchorSettingEl.style.display = 'none';
+        }
         new Setting(containerEl)
             .addButton(button => button
                 .setButtonText('このボードを削除')

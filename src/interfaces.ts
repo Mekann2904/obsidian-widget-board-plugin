@@ -24,6 +24,8 @@ export interface BoardConfiguration {
     name: string;
     defaultMode: string;
     widgets: WidgetConfig[];
+    customWidth?: number;
+    customWidthAnchor?: 'left' | 'center' | 'right';
 }
 
 // --- プラグイン全体の新しいトップレベル設定インターフェース ---
