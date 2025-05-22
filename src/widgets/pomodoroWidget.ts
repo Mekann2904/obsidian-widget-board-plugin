@@ -1,10 +1,13 @@
 // src/widgets/pomodoroWidget.ts
-import { App, MarkdownRenderer, Notice, setIcon } from 'obsidian';
+import { App, MarkdownRenderer, Notice, setIcon, TFolder } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main'; // main.ts の WidgetBoardPlugin クラスをインポート
+import { PomodoroMemoWidget, PomodoroMemoSettings } from './pomodoroMemoWidget';
 
 // --- 通知音の種類の型定義 ---
 export type PomodoroSoundType = 'off' | 'default_beep' | 'bell' | 'chime';
+// --- エクスポート形式の型定義 ---
+export type PomodoroExportFormat = 'csv' | 'json' | 'markdown' | 'none';
 
 // --- ポモドーロウィジェット設定インターフェース ---
 export interface PomodoroSettings {
@@ -13,16 +16,20 @@ export interface PomodoroSettings {
     longBreakMinutes: number;
     pomodorosUntilLongBreak: number;
     backgroundImageUrl?: string;
-    memoContent?: string; // ★ このメモ内容の保存が問題
+    memoContent?: string;
     notificationSound: PomodoroSoundType;
     notificationVolume: number;
-    // 以下の2つはユーザーが提供したコードに含まれていたが、
-    // notificationSoundで種類を管理するなら重複する可能性あり。
-    // notificationSoundTypeはPomodoroSoundTypeと実質同じ役割。
-    // customSoundPathは、もし 'custom' を PomodoroSoundType に追加する場合に必要。
-    // 今回の修正では、notificationSound を 'off', 'default_beep', 'bell', 'chime' で管理する前提で進めます。
-    // notificationSoundType?: 'default_beep' | 'custom'; // PomodoroSoundTypeで代替
-    // customSoundPath?: string; // notificationSound が 'custom' の場合に参照
+    exportFormat?: PomodoroExportFormat;
+    pomodorosCompletedInCycle?: number;
+    currentPomodoroSet?: 'work' | 'shortBreak' | 'longBreak';
+}
+
+// --- セッション記録用型定義 ---
+export interface SessionLog {
+    date: string; // YYYY-MM-DD
+    start: string; // HH:mm
+    end: string;   // HH:mm
+    memo: string;
 }
 
 // --- ポモドーロウィジェットデフォルト設定 ---
@@ -34,17 +41,16 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
     backgroundImageUrl: '',
     memoContent: '',
     notificationSound: 'default_beep',
-    notificationVolume: 0.2, // 0.0 から 1.0 の値
-    // notificationSoundType: 'default_beep', // PomodoroSoundTypeで管理するためコメントアウト
-    // customSoundPath: '',
+    notificationVolume: 0.2,
+    exportFormat: 'none',
 };
 
 // --- PomodoroWidget クラス ---
 export class PomodoroWidget implements WidgetImplementation {
     id = 'pomodoro';
-    private config!: WidgetConfig; // このインスタンスが作成されたときのconfig（コピーの可能性あり）
+    private config!: WidgetConfig;
     private app!: App;
-    private plugin!: WidgetBoardPlugin; // WidgetBoardPlugin のインスタンスへの参照
+    private plugin!: WidgetBoardPlugin;
 
     private timerId: number | null = null;
     private remainingTime: number = 0;
@@ -61,29 +67,22 @@ export class PomodoroWidget implements WidgetImplementation {
     private resetButton!: HTMLButtonElement;
     private nextButton!: HTMLButtonElement;
 
-    // メモ関連のUI要素
-    private memoContainerEl!: HTMLElement;
-    private memoDisplayEl!: HTMLElement;
-    private memoEditContainerEl!: HTMLElement;
-    private memoEditAreaEl!: HTMLTextAreaElement;
-    private editMemoButtonEl!: HTMLButtonElement;
-    private saveMemoButtonEl!: HTMLButtonElement;
-    private cancelMemoButtonEl!: HTMLButtonElement;
-    private isEditingMemo: boolean = false;
+    private memoWidget: PomodoroMemoWidget | null = null;
 
-    private currentSettings!: PomodoroSettings; // このインスタンスの現在の作業用設定
-    private lastConfiguredId?: string; // 最後に設定されたウィジェットID（再設定判定用）
+    private currentSettings!: PomodoroSettings;
+    private lastConfiguredId?: string;
     private audioContext: AudioContext | null = null;
     private currentAudioElement: HTMLAudioElement | null = null;
 
-    // ウィジェットインスタンス管理のための静的マップ (MemoWidgetと同様のパターン)
     private static widgetInstances: Map<string, PomodoroWidget> = new Map();
 
+    private sessionLogs: SessionLog[] = [];
+    private currentSessionStartTime: Date | null = null;
+    private currentSessionEndTime: Date | null = null;
 
     constructor() {
         this.initialized = false;
         this.currentPomodoroSet = 'work';
-        this.isEditingMemo = false;
     }
 
     public getWidgetId(): string | undefined {
@@ -109,115 +108,27 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private async renderMemo(markdownContent?: string) {
-        if (!this.memoDisplayEl) return;
-        this.memoDisplayEl.empty();
-        const trimmedContent = markdownContent?.trim();
-        if (trimmedContent && !this.isEditingMemo) {
-            this.memoDisplayEl.style.display = 'block'; // または ''
-            await MarkdownRenderer.render(this.app, trimmedContent, this.memoDisplayEl, this.config.id, this.plugin);
-        } else if (!this.isEditingMemo) {
-            this.memoDisplayEl.style.display = 'none';
-        }
+        if (!this.memoWidget) return;
+        this.memoWidget.setMemoContent(markdownContent || '');
     }
 
     private updateMemoEditUI() {
-        if (!this.memoDisplayEl || !this.memoEditContainerEl || !this.editMemoButtonEl) return;
-        const hasMemoContent = this.currentSettings.memoContent && this.currentSettings.memoContent.trim() !== '';
-
-        this.memoDisplayEl.style.display = this.isEditingMemo ? 'none' : (hasMemoContent ? 'block' : 'none');
-        this.memoEditContainerEl.style.display = this.isEditingMemo ? 'flex' : 'none'; // 編集コンテナはflex
-        this.editMemoButtonEl.style.display = this.isEditingMemo ? 'none' : '';
-
-        if (this.isEditingMemo) {
-            if (this.memoEditAreaEl) this.memoEditAreaEl.focus();
-        } else {
-            this.renderMemo(this.currentSettings.memoContent);
-        }
+        if (!this.memoWidget) return;
+        this.memoWidget.updateUI();
     }
 
     private enterMemoEditMode() {
-        this.isEditingMemo = true;
-        if (this.memoEditAreaEl) {
-            this.memoEditAreaEl.value = this.currentSettings.memoContent || '';
-        }
-        this.updateMemoEditUI();
+        this.memoWidget?.enterEditMode();
     }
 
-    // ★★★ メモ保存ロジックの修正 (MemoWidgetと同様の堅牢な保存方法) ★★★
     private async saveMemoChanges() {
-        const widgetIdLog = `[PomodoroWidget ${this.config.id}]`; // ログ用ID
-
-        if (!this.memoEditAreaEl) {
-            console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: memoEditAreaEl is null!`);
-            this.isEditingMemo = false;
-            this.updateMemoEditUI();
-            return;
-        }
-
-        const newMemo = this.memoEditAreaEl.value;
-        this.isEditingMemo = false; // 先に編集モードを終了
-
-        if (newMemo !== (this.currentSettings.memoContent || '')) {
-            console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Content WILL change. Old: "${this.currentSettings.memoContent}", New: "${newMemo}"`);
-            this.currentSettings.memoContent = newMemo; // 1. インスタンスの作業用設定を更新
-
-            // 2. プラグインの永続化データ内の該当ウィジェット設定を「直接」更新
-            let settingsUpdatedInGlobalStore = false;
-            let currentModalBoardId: string | undefined = undefined;
-            if (this.plugin.widgetBoardModals) {
-                for (const [boardId, modal] of this.plugin.widgetBoardModals.entries()) {
-                    if (modal.isOpen) {
-                        currentModalBoardId = boardId;
-                        break;
-                    }
-                }
-            }
-
-            if (!currentModalBoardId) {
-                console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Critical - currentModalBoardId is not available.`);
-                new Notice("エラー: 現在のボードを特定できず、メモを保存できませんでした。", 7000);
-                this.updateMemoEditUI();
-                return;
-            }
-
-            // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Targeting board ID '${currentModalBoardId}' in global plugin settings.`);
-            const boardInGlobalSettings = this.plugin.settings.boards.find(b => b.id === currentModalBoardId);
-
-            if (boardInGlobalSettings) {
-                const widgetInGlobalSettings = boardInGlobalSettings.widgets.find(w => w.id === this.config.id);
-                if (widgetInGlobalSettings) {
-                    if (!widgetInGlobalSettings.settings) {
-                        // console.warn(`${widgetIdLog} SAVE_MEMO_CHANGES: widgetInGlobalSettings.settings was undefined for Pomodoro. Initializing.`);
-                        widgetInGlobalSettings.settings = { ...DEFAULT_POMODORO_SETTINGS }; // ポモドーロのデフォルトで初期化
-                    }
-                    // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: memoContent in global store (BEFORE update): "${widgetInGlobalSettings.settings.memoContent}"`);
-                    widgetInGlobalSettings.settings.memoContent = newMemo; // ★★★ 直接更新
-                    settingsUpdatedInGlobalStore = true;
-                    // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: memoContent in global store (AFTER update): "${widgetInGlobalSettings.settings.memoContent}"`);
-                } else {
-                    console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Pomodoro Widget with ID '${this.config.id}' NOT FOUND in global board settings for board '${boardInGlobalSettings.name}'.`);
-                }
-            } else {
-                console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Board with ID '${currentModalBoardId}' NOT FOUND in global plugin settings.`);
-            }
-
-            if (settingsUpdatedInGlobalStore) {
-                console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Calling this.plugin.saveSettings() to persist changes.`);
-                await this.plugin.saveSettings();
-                // new Notice(`ポモドーロメモ「${this.config.title || '無題'}」を保存しました。`);
-            } else {
-                console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Did not update global settings store due to lookup failure. Save not fully effective.`);
-                new Notice("ポモドーロメモの保存に失敗しました (データ不整合の可能性あり)。", 5000);
-            }
-        } else {
-            // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Memo content did not change. No save action taken.`);
-        }
-        this.updateMemoEditUI(); // UIを表示モードに更新 (renderMemoが呼ばれる)
+        if (!this.memoWidget) return;
+        await this.memoWidget.saveChanges();
+        this.saveRuntimeStateToSettings();
     }
 
     private cancelMemoEditMode() {
-        this.isEditingMemo = false;
-        this.updateMemoEditUI(); // 保存せずに表示モードに戻す (renderMemoが呼ばれる)
+        this.memoWidget?.cancelEditMode();
     }
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
@@ -230,21 +141,30 @@ export class PomodoroWidget implements WidgetImplementation {
         this.app = app;
         this.plugin = plugin;
 
-        if (!this.initialized || isReconfiguringForDifferentWidget) {
+        if (!this.initialized) {
             this.currentSettings = { ...DEFAULT_POMODORO_SETTINGS, ...(config.settings || {}) };
             this.pomodorosCompletedInCycle = 0;
             this.currentPomodoroSet = 'work';
             this.isRunning = false;
             if (this.timerId) clearInterval(this.timerId);
             this.timerId = null;
-            this.isEditingMemo = false;
+        } else if (isReconfiguringForDifferentWidget) {
+            this.currentSettings = { ...DEFAULT_POMODORO_SETTINGS, ...(config.settings || {}) };
+            this.pomodorosCompletedInCycle = 0;
+            this.currentPomodoroSet = 'work';
+            this.isRunning = false;
+            if (this.timerId) clearInterval(this.timerId);
+            this.timerId = null;
         } else {
-            // 既存インスタンスの設定を、渡されたconfig.settings (おそらく外部変更の結果) でマージ更新
             const newSettingsFromConfig = config.settings as Partial<PomodoroSettings> || {};
             this.currentSettings = { ...this.currentSettings, ...newSettingsFromConfig };
         }
-        // このインスタンスが参照するconfigオブジェクトのsettingsもcurrentSettingsを指すようにする
-        // (ただし、このconfig自体がグローバル設定のコピーである点に注意)
+        if (config.settings && typeof config.settings.pomodorosCompletedInCycle === 'number') {
+            this.pomodorosCompletedInCycle = config.settings.pomodorosCompletedInCycle;
+        }
+        if (config.settings && typeof config.settings.currentPomodoroSet === 'string') {
+            this.currentPomodoroSet = config.settings.currentPomodoroSet as any;
+        }
         config.settings = this.currentSettings;
 
         this.widgetEl = document.createElement('div');
@@ -256,13 +176,12 @@ export class PomodoroWidget implements WidgetImplementation {
         const titleEl = this.widgetEl.createEl('h4');
         titleEl.textContent = this.config.title || "ポモドーロタイマー";
         if (!this.config.title || this.config.title.trim() === "") {
-            titleEl.style.display = 'none'; // タイトルが空なら非表示 (CSSでマージン等も調整推奨)
+            titleEl.style.display = 'none';
         } else {
             titleEl.style.display = '';
         }
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
-        // Pomodoroのwidget-contentは中央揃えなどCSSでスタイルされている想定
         this.timeDisplayEl = contentEl.createDiv({ cls: 'pomodoro-time-display' });
         this.statusDisplayEl = contentEl.createDiv({ cls: 'pomodoro-status-display' });
         this.cycleDisplayEl = contentEl.createDiv({ cls: 'pomodoro-cycle-display' });
@@ -276,53 +195,19 @@ export class PomodoroWidget implements WidgetImplementation {
         this.resetButton.onClickEvent(() => this.resetCurrentTimerConfirm());
         this.nextButton.onClickEvent(() => this.skipToNextSessionConfirm());
         
-        // メモUIのセットアップ (Pomodoroウィジェット内のメモ)
-        this.memoContainerEl = contentEl.createDiv({ cls: 'pomodoro-memo-container' });
-        // CSSで .pomodoro-memo-container に display:flex, flex-direction:column, flex-grow:1などを設定想定
+        // --- メモウィジェットを生成 ---
+        this.memoWidget = new PomodoroMemoWidget(app, contentEl, { memoContent: this.currentSettings.memoContent });
 
-        const memoHeaderEl = this.memoContainerEl.createDiv({ cls: 'pomodoro-memo-header' });
-        // CSSで .pomodoro-memo-header に flex-shrink:0などを設定想定
-        
-        this.editMemoButtonEl = memoHeaderEl.createEl('button', { cls: 'pomodoro-memo-edit-button' });
-        setIcon(this.editMemoButtonEl, 'pencil');
-        this.editMemoButtonEl.setAttribute('aria-label', 'メモを編集/追加');
-        this.editMemoButtonEl.onClickEvent(() => this.enterMemoEditMode());
-
-        this.memoDisplayEl = this.memoContainerEl.createDiv({ cls: 'pomodoro-memo-display' });
-        // CSSで .pomodoro-memo-display に flex-grow:1, overflow-y:autoなどを設定想定
-
-        this.memoEditContainerEl = this.memoContainerEl.createDiv({ cls: 'pomodoro-memo-edit-container' });
-        this.memoEditContainerEl.style.display = 'none'; 
-        // CSSで .pomodoro-memo-edit-container に display:flex(JS制御), flex-direction:column, flex-grow:1などを設定想定
-
-        this.memoEditAreaEl = this.memoEditContainerEl.createEl('textarea', { cls: 'pomodoro-memo-edit-area' });
-        // CSSで .pomodoro-memo-edit-area に flex-grow:1, width:100%などを設定想定
-        
-        const memoEditControlsEl = this.memoEditContainerEl.createDiv({ cls: 'pomodoro-memo-edit-controls' });
-        // CSSで .pomodoro-memo-edit-controls に flex-shrink:0などを設定想定
-
-        this.saveMemoButtonEl = memoEditControlsEl.createEl('button', { text: '保存' });
-        this.saveMemoButtonEl.addClass('mod-cta');
-        this.cancelMemoButtonEl = memoEditControlsEl.createEl('button', { text: 'キャンセル' });
-        this.saveMemoButtonEl.onClickEvent(() => this.saveMemoChanges());
-        this.cancelMemoButtonEl.onClickEvent(() => this.cancelMemoEditMode());
-        
-        this.isEditingMemo = false;
-        this.updateMemoEditUI(); // これがrenderMemoを呼ぶ
-
-        // タイマー状態の初期化/復元
-        if (!this.initialized || isReconfiguringForDifferentWidget) {
-            this.resetTimerState(this.currentPomodoroSet, true);
-        } else if (!this.isRunning && this.lastConfiguredId === newConfigId) {
-            this.resetTimerState(this.currentPomodoroSet, false);
+        if (!this.initialized) {
+            this.resetTimerState(this.currentPomodoroSet, true); 
+        } else if (isReconfiguringForDifferentWidget) {
+            this.resetTimerState(this.currentPomodoroSet, true); 
         } else {
-            this.updateDisplay(); // 既存の状態を再表示
+            this.updateDisplay(); 
         }
 
         this.initialized = true;
         this.lastConfiguredId = newConfigId;
-        // this.updateDisplay(); // resetTimerStateや既存状態の表示でカバーされるはず
-
         return this.widgetEl;
     }
 
@@ -358,14 +243,15 @@ export class PomodoroWidget implements WidgetImplementation {
     private startTimer() {
         if (this.isRunning && this.timerId !== null) return;
         if (this.remainingTime <= 0 && this.currentPomodoroSet === 'work') {
-            this.resetTimerState('work', true);
-        } else if (this.remainingTime <= 0) {
+            this.resetTimerState('work', true); // 作業セッションが0秒で開始されようとしたらリセット
+        } else if (this.remainingTime <= 0) { // 休憩セッションが0秒なら終了処理へ
             this.handleSessionEnd(); return;
         }
         this.isRunning = true;
         if (this.timerId) clearInterval(this.timerId);
         this.timerId = window.setInterval(() => this.tick(), 1000);
         this.updateDisplay();
+        this.currentSessionStartTime = new Date();
         const statusText = this.statusDisplayEl?.textContent?.split('(')[0].trim() || '作業';
         new Notice(`${statusText} を開始しました。`);
     }
@@ -381,8 +267,9 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private resetCurrentTimerConfirm() {
-        this.pauseTimer();
-        this.resetTimerState(this.currentPomodoroSet, false);
+        this.pauseTimer(); // タイマーを止めてから状態をリセット
+        // 現在のセッションタイプとサイクル数は維持して時間だけリセット
+        this.resetTimerState(this.currentPomodoroSet, false); 
         const statusText = this.statusDisplayEl?.textContent?.split('(')[0].trim() || '作業';
         new Notice(`${statusText} をリセットしました。`);
     }
@@ -394,13 +281,20 @@ export class PomodoroWidget implements WidgetImplementation {
             case 'shortBreak': this.remainingTime = this.currentSettings.shortBreakMinutes * 60; break;
             case 'longBreak': this.remainingTime = this.currentSettings.longBreakMinutes * 60; break;
         }
-        if (resetCycleCount) this.pomodorosCompletedInCycle = 0;
+        if (resetCycleCount) {
+            this.pomodorosCompletedInCycle = 0;
+        }
 
-        if (this.isRunning) this.pauseTimer(); // pauseTimerがisRunningとtimerIdを処理
-        else if(this.timerId) { clearInterval(this.timerId); this.timerId = null; }
-        // isRunning は pauseTimer の中で false になる。明示的に再度 false にしても問題ない。
-        this.isRunning = false;
+        // タイマーが動いていれば止める
+        if (this.isRunning) {
+            this.pauseTimer(); // isRunning と timerId を処理
+        } else if(this.timerId) { // 動いていないがタイマーIDが残っている場合もクリア
+            clearInterval(this.timerId);
+            this.timerId = null;
+        }
+        this.isRunning = false; // 確実に停止状態にする
         this.updateDisplay();
+        this.saveRuntimeStateToSettings();
     }
 
     private tick() {
@@ -411,7 +305,6 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private playSoundNotification() {
-        // グローバル設定があれば優先
         const globalSound = this.plugin.settings.pomodoroNotificationSound;
         const globalVolume = this.plugin.settings.pomodoroNotificationVolume;
         const soundType = globalSound ?? this.currentSettings.notificationSound;
@@ -431,7 +324,6 @@ export class PomodoroWidget implements WidgetImplementation {
             const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
             this.audioContext = ctx;
             if (soundType === 'default_beep') {
-                // シンプルなビープ
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = 'sine';
@@ -441,26 +333,24 @@ export class PomodoroWidget implements WidgetImplementation {
                 osc.connect(gain); gain.connect(ctx.destination);
                 osc.start(ctx.currentTime);
                 osc.stop(ctx.currentTime + 0.7);
-                osc.onended = () => ctx.close();
+                osc.onended = () => ctx.close().catch(e => console.error("Error closing AudioContext for beep", e));
             } else if (soundType === 'bell') {
-                // ベル音: 2つの三角波を重ねる
                 const osc1 = ctx.createOscillator();
                 const osc2 = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc1.type = 'triangle';
                 osc2.type = 'triangle';
-                osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5
-                osc2.frequency.setValueAtTime(1320, ctx.currentTime); // E6
+                osc1.frequency.setValueAtTime(880, ctx.currentTime); 
+                osc2.frequency.setValueAtTime(1320, ctx.currentTime);
                 gain.gain.setValueAtTime(volume, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
                 osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
                 osc1.start(ctx.currentTime); osc2.start(ctx.currentTime);
                 osc1.stop(ctx.currentTime + 0.8); osc2.stop(ctx.currentTime + 0.8);
-                osc2.detune.setValueAtTime(5, ctx.currentTime + 0.2); // 少し揺らす
-                osc1.onended = () => ctx.close();
+                osc2.detune.setValueAtTime(5, ctx.currentTime + 0.2);
+                osc1.onended = () => ctx.close().catch(e => console.error("Error closing AudioContext for bell", e));
             } else if (soundType === 'chime') {
-                // チャイム音: 3音アルペジオ
-                const notes = [523.25, 659.25, 784.0]; // C5, E5, G5
+                const notes = [523.25, 659.25, 784.0]; 
                 const now = ctx.currentTime;
                 notes.forEach((freq, i) => {
                     const osc = ctx.createOscillator();
@@ -472,54 +362,72 @@ export class PomodoroWidget implements WidgetImplementation {
                     osc.connect(gain); gain.connect(ctx.destination);
                     osc.start(now + i * 0.18);
                     osc.stop(now + i * 0.18 + 0.22);
-                    if (i === notes.length - 1) osc.onended = () => ctx.close();
+                    if (i === notes.length - 1) osc.onended = () => ctx.close().catch(e => console.error("Error closing AudioContext for chime", e));
                 });
             }
-        } catch (e) { new Notice('音声の再生に失敗しました'); }
+        } catch (e) { new Notice('音声の再生に失敗しました'); console.error("Error playing sound:", e); }
     }
 
-    private handleSessionEnd() {
+    private async handleSessionEnd() {
         if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
         this.isRunning = false;
+        this.currentSessionEndTime = new Date();
+        if (this.currentPomodoroSet === 'work' && this.currentSessionStartTime && this.currentSessionEndTime) {
+            const startDate = this.currentSessionStartTime;
+            const endDate = this.currentSessionEndTime;
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
+            const startStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+            const endStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+            this.sessionLogs.push({
+                date: dateStr,
+                start: startStr,
+                end: endStr,
+                memo: this.memoWidget?.getMemoContent() || ''
+            });
+        }
         let msg = "";
         if (this.currentPomodoroSet === 'work') {
             this.pomodorosCompletedInCycle++;
             msg = `作業セッション (${this.currentSettings.workMinutes}分) が終了。`;
             if (this.pomodorosCompletedInCycle >= this.currentSettings.pomodorosUntilLongBreak) {
-                this.resetTimerState('longBreak', false); msg += "長い休憩を開始してください。";
+                this.resetTimerState('longBreak', false); // サイクル数はリセットしない
+                msg += "長い休憩を開始してください。";
             } else {
-                this.resetTimerState('shortBreak', false); msg += "短い休憩を開始してください。";
+                this.resetTimerState('shortBreak', false); // サイクル数はリセットしない
+                msg += "短い休憩を開始してください。";
             }
-        } else {
+        } else { // 休憩終了
             if(this.currentPomodoroSet === 'shortBreak') msg = `短い休憩 (${this.currentSettings.shortBreakMinutes}分) が終了。`;
             else msg = `長い休憩 (${this.currentSettings.longBreakMinutes}分) が終了。`;
+            
+            // 長い休憩が終わった時だけサイクル数をリセット
             this.resetTimerState('work', this.currentPomodoroSet === 'longBreak');
             msg += "作業セッションを開始してください。";
         }
         new Notice(msg, 7000);
         this.playSoundNotification(); 
         if (this.plugin && (!this.plugin.widgetBoardModals || Array.from(this.plugin.widgetBoardModals.values()).every(m => !m.isOpen))) {
-            // ボードIDを指定して開くように変更 (this.config.id はこのウィジェットのIDなので、
-            // これが属するボードのIDを特定する必要がある。モーダルが開いていないので難しい)
-            // ここでは、最後に開いたボードを開くか、ピッカーを開くのが適切かもしれない。
-            // 簡単のため、最後に開いたボードIDを使う。
             if (this.plugin.settings.lastOpenedBoardId) {
                  this.plugin.openWidgetBoardById(this.plugin.settings.lastOpenedBoardId);
             } else {
-                this.plugin.openBoardPicker(); // フォールバック
+                this.plugin.openBoardPicker();
             }
         }
         this.updateDisplay();
+        this.saveRuntimeStateToSettings();
+        if (this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
+            await this.exportSessionLogs(this.currentSettings.exportFormat);
+        }
     }
     
     private skipToNextSessionConfirm() {
-        this.handleSessionEnd();
+        this.handleSessionEnd(); // 既存のセッション終了処理を呼ぶ
         new Notice("次のセッションへスキップしました。");
     }
 
     onunload(): void {
         const widgetIdLog = `[${this.config?.id || 'PomodoroWidget'}]`;
-        // console.log(`${widgetIdLog} onunload: Clearing timer, closing AudioContext, stopping audio element.`);
         if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
         this.isRunning = false;
         if (this.audioContext && this.audioContext.state !== 'closed') {
@@ -528,65 +436,188 @@ export class PomodoroWidget implements WidgetImplementation {
         if (this.currentAudioElement) {
             this.currentAudioElement.pause(); this.currentAudioElement.src = ""; this.currentAudioElement = null;
         }
-        (this.constructor as typeof PomodoroWidget).widgetInstances.delete(this.config?.id); // nullチェック追加
+        (this.constructor as typeof PomodoroWidget).widgetInstances.delete(this.config?.id);
     }
     
-    public async updateExternalSettings(newSettings: Partial<PomodoroSettings>, widgetId?: string) {
-        if (widgetId && this.config?.id !== widgetId) return;
-        // const widgetIdLog = `[${this.config.id}]`;
-        // console.log(`${widgetIdLog} updateExternalSettings: Old=`, JSON.parse(JSON.stringify(this.currentSettings)), "New=", JSON.parse(JSON.stringify(newSettings)));
+    public async updateExternalSettings(newSettingsFromPlugin: Partial<PomodoroSettings>, widgetId?: string) {
+        if (widgetId && this.config?.id !== widgetId) return; // 対象ウィジェットでなければ何もしない
 
-        const oldSettings = { ...this.currentSettings };
-        this.currentSettings = { ...this.currentSettings, ...newSettings };
-        if (this.config && this.config.settings) { // this.config の存在も確認
+        const settingsBeforeUpdate = { ...this.currentSettings }; // Snapshot of instance state BEFORE this function's merge
+
+        // 新しい設定をマージしてインスタンスの作業用設定を更新
+        this.currentSettings = { ...this.currentSettings, ...newSettingsFromPlugin };
+
+        // config.settings にも最新の currentSettings を反映
+        // (this.currentSettings が新しいオブジェクトになる場合もあれば、プロパティが更新される場合もあるため、
+        // Object.assign で確実に関連付けられたオブジェクトを更新するか、再代入する)
+        if (this.config && this.config.settings) {
+            // this.config.settings = this.currentSettings; // これでも良いが、Object.assign の方がより安全な場合がある
             Object.assign(this.config.settings, this.currentSettings);
         }
-        // console.log(`${widgetIdLog} updateExternalSettings: Merged currentSettings=`, JSON.parse(JSON.stringify(this.currentSettings)));
 
-        if (oldSettings.backgroundImageUrl !== this.currentSettings.backgroundImageUrl) {
+        // 各設定項目が変更されたかどうかを判定
+        // settingsBeforeUpdate (この関数のマージ前の状態) と this.currentSettings (この関数のマージ後の状態) を比較
+        const memoChanged = settingsBeforeUpdate.memoContent !== this.currentSettings.memoContent;
+        const workMinutesChanged = settingsBeforeUpdate.workMinutes !== this.currentSettings.workMinutes;
+        const shortBreakMinutesChanged = settingsBeforeUpdate.shortBreakMinutes !== this.currentSettings.shortBreakMinutes;
+        const longBreakMinutesChanged = settingsBeforeUpdate.longBreakMinutes !== this.currentSettings.longBreakMinutes;
+        const pomodorosUntilLongBreakChanged = settingsBeforeUpdate.pomodorosUntilLongBreak !== this.currentSettings.pomodorosUntilLongBreak;
+        const backgroundChanged = settingsBeforeUpdate.backgroundImageUrl !== this.currentSettings.backgroundImageUrl;
+        const soundChanged = settingsBeforeUpdate.notificationSound !== this.currentSettings.notificationSound;
+        const volumeChanged = settingsBeforeUpdate.notificationVolume !== this.currentSettings.notificationVolume;
+        const exportFormatChanged = settingsBeforeUpdate.exportFormat !== this.currentSettings.exportFormat;
+
+        const timerRelatedSettingsChanged =
+            workMinutesChanged ||
+            shortBreakMinutesChanged ||
+            longBreakMinutesChanged ||
+            pomodorosUntilLongBreakChanged;
+
+        const otherNonTimerSettingsChanged = // memoChanged は含めない
+            backgroundChanged ||
+            soundChanged ||
+            volumeChanged ||
+            exportFormatChanged;
+
+        const onlyMemoChanged = memoChanged && !timerRelatedSettingsChanged && !otherNonTimerSettingsChanged;
+
+        if (onlyMemoChanged) {
+            // メモの内容だけが変わった場合
+            await this.renderMemo(this.currentSettings.memoContent);
+            this.updateMemoEditUI(); // メモ表示エリアの更新 (編集中でないことを確認して描画)
+            return; // ★ 他の処理に進ませないことで、サイクルリセット等を防ぐ
+        }
+
+        // メモ以外の何かが変更された、またはメモと一緒に他の何かも変更された場合の処理
+        if (backgroundChanged) {
             this.applyBackground(this.currentSettings.backgroundImageUrl);
         }
-        // メモ内容の外部変更（設定タブからなど）は、Pomodoroウィジェットでは通常発生しない想定だが、念のため
-        if (oldSettings.memoContent !== this.currentSettings.memoContent && !this.isEditingMemo) {
-            await this.renderMemo(this.currentSettings.memoContent);
-        }
 
-        const timerRelatedSettingsChanged = 
-            oldSettings.workMinutes !== this.currentSettings.workMinutes ||
-            oldSettings.shortBreakMinutes !== this.currentSettings.shortBreakMinutes ||
-            oldSettings.longBreakMinutes !== this.currentSettings.longBreakMinutes ||
-            oldSettings.pomodorosUntilLongBreak !== this.currentSettings.pomodorosUntilLongBreak;
-
-        if (!this.isRunning && timerRelatedSettingsChanged) {
-            this.resetTimerState(this.currentPomodoroSet, false); 
+        if (timerRelatedSettingsChanged) {
+            if (!this.isRunning) {
+                // タイマーが停止中に設定変更があった場合：現在のモードで時間をリセット（サイクル数は維持）
+                this.resetTimerState(this.currentPomodoroSet, false); 
+            } else {
+                // タイマーが実行中に設定変更があった場合：ユーザーに通知し、現在のモードで時間をリセット（サイクル数は維持）
+                new Notice("タイマー設定が変更されたため、現在のセッションを新しい設定でリセットします。", 5000);
+                this.pauseTimer(); 
+                this.resetTimerState(this.currentPomodoroSet, false); 
+            }
         } else {
-             this.updateDisplay(); // pomodorosUntilLongBreak変更時など、表示のみ更新
+            // タイマー関連設定は変更なし、かつメモのみの変更でもない場合（例：背景だけ、通知音だけ変更）
+            // (この分岐は otherNonTimerSettingsChanged が true の場合に該当する)
+            this.updateDisplay(); // 表示を更新 (サイクル数や残り時間には影響しないはず)
         }
 
-        if (!this.isEditingMemo) {
+        // メモ編集モードでない場合は、メモ表示を最新の状態に更新する
+        // (onlyMemoChanged でなくても、例えばタイマー設定とメモが同時に変わった場合などに対応)
+        if (!this.memoWidget?.isEditing) {
+            // renderMemo は Markdown の再レンダリングを行うため、
+            // updateMemoEditUI 経由で呼ぶのが適切。
             this.updateMemoEditUI();
         }
-        
-        // ★重要: updateExternalSettings は、通常 plugin.saveSettings() が呼び出された結果としてモーダル更新のために呼び出される。
-        // ここで再度 plugin.saveSettings() を呼ぶと無限ループや予期せぬ動作の原因になる。
-        // 設定の永続化は、ユーザーが設定タブで操作した際や、ウィジェット内で「保存」アクションを行った際に行うべき。
     }
 
-    // 静的メソッド (ウィジェット削除時などに使用)
     public static removePersistentInstance(widgetId: string, plugin: WidgetBoardPlugin): void {
         const instance = PomodoroWidget.widgetInstances.get(widgetId);
         if (instance) {
-            // instance.onunload(); // 必要に応じてインスタンス固有のクリーンアップを呼ぶことも検討
             PomodoroWidget.widgetInstances.delete(widgetId);
         }
-        // console.log(`[${widgetId}] Static removePersistentInstance for PomodoroWidget (map size: ${PomodoroWidget.widgetInstances.size})`);
     }
 
     public static cleanupAllPersistentInstances(plugin: WidgetBoardPlugin): void {
-        // console.log("Cleaning up all PomodoroWidget instances from static map.");
-        PomodoroWidget.widgetInstances.forEach(instance => {
-            // instance.onunload(); // もし必要なら
-        });
         PomodoroWidget.widgetInstances.clear();
+    }
+
+    private async exportSessionLogs(format: PomodoroExportFormat) {
+        if (this.sessionLogs.length === 0) {
+            new Notice("エクスポートするログがありません。");
+            return;
+        }
+        let content = '';
+        let ext = '';
+
+        if (format === 'csv') {
+            content = 'date,start,end,memo\n' + this.sessionLogs.map(log => 
+                `${log.date},${log.start},${log.end},"${(log.memo || '').replace(/"/g, '""')}"`
+            ).join('\n');
+            ext = 'csv';
+        } else if (format === 'json') {
+            content = JSON.stringify(this.sessionLogs, null, 2);
+            ext = 'json';
+        } else if (format === 'markdown') {
+            content = '| date | start | end | memo |\n|---|---|---|---|\n' + this.sessionLogs.map(log => 
+                `| ${log.date} | ${log.start} | ${log.end} | ${(log.memo || '').replace(/\|/g, '\\|')} |`
+            ).join('\n');
+            ext = 'md';
+        } else {
+            return; // 'none' or unknown format
+        }
+        const sanitizedTitle = (this.config.title || 'pomodoro-log').replace(/[\\/:*?"<>|]/g, '_');
+        const exportFolderName = 'PomodoroLogs'; 
+        
+        try {
+            const folderExists = await this.app.vault.adapter.exists(exportFolderName);
+            if (!folderExists) {
+                await this.app.vault.createFolder(exportFolderName);
+            }
+        } catch (e) {
+            new Notice(`ログフォルダの作成に失敗: ${exportFolderName}\nVault直下に保存します。`, 7000);
+            console.error(`Failed to create/access folder ${exportFolderName}: `, e);
+            
+            const filePath = `${sanitizedTitle}.${ext}`;
+            try {
+                const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+                if (existingFile) {
+                    await this.app.vault.modify(existingFile as any, content);
+                } else {
+                    await this.app.vault.create(filePath, content);
+                }
+                new Notice(`ポモドーロログを ${filePath} に保存しました。`);
+            } catch (fileError) {
+                 new Notice('ポモドーロログの保存に失敗しました: ' + (fileError?.message || fileError), 7000);
+            }
+            this.sessionLogs = []; // Clear logs after attempting export, even if fallback path
+            return;
+        }
+
+        const filePathInFolder = `${exportFolderName}/${sanitizedTitle}.${ext}`;
+        try {
+            const existingFile = this.app.vault.getAbstractFileByPath(filePathInFolder);
+            if (existingFile) {
+                await this.app.vault.modify(existingFile as any, content);
+            } else {
+                await this.app.vault.create(filePathInFolder, content);
+            }
+            new Notice(`ポモドーロログを ${filePathInFolder} に保存しました。`);
+            this.sessionLogs = []; // エクスポート後にログをクリア
+        } catch (e) {
+            new Notice('ポモドーロログの保存に失敗しました: ' + (e?.message || e), 7000);
+            console.error(`Failed to save pomodoro log to ${filePathInFolder}: `, e);
+        }
+    }
+
+    private saveRuntimeStateToSettings() {
+        if (!this.config || !this.config.settings) return; // config と config.settings の存在を確認
+        // currentSettings が常に config.settings を指すようにしていれば、
+        // this.config.settings.pomodorosCompletedInCycle = this.pomodorosCompletedInCycle;
+        // this.config.settings.currentPomodoroSet = this.currentPomodoroSet;
+        // は実質的に this.currentSettings のプロパティを更新していることになる。
+        // ただし、明示的に this.currentSettings のプロパティを更新し、
+        // config.settings が this.currentSettings を参照するようにするのが一貫性がある。
+
+        // currentSettings はインスタンスの作業コピーなので、まずこれを更新
+        this.currentSettings.pomodorosCompletedInCycle = this.pomodorosCompletedInCycle;
+        this.currentSettings.currentPomodoroSet = this.currentPomodoroSet;
+
+        // config.settings も確実に currentSettings と同期させる
+        // create や updateExternalSettings で config.settings = this.currentSettings または Object.assign
+        // を行っているため、基本的には同期しているはずだが、念のため。
+        if (this.config.settings !== this.currentSettings) {
+             Object.assign(this.config.settings, {
+                pomodorosCompletedInCycle: this.pomodorosCompletedInCycle,
+                currentPomodoroSet: this.currentPomodoroSet
+            });
+        }
     }
 }

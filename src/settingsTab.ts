@@ -437,20 +437,26 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                         }));
 
-                new Setting(pomoDetailBody).setName('専用メモ (Markdown)').setDesc('このポモドーロタイマー専用のメモ。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item')
-                    .addTextArea(text => text
-                        .setPlaceholder('今日のタスク、集中したいことなど...')
-                        .setValue(currentSettings.memoContent || '')
-                        .onChange(async (v) => {
-                            currentSettings.memoContent = v;
-                            await this.plugin.saveSettings();
-                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
-                        }));
-
                 new Setting(pomoDetailBody)
                     .setName('通知音（全体設定が適用されます）')
                     .setDesc('このウィジェットの通知音・音量は「ポモドーロ通知音（全体設定）」が使われます。')
                     .setDisabled(true);
+
+                new Setting(pomoDetailBody)
+                    .setName('エクスポート形式')
+                    .setDesc('セッション終了時に自動保存する形式。noneで保存しません。')
+                    .addDropdown(dropdown => {
+                        dropdown.addOption('none', '保存しない');
+                        dropdown.addOption('csv', 'CSV');
+                        dropdown.addOption('json', 'JSON');
+                        dropdown.addOption('markdown', 'Markdown');
+                        dropdown.setValue(currentSettings.exportFormat || 'none')
+                            .onChange(async (v) => {
+                                currentSettings.exportFormat = v as any;
+                                await this.plugin.saveSettings();
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            });
+                    });
 
             } else if (widget.type === 'memo') {
                 widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) } as MemoWidgetSettings;
