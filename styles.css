@@ -492,3 +492,21 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* スライダーの横線（トラック）を明示的に表示 */
+.setting-item-control input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--divider-color, #888);
+  border-radius: 2px;
+}
+.setting-item-control input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--divider-color, #888);
+  border-radius: 2px;
+}
+.setting-item-control input[type="range"]::-ms-fill-lower,
+.setting-item-control input[type="range"]::-ms-fill-upper {
+  height: 4px;
+  background: var(--divider-color, #888);
+  border-radius: 2px;
+}
