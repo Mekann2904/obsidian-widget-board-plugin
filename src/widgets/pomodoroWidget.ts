@@ -124,7 +124,6 @@ export class PomodoroWidget implements WidgetImplementation {
     private async saveMemoChanges() {
         if (!this.memoWidget) return;
         await this.memoWidget.saveChanges();
-        this.saveRuntimeStateToSettings();
     }
 
     private cancelMemoEditMode() {
@@ -284,17 +283,14 @@ export class PomodoroWidget implements WidgetImplementation {
         if (resetCycleCount) {
             this.pomodorosCompletedInCycle = 0;
         }
-
-        // タイマーが動いていれば止める
         if (this.isRunning) {
-            this.pauseTimer(); // isRunning と timerId を処理
-        } else if(this.timerId) { // 動いていないがタイマーIDが残っている場合もクリア
+            this.pauseTimer();
+        } else if(this.timerId) {
             clearInterval(this.timerId);
             this.timerId = null;
         }
-        this.isRunning = false; // 確実に停止状態にする
+        this.isRunning = false;
         this.updateDisplay();
-        this.saveRuntimeStateToSettings();
     }
 
     private tick() {
@@ -372,9 +368,18 @@ export class PomodoroWidget implements WidgetImplementation {
         if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
         this.isRunning = false;
         this.currentSessionEndTime = new Date();
-        if (this.currentPomodoroSet === 'work' && this.currentSessionStartTime && this.currentSessionEndTime) {
-            const startDate = this.currentSessionStartTime;
-            const endDate = this.currentSessionEndTime;
+        let shouldExport = false;
+        if (this.currentPomodoroSet === 'work') {
+            let startDate: Date;
+            let endDate: Date;
+            if (this.currentSessionStartTime && this.currentSessionEndTime) {
+                startDate = this.currentSessionStartTime;
+                endDate = this.currentSessionEndTime;
+            } else {
+                // セッション開始時刻がnullの場合でも現在時刻で記録
+                startDate = new Date();
+                endDate = new Date();
+            }
             const pad = (n: number) => n.toString().padStart(2, '0');
             const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
             const startStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
@@ -385,23 +390,20 @@ export class PomodoroWidget implements WidgetImplementation {
                 end: endStr,
                 memo: this.memoWidget?.getMemoContent() || ''
             });
+            shouldExport = true;
         }
         let msg = "";
         if (this.currentPomodoroSet === 'work') {
             this.pomodorosCompletedInCycle++;
             msg = `作業セッション (${this.currentSettings.workMinutes}分) が終了。`;
             if (this.pomodorosCompletedInCycle >= this.currentSettings.pomodorosUntilLongBreak) {
-                this.resetTimerState('longBreak', false); // サイクル数はリセットしない
-                msg += "長い休憩を開始してください。";
+                this.resetTimerState('longBreak', false); msg += "長い休憩を開始してください。";
             } else {
-                this.resetTimerState('shortBreak', false); // サイクル数はリセットしない
-                msg += "短い休憩を開始してください。";
+                this.resetTimerState('shortBreak', false); msg += "短い休憩を開始してください。";
             }
-        } else { // 休憩終了
+        } else {
             if(this.currentPomodoroSet === 'shortBreak') msg = `短い休憩 (${this.currentSettings.shortBreakMinutes}分) が終了。`;
             else msg = `長い休憩 (${this.currentSettings.longBreakMinutes}分) が終了。`;
-            
-            // 長い休憩が終わった時だけサイクル数をリセット
             this.resetTimerState('work', this.currentPomodoroSet === 'longBreak');
             msg += "作業セッションを開始してください。";
         }
@@ -415,14 +417,35 @@ export class PomodoroWidget implements WidgetImplementation {
             }
         }
         this.updateDisplay();
-        this.saveRuntimeStateToSettings();
-        if (this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
+        if (shouldExport && this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
             await this.exportSessionLogs(this.currentSettings.exportFormat);
         }
     }
     
     private skipToNextSessionConfirm() {
-        this.handleSessionEnd(); // 既存のセッション終了処理を呼ぶ
+        // セッション未開始でスキップする場合の対応
+        if (!this.currentSessionStartTime) {
+            const now = new Date();
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+            const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            // 0秒作業ログを記録
+            this.sessionLogs.push({
+                date: dateStr,
+                start: timeStr,
+                end: timeStr,
+                memo: this.memoWidget?.getMemoContent() || ''
+            });
+            new Notice('作業が開始されていませんが、0秒の作業ログを記録してスキップします。', 5000);
+            if (this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
+                this.exportSessionLogs(this.currentSettings.exportFormat);
+            }
+            // 通常のスキップ処理も実行
+            this.handleSessionEnd();
+            return;
+        }
+        // 通常のスキップ処理
+        this.handleSessionEnd();
         new Notice("次のセッションへスキップしました。");
     }
 
@@ -536,88 +559,96 @@ export class PomodoroWidget implements WidgetImplementation {
         }
         let content = '';
         let ext = '';
-
         if (format === 'csv') {
-            content = 'date,start,end,memo\n' + this.sessionLogs.map(log => 
-                `${log.date},${log.start},${log.end},"${(log.memo || '').replace(/"/g, '""')}"`
-            ).join('\n');
             ext = 'csv';
         } else if (format === 'json') {
-            content = JSON.stringify(this.sessionLogs, null, 2);
             ext = 'json';
         } else if (format === 'markdown') {
-            content = '| date | start | end | memo |\n|---|---|---|---|\n' + this.sessionLogs.map(log => 
-                `| ${log.date} | ${log.start} | ${log.end} | ${(log.memo || '').replace(/\|/g, '\\|')} |`
-            ).join('\n');
             ext = 'md';
         } else {
             return; // 'none' or unknown format
         }
-        const sanitizedTitle = (this.config.title || 'pomodoro-log').replace(/[\\/:*?"<>|]/g, '_');
-        const exportFolderName = 'PomodoroLogs'; 
-        
+        const pluginFolder = this.app.vault.configDir + '/plugins/' + this.plugin.manifest.id;
+        const logsFolder = pluginFolder + '/logs';
+        const filePath = logsFolder + `/pomodoro-log.${ext}`;
+        let allLogs: SessionLog[] = [];
         try {
-            const folderExists = await this.app.vault.adapter.exists(exportFolderName);
-            if (!folderExists) {
-                await this.app.vault.createFolder(exportFolderName);
+            // logsフォルダがなければ作成
+            const logsFolderExists = await this.app.vault.adapter.exists(logsFolder);
+            if (!logsFolderExists) {
+                await this.app.vault.adapter.mkdir(logsFolder);
             }
-        } catch (e) {
-            new Notice(`ログフォルダの作成に失敗: ${exportFolderName}\nVault直下に保存します。`, 7000);
-            console.error(`Failed to create/access folder ${exportFolderName}: `, e);
-            
-            const filePath = `${sanitizedTitle}.${ext}`;
-            try {
-                const existingFile = this.app.vault.getAbstractFileByPath(filePath);
-                if (existingFile) {
-                    await this.app.vault.modify(existingFile as any, content);
-                } else {
-                    await this.app.vault.create(filePath, content);
+            // 既存ファイルがあれば内容を読み込む
+            const fileExists = await this.app.vault.adapter.exists(filePath);
+            if (fileExists) {
+                const existing = await this.app.vault.adapter.read(filePath);
+                if (format === 'csv') {
+                    const lines = existing.split('\n').filter(l => l.trim() !== '');
+                    if (lines.length > 1) {
+                        for (let i = 1; i < lines.length; i++) {
+                            const [date, start, end, memo] = lines[i].split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+                            allLogs.push({
+                                date: date || '',
+                                start: start || '',
+                                end: end || '',
+                                memo: memo ? memo.replace(/^"|"$/g, '').replace(/""/g, '"') : ''
+                            });
+                        }
+                    }
+                } else if (format === 'json') {
+                    try {
+                        const parsed = JSON.parse(existing);
+                        if (Array.isArray(parsed)) {
+                            allLogs = parsed;
+                        } else {
+                            allLogs = [];
+                        }
+                    } catch {
+                        allLogs = [];
+                    }
+                } else if (format === 'markdown') {
+                    const lines = existing.split('\n').filter(l => l.trim() !== '');
+                    if (lines.length > 2) {
+                        for (let i = 2; i < lines.length; i++) {
+                            const cols = lines[i].split('|').map(s => s.trim());
+                            if (cols.length >= 5) {
+                                allLogs.push({
+                                    date: cols[1],
+                                    start: cols[2],
+                                    end: cols[3],
+                                    memo: cols[4]
+                                });
+                            }
+                        }
+                    }
                 }
-                new Notice(`ポモドーロログを ${filePath} に保存しました。`);
-            } catch (fileError) {
-                 new Notice('ポモドーロログの保存に失敗しました: ' + (fileError?.message || fileError), 7000);
             }
-            this.sessionLogs = []; // Clear logs after attempting export, even if fallback path
-            return;
-        }
-
-        const filePathInFolder = `${exportFolderName}/${sanitizedTitle}.${ext}`;
-        try {
-            const existingFile = this.app.vault.getAbstractFileByPath(filePathInFolder);
-            if (existingFile) {
-                await this.app.vault.modify(existingFile as any, content);
-            } else {
-                await this.app.vault.create(filePathInFolder, content);
+            // 新規ログを追加
+            allLogs = allLogs.concat(this.sessionLogs);
+            // 重複排除（date, start, end, memoが全て一致するものは1つだけ）
+            // allLogs = allLogs.filter((log, idx, arr) =>
+            //     arr.findIndex(l => l.date === log.date && l.start === log.start && l.end === log.end && l.memo === log.memo) === idx
+            // );
+            // 保存内容を生成
+            if (format === 'csv') {
+                // BOM付きでExcel等でも文字化けしないように
+                content = '\uFEFFdate,start,end,memo\n' + allLogs.map(log => {
+                    const safeMemo = (log.memo || '').replace(/\r?\n/g, '\\n').replace(/"/g, '""');
+                    return `${log.date},${log.start},${log.end},"${safeMemo}"`;
+                }).join('\n');
+            } else if (format === 'json') {
+                content = JSON.stringify(allLogs, null, 2);
+            } else if (format === 'markdown') {
+                content = '| date | start | end | memo |\n|---|---|---|---|\n' + allLogs.map(log => 
+                    `| ${log.date} | ${log.start} | ${log.end} | ${(log.memo || '').replace(/\|/g, '\\|')} |`
+                ).join('\n');
             }
-            new Notice(`ポモドーロログを ${filePathInFolder} に保存しました。`);
-            this.sessionLogs = []; // エクスポート後にログをクリア
+            await this.app.vault.adapter.write(filePath, content);
+            new Notice(`ポモドーロログを ${filePath} に保存しました。`);
+            this.sessionLogs = [];
         } catch (e) {
-            new Notice('ポモドーロログの保存に失敗しました: ' + (e?.message || e), 7000);
-            console.error(`Failed to save pomodoro log to ${filePathInFolder}: `, e);
-        }
-    }
-
-    private saveRuntimeStateToSettings() {
-        if (!this.config || !this.config.settings) return; // config と config.settings の存在を確認
-        // currentSettings が常に config.settings を指すようにしていれば、
-        // this.config.settings.pomodorosCompletedInCycle = this.pomodorosCompletedInCycle;
-        // this.config.settings.currentPomodoroSet = this.currentPomodoroSet;
-        // は実質的に this.currentSettings のプロパティを更新していることになる。
-        // ただし、明示的に this.currentSettings のプロパティを更新し、
-        // config.settings が this.currentSettings を参照するようにするのが一貫性がある。
-
-        // currentSettings はインスタンスの作業コピーなので、まずこれを更新
-        this.currentSettings.pomodorosCompletedInCycle = this.pomodorosCompletedInCycle;
-        this.currentSettings.currentPomodoroSet = this.currentPomodoroSet;
-
-        // config.settings も確実に currentSettings と同期させる
-        // create や updateExternalSettings で config.settings = this.currentSettings または Object.assign
-        // を行っているため、基本的には同期しているはずだが、念のため。
-        if (this.config.settings !== this.currentSettings) {
-             Object.assign(this.config.settings, {
-                pomodorosCompletedInCycle: this.pomodorosCompletedInCycle,
-                currentPomodoroSet: this.currentPomodoroSet
-            });
+            new Notice('ログのエクスポートに失敗しました');
+            console.error("Error exporting session logs:", e);
         }
     }
 }
