@@ -19,9 +19,12 @@ export class WidgetBoardModal {
     static readonly MODES = {
         RIGHT_HALF: 'mode-right-half',
         RIGHT_THIRD: 'mode-right-third',
+        RIGHT_TWO_THIRD: 'mode-right-two-third',
         LEFT_TWO_THIRD: 'mode-left-two-third',
         LEFT_HALF: 'mode-left-half',
-        CENTER_HALF: 'mode-center-half'
+        LEFT_THIRD: 'mode-left-third',
+        CENTER_HALF: 'mode-center-half',
+        CENTER_THIRD: 'mode-center-third'
     } as const;
 
     constructor(_app: App, plugin: WidgetBoardPlugin, boardConfig: BoardConfiguration) {
@@ -93,11 +96,14 @@ export class WidgetBoardModal {
         };
         controlsEl.classList.remove('is-visible'); // 初期は非表示
 
-        // 表示モード切替ボタンの順序を「左→中央→右」に
+        // 表示モード切替ボタンの順序を「左33→左50→左66→中央→右66→右50→右33」に
         const modeButtonOrder = [
-            WidgetBoardModal.MODES.LEFT_TWO_THIRD,
+            WidgetBoardModal.MODES.LEFT_THIRD,
             WidgetBoardModal.MODES.LEFT_HALF,
+            WidgetBoardModal.MODES.LEFT_TWO_THIRD,
+            WidgetBoardModal.MODES.CENTER_THIRD,
             WidgetBoardModal.MODES.CENTER_HALF,
+            WidgetBoardModal.MODES.RIGHT_TWO_THIRD,
             WidgetBoardModal.MODES.RIGHT_HALF,
             WidgetBoardModal.MODES.RIGHT_THIRD
         ];
@@ -105,9 +111,12 @@ export class WidgetBoardModal {
             let buttonText = '';
             if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
             else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = '右パネル（50vw）';
+            else if (modeClass === WidgetBoardModal.MODES.RIGHT_TWO_THIRD) buttonText = '右パネル（66vw）';
             else if (modeClass === WidgetBoardModal.MODES.LEFT_TWO_THIRD) buttonText = '左パネル（66vw）';
             else if (modeClass === WidgetBoardModal.MODES.LEFT_HALF) buttonText = '左パネル（50vw）';
+            else if (modeClass === WidgetBoardModal.MODES.LEFT_THIRD) buttonText = '左パネル（33vw）';
             else if (modeClass === WidgetBoardModal.MODES.CENTER_HALF) buttonText = '中央パネル（50vw）';
+            else if (modeClass === WidgetBoardModal.MODES.CENTER_THIRD) buttonText = '中央パネル（33vw）';
 
             const button = controlsEl.createEl('button', { text: buttonText });
             button.dataset.mode = modeClass;

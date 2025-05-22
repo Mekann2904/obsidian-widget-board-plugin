@@ -275,9 +275,12 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             .addDropdown(dropdown => {
                 dropdown.addOption(WidgetBoardModal.MODES.LEFT_TWO_THIRD, '左パネル（66vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.LEFT_HALF, '左パネル（50vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.LEFT_THIRD, '左パネル（33vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.CENTER_THIRD, '中央パネル（33vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.CENTER_HALF, '中央パネル（50vw）');
-                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, '右パネル（50vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.RIGHT_THIRD, '右パネル（33vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, '右パネル（50vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_TWO_THIRD, '右パネル（66vw）');
                 dropdown.setValue(board.defaultMode)
                     .onChange(async (value) => {
                         if (Object.values(WidgetBoardModal.MODES).includes(value as any)) {
