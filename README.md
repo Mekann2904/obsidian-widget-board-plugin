@@ -128,7 +128,7 @@ Obsidian Widget Board Pluginの導入方法は主に2つあります。
 BRAT（Beta Reviewers Auto-update Tool）プラグインを使うと、より簡単に導入・アップデートができます。
 
 1. Obsidianのコミュニティプラグインから「BRAT」を検索・インストールします。
-2. BRATの設定画面で「Add Beta Plugin」から本プラグインのGitHubリポジトリURL（ `https://github.com/Mekann2904/obsidian-widget-board-plugin/releases`）を追加します。
+2. BRATの設定画面で「Add Beta Plugin」から本プラグインのGitHubリポジトリURL（ `https://github.com/Mekann2904/obsidian-widget-board-plugin`）を追加します。
 3. 追加後、BRAT経由で本プラグインをインストール・有効化できます。
 
 > **BRATを使う方法が最も簡単でおすすめです。アップデートも自動で反映されるはずです。**
