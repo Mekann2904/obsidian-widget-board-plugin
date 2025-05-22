@@ -1,5 +1,8 @@
 # Obsidian Widget Board Plugin
 
+[note記事 Obsidianプラグイン「obsidian-widget-board-plugin」リリースしました](https://note.com/mekann/n/ne05f32922b9e?sub_rt=share_sb)
+[obsidian-widget-board-plugin 導入方法を簡単にまとめる](https://note.com/mekann/n/n7c593c276d5b)
+
 ## 概要
 
 Obsidian Widget Board Pluginは、Obsidian上で「ウィジェットボード」を作成し、複数の便利なウィジェット（ポモドーロタイマー、メモ、カレンダー、タイマー/ストップウォッチ、最近編集したノート、テーマ切り替え等）を自由に配置・管理できるプラグインです。
@@ -107,6 +110,28 @@ Obsidian Widget Board Pluginは、Obsidian上で「ウィジェットボード�
 - ポモドーロの作業ログエクスポートはVault外のファイルや他プラグインとの競合には非対応です。
 - Obsidianのバージョンやテーマによっては一部UIが崩れる場合があります。
 - その他、細かな不具合やご要望はGitHub Issue等でご報告ください。
+
+---
+
+## インストール
+
+Obsidian Widget Board Pluginの導入方法は主に2つあります。
+
+### 1. GitHubリリースから手動インストール
+
+1. [GitHubリリースページ](https://github.com/your-repo/obsidian-widget-board-plugin/releases)から`obsidian-widget-board-plugin.zip`をダウンロードします。
+2. zipファイルを解凍し、中身（`main.js`, `manifest.json`, `styles.css`など）をObsidianのプラグインフォルダ（`<Vault>/.obsidian/plugins/obsidian-widget-board-plugin/`）にコピーします。
+3. Obsidianの設定画面から本プラグインを有効化してください。
+
+### 2. BRATプラグインを使ってインストール（おすすめ）
+
+BRAT（Beta Reviewers Auto-update Tool）プラグインを使うと、より簡単に導入・アップデートができます。
+
+1. Obsidianのコミュニティプラグインから「BRAT」を検索・インストールします。
+2. BRATの設定画面で「Add Beta Plugin」から本プラグインのGitHubリポジトリURL（例: `https://github.com/your-repo/obsidian-widget-board-plugin`）を追加します。
+3. 追加後、BRAT経由で本プラグインをインストール・有効化できます。
+
+> **BRATを使う方法が最も簡単でおすすめです。アップデートも自動で反映されるはずです。**
 
 ---
 
