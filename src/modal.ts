@@ -39,7 +39,7 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
         const newWidgetConfig: WidgetConfig = {
             id: `widget-${Date.now()}`,
             type: widgetType,
-            title: `新規 ${widgetType} ウィジェット`,
+            title: '',
             settings: {},
         };
 
