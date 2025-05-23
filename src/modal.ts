@@ -363,12 +363,11 @@ export class WidgetBoardModal {
             this.lastWidgetOrder.every((id, i) => id === newOrder[i]) === false &&
             container.children.length === newOrder.length
         ) {
-            // 並び替えのみ
             newOrder.forEach((id, idx) => {
                 const node = Array.from(container.children).find(
                     el => (el as HTMLElement).dataset && (el as HTMLElement).dataset.widgetId === id
                 );
-                if (node) container.appendChild(node); // 末尾に移動
+                if (node) container.appendChild(node);
             });
             this.lastWidgetOrder = [...newOrder];
             return;
@@ -381,42 +380,72 @@ export class WidgetBoardModal {
             this.lastWidgetOrder = [];
             return;
         }
-        widgetsToLoad.forEach(widgetConfig => {
-            const WidgetClass = registeredWidgetImplementations.get(widgetConfig.type) as (new () => WidgetImplementation) | undefined;
-            if (WidgetClass) {
-                try {
-                    const widgetInstance = new WidgetClass();
-                    const widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
-                    if (this.isEditMode) {
-                        const editWrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
-                        editWrapper.setAttribute('draggable', 'true');
-                        editWrapper.dataset.widgetId = widgetConfig.id;
-                        const dragHandle = editWrapper.createDiv({ cls: 'wb-widget-drag-handle' });
-                        dragHandle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-grip-vertical"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>`;
-                        const deleteBtn = editWrapper.createEl('button', { cls: 'wb-widget-delete-btn', text: '×' });
-                        deleteBtn.onclick = async () => {
-                            if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
-                                await this.deleteWidget(widgetConfig.id);
+        // --- Lazy Load & 非同期描画 ---
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const wrapper = entry.target as HTMLElement;
+                    const widgetId = wrapper.dataset.widgetId;
+                    const widgetConfig = widgetsToLoad.find(w => w.id === widgetId);
+                    if (!widgetConfig) return;
+                    // 既に生成済みならスキップ
+                    if (wrapper.dataset.loaded === '1') return;
+                    const WidgetClass = registeredWidgetImplementations.get(widgetConfig.type) as (new () => WidgetImplementation) | undefined;
+                    if (WidgetClass) {
+                        // 重いウィジェットはsetTimeoutで遅延描画
+                        const isHeavy = ['pomodoro', 'calendar', 'recent-notes'].includes(widgetConfig.type);
+                        const createWidget = () => {
+                            try {
+                                const widgetInstance = new WidgetClass();
+                                const widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
+                                if (this.isEditMode) {
+                                    wrapper.innerHTML = '';
+                                    wrapper.appendChild(widgetElement);
+                                } else {
+                                    wrapper.replaceWith(widgetElement);
+                                }
+                                this.uiWidgetReferences.push(widgetInstance);
+                                wrapper.dataset.loaded = '1';
+                                obs.unobserve(wrapper);
+                            } catch (e: any) {
+                                wrapper.innerHTML = `<div class="widget widget-error"><h4>${widgetConfig.title || '(名称未設定)'} (ロードエラー)</h4><p>このウィジェットの読み込み中にエラーが発生しました。</p><p>${e.message || ''}</p></div>`;
+                                obs.unobserve(wrapper);
                             }
                         };
-                        editWrapper.appendChild(widgetElement);
+                        if (isHeavy) {
+                            setTimeout(createWidget, 0);
+                        } else {
+                            createWidget();
+                        }
                     } else {
-                        container.appendChild(widgetElement);
+                        wrapper.innerHTML = `<div class="widget widget-unknown"><h4>${widgetConfig.title || '(名称未設定)'} (不明な種類)</h4><p>ウィジェットの種類 '${widgetConfig.type}' は登録されていません。</p></div>`;
+                        obs.unobserve(wrapper);
                     }
-                    this.uiWidgetReferences.push(widgetInstance);
-                } catch (e: any) {
-                    console.error(`Widget Board: Failed to create widget type '${widgetConfig.type}' (ID: ${widgetConfig.id}, Title: ${widgetConfig.title}). Error:`, e);
-                    const errorEl = container.createDiv({ cls: 'widget widget-error' });
-                    errorEl.createEl('h4', { text: `${widgetConfig.title || '(名称未設定)'} (ロードエラー)` });
-                    errorEl.createEl('p', { text: `このウィジェットの読み込み中にエラーが発生しました。` });
-                    if (e.message) errorEl.createEl('p', { text: `エラー詳細: ${e.message}` });
                 }
+            });
+        }, { root: container, rootMargin: '200px' });
+        widgetsToLoad.forEach(widgetConfig => {
+            // プレースホルダー生成
+            let wrapper: HTMLElement;
+            if (this.isEditMode) {
+                wrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
+                wrapper.setAttribute('draggable', 'true');
+                wrapper.dataset.widgetId = widgetConfig.id;
+                wrapper.innerHTML = '<div class="wb-widget-placeholder">Loading...</div>';
+                const dragHandle = wrapper.createDiv({ cls: 'wb-widget-drag-handle' });
+                dragHandle.innerHTML = `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"svg-icon lucide-grip-vertical\"><circle cx=\"9\" cy=\"12\" r=\"1\"></circle><circle cx=\"9\" cy=\"5\" r=\"1\"></circle><circle cx=\"9\" cy=\"19\" r=\"1\"></circle><circle cx=\"15\" cy=\"12\" r=\"1\"></circle><circle cx=\"15\" cy=\"5\" r=\"1\"></circle><circle cx=\"15\" cy=\"19\" r=\"1\"></circle></svg>`;
+                const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn', text: '×' });
+                deleteBtn.onclick = async () => {
+                    if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
+                        await this.deleteWidget(widgetConfig.id);
+                    }
+                };
             } else {
-                console.warn(`Widget Board: No implementation found for widget type '${widgetConfig.type}' (ID: ${widgetConfig.id})`);
-                const unknownEl = container.createDiv({ cls: 'widget widget-unknown' });
-                unknownEl.createEl('h4', { text: `${widgetConfig.title || '(名称未設定)'} (不明な種類)` });
-                unknownEl.createEl('p', { text: `ウィジェットの種類 '${widgetConfig.type}' は登録されていません。` });
+                wrapper = container.createDiv();
+                wrapper.dataset.widgetId = widgetConfig.id;
+                wrapper.innerHTML = '<div class="wb-widget-placeholder">Loading...</div>';
             }
+            observer.observe(wrapper);
         });
         if (this.isEditMode) {
             this.addDragDropListeners(container);
