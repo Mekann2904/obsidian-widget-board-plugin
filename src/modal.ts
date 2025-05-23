@@ -286,7 +286,9 @@ export class WidgetBoardModal {
         container.empty();
         this.uiWidgetReferences = []; // 既存の参照をクリア
 
-        const widgetsToLoad = this.currentBoardConfig.widgets;
+        // ★常に最新のグローバル設定からボード情報を取得
+        const boardInGlobal = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
+        const widgetsToLoad = boardInGlobal ? boardInGlobal.widgets : this.currentBoardConfig.widgets;
         if (!widgetsToLoad || widgetsToLoad.length === 0) {
             container.createEl('p', {text: 'このボードに表示するウィジェットがありません。プラグイン設定でウィジェットを追加してください。'});
             return;
