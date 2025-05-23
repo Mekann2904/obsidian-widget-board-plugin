@@ -19,8 +19,11 @@
     transition: right 0.3s ease, left 0.3s ease, top 0.3s ease, opacity 0.2s, width 0.3s, transform 0.3s;
 }
 .widget-board-panel-custom > * {
+    flex: 1 1 0 !important;
     min-height: 0 !important;
     max-height: 100% !important;
+    display: flex;
+    flex-direction: column;
 }
 .widget-board-panel-custom.mode-right-third {
     width: 33.33vw !important;
@@ -165,10 +168,11 @@
     flex-shrink: 0;
 }
 .wb-panel-header h3 {
-    margin: 0;
-    font-size: 16px;
+    margin: 0 0 4px 0;
+    font-size: 18px;
     font-weight: 600;
     color: var(--text-normal);
+    padding: 0;
 }
 .wb-panel-controls {
     display: none;
@@ -219,6 +223,14 @@
     overflow-y: auto !important;
     padding: 15px;
     background-color: var(--background-primary);
+}
+.wb-widget-container.is-editing {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+    max-height: 100% !important;
+    overflow-y: auto !important;
+    display: flex;
+    flex-direction: column;
 }
 .widget {
     background-color: var(--background-secondary);
@@ -615,4 +627,155 @@
 .wb-mode-group-gap {
   display: inline-block;
   width: 16px;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 600px) {
+  .wb-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .wb-settings-panel {
+    padding: 8px;
+  }
+  .wb-widget-container.is-editing {
+    padding: 4px;
+  }
+}
+
+/* --- Accessibility: Focus Styles --- */
+.wb-panel-settings-toggle:focus,
+.wb-widget-delete-btn:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+/* --- Animation Enhancements --- */
+.wb-widget-edit-wrapper {
+  transition: border-color 0.2s, background 0.2s;
+}
+.wb-widget-edit-wrapper.is-dragging {
+  transition: opacity 0.2s, background 0.2s;
+}
+
+/* --- Settings Panel Scroll --- */
+.wb-settings-panel {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* --- Add Widget Button Hover --- */
+.wb-add-widget-btn:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* --- Drag Handle Hover --- */
+.wb-widget-drag-handle:hover {
+  color: var(--interactive-accent);
+}
+
+/* --- UI全体のモダン化・統一感強化 --- */
+.widget, .wb-settings-panel, .wb-widget-container {
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  padding: 18px;
+  margin-bottom: 24px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+button, .wb-add-widget-btn, .wb-panel-settings-toggle {
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 15px;
+  background: var(--interactive-normal);
+  color: var(--text-on-accent);
+  border: none;
+  transition: background 0.18s, color 0.18s;
+}
+button:hover, .wb-add-widget-btn:hover, .wb-panel-settings-toggle:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.wb-panel-header h3, .wb-settings-panel-header h4 {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 8px;
+  color: var(--text-normal);
+}
+
+.wb-settings-panel, .wb-widget-container {
+  margin-bottom: 24px;
+}
+.widget {
+  margin-bottom: 24px;
+}
+
+.wb-widget-drag-handle, .wb-widget-delete-btn {
+  border-radius: 8px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  transition: background 0.18s, color 0.18s;
+}
+.wb-widget-drag-handle:hover, .wb-widget-delete-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* --- 設定アコーディオンのコンパクト化 --- */
+.wb-settings-accordion-header {
+  font-size: 15px;
+  font-weight: 500;
+  padding: 4px 0 4px 4px;
+  border-bottom: 1px solid var(--divider-color);
+}
+.wb-settings-accordion-icon {
+  font-size: 1em;
+  margin-right: 4px;
+}
+.wb-settings-accordion-body {
+  padding: 8px 0 0 0;
+}
+
+.wb-settings-panel-header h4 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.wb-panel-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 2px 0;
+  padding: 0;
+}
+
+button, .wb-add-widget-btn, .wb-panel-settings-toggle {
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 14px;
+}
+
+.wb-mode-group-label {
+  font-size: 13px;
+  min-width: 60px;
+  margin-right: 6px;
+}
+
+.wb-mode-group button {
+  font-size: 13px;
+  padding: 4px 10px;
+  margin-bottom: 4px;
+}
+
+.wb-settings-panel, .wb-widget-container {
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.widget, .wb-settings-panel, .wb-widget-container {
+  box-shadow: 0 1px 6px rgba(0,0,0,0.10);
 }

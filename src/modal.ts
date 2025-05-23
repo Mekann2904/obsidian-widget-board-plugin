@@ -1,8 +1,55 @@
 // src/modal.ts
-import { App } from 'obsidian';
+import { App, FuzzySuggestModal, Notice } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import { registeredWidgetImplementations } from './widgetRegistry';
 import type { WidgetImplementation, BoardConfiguration, WidgetConfig } from './interfaces';
+
+/**
+ * 新しいウィジェットの種類を選択して追加するためのモーダル
+ */
+class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplementation]> {
+    plugin: WidgetBoardPlugin;
+    boardId: string;
+    onChoose: () => void; // ボードをリフレッシュするためのコールバック
+
+    constructor(app: App, plugin: WidgetBoardPlugin, boardId: string, onChoose: () => void) {
+        super(app);
+        this.plugin = plugin;
+        this.boardId = boardId;
+        this.onChoose = onChoose;
+        this.setPlaceholder("追加するウィジェットの種類を選択してください");
+    }
+
+    getItems(): [string, new () => WidgetImplementation][] {
+        return Array.from(registeredWidgetImplementations.entries());
+    }
+
+    getItemText(item: [string, new () => WidgetImplementation]): string {
+        return item[0];
+    }
+
+    async onChooseItem(item: [string, new () => WidgetImplementation], evt: MouseEvent | KeyboardEvent): Promise<void> {
+        const widgetType = item[0];
+        const board = this.plugin.settings.boards.find(b => b.id === this.boardId);
+        if (!board) {
+            new Notice("対象のボードが見つかりません。");
+            return;
+        }
+
+        const newWidgetConfig: WidgetConfig = {
+            id: `widget-${Date.now()}`,
+            type: widgetType,
+            title: `新規 ${widgetType} ウィジェット`,
+            settings: {},
+        };
+
+        board.widgets.push(newWidgetConfig);
+        await this.plugin.saveSettings();
+        new Notice(`'${widgetType}' ウィジェットが追加されました。`);
+        this.onChoose();
+    }
+}
+
 
 export class WidgetBoardModal {
     plugin: WidgetBoardPlugin;
@@ -15,7 +62,10 @@ export class WidgetBoardModal {
     public uiWidgetReferences: WidgetImplementation[] = [];
     public modalEl: HTMLElement;
     public contentEl: HTMLElement;
-    currentCustomWidth: number | null = null; // カスタム幅(px)を一時保存
+    currentCustomWidth: number | null = null;
+
+    isEditMode: boolean = false;
+    private draggedElement: HTMLElement | null = null;
 
     static readonly MODES = {
         RIGHT_HALF: 'mode-right-half',
@@ -77,27 +127,30 @@ export class WidgetBoardModal {
 
     onOpen() {
         this.isOpen = true;
+        this.isEditMode = false; // 開いたときは必ず表示モードで開始
         const { contentEl, modalEl } = this;
         contentEl.empty();
         this.uiWidgetReferences = [];
 
-        // カスタム幅が保存されていれば適用
         if (this.currentBoardConfig.defaultMode === 'custom-width' && this.currentBoardConfig.customWidth) {
             this.modalEl.style.width = this.currentBoardConfig.customWidth + 'vw';
         } else if (this.currentBoardConfig.customWidth && typeof this.currentBoardConfig.customWidth === 'number' && this.currentBoardConfig.customWidth > 0 && this.currentBoardConfig.customWidth <= 100) {
-            // 旧px保存分はpxで適用（将来的にvwに統一推奨）
             this.modalEl.style.width = this.currentBoardConfig.customWidth + 'px';
         } else {
             this.modalEl.style.width = '';
         }
 
-        this.applyMode(this.currentMode); // 現在のモードを適用
+        this.applyMode(this.currentMode);
 
-        // ヘッダー
+        // --- ヘッダーと設定ボタン ---
         const headerEl = contentEl.createDiv({ cls: 'wb-panel-header' });
         headerEl.createEl('h3', { text: `ウィジェットボード: ${this.currentBoardConfig.name}` });
 
-        // --- リサイズハンドル追加 ---
+        const settingsBtn = headerEl.createEl('button', { cls: 'wb-panel-settings-toggle' });
+        settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        settingsBtn.setAttribute('aria-label', '設定を開く');
+
+        // --- リサイズハンドル ---
         const resizeHandle = document.createElement('div');
         resizeHandle.className = 'wb-panel-resize-handle';
         modalEl.appendChild(resizeHandle);
@@ -115,7 +168,7 @@ export class WidgetBoardModal {
         document.addEventListener('mousemove', (e) => {
             if (!isResizing) return;
             const dx = e.clientX - startX;
-            const newWidth = Math.max(200, startWidth + dx); // 最小幅200px
+            const newWidth = Math.max(200, startWidth + dx);
             modalEl.style.width = newWidth + 'px';
         });
         document.addEventListener('mouseup', async (e) => {
@@ -127,68 +180,66 @@ export class WidgetBoardModal {
             const vw = (finalWidthPx / window.innerWidth) * 100;
             this.currentCustomWidth = vw;
             this.currentBoardConfig.customWidth = vw;
-            // 設定を永続化
             const boardToUpdate = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
             if (boardToUpdate) {
                 boardToUpdate.customWidth = vw;
                 await this.plugin.saveSettings();
             }
         });
-        // --- リサイズハンドルここまで ---
 
-        // コントロール（表示モード切り替えボタンなど）
-        const controlsEl = contentEl.createDiv({ cls: 'wb-panel-controls' });
-        controlsEl.createEl('p', { text: '表示モード:' });
+        // --- 統合された設定パネル (初期状態は非表示) ---
+        const settingsPanelEl = contentEl.createDiv({ cls: 'wb-settings-panel' });
+        settingsPanelEl.hide();
+
+        // --- 表示設定アコーディオン ---
+        const displayAccordion = settingsPanelEl.createDiv({ cls: 'wb-settings-accordion' });
+        const displayHeader = displayAccordion.createDiv({ cls: 'wb-settings-accordion-header' });
+        const displayIcon = displayHeader.createSpan({ cls: 'wb-settings-accordion-icon' });
+        displayIcon.setText('▶');
+        displayHeader.appendText('表示設定');
+        const displayBody = displayAccordion.createDiv({ cls: 'wb-settings-accordion-body' });
+        displayBody.style.display = 'none';
+
+        // --- ウィジェット設定アコーディオン ---
+        const widgetAccordion = settingsPanelEl.createDiv({ cls: 'wb-settings-accordion' });
+        const widgetHeader = widgetAccordion.createDiv({ cls: 'wb-settings-accordion-header' });
+        const widgetIcon = widgetHeader.createSpan({ cls: 'wb-settings-accordion-icon' });
+        widgetIcon.setText('▶');
+        widgetHeader.appendText('ウィジェット設定');
+        const widgetBody = widgetAccordion.createDiv({ cls: 'wb-settings-accordion-body' });
+        widgetBody.style.display = 'none';
+
+        // --- アコーディオン開閉イベント ---
+        displayHeader.addEventListener('click', () => {
+            const isOpen = displayAccordion.classList.toggle('open');
+            displayIcon.style.transform = isOpen ? 'rotate(90deg)' : '';
+            displayBody.style.display = isOpen ? 'block' : 'none';
+        });
+        widgetHeader.addEventListener('click', () => {
+            const isOpen = widgetAccordion.classList.toggle('open');
+            widgetIcon.style.transform = isOpen ? 'rotate(90deg)' : '';
+            widgetBody.style.display = isOpen ? 'block' : 'none';
+        });
+
+        // --- 表示設定アコーディオン内に本来のロジックを移動 ---
+        const panelHeader = displayBody.createDiv({ cls: 'wb-settings-panel-header' });
+        panelHeader.createEl('h4', { text: 'ボード設定' });
+        const doneBtn = panelHeader.createEl('button', { text: '完了' });
+
+        const displayControlsContainer = displayBody.createDiv({ cls: 'wb-display-controls-container' });
         this.modeButtons = [];
-
-        const controlsToggleBtn = contentEl.createEl('button', { cls: 'wb-panel-controls-toggle', text: '表示モード' });
-        controlsToggleBtn.onclick = () => {
-            controlsEl.classList.toggle('is-visible');
-        };
-        controlsEl.classList.remove('is-visible'); // 初期は非表示
-
-        // 表示モード切替ボタンをグループ化してラベル付きで並べる
         const modeGroups = [
-            {
-                label: '左パネル',
-                modes: [
-                    WidgetBoardModal.MODES.LEFT_THIRD,
-                    WidgetBoardModal.MODES.LEFT_HALF,
-                    WidgetBoardModal.MODES.LEFT_TWO_THIRD,
-                ]
-            },
-            {
-                label: '中央パネル',
-                modes: [
-                    WidgetBoardModal.MODES.CENTER_THIRD,
-                    WidgetBoardModal.MODES.CENTER_HALF,
-                ]
-            },
-            {
-                label: '右パネル',
-                modes: [
-                    WidgetBoardModal.MODES.RIGHT_THIRD,
-                    WidgetBoardModal.MODES.RIGHT_HALF,
-                    WidgetBoardModal.MODES.RIGHT_TWO_THIRD,
-                ]
-            },
-            {
-                label: 'カスタム',
-                modes: [
-                    WidgetBoardModal.MODES.CUSTOM_WIDTH
-                ]
-            }
+            { label: '左パネル', modes: [WidgetBoardModal.MODES.LEFT_THIRD, WidgetBoardModal.MODES.LEFT_HALF, WidgetBoardModal.MODES.LEFT_TWO_THIRD] },
+            { label: '中央パネル', modes: [WidgetBoardModal.MODES.CENTER_THIRD, WidgetBoardModal.MODES.CENTER_HALF] },
+            { label: '右パネル', modes: [WidgetBoardModal.MODES.RIGHT_THIRD, WidgetBoardModal.MODES.RIGHT_HALF, WidgetBoardModal.MODES.RIGHT_TWO_THIRD] },
+            { label: 'カスタム', modes: [WidgetBoardModal.MODES.CUSTOM_WIDTH] }
         ];
-        let customWidthAnchorBtnContainer: HTMLElement;
-        customWidthAnchorBtnContainer = controlsEl.createDiv({cls: 'custom-width-anchor-btns'});
-        customWidthAnchorBtnContainer.style.display = 'none'; // 初期は非表示
+        let customWidthAnchorBtnContainer = displayControlsContainer.createDiv({ cls: 'custom-width-anchor-btns' });
+        customWidthAnchorBtnContainer.style.display = this.currentMode === WidgetBoardModal.MODES.CUSTOM_WIDTH ? '' : 'none';
 
         modeGroups.forEach((group, groupIdx) => {
-            // グループ用div
-            const groupDiv = controlsEl.createDiv({ cls: 'wb-mode-group' });
-            // グループラベル
+            const groupDiv = displayControlsContainer.createDiv({ cls: 'wb-mode-group' });
             groupDiv.createEl('span', { text: group.label, cls: 'wb-mode-group-label' });
-            // ボタン
             group.modes.forEach(modeClass => {
                 let buttonText = '';
                 if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
@@ -210,28 +261,20 @@ export class WidgetBoardModal {
                         boardToUpdate.defaultMode = modeClass;
                         await this.plugin.saveSettings();
                     }
-                    // カスタム幅選択時は基準位置ボタンUIを表示
-                    if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) {
-                        customWidthAnchorBtnContainer.style.display = '';
-                    } else {
-                        customWidthAnchorBtnContainer.style.display = 'none';
-                    }
+                    customWidthAnchorBtnContainer.style.display = modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH ? '' : 'none';
                 });
                 this.modeButtons.push(button);
             });
-            // グループ間スペース
             if (groupIdx < modeGroups.length - 1) {
-                controlsEl.createEl('span', { text: '', cls: 'wb-mode-group-gap' });
+                displayControlsContainer.createEl('span', { text: '', cls: 'wb-mode-group-gap' });
             }
         });
-        // カスタム幅基準位置ボタンUI
-        const anchors: Array<{key: 'left'|'center'|'right', label: string}> = [
-            {key: 'left', label: '左'},
-            {key: 'center', label: '中央'},
-            {key: 'right', label: '右'}
+
+        const anchors: Array<{ key: 'left' | 'center' | 'right', label: string }> = [
+            { key: 'left', label: '左' }, { key: 'center', label: '中央' }, { key: 'right', label: '右' }
         ];
         anchors.forEach(anchorObj => {
-            const anchorBtn = customWidthAnchorBtnContainer.createEl('button', {text: anchorObj.label});
+            const anchorBtn = customWidthAnchorBtnContainer.createEl('button', { text: anchorObj.label });
             anchorBtn.classList.toggle('active', this.currentBoardConfig.customWidthAnchor === anchorObj.key || (!this.currentBoardConfig.customWidthAnchor && anchorObj.key === 'right'));
             anchorBtn.onclick = async () => {
                 this.currentBoardConfig.customWidthAnchor = anchorObj.key;
@@ -240,30 +283,57 @@ export class WidgetBoardModal {
                     boardToUpdate.customWidthAnchor = anchorObj.key;
                     await this.plugin.saveSettings();
                 }
-                // ボタンのアクティブ状態更新
-                if (customWidthAnchorBtnContainer) {
-                    Array.from(customWidthAnchorBtnContainer.children).forEach(btn => btn.classList.remove('active'));
-                }
+                Array.from(customWidthAnchorBtnContainer.children).forEach(btn => btn.classList.remove('active'));
                 anchorBtn.classList.add('active');
                 this.applyMode(WidgetBoardModal.MODES.CUSTOM_WIDTH);
             };
         });
-        
-        // ウィジェットコンテナ
-        const widgetContainerEl = contentEl.createDiv({ cls: 'wb-widget-container' });
-        this.loadWidgets(widgetContainerEl); // ウィジェットを読み込んで表示 (ここでuiWidgetReferencesが設定される)
 
-        // loadWidgetsの後、表示された各ウィジェットに対してhandleShowを呼び出す (必要な場合)
+        // --- ウィジェット設定アコーディオン内にウィジェット追加ボタンのみ配置 ---
+        const addWidgetContainer = widgetBody.createDiv({ cls: 'wb-add-widget-container' });
+        const addWidgetBtn = addWidgetContainer.createEl('button', { text: '＋ ウィジェット追加', cls: 'wb-add-widget-btn' });
+        addWidgetBtn.onclick = () => {
+            new AddWidgetModal(this.plugin.app, this.plugin, this.currentBoardId, () => {
+                const widgetContainerEl = this.contentEl.querySelector('.wb-widget-container');
+                if (widgetContainerEl instanceof HTMLElement) {
+                    this.loadWidgets(widgetContainerEl);
+                }
+            }).open();
+        };
+
+        // --- 設定パネルの開閉と編集モードを切り替える ---
+        const toggleSettings = () => {
+            this.isEditMode = !this.isEditMode;
+            settingsBtn.classList.toggle('active', this.isEditMode);
+
+            if (this.isEditMode) {
+                settingsPanelEl.show();
+            } else {
+                settingsPanelEl.hide();
+            }
+
+            const widgetContainerEl = this.contentEl.querySelector('.wb-widget-container');
+            if (widgetContainerEl instanceof HTMLElement) {
+                widgetContainerEl.classList.toggle('is-editing', this.isEditMode);
+                this.loadWidgets(widgetContainerEl);
+            }
+        };
+
+        settingsBtn.onclick = toggleSettings;
+        doneBtn.onclick = toggleSettings;
+
+        // --- ウィジェットコンテナ ---
+        const widgetContainerEl = contentEl.createDiv({ cls: 'wb-widget-container' });
+        this.loadWidgets(widgetContainerEl);
+
         this.uiWidgetReferences.forEach(widgetInstance => {
             if (typeof (widgetInstance as any).handleShow === 'function') {
                 (widgetInstance as any).handleShow();
             }
         });
 
-        // モードボタンのアクティブ状態を更新
         this.updateModeButtonsActiveState();
 
-        // 検索バーinputへのfocusガード
         setTimeout(() => {
             const searchInput = this.contentEl.querySelector('.wb-page-search-bar-input') as HTMLInputElement | null;
             if (searchInput) {
@@ -276,7 +346,6 @@ export class WidgetBoardModal {
             }
         }, 0);
 
-        // 開くときのアニメーション用クラス（requestAnimationFrameで若干遅延させる）
         requestAnimationFrame(() => {
             modalEl.classList.add('is-open');
         });
@@ -284,64 +353,157 @@ export class WidgetBoardModal {
 
     loadWidgets(container: HTMLElement) {
         container.empty();
-        this.uiWidgetReferences = []; // 既存の参照をクリア
-
-        // ★常に最新のグローバル設定からボード情報を取得
+        this.uiWidgetReferences = [];
         const boardInGlobal = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
         const widgetsToLoad = boardInGlobal ? boardInGlobal.widgets : this.currentBoardConfig.widgets;
+
         if (!widgetsToLoad || widgetsToLoad.length === 0) {
-            container.createEl('p', {text: 'このボードに表示するウィジェットがありません。プラグイン設定でウィジェットを追加してください。'});
+            container.createEl('p', { text: 'このボードに表示するウィジェットがありません。' + (this.isEditMode ? '「ウィジェット追加」から追加してください。' : '設定を開いてウィジェットを追加してください。') });
             return;
         }
 
         widgetsToLoad.forEach(widgetConfig => {
-            // registeredWidgetImplementations には、各ウィジェットタイプの「クラス（コンストラクタ）」が格納されている
             const WidgetClass = registeredWidgetImplementations.get(widgetConfig.type) as (new () => WidgetImplementation) | undefined;
             if (WidgetClass) {
                 try {
-                    // newしてからcreateメソッドを呼ぶ
                     const widgetInstance = new WidgetClass();
                     const widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
-                    container.appendChild(widgetElement);
-                    // モーダル内で参照するために、このインスタンスを保存
+
+                    if (this.isEditMode) {
+                        const editWrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
+                        editWrapper.setAttribute('draggable', 'true');
+                        editWrapper.dataset.widgetId = widgetConfig.id;
+
+                        const dragHandle = editWrapper.createDiv({ cls: 'wb-widget-drag-handle' });
+                        dragHandle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-grip-vertical"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>`;
+
+                        const deleteBtn = editWrapper.createEl('button', { cls: 'wb-widget-delete-btn', text: '×' });
+                        deleteBtn.onclick = async () => {
+                            if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
+                                await this.deleteWidget(widgetConfig.id);
+                            }
+                        };
+
+                        editWrapper.appendChild(widgetElement);
+                    } else {
+                        container.appendChild(widgetElement);
+                    }
                     this.uiWidgetReferences.push(widgetInstance);
                 } catch (e: any) {
                     console.error(`Widget Board: Failed to create widget type '${widgetConfig.type}' (ID: ${widgetConfig.id}, Title: ${widgetConfig.title}). Error:`, e);
-                    const errorEl = container.createDiv({cls: 'widget widget-error'});
-                    errorEl.createEl('h4', {text: `${widgetConfig.title || '(名称未設定)'} (ロードエラー)`});
-                    errorEl.createEl('p', {text: `このウィジェットの読み込み中にエラーが発生しました。`});
-                    if (e.message) errorEl.createEl('p', {text: `エラー詳細: ${e.message}`});
+                    const errorEl = container.createDiv({ cls: 'widget widget-error' });
+                    errorEl.createEl('h4', { text: `${widgetConfig.title || '(名称未設定)'} (ロードエラー)` });
+                    errorEl.createEl('p', { text: `このウィジェットの読み込み中にエラーが発生しました。` });
+                    if (e.message) errorEl.createEl('p', { text: `エラー詳細: ${e.message}` });
                 }
             } else {
                 console.warn(`Widget Board: No implementation found for widget type '${widgetConfig.type}' (ID: ${widgetConfig.id})`);
-                const unknownEl = container.createDiv({cls: 'widget widget-unknown'});
-                unknownEl.createEl('h4', {text: `${widgetConfig.title || '(名称未設定)'} (不明な種類)`});
-                unknownEl.createEl('p', {text: `ウィジェットの種類 '${widgetConfig.type}' は登録されていません。`});
+                const unknownEl = container.createDiv({ cls: 'widget widget-unknown' });
+                unknownEl.createEl('h4', { text: `${widgetConfig.title || '(名称未設定)'} (不明な種類)` });
+                unknownEl.createEl('p', { text: `ウィジェットの種類 '${widgetConfig.type}' は登録されていません。` });
             }
         });
+
+        if (this.isEditMode) {
+            this.addDragDropListeners(container);
+        }
+    }
+
+    private async deleteWidget(widgetId: string) {
+        const board = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
+        if (!board) return;
+
+        const widgetIndex = board.widgets.findIndex(w => w.id === widgetId);
+        if (widgetIndex > -1) {
+            board.widgets.splice(widgetIndex, 1);
+            await this.plugin.saveSettings();
+            const widgetContainerEl = this.contentEl.querySelector('.wb-widget-container');
+            if (widgetContainerEl instanceof HTMLElement) {
+                this.loadWidgets(widgetContainerEl);
+            }
+        }
+    }
+
+    private addDragDropListeners(container: HTMLElement) {
+        container.addEventListener('dragstart', this.handleDragStart.bind(this));
+        container.addEventListener('dragover', this.handleDragOver.bind(this));
+        container.addEventListener('drop', this.handleDrop.bind(this));
+        container.addEventListener('dragend', this.handleDragEnd.bind(this));
+    }
+
+    private handleDragStart(e: DragEvent) {
+        const target = (e.target as HTMLElement).closest('.wb-widget-edit-wrapper');
+        if (target instanceof HTMLElement && e.dataTransfer) {
+            this.draggedElement = target;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', target.dataset.widgetId || '');
+            setTimeout(() => target.classList.add('is-dragging'), 0);
+        }
+    }
+
+    private handleDragOver(e: DragEvent) {
+        e.preventDefault();
+        if (!this.draggedElement) return;
+
+        const container = e.currentTarget as HTMLElement;
+        const overElement = (e.target as HTMLElement).closest('.wb-widget-edit-wrapper');
+
+        if (overElement && overElement !== this.draggedElement) {
+            const rect = overElement.getBoundingClientRect();
+            const isAfter = e.clientY > rect.top + rect.height / 2;
+            if (isAfter) {
+                container.insertBefore(this.draggedElement, overElement.nextSibling);
+            } else {
+                container.insertBefore(this.draggedElement, overElement);
+            }
+        }
+    }
+
+    private async handleDrop(e: DragEvent) {
+        e.preventDefault();
+        if (!this.draggedElement) return;
+
+        this.draggedElement.classList.remove('is-dragging');
+        const container = e.currentTarget as HTMLElement;
+
+        const newWidgetOrderIds = Array.from(container.querySelectorAll('.wb-widget-edit-wrapper'))
+            .map(el => (el as HTMLElement).dataset.widgetId)
+            .filter((id): id is string => !!id);
+
+        const board = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
+        if (board && board.widgets) {
+            const newWidgets = newWidgetOrderIds.map(id => board.widgets.find(w => w.id === id)).filter((w): w is WidgetConfig => !!w);
+            board.widgets = newWidgets;
+            await this.plugin.saveSettings();
+        }
+
+        this.draggedElement = null;
+    }
+
+    private handleDragEnd(e: DragEvent) {
+        if (this.draggedElement) {
+            this.draggedElement.classList.remove('is-dragging');
+            this.draggedElement = null;
+        }
     }
 
     applyMode(newModeClass: string) {
         const { modalEl } = this;
         const validModeClasses = Object.values(WidgetBoardModal.MODES) as string[];
 
-        // すべてのモードクラス・カスタム幅クラスを一旦削除
         validModeClasses.forEach(cls => modalEl.classList.remove(cls));
         modalEl.classList.remove('custom-width-right', 'custom-width-left', 'custom-width-center');
 
         if (newModeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) {
-            // カスタム幅モード
             const anchor = this.currentBoardConfig.customWidthAnchor || 'right';
             modalEl.classList.add(`custom-width-${anchor}`);
             const width = (this.currentBoardConfig.customWidth || 40) + 'vw';
             modalEl.style.width = width;
             modalEl.style.setProperty('--custom-width', width);
-            // 位置リセット（JSで直接指定しない）
             modalEl.style.right = '';
             modalEl.style.left = '';
             modalEl.style.transform = '';
         } else {
-            // 通常モード
             if (validModeClasses.includes(newModeClass)) {
                 modalEl.classList.add(newModeClass);
             }
@@ -363,14 +525,12 @@ export class WidgetBoardModal {
     close() {
         const { modalEl } = this;
         this.isClosing = true;
-        // Mapから即時削除（アニメーション中の重複防止）
         if (this.plugin.widgetBoardModals && this.plugin.widgetBoardModals.has(this.currentBoardId)) {
             this.plugin.widgetBoardModals.delete(this.currentBoardId);
         }
         modalEl.classList.remove('is-open');
         setTimeout(() => {
             this.onClose();
-            // body内の同じdata-board-idを持つ全てのパネルを削除
             const selector = `.widget-board-panel-custom[data-board-id='${this.currentBoardId}']`;
             document.querySelectorAll(selector).forEach(el => {
                 if (el.parentElement === document.body) {
@@ -383,20 +543,13 @@ export class WidgetBoardModal {
     onClose() {
         this.isOpen = false;
         this.isClosing = false;
-        // Mapからの削除はclose()で行う
-
-        // 表示されていたウィジェットインスタンスに対して非表示処理を実行
         this.uiWidgetReferences.forEach(widgetInstance => {
             if (typeof (widgetInstance as any).handleHide === 'function') {
                 (widgetInstance as any).handleHide();
             }
         });
-        
-        // モーダルの内容をクリア
         const { contentEl } = this;
         contentEl.empty();
-        
-        // 参照をクリア
-        this.uiWidgetReferences = []; 
+        this.uiWidgetReferences = [];
     }
 }
