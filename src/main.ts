@@ -12,6 +12,7 @@ import { DEFAULT_CALENDAR_SETTINGS } from './widgets/calendarWidget';
 export default class WidgetBoardPlugin extends Plugin {
     settings: PluginGlobalSettings;
     widgetBoardModals: Map<string, WidgetBoardModal> = new Map();
+    private isSaving: boolean = false;
 
     async onload() {
         console.log('Widget Board Plugin: Loading...');
@@ -152,19 +153,38 @@ export default class WidgetBoardPlugin extends Plugin {
         });
     }
 
-    async saveSettings() {
-        await this.saveData(this.settings);
-        this.widgetBoardModals.forEach(modal => {
-            if (modal.isOpen && modal.currentBoardConfig) {
-                const currentBoardId = modal.currentBoardConfig.id;
-                const updatedBoardConfig = this.settings.boards.find(b => b.id === currentBoardId);
-                if (updatedBoardConfig) {
-                    modal.updateBoardConfiguration(updatedBoardConfig);
-                } else {
-                    modal.close();
+    async saveSettings(targetBoardId?: string) {
+        if (this.isSaving) return;
+        this.isSaving = true;
+        try {
+            await this.saveData(this.settings);
+            if (targetBoardId) {
+                const modal = this.widgetBoardModals.get(targetBoardId);
+                if (modal && modal.isOpen && modal.currentBoardConfig) {
+                    const updatedBoardConfig = this.settings.boards.find(b => b.id === targetBoardId);
+                    if (updatedBoardConfig) {
+                        modal.updateBoardConfiguration(updatedBoardConfig);
+                    } else {
+                        modal.close();
+                    }
                 }
+            } else {
+                // 引数なしの場合は従来通り全モーダル更新
+                this.widgetBoardModals.forEach(modal => {
+                    if (modal.isOpen && modal.currentBoardConfig) {
+                        const currentBoardId = modal.currentBoardConfig.id;
+                        const updatedBoardConfig = this.settings.boards.find(b => b.id === currentBoardId);
+                        if (updatedBoardConfig) {
+                            modal.updateBoardConfiguration(updatedBoardConfig);
+                        } else {
+                            modal.close();
+                        }
+                    }
+                });
             }
-        });
+        } finally {
+            this.isSaving = false;
+        }
     }
 }
 

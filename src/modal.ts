@@ -44,7 +44,7 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
         };
 
         board.widgets.push(newWidgetConfig);
-        await this.plugin.saveSettings();
+        await this.plugin.saveSettings(this.boardId);
         new Notice(`'${widgetType}' ウィジェットが追加されました。`);
         this.onChoose();
     }
@@ -66,6 +66,8 @@ export class WidgetBoardModal {
 
     isEditMode: boolean = false;
     private draggedElement: HTMLElement | null = null;
+    private lastWidgetOrder: string[] = [];
+    private dragDropListeners: Array<{ type: string, handler: EventListenerOrEventListenerObject }> = [];
 
     static readonly MODES = {
         RIGHT_HALF: 'mode-right-half',
@@ -183,7 +185,7 @@ export class WidgetBoardModal {
             const boardToUpdate = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
             if (boardToUpdate) {
                 boardToUpdate.customWidth = vw;
-                await this.plugin.saveSettings();
+                await this.plugin.saveSettings(this.currentBoardId);
             }
         });
 
@@ -259,7 +261,7 @@ export class WidgetBoardModal {
                     const boardToUpdate = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
                     if (boardToUpdate) {
                         boardToUpdate.defaultMode = modeClass;
-                        await this.plugin.saveSettings();
+                        await this.plugin.saveSettings(this.currentBoardId);
                     }
                     customWidthAnchorBtnContainer.style.display = modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH ? '' : 'none';
                 });
@@ -281,7 +283,7 @@ export class WidgetBoardModal {
                 const boardToUpdate = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
                 if (boardToUpdate) {
                     boardToUpdate.customWidthAnchor = anchorObj.key;
-                    await this.plugin.saveSettings();
+                    await this.plugin.saveSettings(this.currentBoardId);
                 }
                 Array.from(customWidthAnchorBtnContainer.children).forEach(btn => btn.classList.remove('active'));
                 anchorBtn.classList.add('active');
@@ -352,38 +354,51 @@ export class WidgetBoardModal {
     }
 
     loadWidgets(container: HTMLElement) {
-        container.empty();
-        this.uiWidgetReferences = [];
         const boardInGlobal = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
         const widgetsToLoad = boardInGlobal ? boardInGlobal.widgets : this.currentBoardConfig.widgets;
-
-        if (!widgetsToLoad || widgetsToLoad.length === 0) {
-            container.createEl('p', { text: 'このボードに表示するウィジェットがありません。' + (this.isEditMode ? '「ウィジェット追加」から追加してください。' : '設定を開いてウィジェットを追加してください。') });
+        const newOrder = widgetsToLoad.map(w => w.id);
+        // 差分描画: ID順序が同じなら並び替えだけ
+        if (
+            this.lastWidgetOrder.length === newOrder.length &&
+            this.lastWidgetOrder.every((id, i) => id === newOrder[i]) === false &&
+            container.children.length === newOrder.length
+        ) {
+            // 並び替えのみ
+            newOrder.forEach((id, idx) => {
+                const node = Array.from(container.children).find(
+                    el => (el as HTMLElement).dataset && (el as HTMLElement).dataset.widgetId === id
+                );
+                if (node) container.appendChild(node); // 末尾に移動
+            });
+            this.lastWidgetOrder = [...newOrder];
             return;
         }
-
+        // それ以外は全再描画
+        container.empty();
+        this.uiWidgetReferences = [];
+        if (!widgetsToLoad || widgetsToLoad.length === 0) {
+            container.createEl('p', { text: 'このボードに表示するウィジェットがありません。' + (this.isEditMode ? '「ウィジェット追加」から追加してください。' : '設定を開いてウィジェットを追加してください。') });
+            this.lastWidgetOrder = [];
+            return;
+        }
         widgetsToLoad.forEach(widgetConfig => {
             const WidgetClass = registeredWidgetImplementations.get(widgetConfig.type) as (new () => WidgetImplementation) | undefined;
             if (WidgetClass) {
                 try {
                     const widgetInstance = new WidgetClass();
                     const widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
-
                     if (this.isEditMode) {
                         const editWrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
                         editWrapper.setAttribute('draggable', 'true');
                         editWrapper.dataset.widgetId = widgetConfig.id;
-
                         const dragHandle = editWrapper.createDiv({ cls: 'wb-widget-drag-handle' });
                         dragHandle.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-grip-vertical"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>`;
-
                         const deleteBtn = editWrapper.createEl('button', { cls: 'wb-widget-delete-btn', text: '×' });
                         deleteBtn.onclick = async () => {
                             if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
                                 await this.deleteWidget(widgetConfig.id);
                             }
                         };
-
                         editWrapper.appendChild(widgetElement);
                     } else {
                         container.appendChild(widgetElement);
@@ -403,10 +418,10 @@ export class WidgetBoardModal {
                 unknownEl.createEl('p', { text: `ウィジェットの種類 '${widgetConfig.type}' は登録されていません。` });
             }
         });
-
         if (this.isEditMode) {
             this.addDragDropListeners(container);
         }
+        this.lastWidgetOrder = [...newOrder];
     }
 
     private async deleteWidget(widgetId: string) {
@@ -416,7 +431,7 @@ export class WidgetBoardModal {
         const widgetIndex = board.widgets.findIndex(w => w.id === widgetId);
         if (widgetIndex > -1) {
             board.widgets.splice(widgetIndex, 1);
-            await this.plugin.saveSettings();
+            await this.plugin.saveSettings(this.currentBoardId);
             const widgetContainerEl = this.contentEl.querySelector('.wb-widget-container');
             if (widgetContainerEl instanceof HTMLElement) {
                 this.loadWidgets(widgetContainerEl);
@@ -425,10 +440,26 @@ export class WidgetBoardModal {
     }
 
     private addDragDropListeners(container: HTMLElement) {
-        container.addEventListener('dragstart', this.handleDragStart.bind(this));
-        container.addEventListener('dragover', this.handleDragOver.bind(this));
-        container.addEventListener('drop', this.handleDrop.bind(this));
-        container.addEventListener('dragend', this.handleDragEnd.bind(this));
+        const dragStart = this.handleDragStart.bind(this);
+        const dragOver = this.handleDragOver.bind(this);
+        const drop = this.handleDrop.bind(this);
+        const dragEnd = this.handleDragEnd.bind(this);
+        container.addEventListener('dragstart', dragStart);
+        container.addEventListener('dragover', dragOver);
+        container.addEventListener('drop', drop);
+        container.addEventListener('dragend', dragEnd);
+        this.dragDropListeners = [
+            { type: 'dragstart', handler: dragStart },
+            { type: 'dragover', handler: dragOver },
+            { type: 'drop', handler: drop },
+            { type: 'dragend', handler: dragEnd },
+        ];
+    }
+    private removeDragDropListeners(container: HTMLElement) {
+        this.dragDropListeners.forEach(({ type, handler }) => {
+            container.removeEventListener(type, handler);
+        });
+        this.dragDropListeners = [];
     }
 
     private handleDragStart(e: DragEvent) {
@@ -470,11 +501,15 @@ export class WidgetBoardModal {
             .map(el => (el as HTMLElement).dataset.widgetId)
             .filter((id): id is string => !!id);
 
-        const board = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
-        if (board && board.widgets) {
+        // 最新のboardを再取得して順序を上書き
+        const boardIndex = this.plugin.settings.boards.findIndex(b => b.id === this.currentBoardId);
+        if (boardIndex !== -1) {
+            const board = this.plugin.settings.boards[boardIndex];
             const newWidgets = newWidgetOrderIds.map(id => board.widgets.find(w => w.id === id)).filter((w): w is WidgetConfig => !!w);
             board.widgets = newWidgets;
-            await this.plugin.saveSettings();
+            await this.plugin.saveSettings(this.currentBoardId);
+            // 保存後に再描画（競合防止）
+            this.updateBoardConfiguration(board);
         }
 
         this.draggedElement = null;
@@ -527,6 +562,11 @@ export class WidgetBoardModal {
         this.isClosing = true;
         if (this.plugin.widgetBoardModals && this.plugin.widgetBoardModals.has(this.currentBoardId)) {
             this.plugin.widgetBoardModals.delete(this.currentBoardId);
+        }
+        // --- イベントリスナー解除 ---
+        const widgetContainerEl = this.contentEl.querySelector('.wb-widget-container');
+        if (widgetContainerEl instanceof HTMLElement) {
+            this.removeDragDropListeners(widgetContainerEl);
         }
         modalEl.classList.remove('is-open');
         setTimeout(() => {
