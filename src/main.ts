@@ -57,58 +57,47 @@ export default class WidgetBoardPlugin extends Plugin {
     }
 
     openWidgetBoardById(boardId: string) {
-        {
-            const modal = this.widgetBoardModals.get(boardId);
-            if (modal) {
-                if (modal.isOpen || modal.isClosing) {
-                    // 既に開いている、または閉じるアニメーション中なら何もしない
-                    return;
-                } else {
-                    // isOpen=false だがMapに残っている場合は削除
-                    this.widgetBoardModals.delete(boardId);
-                    // 古いモーダルのDOMが残っていれば即座に削除
-                    if (modal.modalEl && modal.modalEl.parentElement === document.body) {
-                        document.body.removeChild(modal.modalEl);
-                    }
+        const modal = this.widgetBoardModals.get(boardId);
+        if (modal) {
+            if (modal.isOpen || modal.isClosing) {
+                // 既に開いている、または閉じるアニメーション中なら何もしない
+                return;
+            } else {
+                // isOpen=false だがMapに残っている場合は削除
+                this.widgetBoardModals.delete(boardId);
+                if (modal.modalEl && modal.modalEl.parentElement === document.body) {
+                    document.body.removeChild(modal.modalEl);
                 }
             }
         }
         const boardConfig = this.settings.boards.find(b => b.id === boardId);
         if (!boardConfig) {
             new Notice(`ID '${boardId}' のウィジェットボードが見つかりません。`);
-            if (this.settings.boards.length > 0) {
-                this.openWidgetBoardById(this.settings.boards[0].id);
-            }
             return;
         }
         const validModes = Object.values(WidgetBoardModal.MODES);
         if (!validModes.includes(boardConfig.defaultMode as any)) {
-            new Notice(`ボード「${boardConfig.name}」の無効なデフォルトモード '${boardConfig.defaultMode}'。フォールバックします。`);
             boardConfig.defaultMode = WidgetBoardModal.MODES.RIGHT_THIRD;
         }
-        this.settings.lastOpenedBoardId = boardId;
-        this.saveSettings();
-        const modal = new WidgetBoardModal(this.app, this, boardConfig);
-        this.widgetBoardModals.set(boardId, modal);
+        // lastOpenedBoardIdやsaveSettingsは明示的な設定変更時のみ更新
+        const newModal = new WidgetBoardModal(this.app, this, boardConfig);
+        this.widgetBoardModals.set(boardId, newModal);
         // モーダルが閉じられたらMapから削除
-        const origOnClose = modal.onClose.bind(modal);
-        modal.onClose = () => {
+        const origOnClose = newModal.onClose.bind(newModal);
+        newModal.onClose = () => {
             this.widgetBoardModals.delete(boardId);
             origOnClose();
         };
-        modal.open();
+        newModal.open();
     }
 
-    /**
-     * 指定したボードIDのウィジェットボードパネルをトグル（開閉）する
-     */
     toggleWidgetBoardById(boardId: string) {
         const modal = this.widgetBoardModals.get(boardId);
         if (modal && modal.isOpen) {
-            modal.close();
+            modal.close(); // このモーダルだけ閉じる
             return;
         }
-        this.openWidgetBoardById(boardId);
+        this.openWidgetBoardById(boardId); // このモーダルだけ開く
     }
 
     async loadSettings() {

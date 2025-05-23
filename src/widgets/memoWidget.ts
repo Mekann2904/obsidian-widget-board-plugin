@@ -251,9 +251,9 @@ export class MemoWidget implements WidgetImplementation {
             }
 
             if (settingsUpdatedInGlobalStore) {
-                console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Calling this.plugin.saveSettings() to persist all changes.`);
+                console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Calling this.plugin.saveSettings(currentModalBoardId) to persist all changes.`);
                 // this.plugin.saveSettings() は this.plugin.settings 全体を保存する
-                await this.plugin.saveSettings(); 
+                await this.plugin.saveSettings(currentModalBoardId); 
                 // new Notice(`メモ「${this.config.title || '無題'}」を保存しました。`); // 保存成功通知
             } else {
                 console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Did not update global settings store due to lookup failure. Save not fully effective.`);

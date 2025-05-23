@@ -14,7 +14,7 @@ interface WidgetImplementation {
 
 interface WidgetBoardPlugin {
     manifest: { id: string; [key: string]: any }; // プラグインIDを含むマニフェスト
-    saveSettings: () => Promise<void>;
+    saveSettings: (boardId?: string) => Promise<void>;
     widgetBoardModals?: Map<string, { isOpen: boolean }>;
     settings: { lastOpenedBoardId?: string };
     openWidgetBoardById: (id: string) => void;
@@ -70,6 +70,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
 
     private static widgetStates: Map<string, TimerStopwatchState> = new Map();
     private static widgetInstances: Map<string, Set<TimerStopwatchWidget>> = new Map();
+    private static globalIntervalId: number | null = null; // グローバルtick用
 
     private getInternalState(): TimerStopwatchState | undefined {
         return TimerStopwatchWidget.widgetStates.get(this.config.id);
@@ -144,6 +145,25 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         TimerStopwatchWidget.notifyInstancesToUpdateDisplay(configId);
     }
 
+    private static ensureGlobalInterval() {
+        if (this.globalIntervalId == null) {
+            this.globalIntervalId = window.setInterval(() => {
+                this.widgetStates.forEach((state, id) => {
+                    if (state.running) this.tick(id);
+                });
+            }, 250);
+        }
+    }
+
+    private static clearGlobalIntervalIfNoneRunning() {
+        if (Array.from(this.widgetStates.values()).every(state => !state.running)) {
+            if (this.globalIntervalId != null) {
+                clearInterval(this.globalIntervalId);
+                this.globalIntervalId = null;
+            }
+        }
+    }
+
     private static startGlobalTimer(configId: string) {
         let state = TimerStopwatchWidget.widgetStates.get(configId);
         if (!state) return;
@@ -154,10 +174,9 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         state.running = true;
         state.lastTickTime = Date.now();
         TimerStopwatchWidget.widgetStates.set(configId, state);
-        const intervalId = window.setInterval(() => TimerStopwatchWidget.tick(configId), 250);
-        state.intervalId = intervalId;
-        TimerStopwatchWidget.widgetStates.set(configId, state);
-        TimerStopwatchWidget.notifyInstancesToUpdateDisplay(configId);
+        // インスタンスごとのintervalは使わず、グローバルintervalでtick
+        this.ensureGlobalInterval();
+        this.notifyInstancesToUpdateDisplay(configId);
     }
 
     private static stopGlobalTimer(configId: string) {
@@ -169,7 +188,8 @@ export class TimerStopwatchWidget implements WidgetImplementation {
             }
             state.running = false;
             TimerStopwatchWidget.widgetStates.set(configId, state);
-            TimerStopwatchWidget.notifyInstancesToUpdateDisplay(configId);
+            this.clearGlobalIntervalIfNoneRunning();
+            this.notifyInstancesToUpdateDisplay(configId);
         }
     }
 
@@ -200,19 +220,16 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         }
         TimerStopwatchWidget.widgetInstances.get(config.id)!.add(this);
 
+        // --- グローバル状態から復元 ---
         let state = this.getInternalState();
         if (!state) {
             state = this.initializeInternalState();
         } else {
             this.currentSettings.timerMinutes = Math.floor(state.initialTimerSeconds / 60);
             this.currentSettings.timerSeconds = state.initialTimerSeconds % 60;
-            // グローバル状態に保存された設定からcurrentSettingsの音量なども復元できると良いが、
-            // TimerStopwatchState には音量設定がないため、ここでは currentSettings が正となる。
         }
-
-        if (state.running && state.intervalId === null) {
-            TimerStopwatchWidget.startGlobalTimer(this.config.id);
-        }
+        // グローバルintervalを必ず維持
+        TimerStopwatchWidget.ensureGlobalInterval();
 
         this.widgetEl = document.createElement('div');
         this.widgetEl.classList.add('widget', 'timer-stopwatch-widget');
@@ -430,21 +447,15 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         const instances = TimerStopwatchWidget.widgetInstances.get(this.config.id);
         if (instances) {
             instances.delete(this);
-            // if (instances.size === 0) {
-            //     // オプション: 全てのインスタンスがなくなったらタイマー停止や状態クリア
-            //     // TimerStopwatchWidget.stopGlobalTimer(this.config.id);
-            //     // TimerStopwatchWidget.widgetStates.delete(this.config.id);
-            // }
         }
-
-        // --- 音声リソースのクリーンアップ ---
+        // グローバルintervalは維持（他のタイマーが動作中の可能性があるため）
         if (this.audioContext && this.audioContext.state !== 'closed') {
             this.audioContext.close().catch(e => console.warn(`TimerStopwatchWidget [${this.config?.id}]: Error closing AudioContext on unload:`, e));
             this.audioContext = null;
         }
         if (this.currentAudioElement) {
             this.currentAudioElement.pause();
-            this.currentAudioElement.src = ""; // ソースをクリアしてリソース解放を促す
+            this.currentAudioElement.src = "";
             this.currentAudioElement = null;
         }
     }

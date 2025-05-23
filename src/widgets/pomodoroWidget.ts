@@ -75,6 +75,8 @@ export class PomodoroWidget implements WidgetImplementation {
     private currentAudioElement: HTMLAudioElement | null = null;
 
     private static widgetInstances: Map<string, PomodoroWidget> = new Map();
+    private static widgetStates: Map<string, any> = new Map();
+    private static globalIntervalId: number | null = null;
 
     private sessionLogs: SessionLog[] = [];
     private currentSessionStartTime: Date | null = null;
@@ -128,6 +130,89 @@ export class PomodoroWidget implements WidgetImplementation {
 
     private cancelMemoEditMode() {
         this.memoWidget?.cancelEditMode();
+    }
+
+    private static ensureGlobalInterval() {
+        if (this.globalIntervalId == null) {
+            this.globalIntervalId = window.setInterval(() => {
+                this.widgetStates.forEach((state, id) => {
+                    if (state && state.isRunning) this.tick(id);
+                });
+            }, 1000);
+        }
+    }
+
+    private static clearGlobalIntervalIfNoneRunning() {
+        if (Array.from(this.widgetStates.values()).every(state => !state.isRunning)) {
+            if (this.globalIntervalId != null) {
+                clearInterval(this.globalIntervalId);
+                this.globalIntervalId = null;
+            }
+        }
+    }
+
+    private static tick(configId: string) {
+        const state = this.widgetStates.get(configId);
+        if (!state || !state.isRunning) return;
+        state.remainingTime = (state.remainingTime || 0) - 1;
+        if (state.remainingTime <= 0) {
+            this.handleSessionEndGlobal(configId);
+        }
+        this.widgetStates.set(configId, state);
+        // インスタンスがあればUIも更新（状態も同期）
+        const inst = this.widgetInstances.get(configId);
+        if (inst) {
+            inst.remainingTime = state.remainingTime;
+            inst.isRunning = state.isRunning;
+            inst.currentPomodoroSet = state.currentPomodoroSet;
+            inst.pomodorosCompletedInCycle = state.pomodorosCompletedInCycle;
+            inst.updateDisplay && inst.updateDisplay();
+        }
+    }
+
+    // セッション終了処理をstaticメソッド化
+    private static endSessionAndAdvance(configId: string, inst?: PomodoroWidget) {
+        const state = this.widgetStates.get(configId);
+        if (!state) return;
+        let msg = "";
+        if (state.currentPomodoroSet === 'work') {
+            state.pomodorosCompletedInCycle = (state.pomodorosCompletedInCycle || 0) + 1;
+            msg = `作業セッション (${state.workMinutes}分) が終了。`;
+            if (state.pomodorosCompletedInCycle >= state.pomodorosUntilLongBreak) {
+                state.currentPomodoroSet = 'longBreak';
+                state.remainingTime = state.longBreakMinutes * 60;
+                msg += "長い休憩を開始してください。";
+            } else {
+                state.currentPomodoroSet = 'shortBreak';
+                state.remainingTime = state.shortBreakMinutes * 60;
+                msg += "短い休憩を開始してください。";
+            }
+        } else {
+            if(state.currentPomodoroSet === 'shortBreak') msg = `短い休憩 (${state.shortBreakMinutes}分) が終了。`;
+            else msg = `長い休憩 (${state.longBreakMinutes}分) が終了。`;
+            state.currentPomodoroSet = 'work';
+            state.remainingTime = state.workMinutes * 60;
+            if (state.currentPomodoroSet === 'longBreak') {
+                state.pomodorosCompletedInCycle = 0;
+            }
+            msg += "作業セッションを開始してください。";
+        }
+        state.isRunning = false;
+        this.widgetStates.set(configId, state);
+        new Notice(msg, 7000);
+        if (inst) {
+            inst.isRunning = state.isRunning;
+            inst.remainingTime = state.remainingTime;
+            inst.currentPomodoroSet = state.currentPomodoroSet;
+            inst.pomodorosCompletedInCycle = state.pomodorosCompletedInCycle;
+            inst.updateDisplay && inst.updateDisplay();
+            inst.playSoundNotification && inst.playSoundNotification();
+        }
+        this.clearGlobalIntervalIfNoneRunning();
+    }
+
+    private static handleSessionEndGlobal(configId: string) {
+        this.endSessionAndAdvance(configId, this.widgetInstances.get(configId));
     }
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
@@ -210,10 +295,12 @@ export class PomodoroWidget implements WidgetImplementation {
                     }
                 }
             }
-            if (this.plugin && typeof this.plugin.saveSettings === 'function') {
-                await this.plugin.saveSettings();
-            }
+            // UI部分更新のみ
             this.updateMemoEditUI();
+            // 必要なら永続化のみ（UI再描画なし）
+            if (this.plugin && typeof this.plugin.saveData === 'function') {
+                await this.plugin.saveData(this.plugin.settings);
+            }
         });
 
         if (!this.initialized) {
@@ -223,6 +310,16 @@ export class PomodoroWidget implements WidgetImplementation {
         } else {
             this.updateDisplay(); 
         }
+
+        // --- グローバル状態から復元 ---
+        const state = PomodoroWidget.widgetStates.get(config.id);
+        if (state) {
+            this.isRunning = state.isRunning;
+            this.remainingTime = state.remainingTime;
+            this.currentPomodoroSet = state.currentPomodoroSet;
+            this.pomodorosCompletedInCycle = state.pomodorosCompletedInCycle;
+        }
+        PomodoroWidget.ensureGlobalInterval();
 
         this.initialized = true;
         this.lastConfiguredId = newConfigId;
@@ -259,15 +356,16 @@ export class PomodoroWidget implements WidgetImplementation {
     private toggleStartPause() { if (this.isRunning) this.pauseTimer(); else this.startTimer(); }
 
     private startTimer() {
-        if (this.isRunning && this.timerId !== null) return;
-        if (this.remainingTime <= 0 && this.currentPomodoroSet === 'work') {
-            this.resetTimerState('work', true); // 作業セッションが0秒で開始されようとしたらリセット
-        } else if (this.remainingTime <= 0) { // 休憩セッションが0秒なら終了処理へ
-            this.handleSessionEnd(); return;
-        }
+        if (this.isRunning) return;
         this.isRunning = true;
-        if (this.timerId) clearInterval(this.timerId);
-        this.timerId = window.setInterval(() => this.tick(), 1000);
+        PomodoroWidget.widgetStates.set(this.config.id, {
+            ...this.currentSettings,
+            isRunning: true,
+            remainingTime: this.remainingTime,
+            currentPomodoroSet: this.currentPomodoroSet,
+            pomodorosCompletedInCycle: this.pomodorosCompletedInCycle
+        });
+        PomodoroWidget.ensureGlobalInterval();
         this.updateDisplay();
         this.currentSessionStartTime = new Date();
         const statusText = this.statusDisplayEl?.textContent?.split('(')[0].trim() || '作業';
@@ -275,10 +373,16 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private pauseTimer() {
-        if (!this.isRunning || !this.timerId) return;
+        if (!this.isRunning) return;
         this.isRunning = false;
-        clearInterval(this.timerId);
-        this.timerId = null;
+        PomodoroWidget.widgetStates.set(this.config.id, {
+            ...this.currentSettings,
+            isRunning: false,
+            remainingTime: this.remainingTime,
+            currentPomodoroSet: this.currentPomodoroSet,
+            pomodorosCompletedInCycle: this.pomodorosCompletedInCycle
+        });
+        PomodoroWidget.clearGlobalIntervalIfNoneRunning();
         this.updateDisplay();
         const statusText = this.statusDisplayEl?.textContent?.split('(')[0].trim() || '作業';
         new Notice(`${statusText} を一時停止しました。`);
@@ -310,13 +414,6 @@ export class PomodoroWidget implements WidgetImplementation {
         }
         this.isRunning = false;
         this.updateDisplay();
-    }
-
-    private tick() {
-        if (!this.isRunning) return;
-        this.remainingTime--;
-        this.updateDisplay();
-        if (this.remainingTime <= 0) { this.handleSessionEnd(); }
     }
 
     private playSoundNotification() {
@@ -395,7 +492,6 @@ export class PomodoroWidget implements WidgetImplementation {
                 startDate = this.currentSessionStartTime;
                 endDate = this.currentSessionEndTime;
             } else {
-                // セッション開始時刻がnullの場合でも現在時刻で記録
                 startDate = new Date();
                 endDate = new Date();
             }
@@ -411,31 +507,7 @@ export class PomodoroWidget implements WidgetImplementation {
             });
             shouldExport = true;
         }
-        let msg = "";
-        if (this.currentPomodoroSet === 'work') {
-            this.pomodorosCompletedInCycle++;
-            msg = `作業セッション (${this.currentSettings.workMinutes}分) が終了。`;
-            if (this.pomodorosCompletedInCycle >= this.currentSettings.pomodorosUntilLongBreak) {
-                this.resetTimerState('longBreak', false); msg += "長い休憩を開始してください。";
-            } else {
-                this.resetTimerState('shortBreak', false); msg += "短い休憩を開始してください。";
-            }
-        } else {
-            if(this.currentPomodoroSet === 'shortBreak') msg = `短い休憩 (${this.currentSettings.shortBreakMinutes}分) が終了。`;
-            else msg = `長い休憩 (${this.currentSettings.longBreakMinutes}分) が終了。`;
-            this.resetTimerState('work', this.currentPomodoroSet === 'longBreak');
-            msg += "作業セッションを開始してください。";
-        }
-        new Notice(msg, 7000);
-        this.playSoundNotification(); 
-        if (this.plugin && (!this.plugin.widgetBoardModals || Array.from(this.plugin.widgetBoardModals.values()).every(m => !m.isOpen))) {
-            if (this.plugin.settings.lastOpenedBoardId) {
-                 this.plugin.openWidgetBoardById(this.plugin.settings.lastOpenedBoardId);
-            } else {
-                this.plugin.openBoardPicker();
-            }
-        }
-        this.updateDisplay();
+        PomodoroWidget.endSessionAndAdvance(this.config.id, this);
         if (shouldExport && this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
             await this.exportSessionLogs(this.currentSettings.exportFormat);
         }
@@ -460,11 +532,11 @@ export class PomodoroWidget implements WidgetImplementation {
                 this.exportSessionLogs(this.currentSettings.exportFormat);
             }
             // 通常のスキップ処理も実行
-            this.handleSessionEnd();
+            PomodoroWidget.endSessionAndAdvance(this.config.id, this);
             return;
         }
         // 通常のスキップ処理
-        this.handleSessionEnd();
+        PomodoroWidget.endSessionAndAdvance(this.config.id, this);
         new Notice("次のセッションへスキップしました。");
     }
 

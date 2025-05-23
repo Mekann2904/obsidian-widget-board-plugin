@@ -259,7 +259,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 .setValue(board.name)
                 .onChange(async (value) => {
                     board.name = value;
-                    await this.plugin.saveSettings();
+                    await this.plugin.saveSettings(board.id);
                     // boardDropdownElを直接操作
                     if (this.boardDropdownEl) {
                         for (const option of Array.from(this.boardDropdownEl.options)) {
@@ -290,7 +290,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         if (Object.values(WidgetBoardModal.MODES).includes(value as any) || value === 'custom-width') {
                             board.defaultMode = value;
-                            await this.plugin.saveSettings();
+                            await this.plugin.saveSettings(board.id);
                             // カスタム幅選択時は下の入力欄を表示
                             if (value === 'custom-width' && customWidthSettingEl) {
                                 customWidthSettingEl.style.display = '';
@@ -312,7 +312,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         const n = parseFloat(v);
                         if (!isNaN(n)) {
                             board.customWidth = n;
-                            await this.plugin.saveSettings();
+                            await this.plugin.saveSettings(board.id);
                             if (n <= 0 || n > 100) {
                                 new Notice('1〜100の範囲でvwを指定することを推奨します。');
                             }
@@ -334,7 +334,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 dropdown.setValue(board.customWidthAnchor || 'right')
                     .onChange(async (value) => {
                         board.customWidthAnchor = value as 'left' | 'center' | 'right';
-                        await this.plugin.saveSettings();
+                        await this.plugin.saveSettings(board.id);
                     });
             });
         customWidthAnchorSettingEl = customWidthAnchorSetting.settingEl;
@@ -393,7 +393,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         settings: { ...defaultWidgetSettings }
                     };
                     currentBoard.widgets.push(newWidget);
-                    await this.plugin.saveSettings();
+                    await this.plugin.saveSettings(currentBoard.id);
                     this.renderWidgetListForBoard(widgetListEl, currentBoard); // widgetListEl は既に定義済み
                     const widgetDisplayName = WIDGET_TYPE_DISPLAY_NAMES[widgetType] || widgetType; // 通知用にも表示名を使用
                     new Notice(`「${widgetDisplayName}」ウィジェットがボード「${currentBoard.name}」に追加されました。`);
@@ -436,7 +436,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 .setValue(widget.title)
                 .onChange(async (value) => {
                     widget.title = value.trim();
-                    await this.plugin.saveSettings();
+                    await this.plugin.saveSettings(board.id);
                     // タイトル変更時も同様のロジックで表示名を更新
                     const updatedDisplayName = widget.title || `(名称未設定 ${widgetTypeName})`;
                     titleSetting.setName(updatedDisplayName);
@@ -449,7 +449,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         if (index > 0) {
                             const item = board.widgets.splice(index, 1)[0];
                             board.widgets.splice(index - 1, 0, item);
-                            await this.plugin.saveSettings();
+                            await this.plugin.saveSettings(board.id);
                             this.renderWidgetListForBoard(containerEl, board);
                         }
                     }))
@@ -458,7 +458,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         if (index < board.widgets.length - 1) {
                             const item = board.widgets.splice(index, 1)[0];
                             board.widgets.splice(index + 1, 0, item);
-                            await this.plugin.saveSettings();
+                            await this.plugin.saveSettings(board.id);
                             this.renderWidgetListForBoard(containerEl, board);
                         }
                     }))
@@ -468,7 +468,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         const oldWidgetTypeName = WIDGET_TYPE_DISPLAY_NAMES[widget.type] || widget.type;
                         const oldTitle = widget.title || `(名称未設定 ${oldWidgetTypeName})`;
                         board.widgets.splice(index, 1);
-                        await this.plugin.saveSettings();
+                        await this.plugin.saveSettings(board.id);
                         this.renderWidgetListForBoard(containerEl, board);
                         new Notice(`ウィジェット「${oldTitle}」をボード「${board.name}」から削除しました。`);
                     }));
@@ -512,7 +512,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                 const n = parseInt(v);
                                 if (!isNaN(n) && n > 0) {
                                     (currentSettings as any)[key] = n;
-                                    await this.plugin.saveSettings();
+                                    await this.plugin.saveSettings(board.id);
                                     this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                                 } else {
                                     new Notice('1以上の半角数値を入力してください。');
@@ -531,7 +531,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         .setValue(currentSettings.backgroundImageUrl || '')
                         .onChange(async (v) => {
                             currentSettings.backgroundImageUrl = v.trim();
-                            await this.plugin.saveSettings();
+                            await this.plugin.saveSettings(board.id);
                             this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                         }));
 
@@ -551,7 +551,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         dropdown.setValue(currentSettings.exportFormat || 'none')
                             .onChange(async (v) => {
                                 currentSettings.exportFormat = v as any;
-                                await this.plugin.saveSettings();
+                                await this.plugin.saveSettings(board.id);
                                 this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                             });
                     });
@@ -567,7 +567,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         .setValue(currentSettings.memoContent || '')
                         .onChange(async (v) => {
                             if(widget.settings) widget.settings.memoContent = v;
-                            await this.plugin.saveSettings();
+                            await this.plugin.saveSettings(board.id);
                             this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
                         }));
 
@@ -582,7 +582,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         dropdown.setValue(currentSettings.memoHeightMode || 'auto')
                             .onChange(async (value) => {
                                 currentSettings.memoHeightMode = value as 'auto' | 'fixed';
-                                await this.plugin.saveSettings();
+                                await this.plugin.saveSettings(board.id);
                                 this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                                 if (fixedHeightSettingEl) {
                                     fixedHeightSettingEl.style.display = (value === 'fixed') ? '' : 'none';
@@ -600,7 +600,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                 const n = parseInt(v);
                                 if (!isNaN(n) && n > 0) {
                                     currentSettings.fixedHeightPx = n;
-                                    await this.plugin.saveSettings();
+                                    await this.plugin.saveSettings(board.id);
                                     this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                                 } else {
                                     new Notice('1以上の半角数値を入力してください。');
