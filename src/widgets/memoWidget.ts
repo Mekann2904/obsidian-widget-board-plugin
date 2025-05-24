@@ -84,7 +84,6 @@ export class MemoWidget implements WidgetImplementation {
             this.memoEditAreaEl.style.height = '';
             this.memoEditAreaEl.style.minHeight = '';
             this.memoEditAreaEl.style.maxHeight = '';
-            this.memoEditAreaEl.style.resize = 'none';
         }
         this.removeMemoEditAreaAutoResizeListener();
 
@@ -103,8 +102,8 @@ export class MemoWidget implements WidgetImplementation {
                 // this.memoEditContainerEl.style.height = '100%'; (flex-grow handles this)
             }
             if (this.memoEditAreaEl && this.isEditingMemo) {
-                this.memoEditAreaEl.style.height = '100%'; // Will be constrained by parent
-                this.memoEditAreaEl.style.resize = 'none';
+                // this.memoEditAreaEl.style.height = '100%'; // Will be constrained by parent
+                // this.memoEditAreaEl.style.resize = 'none'; 
             }
         } else { // 'auto' mode
             this.memoContainerEl.style.height = '';
@@ -117,9 +116,9 @@ export class MemoWidget implements WidgetImplementation {
                 // height is determined by flex-grow and content
             }
             if (this.memoEditAreaEl && this.isEditingMemo) {
-                this.memoEditAreaEl.style.minHeight = '60px';
-                this.memoEditAreaEl.style.maxHeight = '300px';
-                this.memoEditAreaEl.style.resize = 'vertical';
+                // this.memoEditAreaEl.style.minHeight = '120px'; 
+                // this.memoEditAreaEl.style.maxHeight = '600px'; 
+                // this.memoEditAreaEl.style.resize = 'vertical'; 
                 this.addMemoEditAreaAutoResizeListener();
                 setTimeout(() => {
                     if (this.memoEditAreaEl && this.isEditingMemo) this.memoEditAreaEl.dispatchEvent(new Event('input'));
@@ -129,16 +128,18 @@ export class MemoWidget implements WidgetImplementation {
     }
     
     private addMemoEditAreaAutoResizeListener() {
-        if (!this.memoEditAreaEl || this._memoEditAreaInputListener) return;
-        if (this.currentSettings.memoHeightMode === 'auto') {
-            this._memoEditAreaInputListener = () => {
-                if (!this.memoEditAreaEl || this.currentSettings.memoHeightMode !== 'auto') return;
-                this.memoEditAreaEl.style.height = 'auto';
-                const maxHeight = parseInt(this.memoEditAreaEl.style.maxHeight, 10) || 300;
-                this.memoEditAreaEl.style.height = Math.min(this.memoEditAreaEl.scrollHeight, maxHeight) + 'px';
-            };
-            this.memoEditAreaEl.addEventListener('input', this._memoEditAreaInputListener);
+        if (!this.memoEditAreaEl) return;
+        if (this._memoEditAreaInputListener) {
+            this.memoEditAreaEl.removeEventListener('input', this._memoEditAreaInputListener);
         }
+        this._memoEditAreaInputListener = () => {
+            if (!this.memoEditAreaEl) return;
+            this.memoEditAreaEl.style.height = 'auto';
+            // maxHeightを超えない範囲で自動拡大
+            const maxH = parseInt(this.memoEditAreaEl.style.maxHeight, 10) || 600;
+            this.memoEditAreaEl.style.height = Math.min(this.memoEditAreaEl.scrollHeight, maxH) + 'px';
+        };
+        this.memoEditAreaEl.addEventListener('input', this._memoEditAreaInputListener);
     }
 
     private removeMemoEditAreaAutoResizeListener() {
@@ -191,11 +192,10 @@ export class MemoWidget implements WidgetImplementation {
         // フォーカス制御
         if (this.isEditingMemo && this.memoEditAreaEl && document.activeElement !== this.memoEditAreaEl) {
             this.memoEditAreaEl.focus();
-            if (this.currentSettings.memoHeightMode === 'auto') {
-                setTimeout(() => {
-                    if (this.memoEditAreaEl) this.memoEditAreaEl.dispatchEvent(new Event('input'));
-                }, 50);
-            }
+            // this.memoEditAreaEl.style.minHeight = '160px'; 
+            setTimeout(() => {
+                if (this.memoEditAreaEl) this.memoEditAreaEl.dispatchEvent(new Event('input'));
+            }, 0);
         }
     }
 
@@ -203,6 +203,10 @@ export class MemoWidget implements WidgetImplementation {
         this.isEditingMemo = true;
         if(this.memoEditAreaEl) {
             this.memoEditAreaEl.value = this.currentSettings.memoContent || '';
+            // this.memoEditAreaEl.style.minHeight = '160px'; 
+            setTimeout(() => {
+                if (this.memoEditAreaEl) this.memoEditAreaEl.dispatchEvent(new Event('input'));
+            }, 0);
         } else {
             console.warn(`[${this.config.id}] enterMemoEditMode: memoEditAreaEl is null.`);
         }
@@ -344,7 +348,7 @@ export class MemoWidget implements WidgetImplementation {
         this.memoEditContainerEl.style.display = 'none'; // 初期は非表示
         // CSS で .memo-widget-edit-container に display:flex (JSで制御), flex-direction:column, flex-grow:1 が設定されている前提
 
-        this.memoEditAreaEl = this.memoEditContainerEl.createEl('textarea', { cls: 'memo-edit-area' });
+        this.memoEditAreaEl = this.memoEditContainerEl.createEl('textarea', { cls: 'memo-widget-edit-area' });
         // CSS で .memo-edit-area に flex-grow:1, width:100% などが設定されている前提
         
         const memoEditControlsEl = this.memoEditContainerEl.createDiv({ cls: 'memo-widget-edit-controls' });

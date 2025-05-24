@@ -360,7 +360,7 @@
 .pomodoro-memo-display p:last-child, .memo-widget-display p:last-child { margin-bottom: 0; }
 
 .pomodoro-memo-edit-container, .memo-widget-edit-container { display: flex; flex-direction: column; flex-grow:1;} /* Initially hidden by JS */
-.pomodoro-memo-edit-area, .memo-widget-edit-area {
+.pomodoro-memo-edit-area, textarea.memo-widget-edit-area {
     width: 100%;
     min-height: 80px;
     max-height: 150px;
@@ -374,7 +374,8 @@
     background-color: var(--background-primary);
     color: var(--text-normal);
     border-radius: var(--radius-s);
-    flex-grow:1;
+    flex-grow: 1;
+    box-sizing: border-box;
 }
 .pomodoro-memo-edit-controls, .memo-widget-edit-controls { display: flex; gap: 8px; justify-content: flex-end; flex-shrink:0; }
 .pomodoro-memo-edit-controls button, .memo-widget-edit-controls button { font-size: var(--font-ui-small); padding: 5px 10px; }
@@ -904,4 +905,15 @@ button:hover, .wb-add-widget-btn:hover, .wb-panel-settings-toggle:hover {
 
 body.wb-modal-open .workspace-leaf-resize-handle {
   display: none !important;
+}
+
+/* --- メモウィジェット編集エリアのリサイズハンドル強制表示 --- */
+.memo-widget-edit-area {
+    resize: vertical !important;
+    max-height: 600px !important;
+    min-height: 80px;
+}
+
+.memo-widget-edit-container, .memo-widget-container {
+    overflow: visible !important;
 }
