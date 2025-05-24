@@ -299,26 +299,6 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         setIcon(resetBtn, 'rotate-ccw');
         this.startPauseBtn.onclick = () => this.handleToggleStartPause();
         resetBtn.onclick = () => this.handleReset();
-
-        const themeSelector = container.createEl('div', { cls: 'theme-selector setting-item' });
-        const radioLight = themeSelector.createEl('input', { type: 'radio', name: 'theme', value: 'light' });
-        const radioDark = themeSelector.createEl('input', { type: 'radio', name: 'theme', value: 'dark' });
-        radioLight.onchange = () => {
-            if (radioLight.checked) {
-                customCss.setBaseTheme('light');
-                customCss.setTheme(''); // デフォルトテーマを再適用
-                new Notice('ベーステーマ「ライト」を適用しました。');
-                this.renderThemeSelector(container);
-            }
-        };
-        radioDark.onchange = () => {
-            if (radioDark.checked) {
-                customCss.setBaseTheme('dark');
-                customCss.setTheme(''); // デフォルトテーマを再適用
-                new Notice('ベーステーマ「ダーク」を適用しました。');
-                this.renderThemeSelector(container);
-            }
-        };
     }
 
     /**
@@ -512,8 +492,11 @@ export class TimerStopwatchWidget implements WidgetImplementation {
 
     private openBoardIfClosed() {
         if (this.plugin && this.plugin.widgetBoardModals && Array.from(this.plugin.widgetBoardModals.values()).every(m => !m.isOpen)) {
-            if (this.plugin.settings?.lastOpenedBoardId) {
-                this.plugin.openWidgetBoardById(this.plugin.settings.lastOpenedBoardId);
+            // このウィジェットが属するボードIDを特定
+            const boards = (this.plugin.settings as any).boards;
+            const board = boards?.find((b: any) => b.widgets?.some((w: any) => w.id === this.config.id));
+            if (board) {
+                this.plugin.openWidgetBoardById(board.id);
                 new Notice('タイマー終了: ウィジェットボードを開きました。');
             } else if (typeof this.plugin.openBoardPicker === 'function') {
                 this.plugin.openBoardPicker();
