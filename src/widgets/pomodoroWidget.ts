@@ -30,6 +30,7 @@ export interface SessionLog {
     start: string; // HH:mm
     end: string;   // HH:mm
     memo: string;
+    sessionType: 'work' | 'shortBreak' | 'longBreak';
 }
 
 // --- ポモドーロウィジェットデフォルト設定 ---
@@ -563,7 +564,54 @@ export class PomodoroWidget implements WidgetImplementation {
                 date: dateStr,
                 start: startStr,
                 end: endStr,
-                memo: this.memoWidget?.getMemoContent() || ''
+                memo: this.memoWidget?.getMemoContent() || '',
+                sessionType: 'work',
+            });
+            shouldExport = true;
+        } else if (this.currentPomodoroSet === 'shortBreak') {
+            // 短い休憩終了時も記録
+            let startDate: Date;
+            let endDate: Date;
+            if (this.currentSessionStartTime && this.currentSessionEndTime) {
+                startDate = this.currentSessionStartTime;
+                endDate = this.currentSessionEndTime;
+            } else {
+                startDate = new Date();
+                endDate = new Date();
+            }
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
+            const startStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+            const endStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+            this.sessionLogs.push({
+                date: dateStr,
+                start: startStr,
+                end: endStr,
+                memo: this.memoWidget?.getMemoContent() || '',
+                sessionType: 'shortBreak',
+            });
+            shouldExport = true;
+        } else if (this.currentPomodoroSet === 'longBreak') {
+            // 長い休憩終了時も記録
+            let startDate: Date;
+            let endDate: Date;
+            if (this.currentSessionStartTime && this.currentSessionEndTime) {
+                startDate = this.currentSessionStartTime;
+                endDate = this.currentSessionEndTime;
+            } else {
+                startDate = new Date();
+                endDate = new Date();
+            }
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
+            const startStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+            const endStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+            this.sessionLogs.push({
+                date: dateStr,
+                start: startStr,
+                end: endStr,
+                memo: this.memoWidget?.getMemoContent() || '',
+                sessionType: 'longBreak',
             });
             shouldExport = true;
         }
@@ -601,7 +649,8 @@ export class PomodoroWidget implements WidgetImplementation {
                 date: dateStr,
                 start: timeStr,
                 end: timeStr,
-                memo: this.memoWidget?.getMemoContent() || ''
+                memo: this.memoWidget?.getMemoContent() || '',
+                sessionType: this.currentPomodoroSet,
             });
             console.log('skipToNextSessionConfirm: sessionLogs after push', this.sessionLogs);
             new Notice('作業が開始されていませんが、0秒の作業ログを記録してスキップします。', 5000);
@@ -626,7 +675,8 @@ export class PomodoroWidget implements WidgetImplementation {
                 date: dateStr,
                 start: startStr,
                 end: endStr,
-                memo: this.memoWidget?.getMemoContent() || ''
+                memo: this.memoWidget?.getMemoContent() || '',
+                sessionType: this.currentPomodoroSet,
             });
             console.log('skipToNextSessionConfirm: normal skip, sessionLogs after push', this.sessionLogs);
             const exportFormat = this.plugin.settings.pomodoroExportFormat || 'none';
@@ -806,7 +856,8 @@ export class PomodoroWidget implements WidgetImplementation {
                                 date: date || '',
                                 start: start || '',
                                 end: end || '',
-                                memo: memo ? memo.replace(/^"|"$/g, '').replace(/""/g, '"') : ''
+                                memo: memo ? memo.replace(/^"|"$/g, '').replace(/""/g, '"') : '',
+                                sessionType: 'work',
                             });
                         }
                     }
@@ -825,13 +876,20 @@ export class PomodoroWidget implements WidgetImplementation {
                     const lines = existing.split('\n').filter(l => l.trim() !== '');
                     if (lines.length > 2) {
                         for (let i = 2; i < lines.length; i++) {
+                            // 区切り文字'|'で分割し、両端の空白を除去
                             const cols = lines[i].split('|').map(s => s.trim());
-                            if (cols.length >= 5) {
+                            // | date | start | end | sessionType | memo |
+                            if (cols.length >= 6) {
+                                // 0:空, 1:date, 2:start, 3:end, 4:sessionType, 5:memo, ...
+                                // memo列は5番目以降を結合し、両端の空白とパイプを除去
+                                let memo = cols.slice(5).join('|');
+                                memo = memo.replace(/^\|+/, '').replace(/\|+$/, '').trim();
                                 allLogs.push({
                                     date: cols[1],
                                     start: cols[2],
                                     end: cols[3],
-                                    memo: cols[4]
+                                    sessionType: (cols[4] as 'work'|'shortBreak'|'longBreak') || 'work',
+                                    memo: memo,
                                 });
                             }
                         }
@@ -847,15 +905,15 @@ export class PomodoroWidget implements WidgetImplementation {
             // 保存内容を生成
             if (format === 'csv') {
                 // BOM付きでExcel等でも文字化けしないように
-                content = '\uFEFFdate,start,end,memo\n' + allLogs.map(log => {
+                content = '\uFEFFdate,start,end,sessionType,memo\n' + allLogs.map(log => {
                     const safeMemo = (log.memo || '').replace(/\r?\n/g, '\\n').replace(/"/g, '""');
-                    return `${log.date},${log.start},${log.end},"${safeMemo}"`;
+                    return `${log.date},${log.start},${log.end},${log.sessionType},"${safeMemo}"`;
                 }).join('\n');
             } else if (format === 'json') {
                 content = JSON.stringify(allLogs, null, 2);
             } else if (format === 'markdown') {
-                content = '| date | start | end | memo |\n|---|---|---|---|\n' + allLogs.map(log => 
-                    `| ${log.date} | ${log.start} | ${log.end} | ${(log.memo || '').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>')} |`
+                content = '| date | start | end | sessionType | memo |\n|---|---|---|---|---|\n' + allLogs.map(log => 
+                    `| ${log.date} | ${log.start} | ${log.end} | ${log.sessionType} | ${(log.memo || '').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>')} |`
                 ).join('\n');
             }
             await this.app.vault.adapter.write(filePath, content);
