@@ -299,6 +299,26 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         setIcon(resetBtn, 'rotate-ccw');
         this.startPauseBtn.onclick = () => this.handleToggleStartPause();
         resetBtn.onclick = () => this.handleReset();
+
+        const themeSelector = container.createEl('div', { cls: 'theme-selector setting-item' });
+        const radioLight = themeSelector.createEl('input', { type: 'radio', name: 'theme', value: 'light' });
+        const radioDark = themeSelector.createEl('input', { type: 'radio', name: 'theme', value: 'dark' });
+        radioLight.onchange = () => {
+            if (radioLight.checked) {
+                customCss.setBaseTheme('light');
+                customCss.setTheme(''); // デフォルトテーマを再適用
+                new Notice('ベーステーマ「ライト」を適用しました。');
+                this.renderThemeSelector(container);
+            }
+        };
+        radioDark.onchange = () => {
+            if (radioDark.checked) {
+                customCss.setBaseTheme('dark');
+                customCss.setTheme(''); // デフォルトテーマを再適用
+                new Notice('ベーステーマ「ダーク」を適用しました。');
+                this.renderThemeSelector(container);
+            }
+        };
     }
 
     /**

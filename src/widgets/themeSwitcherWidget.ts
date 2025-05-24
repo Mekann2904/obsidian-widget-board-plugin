@@ -70,27 +70,29 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
         }
         const currentTheme: string = customCss.theme || '';
 
-        // テーマ一覧リスト表示
+        // --- デフォルトテーマを1つにまとめる ---
+        const defaultTheme = { id: '', name: 'デフォルト（Obsidian）' };
+        const customThemes = themes.filter(t => t !== '' && t !== 'moonstone');
         const listEl = container.createEl('ul', { cls: 'theme-switcher-list' });
-        const items = themes.map(themeName => {
+        const allThemes = [defaultTheme, ...customThemes.map(t => ({ id: t, name: t }))];
+
+        allThemes.forEach(theme => {
             const itemEl = listEl.createEl('li', { cls: 'theme-switcher-item' });
-            let displayName = themeName === '（デフォルト）' ? 'デフォルト（Obsidian）' : themeName;
-            itemEl.textContent = displayName;
-            if ((themeName === '（デフォルト）' && (currentTheme === '' || currentTheme === undefined)) || themeName === currentTheme) {
+            itemEl.textContent = theme.name;
+            if ((theme.id === '' && (currentTheme === '' || currentTheme === undefined)) ||
+                (theme.id !== '' && currentTheme === theme.id)) {
                 itemEl.classList.add('active');
             }
             itemEl.onclick = () => {
-                let selectedTheme = themeName === '（デフォルト）' ? '' : themeName;
-                if ((selectedTheme === '' && (currentTheme === '' || currentTheme === undefined)) || selectedTheme === currentTheme) {
+                if ((theme.id === '' && (currentTheme === '' || currentTheme === undefined)) ||
+                    (theme.id !== '' && currentTheme === theme.id)) {
                     new Notice('すでにこのテーマが適用されています。');
                     return;
                 }
-                customCss.setTheme(selectedTheme);
-                new Notice(`テーマ「${displayName}」を適用しました。`);
+                customCss.setTheme(theme.id);
+                new Notice(`テーマ「${theme.name}」を適用しました。`);
                 this.renderThemeSelector(container);
             };
-            return itemEl;
         });
-        items.forEach(item => listEl.appendChild(item));
     }
 } 
