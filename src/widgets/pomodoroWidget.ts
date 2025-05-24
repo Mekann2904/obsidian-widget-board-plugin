@@ -45,7 +45,10 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
     exportFormat: 'none',
 };
 
-// --- PomodoroWidget クラス ---
+/**
+ * ポモドーロタイマーウィジェット
+ * - 作業/休憩のタイマー管理、セッション記録、通知音、メモ連携など多機能
+ */
 export class PomodoroWidget implements WidgetImplementation {
     id = 'pomodoro';
     private config!: WidgetConfig;
@@ -82,6 +85,9 @@ export class PomodoroWidget implements WidgetImplementation {
     private currentSessionStartTime: Date | null = null;
     private currentSessionEndTime: Date | null = null;
 
+    /**
+     * インスタンス初期化
+     */
     constructor() {
         this.initialized = false;
         this.currentPomodoroSet = 'work';
@@ -221,6 +227,12 @@ export class PomodoroWidget implements WidgetImplementation {
         this.endSessionAndAdvance(configId, this.widgetInstances.get(configId));
     }
 
+    /**
+     * ウィジェットのDOM生成・初期化
+     * @param config ウィジェット設定
+     * @param app Obsidianアプリ
+     * @param plugin プラグイン本体
+     */
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         (this.constructor as typeof PomodoroWidget).widgetInstances.set(config.id, this);
 
@@ -338,25 +350,48 @@ export class PomodoroWidget implements WidgetImplementation {
         return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
+    /**
+     * UIを差分更新（値が変化した場合のみDOMを更新）
+     */
     private updateDisplay() {
         if (!this.widgetEl || !this.timeDisplayEl || !this.startPauseButton || !this.resetButton || !this.nextButton || !this.statusDisplayEl || !this.cycleDisplayEl) return;
 
-        this.timeDisplayEl.textContent = this.formatTime(this.remainingTime);
-        setIcon(this.startPauseButton, this.isRunning ? 'pause' : 'play');
-        this.startPauseButton.setAttribute('aria-label', this.isRunning ? '一時停止' : '開始');
-        setIcon(this.resetButton, 'rotate-ccw');
-        this.resetButton.setAttribute('aria-label', 'リセット');
-        setIcon(this.nextButton, 'skip-forward');
-        this.nextButton.setAttribute('aria-label', '次のセッションへ');
-
+        // 差分更新用に前回値を保持
+        if (!(this as any)._prevDisplay) (this as any)._prevDisplay = {};
+        const prev = (this as any)._prevDisplay;
+        const timeStr = this.formatTime(this.remainingTime);
+        if (prev.timeStr !== timeStr) {
+            this.timeDisplayEl.textContent = timeStr;
+            prev.timeStr = timeStr;
+        }
+        const isRunning = this.isRunning;
+        if (prev.isRunning !== isRunning) {
+            setIcon(this.startPauseButton, isRunning ? 'pause' : 'play');
+            this.startPauseButton.setAttribute('aria-label', isRunning ? '一時停止' : '開始');
+            prev.isRunning = isRunning;
+        }
+        if (!prev.resetIconSet) {
+            setIcon(this.resetButton, 'rotate-ccw');
+            this.resetButton.setAttribute('aria-label', 'リセット');
+            setIcon(this.nextButton, 'skip-forward');
+            this.nextButton.setAttribute('aria-label', '次のセッションへ');
+            prev.resetIconSet = true;
+        }
         let statusText = '';
         switch (this.currentPomodoroSet) {
             case 'work': statusText = `作業中 (${this.currentSettings.workMinutes}分)`; break;
             case 'shortBreak': statusText = `短い休憩 (${this.currentSettings.shortBreakMinutes}分)`; break;
             case 'longBreak': statusText = `長い休憩 (${this.currentSettings.longBreakMinutes}分)`; break;
         }
-        this.statusDisplayEl.textContent = statusText;
-        this.cycleDisplayEl.textContent = `現在のサイクル: ${this.pomodorosCompletedInCycle} / ${this.currentSettings.pomodorosUntilLongBreak}`;
+        if (prev.statusText !== statusText) {
+            this.statusDisplayEl.textContent = statusText;
+            prev.statusText = statusText;
+        }
+        const cycleText = `現在のサイクル: ${this.pomodorosCompletedInCycle} / ${this.currentSettings.pomodorosUntilLongBreak}`;
+        if (prev.cycleText !== cycleText) {
+            this.cycleDisplayEl.textContent = cycleText;
+            prev.cycleText = cycleText;
+        }
     }
 
     private toggleStartPause() { if (this.isRunning) this.pauseTimer(); else this.startTimer(); }
@@ -430,17 +465,16 @@ export class PomodoroWidget implements WidgetImplementation {
 
         if (soundType === 'off') return;
 
+        // 既存の音声を停止
         if (this.currentAudioElement) {
             this.currentAudioElement.pause(); this.currentAudioElement.currentTime = 0; this.currentAudioElement = null;
         }
-        if (this.audioContext && this.audioContext.state !== 'closed') {
-            this.audioContext.close().catch(() => {});
-            this.audioContext = null;
+        // AudioContextが再利用可能なら再利用、そうでなければ新規生成
+        if (!this.audioContext || this.audioContext.state === 'closed') {
+            this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         }
-
+        const ctx = this.audioContext;
         try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            this.audioContext = ctx;
             if (soundType === 'default_beep') {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
@@ -451,14 +485,14 @@ export class PomodoroWidget implements WidgetImplementation {
                 osc.connect(gain); gain.connect(ctx.destination);
                 osc.start(ctx.currentTime);
                 osc.stop(ctx.currentTime + 0.7);
-                osc.onended = () => ctx.close().catch(e => console.error("Error closing AudioContext for beep", e));
+                osc.onended = () => { ctx.close().catch(() => {}); this.audioContext = null; };
             } else if (soundType === 'bell') {
                 const osc1 = ctx.createOscillator();
                 const osc2 = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc1.type = 'triangle';
                 osc2.type = 'triangle';
-                osc1.frequency.setValueAtTime(880, ctx.currentTime); 
+                osc1.frequency.setValueAtTime(880, ctx.currentTime);
                 osc2.frequency.setValueAtTime(1320, ctx.currentTime);
                 gain.gain.setValueAtTime(volume, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
@@ -466,9 +500,9 @@ export class PomodoroWidget implements WidgetImplementation {
                 osc1.start(ctx.currentTime); osc2.start(ctx.currentTime);
                 osc1.stop(ctx.currentTime + 0.8); osc2.stop(ctx.currentTime + 0.8);
                 osc2.detune.setValueAtTime(5, ctx.currentTime + 0.2);
-                osc1.onended = () => ctx.close().catch(e => console.error("Error closing AudioContext for bell", e));
+                osc1.onended = () => { ctx.close().catch(() => {}); this.audioContext = null; };
             } else if (soundType === 'chime') {
-                const notes = [523.25, 659.25, 784.0]; 
+                const notes = [523.25, 659.25, 784.0];
                 const now = ctx.currentTime;
                 notes.forEach((freq, i) => {
                     const osc = ctx.createOscillator();
@@ -480,7 +514,7 @@ export class PomodoroWidget implements WidgetImplementation {
                     osc.connect(gain); gain.connect(ctx.destination);
                     osc.start(now + i * 0.18);
                     osc.stop(now + i * 0.18 + 0.22);
-                    if (i === notes.length - 1) osc.onended = () => ctx.close().catch(e => console.error("Error closing AudioContext for chime", e));
+                    if (i === notes.length - 1) osc.onended = () => { ctx.close().catch(() => {}); this.audioContext = null; };
                 });
             }
         } catch (e) { new Notice('音声の再生に失敗しました'); console.error("Error playing sound:", e); }
@@ -571,23 +605,32 @@ export class PomodoroWidget implements WidgetImplementation {
         new Notice("次のセッションへスキップしました。");
     }
 
+    /**
+     * ウィジェット破棄時のクリーンアップ
+     */
     onunload(): void {
         const widgetIdLog = `[${this.config?.id || 'PomodoroWidget'}]`;
         if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
         this.isRunning = false;
         if (this.audioContext && this.audioContext.state !== 'closed') {
             this.audioContext.close().catch(err => console.error(`${widgetIdLog} Error closing AudioContext:`, err));
+            this.audioContext = null;
         }
         if (this.currentAudioElement) {
             this.currentAudioElement.pause(); this.currentAudioElement.src = ""; this.currentAudioElement = null;
         }
         (this.constructor as typeof PomodoroWidget).widgetInstances.delete(this.config?.id);
-        // メモ編集中で未保存内容があれば保存
+        (this.constructor as typeof PomodoroWidget).widgetStates.delete(this.config?.id);
         if (this.memoWidget && this.memoWidget.isEditing) {
             this.memoWidget.saveChanges();
         }
     }
     
+    /**
+     * 外部から設定変更を受けて状態・UIを更新
+     * @param newSettingsFromPlugin 新しい設定
+     * @param widgetId 対象ウィジェットID
+     */
     public async updateExternalSettings(newSettingsFromPlugin: Partial<PomodoroSettings>, widgetId?: string) {
         if (widgetId && this.config?.id !== widgetId) return; // 対象ウィジェットでなければ何もしない
 
@@ -674,8 +717,19 @@ export class PomodoroWidget implements WidgetImplementation {
         }
     }
 
+    /**
+     * すべてのインスタンスをクリーンアップ
+     * @param plugin プラグイン本体
+     */
     public static cleanupAllPersistentInstances(plugin: WidgetBoardPlugin): void {
-        PomodoroWidget.widgetInstances.clear();
+        // すべてのインスタンスでonunloadを呼ぶ
+        this.widgetInstances.forEach(instance => {
+            if (typeof instance.onunload === 'function') {
+                instance.onunload();
+            }
+        });
+        this.widgetInstances.clear();
+        this.widgetStates.clear();
     }
 
     private async exportSessionLogs(format: PomodoroExportFormat) {

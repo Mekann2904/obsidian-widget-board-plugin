@@ -6,6 +6,10 @@ export interface ThemeSwitcherWidgetSettings {
     // 今後拡張用
 }
 
+/**
+ * テーマ切り替えウィジェット
+ * - Obsidianのテーマ一覧を表示し、クリックで即時切り替え
+ */
 export class ThemeSwitcherWidget implements WidgetImplementation {
     id = 'theme-switcher';
     private config!: WidgetConfig;
@@ -13,6 +17,19 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
     private plugin!: WidgetBoardPlugin;
     private widgetEl!: HTMLElement;
 
+    /**
+     * インスタンス初期化
+     */
+    constructor() {
+        // ... 既存コード ...
+    }
+
+    /**
+     * ウィジェットのDOM生成・初期化
+     * @param config ウィジェット設定
+     * @param app Obsidianアプリ
+     * @param plugin プラグイン本体
+     */
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
         this.app = app;
@@ -31,6 +48,9 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
         return this.widgetEl;
     }
 
+    /**
+     * テーマ選択UIを描画
+     */
     private renderThemeSelector(container: HTMLElement) {
         container.empty();
         // テーマ一覧取得
@@ -50,12 +70,9 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
         }
         const currentTheme: string = customCss.theme || '';
 
-        // テーマリストの先頭にデフォルトを追加
-        themes = ['（デフォルト）', ...themes];
-
         // テーマ一覧リスト表示
         const listEl = container.createEl('ul', { cls: 'theme-switcher-list' });
-        themes.forEach(themeName => {
+        const items = themes.map(themeName => {
             const itemEl = listEl.createEl('li', { cls: 'theme-switcher-item' });
             let displayName = themeName === '（デフォルト）' ? 'デフォルト（Obsidian）' : themeName;
             itemEl.textContent = displayName;
@@ -72,6 +89,8 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
                 new Notice(`テーマ「${displayName}」を適用しました。`);
                 this.renderThemeSelector(container);
             };
+            return itemEl;
         });
+        items.forEach(item => listEl.appendChild(item));
     }
 } 

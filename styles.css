@@ -17,7 +17,7 @@
     opacity: 0;
     /* スプリング風アニメーション */
     transition: right 0.3s ease, left 0.3s ease, top 0.3s ease, opacity 0.2s, width 0.3s, transform 0.3s;
-    z-index: 9998 !important;
+    z-index: 10 !important;
 }
 .widget-board-panel-custom > * {
     flex: 1 1 0 !important;
@@ -886,4 +886,8 @@ button:hover, .wb-add-widget-btn:hover, .wb-panel-settings-toggle:hover {
     gap: 16px;
     padding: 8px 2px;
   }
+}
+
+body.wb-modal-open .workspace-leaf-resize-handle {
+  display: none !important;
 }

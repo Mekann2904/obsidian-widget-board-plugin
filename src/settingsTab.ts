@@ -21,12 +21,21 @@ const WIDGET_TYPE_DISPLAY_NAMES: { [key: string]: string } = {
     'theme-switcher': 'テーマ切り替え',
 };
 
+/**
+ * プラグインの「ウィジェットボード設定」タブを管理するクラス
+ * - 各種設定UIの生成・保存・ボード/グループ管理などを担当
+ */
 export class WidgetBoardSettingTab extends PluginSettingTab {
     plugin: WidgetBoardPlugin;
     private selectedBoardId: string | null = null;
     private boardDropdownEl: HTMLSelectElement | null = null;
     private boardGroupBodyEl: HTMLElement | null = null;
 
+    /**
+     * 設定タブの初期化
+     * @param app Obsidianアプリインスタンス
+     * @param plugin プラグイン本体
+     */
     constructor(app: App, plugin: WidgetBoardPlugin) {
         super(app, plugin);
         this.plugin = plugin;
@@ -35,6 +44,9 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         }
     }
 
+    /**
+     * 設定タブのUIを描画
+     */
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
@@ -190,6 +202,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         this.renderBoardGroupManagementUI(this.boardGroupBodyEl);
     }
 
+    /**
+     * ボード管理セクションのUIを描画
+     * @param containerEl 描画先要素
+     */
     private renderBoardManagementUI(containerEl: HTMLElement) {
         containerEl.empty();
 
@@ -253,6 +269,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 }));
     }
 
+    /**
+     * 選択中ボードの詳細設定UIを描画
+     * @param containerEl 描画先要素
+     */
     private renderSelectedBoardSettingsUI(containerEl: HTMLElement) {
         containerEl.empty();
         if (!this.selectedBoardId) {
@@ -676,6 +696,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         }
     }
 
+    /**
+     * ボードグループ管理セクションのUIを描画
+     * @param containerEl 描画先要素
+     */
     private renderBoardGroupManagementUI(containerEl: HTMLElement) {
         containerEl.empty();
         const groups = this.plugin.settings.boardGroups || [];

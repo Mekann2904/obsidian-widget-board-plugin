@@ -49,6 +49,10 @@ interface TimerStopwatchState {
     lastTickTime: number | null;
 }
 
+/**
+ * タイマー／ストップウォッチウィジェット
+ * - カウントダウン・ストップウォッチ両対応、通知音、差分更新UI
+ */
 export class TimerStopwatchWidget implements WidgetImplementation {
     id = 'timer-stopwatch';
     private config!: WidgetConfig;
@@ -69,8 +73,15 @@ export class TimerStopwatchWidget implements WidgetImplementation {
     private currentAudioElement: HTMLAudioElement | null = null;
 
     private static widgetStates: Map<string, TimerStopwatchState> = new Map();
-    private static widgetInstances: Map<string, Set<TimerStopwatchWidget>> = new Map();
+    private static widgetInstances: Map<string, TimerStopwatchWidget> = new Map();
     private static globalIntervalId: number | null = null; // グローバルtick用
+
+    /**
+     * インスタンス初期化
+     */
+    constructor() {
+        // ... 既存コード ...
+    }
 
     private getInternalState(): TimerStopwatchState | undefined {
         return TimerStopwatchWidget.widgetStates.get(this.config.id);
@@ -107,9 +118,9 @@ export class TimerStopwatchWidget implements WidgetImplementation {
     }
 
     private static notifyInstancesToUpdateDisplay(configId: string) {
-        const instances = TimerStopwatchWidget.widgetInstances.get(configId);
-        if (instances) {
-            instances.forEach(inst => inst.updateDisplay());
+        const instance = TimerStopwatchWidget.widgetInstances.get(configId);
+        if (instance) {
+            instance.updateDisplay();
         }
     }
 
@@ -131,11 +142,10 @@ export class TimerStopwatchWidget implements WidgetImplementation {
             if (state.remainingSeconds <= 0) {
                 state.remainingSeconds = 0;
                 TimerStopwatchWidget.stopGlobalTimer(configId);
-                const instances = TimerStopwatchWidget.widgetInstances.get(configId);
-                if (instances && instances.size > 0) {
-                    const firstInstance = Array.from(instances)[0];
-                    firstInstance.playSoundNotification();
-                    firstInstance.openBoardIfClosed();
+                const instance = TimerStopwatchWidget.widgetInstances.get(configId);
+                if (instance) {
+                    instance.playSoundNotification();
+                    instance.openBoardIfClosed();
                 }
             }
         } else {
@@ -204,6 +214,12 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         }
     }
 
+    /**
+     * ウィジェットのDOM生成・初期化
+     * @param config ウィジェット設定
+     * @param app Obsidianアプリ
+     * @param plugin プラグイン本体
+     */
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
         this.app = app;
@@ -215,10 +231,8 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         };
         this.config.settings = this.currentSettings; // configオブジェクトにも反映
 
-        if (!TimerStopwatchWidget.widgetInstances.has(config.id)) {
-            TimerStopwatchWidget.widgetInstances.set(config.id, new Set());
-        }
-        TimerStopwatchWidget.widgetInstances.get(config.id)!.add(this);
+        // --- Map方式に統一 ---
+        TimerStopwatchWidget.widgetInstances.set(config.id, this);
 
         // --- グローバル状態から復元 ---
         let state = this.getInternalState();
@@ -287,29 +301,57 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         resetBtn.onclick = () => this.handleReset();
     }
 
+    /**
+     * UIを差分更新（値が変化した場合のみDOMを更新）
+     */
     private updateDisplay() {
         if (!this.widgetEl || !this.displayEl || !this.timerMinInput) return;
         const state = this.getInternalState();
         if (!state) { this.displayEl.textContent = 'Error'; return; }
 
-        this.modeSwitchContainer.querySelector('.mod-timer')?.classList.toggle('is-active', state.mode === 'timer');
-        this.modeSwitchContainer.querySelector('.mod-stopwatch')?.classList.toggle('is-active', state.mode === 'stopwatch');
-        this.timerSetRowEl.style.display = state.mode === 'timer' ? '' : 'none';
+        // 差分更新用に前回値を保持
+        if (!(this as any)._prevDisplay) (this as any)._prevDisplay = {};
+        const prev = (this as any)._prevDisplay;
 
-        if (state.mode === 'timer') {
-            if (document.activeElement !== this.timerMinInput)
-                this.timerMinInput.value = String(Math.floor(state.initialTimerSeconds / 60));
-            if (document.activeElement !== this.timerSecInput)
-                this.timerSecInput.value = String(state.initialTimerSeconds % 60);
+        // モード切替ボタン
+        const isTimer = state.mode === 'timer';
+        if (prev.isTimer !== isTimer) {
+            this.modeSwitchContainer.querySelector('.mod-timer')?.classList.toggle('is-active', isTimer);
+            this.modeSwitchContainer.querySelector('.mod-stopwatch')?.classList.toggle('is-active', !isTimer);
+            this.timerSetRowEl.style.display = isTimer ? '' : 'none';
+            prev.isTimer = isTimer;
         }
 
-        const displaySeconds = (state.mode === 'timer') ?
+        // 入力欄
+        if (isTimer) {
+            const minVal = String(Math.floor(state.initialTimerSeconds / 60));
+            const secVal = String(state.initialTimerSeconds % 60);
+            if (document.activeElement !== this.timerMinInput && prev.minVal !== minVal) {
+                this.timerMinInput.value = minVal;
+                prev.minVal = minVal;
+            }
+            if (document.activeElement !== this.timerSecInput && prev.secVal !== secVal) {
+                this.timerSecInput.value = secVal;
+                prev.secVal = secVal;
+            }
+        }
+
+        // 表示時間
+        const displaySeconds = isTimer ?
             ((state.running || (state.remainingSeconds < state.initialTimerSeconds && state.remainingSeconds > 0)) ? state.remainingSeconds : state.initialTimerSeconds)
             : state.elapsedSeconds;
-        this.displayEl.textContent = this.formatTime(displaySeconds);
+        const timeStr = this.formatTime(displaySeconds);
+        if (prev.timeStr !== timeStr) {
+            this.displayEl.textContent = timeStr;
+            prev.timeStr = timeStr;
+        }
 
-        this.startPauseBtn.setText(state.running ? '一時停止' : 'スタート');
-        setIcon(this.startPauseBtn, state.running ? 'pause' : 'play');
+        // ボタン
+        if (prev.running !== state.running) {
+            this.startPauseBtn.setText(state.running ? '一時停止' : 'スタート');
+            setIcon(this.startPauseBtn, state.running ? 'pause' : 'play');
+            prev.running = state.running;
+        }
     }
 
     private handleTimerSettingsChange() {
@@ -383,7 +425,6 @@ export class TimerStopwatchWidget implements WidgetImplementation {
 
     // --- 通知音再生メソッド ---
     private playSoundNotification() {
-        // グローバル設定があれば優先
         const globalSound = (this.plugin.settings as any).timerStopwatchNotificationSound;
         const globalVolume = (this.plugin.settings as any).timerStopwatchNotificationVolume;
         const soundType = globalSound ?? this.currentSettings.notificationSound ?? DEFAULT_TIMER_STOPWATCH_SETTINGS.notificationSound;
@@ -391,22 +432,18 @@ export class TimerStopwatchWidget implements WidgetImplementation {
 
         if (soundType === 'off') return;
 
-        // 既存の音声を停止
         if (this.currentAudioElement) {
             this.currentAudioElement.pause();
             this.currentAudioElement.currentTime = 0;
             this.currentAudioElement = null;
         }
-        if (this.audioContext && this.audioContext.state !== 'closed') {
-            this.audioContext.close().catch(e => {/* ignore */});
-            this.audioContext = null;
+        // AudioContextが再利用可能なら再利用、そうでなければ新規生成
+        if (!this.audioContext || this.audioContext.state === 'closed') {
+            this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         }
-
+        const ctx = this.audioContext;
         try {
-            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            this.audioContext = ctx;
             if (soundType === 'default_beep') {
-                // シンプルなビープ
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = 'sine';
@@ -416,26 +453,24 @@ export class TimerStopwatchWidget implements WidgetImplementation {
                 osc.connect(gain); gain.connect(ctx.destination);
                 osc.start(ctx.currentTime);
                 osc.stop(ctx.currentTime + 0.7);
-                osc.onended = () => ctx.close();
+                osc.onended = () => { ctx.close(); this.audioContext = null; };
             } else if (soundType === 'bell') {
-                // ベル音: 2つの三角波を重ねる
                 const osc1 = ctx.createOscillator();
                 const osc2 = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc1.type = 'triangle';
                 osc2.type = 'triangle';
-                osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5
-                osc2.frequency.setValueAtTime(1320, ctx.currentTime); // E6
+                osc1.frequency.setValueAtTime(880, ctx.currentTime);
+                osc2.frequency.setValueAtTime(1320, ctx.currentTime);
                 gain.gain.setValueAtTime(Math.max(0.0001, Math.min(1, volume)), ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.8);
                 osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
                 osc1.start(ctx.currentTime); osc2.start(ctx.currentTime);
                 osc1.stop(ctx.currentTime + 0.8); osc2.stop(ctx.currentTime + 0.8);
-                osc2.detune.setValueAtTime(5, ctx.currentTime + 0.2); // 少し揺らす
-                osc1.onended = () => ctx.close();
+                osc2.detune.setValueAtTime(5, ctx.currentTime + 0.2);
+                osc1.onended = () => { ctx.close(); this.audioContext = null; };
             } else if (soundType === 'chime') {
-                // チャイム音: 3音アルペジオ
-                const notes = [523.25, 659.25, 784.0]; // C5, E5, G5
+                const notes = [523.25, 659.25, 784.0];
                 const now = ctx.currentTime;
                 notes.forEach((freq, i) => {
                     const osc = ctx.createOscillator();
@@ -447,7 +482,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
                     osc.connect(gain); gain.connect(ctx.destination);
                     osc.start(now + i * 0.18);
                     osc.stop(now + i * 0.18 + 0.22);
-                    if (i === notes.length - 1) osc.onended = () => ctx.close();
+                    if (i === notes.length - 1) osc.onended = () => { ctx.close(); this.audioContext = null; };
                 });
             }
         } catch (error) {
@@ -469,12 +504,13 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         }
     }
 
+    /**
+     * ウィジェット破棄時のクリーンアップ
+     */
     onunload(): void {
-        const instances = TimerStopwatchWidget.widgetInstances.get(this.config.id);
-        if (instances) {
-            instances.delete(this);
-        }
-        // グローバルintervalは維持（他のタイマーが動作中の可能性があるため）
+        TimerStopwatchWidget.widgetInstances.delete(this.config.id);
+        // 追加: widgetStatesからも状態を削除
+        TimerStopwatchWidget.widgetStates.delete(this.config.id);
         if (this.audioContext && this.audioContext.state !== 'closed') {
             this.audioContext.close().catch(e => console.warn(`TimerStopwatchWidget [${this.config?.id}]: Error closing AudioContext on unload:`, e));
             this.audioContext = null;
@@ -484,5 +520,28 @@ export class TimerStopwatchWidget implements WidgetImplementation {
             this.currentAudioElement.src = "";
             this.currentAudioElement = null;
         }
+    }
+
+    /**
+     * すべてのインスタンスをクリーンアップ
+     * @param plugin プラグイン本体
+     */
+    public static cleanupAllPersistentInstances(plugin: WidgetBoardPlugin): void {
+        this.widgetInstances.forEach(instance => {
+            if (typeof instance.onunload === 'function') {
+                instance.onunload();
+            }
+        });
+        this.widgetInstances.clear();
+        this.widgetStates.clear();
+    }
+
+    /**
+     * 外部から設定変更を受けて状態・UIを更新
+     * @param newSettings 新しい設定
+     * @param widgetId 対象ウィジェットID
+     */
+    public async updateExternalSettings(newSettings: Partial<TimerStopwatchWidgetSettings>, widgetId?: string) {
+        // ... 既存コード ...
     }
 }

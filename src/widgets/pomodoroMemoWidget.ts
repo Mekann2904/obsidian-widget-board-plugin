@@ -4,6 +4,10 @@ export interface PomodoroMemoSettings {
     memoContent?: string;
 }
 
+/**
+ * ポモドーロ用メモウィジェット
+ * - Markdownメモの表示・編集、親ウィジェットとの連携
+ */
 export class PomodoroMemoWidget {
     private app: App;
     private containerEl: HTMLElement;
@@ -17,6 +21,13 @@ export class PomodoroMemoWidget {
     private settings: PomodoroMemoSettings;
     private onSave: ((newMemo: string) => void) | null = null;
 
+    /**
+     * インスタンス初期化
+     * @param app Obsidianアプリ
+     * @param parentEl 親要素
+     * @param settings メモ設定
+     * @param onSave 保存時コールバック
+     */
     constructor(app: App, parentEl: HTMLElement, settings: PomodoroMemoSettings, onSave?: (newMemo: string) => void) {
         this.app = app;
         this.settings = settings;
@@ -25,6 +36,9 @@ export class PomodoroMemoWidget {
         this.render();
     }
 
+    /**
+     * メモUIを描画
+     */
     private render() {
         // ヘッダー
         const memoHeaderEl = this.containerEl.createDiv({ cls: 'pomodoro-memo-header' });
@@ -48,6 +62,9 @@ export class PomodoroMemoWidget {
         this.updateMemoEditUI();
     }
 
+    /**
+     * メモ内容をMarkdownで描画
+     */
     private async renderMemo(markdownContent?: string) {
         this.memoDisplayEl.empty();
         const trimmedContent = markdownContent?.trim();
@@ -59,6 +76,9 @@ export class PomodoroMemoWidget {
         }
     }
 
+    /**
+     * メモ編集UIを差分更新
+     */
     private updateMemoEditUI() {
         const hasMemoContent = this.settings.memoContent && this.settings.memoContent.trim() !== '';
         this.memoDisplayEl.style.display = this.isEditingMemo ? 'none' : (hasMemoContent ? 'block' : 'none');
@@ -74,12 +94,18 @@ export class PomodoroMemoWidget {
         }
     }
 
+    /**
+     * 編集モードに切り替え
+     */
     private enterMemoEditMode() {
         this.isEditingMemo = true;
         (window as any).__WB_MEMO_EDITING__ = true;
         this.updateMemoEditUI();
     }
 
+    /**
+     * メモを保存
+     */
     private async saveMemoChanges() {
         const newMemo = this.memoEditAreaEl.value;
         this.isEditingMemo = false;
@@ -99,38 +125,62 @@ export class PomodoroMemoWidget {
         this.updateMemoEditUI();
     }
 
+    /**
+     * 編集をキャンセル
+     */
     private cancelMemoEditMode() {
         this.isEditingMemo = false;
         (window as any).__WB_MEMO_EDITING__ = false;
         this.updateMemoEditUI();
     }
 
+    /**
+     * 現在のメモ内容を取得
+     */
     public getMemoContent(): string {
         return this.settings.memoContent || '';
     }
 
+    /**
+     * メモ内容をセット
+     */
     public setMemoContent(content: string) {
         if (this.isEditingMemo) return;
         this.settings.memoContent = content;
         this.updateMemoEditUI();
     }
 
+    /**
+     * UIを最新状態に更新
+     */
     public updateUI() {
         this.updateMemoEditUI();
     }
 
+    /**
+     * 編集モードに入る
+     */
     public enterEditMode() {
         this.enterMemoEditMode();
     }
 
+    /**
+     * メモを保存（外部呼び出し用）
+     */
     public async saveChanges() {
         await this.saveMemoChanges();
     }
 
+    /**
+     * 編集をキャンセル（外部呼び出し用）
+     */
     public cancelEditMode() {
         this.cancelMemoEditMode();
     }
 
+    /**
+     * 編集中かどうかを取得
+     */
     public get isEditing() {
         return this.isEditingMemo;
     }

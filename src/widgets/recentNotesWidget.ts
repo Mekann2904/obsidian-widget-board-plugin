@@ -10,6 +10,10 @@ export const DEFAULT_RECENT_NOTES_SETTINGS: RecentNotesWidgetSettings = {
     maxNotes: 10,
 };
 
+/**
+ * 最近編集したノートウィジェット
+ * - ノート一覧表示、仮想リスト、差分更新UI
+ */
 export class RecentNotesWidget implements WidgetImplementation {
     id = 'recent-notes';
     private config!: WidgetConfig;
@@ -18,6 +22,19 @@ export class RecentNotesWidget implements WidgetImplementation {
     private widgetEl!: HTMLElement;
     private currentSettings!: RecentNotesWidgetSettings;
 
+    /**
+     * インスタンス初期化
+     */
+    constructor() {
+        // ... 既存コード ...
+    }
+
+    /**
+     * ウィジェットのDOM生成・初期化
+     * @param config ウィジェット設定
+     * @param app Obsidianアプリ
+     * @param plugin プラグイン本体
+     */
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
         this.app = app;
@@ -38,6 +55,9 @@ export class RecentNotesWidget implements WidgetImplementation {
         return this.widgetEl;
     }
 
+    /**
+     * ノートリストを描画（仮想リスト対応）
+     */
     private renderNotesList(container: HTMLElement) {
         container.empty();
         const files = this.app.vault.getFiles()
@@ -50,20 +70,70 @@ export class RecentNotesWidget implements WidgetImplementation {
             return;
         }
 
-        const listEl = container.createEl('ul', { cls: 'recent-notes-list' });
-        files.forEach(file => {
-            const itemEl = listEl.createEl('li', { cls: 'recent-note-item' });
-            const linkEl = itemEl.createEl('a', { text: file.basename, href: '#' });
-            linkEl.onclick = (e) => {
-                e.preventDefault();
-                this.app.workspace.openLinkText(file.path, '', false);
-            };
-            const dateStr = moment(file.stat.mtime).format('YYYY/MM/DD HH:mm');
-            itemEl.createSpan({ text: ` (${dateStr})`, cls: 'recent-note-date' });
-        });
+        // 仮想スクロール閾値
+        const VIRTUAL_THRESHOLD = 100;
+        const ROW_HEIGHT = 32; // 1行の高さ(px)
+        if (files.length < VIRTUAL_THRESHOLD) {
+            // 従来通り全件描画
+            const listEl = container.createEl('ul', { cls: 'recent-notes-list' });
+            files.forEach(file => {
+                const itemEl = listEl.createEl('li', { cls: 'recent-note-item' });
+                const linkEl = itemEl.createEl('a', { text: file.basename, href: '#' });
+                linkEl.onclick = (e) => {
+                    e.preventDefault();
+                    this.app.workspace.openLinkText(file.path, '', false);
+                };
+                const dateStr = moment(file.stat.mtime).format('YYYY/MM/DD HH:mm');
+                itemEl.createSpan({ text: ` (${dateStr})`, cls: 'recent-note-date' });
+            });
+            return;
+        }
+        // --- 仮想リスト描画 ---
+        const visibleCount = Math.floor(container.clientHeight / ROW_HEIGHT) || 10;
+        let startIdx = 0;
+        let endIdx = Math.min(files.length, visibleCount + 5); // 余分に数件描画
+        const listWrapper = container.createDiv({ cls: 'recent-notes-virtual-wrapper' });
+        listWrapper.style.position = 'relative';
+        listWrapper.style.height = `${Math.min(files.length * ROW_HEIGHT, 600)}px`;
+        listWrapper.style.overflowY = 'auto';
+        listWrapper.style.maxHeight = '600px';
+        const listEl = listWrapper.createEl('ul', { cls: 'recent-notes-list' });
+        listEl.style.position = 'absolute';
+        listEl.style.top = '0';
+        listEl.style.left = '0';
+        listEl.style.right = '0';
+        listEl.style.width = '100%';
+        // 仮想リスト描画関数
+        const renderVirtualRows = (scrollTop: number) => {
+            startIdx = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - 2);
+            endIdx = Math.min(files.length, startIdx + visibleCount + 5);
+            listEl.empty();
+            listEl.style.transform = `translateY(${startIdx * ROW_HEIGHT}px)`;
+            for (let i = startIdx; i < endIdx; i++) {
+                const file = files[i];
+                const itemEl = listEl.createEl('li', { cls: 'recent-note-item' });
+                itemEl.style.height = `${ROW_HEIGHT}px`;
+                const linkEl = itemEl.createEl('a', { text: file.basename, href: '#' });
+                linkEl.onclick = (e) => {
+                    e.preventDefault();
+                    this.app.workspace.openLinkText(file.path, '', false);
+                };
+                const dateStr = moment(file.stat.mtime).format('YYYY/MM/DD HH:mm');
+                itemEl.createSpan({ text: ` (${dateStr})`, cls: 'recent-note-date' });
+            }
+        };
+        // 初回描画
+        renderVirtualRows(0);
+        // スクロールイベント
+        listWrapper.onscroll = (e) => {
+            renderVirtualRows(listWrapper.scrollTop);
+        };
     }
 
-    // 設定変更時などに外部から呼ばれる想定
+    /**
+     * 外部から設定変更を受けて状態・UIを更新
+     * @param newSettings 新しい設定
+     */
     updateExternalSettings(newSettings: Partial<RecentNotesWidgetSettings>) {
         this.currentSettings = { ...this.currentSettings, ...newSettings };
         if (this.config && this.config.settings) {

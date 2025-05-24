@@ -8,14 +8,25 @@ import { registeredWidgetImplementations } from './widgetRegistry';
 import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoroWidget';
 import { DEFAULT_MEMO_SETTINGS } from './widgets/memoWidget';
 import { DEFAULT_CALENDAR_SETTINGS } from './widgets/calendarWidget';
+import cloneDeep from 'lodash.clonedeep';
 
+/**
+ * Obsidian Widget Board Pluginのメインクラス
+ * - ウィジェットボードの管理・設定・コマンド登録などを担当
+ */
 export default class WidgetBoardPlugin extends Plugin {
+    /** プラグイン全体の設定 */
     settings: PluginGlobalSettings;
+    /** 開いているウィジェットボードのモーダル管理 */
     widgetBoardModals: Map<string, WidgetBoardModal> = new Map();
     private isSaving: boolean = false;
     private registeredGroupCommandIds: string[] = [];
 
-    async onload() {
+    /**
+     * プラグインの初期化処理
+     * @override
+     */
+    async onload(): Promise<void> {
         console.log('Widget Board Plugin: Loading...');
         await this.loadSettings();
         this.registerAllBoardCommands();
@@ -30,7 +41,11 @@ export default class WidgetBoardPlugin extends Plugin {
         console.log('Widget Board Plugin: Loaded.');
     }
 
-    onunload() {
+    /**
+     * プラグインのアンロード時処理
+     * @override
+     */
+    onunload(): void {
         this.widgetBoardModals.forEach(modal => {
             if (modal.isOpen) modal.close();
         });
@@ -38,7 +53,10 @@ export default class WidgetBoardPlugin extends Plugin {
         console.log('Widget Board Plugin: Unloaded.');
     }
 
-    openBoardPicker() {
+    /**
+     * ボード選択モーダルを表示
+     */
+    openBoardPicker(): void {
         if (this.settings.boards.length === 0) {
             new Notice('設定されているウィジェットボードがありません。設定画面から作成してください。');
             return;
@@ -53,7 +71,11 @@ export default class WidgetBoardPlugin extends Plugin {
         modal.open();
     }
 
-    openWidgetBoardById(boardId: string) {
+    /**
+     * 指定IDのウィジェットボードを開く
+     * @param boardId ボードID
+     */
+    openWidgetBoardById(boardId: string): void {
         const modal = this.widgetBoardModals.get(boardId);
         if (modal) {
             if (modal.isOpen || modal.isClosing) {
@@ -88,7 +110,11 @@ export default class WidgetBoardPlugin extends Plugin {
         newModal.open();
     }
 
-    toggleWidgetBoardById(boardId: string) {
+    /**
+     * 指定IDのウィジェットボードをトグル表示
+     * @param boardId ボードID
+     */
+    toggleWidgetBoardById(boardId: string): void {
         const modal = this.widgetBoardModals.get(boardId);
         if (modal && modal.isOpen) {
             modal.close(); // このモーダルだけ閉じる
@@ -97,7 +123,10 @@ export default class WidgetBoardPlugin extends Plugin {
         this.openWidgetBoardById(boardId); // このモーダルだけ開く
     }
 
-    async loadSettings() {
+    /**
+     * 設定をロード（旧形式からのマイグレーションも対応）
+     */
+    async loadSettings(): Promise<void> {
         const loadedData = await this.loadData();
         if (loadedData && !loadedData.boards && loadedData.widgets) {
             // 旧形式からのマイグレーション
@@ -115,13 +144,13 @@ export default class WidgetBoardPlugin extends Plugin {
         } else if (loadedData && loadedData.boards) {
             this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, loadedData);
         } else {
-            this.settings = JSON.parse(JSON.stringify(DEFAULT_PLUGIN_SETTINGS));
+            this.settings = cloneDeep(DEFAULT_PLUGIN_SETTINGS);
         }
         if (!this.settings.boards || !Array.isArray(this.settings.boards)) {
-            this.settings.boards = [JSON.parse(JSON.stringify(DEFAULT_BOARD_CONFIGURATION))];
+            this.settings.boards = [cloneDeep(DEFAULT_BOARD_CONFIGURATION)];
         }
         if (this.settings.boards.length === 0) {
-            this.settings.boards.push(JSON.parse(JSON.stringify(DEFAULT_BOARD_CONFIGURATION)));
+            this.settings.boards.push(cloneDeep(DEFAULT_BOARD_CONFIGURATION));
         }
         this.settings.boards.forEach(board => {
             if (!board.widgets || !Array.isArray(board.widgets)) {
@@ -139,7 +168,11 @@ export default class WidgetBoardPlugin extends Plugin {
         });
     }
 
-    async saveSettings(targetBoardId?: string) {
+    /**
+     * 設定を保存し、必要に応じてモーダルの内容も更新
+     * @param targetBoardId 更新対象ボードID（省略可）
+     */
+    async saveSettings(targetBoardId?: string): Promise<void> {
         if (this.isSaving) return;
         this.isSaving = true;
         try {
@@ -173,8 +206,10 @@ export default class WidgetBoardPlugin extends Plugin {
         }
     }
 
-    // グループコマンドの登録・再登録
-    registerAllBoardCommands() {
+    /**
+     * すべてのボード・グループコマンドを再登録
+     */
+    registerAllBoardCommands(): void {
         // 既存のグループコマンドを一旦解除
         if ((this.app as any).commands && typeof (this.app as any).commands.removeCommand === 'function') {
             this.registeredGroupCommandIds.forEach(id => {
@@ -183,13 +218,13 @@ export default class WidgetBoardPlugin extends Plugin {
         }
         this.registeredGroupCommandIds = [];
         // ボードごとにコマンドを動的登録
-        this.settings.boards.forEach(board => {
+        this.settings.boards.map(board =>
             this.addCommand({
                 id: `toggle-widget-board-${board.id}`,
                 name: `ウィジェットボードをトグル: ${board.name}`,
                 callback: () => this.toggleWidgetBoardById(board.id)
-            });
-        });
+            })
+        );
         // ボードグループごとにコマンドを動的登録
         (this.settings.boardGroups || []).forEach(group => {
             let hotkeys: Hotkey[] = [];
@@ -212,11 +247,12 @@ export default class WidgetBoardPlugin extends Plugin {
                         return modal && modal.isOpen;
                     });
                     if (anyOpen) {
-                        (group.boardIds || []).forEach(boardId => {
+                        (group.boardIds || []).filter(boardId => {
                             const modal = this.widgetBoardModals.get(boardId);
-                            if (modal && modal.isOpen) {
-                                modal.close();
-                            }
+                            return modal && modal.isOpen;
+                        }).forEach(boardId => {
+                            const modal = this.widgetBoardModals.get(boardId);
+                            if (modal) modal.close();
                         });
                     } else {
                         (group.boardIds || []).forEach(boardId => {
@@ -232,7 +268,7 @@ export default class WidgetBoardPlugin extends Plugin {
     /**
      * すべてのウィジェットボードを非表示にする
      */
-    hideAllBoards() {
+    hideAllBoards(): void {
         this.widgetBoardModals.forEach(modal => {
             if (modal.isOpen) modal.close();
         });

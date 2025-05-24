@@ -17,7 +17,10 @@ export const DEFAULT_MEMO_SETTINGS: MemoWidgetSettings = {
     fixedHeightPx: 120,
 };
 
-// --- MemoWidget クラス ---
+/**
+ * メモウィジェット
+ * - Markdownメモの表示・編集、可変高さ、差分更新UI
+ */
 export class MemoWidget implements WidgetImplementation {
     id = 'memo';
     private config!: WidgetConfig; // このウィジェットインスタンスが作成されたときのconfig
@@ -39,7 +42,9 @@ export class MemoWidget implements WidgetImplementation {
     // ウィジェットインスタンス管理のための静的マップ (前回から)
     private static widgetInstances: Map<string, MemoWidget> = new Map();
 
-
+    /**
+     * インスタンス初期化
+     */
     constructor() {
         this.isEditingMemo = false;
     }
@@ -143,37 +148,54 @@ export class MemoWidget implements WidgetImplementation {
         }
     }
 
+    /**
+     * メモ編集UIを差分更新（値が変化した場合のみDOMを更新）
+     */
     private updateMemoEditUI() {
         if (!this.memoDisplayEl || !this.memoEditContainerEl || !this.editMemoButtonEl) {
             console.error(`[${this.config?.id}] updateMemoEditUI: One or more UI elements are null.`);
             return;
         }
-        const widgetIdLog = `[${this.config.id}]`;
-        // console.log(`${widgetIdLog} updateMemoEditUI: isEditingMemo=${this.isEditingMemo}`);
+        // 差分更新用に前回値を保持
+        if (!(this as any)._prevDisplay) (this as any)._prevDisplay = {};
+        const prev = (this as any)._prevDisplay;
 
         const hasMemoContent = this.currentSettings.memoContent && this.currentSettings.memoContent.trim() !== '';
-
-        this.memoDisplayEl.style.display = this.isEditingMemo ? 'none' : (hasMemoContent ? 'block' : 'none');
-        this.memoEditContainerEl.style.display = this.isEditingMemo ? 'flex' : 'none';
-        this.editMemoButtonEl.style.display = this.isEditingMemo ? 'none' : '';
-        
-        if (this.isEditingMemo) {
-            this.applyContainerHeightStyles();
-            if (this.memoEditAreaEl) {
-                this.memoEditAreaEl.focus();
-                if (this.currentSettings.memoHeightMode === 'auto') {
-                    setTimeout(() => {
-                        if (this.memoEditAreaEl) this.memoEditAreaEl.dispatchEvent(new Event('input'));
-                    }, 50);
-                }
-            }
-        } else {
+        // 表示/非表示の切り替え
+        if (prev.isEditingMemo !== this.isEditingMemo) {
+            this.memoDisplayEl.style.display = this.isEditingMemo ? 'none' : (hasMemoContent ? 'block' : 'none');
+            this.memoEditContainerEl.style.display = this.isEditingMemo ? 'flex' : 'none';
+            this.editMemoButtonEl.style.display = this.isEditingMemo ? 'none' : '';
+            prev.isEditingMemo = this.isEditingMemo;
+        }
+        // メモ内容の差分描画
+        if (!this.isEditingMemo && prev.memoContent !== this.currentSettings.memoContent) {
             this.renderMemo(this.currentSettings.memoContent).then(() => {
                 this.applyContainerHeightStyles();
             }).catch(error => {
-                console.error(`${widgetIdLog} Error rendering memo in updateMemoEditUI:`, error);
+                console.error(`[${this.config.id}] Error rendering memo in updateMemoEditUI:`, error);
                 this.applyContainerHeightStyles();
             });
+            prev.memoContent = this.currentSettings.memoContent;
+        }
+        // 編集モード時のテキストエリア内容
+        if (this.isEditingMemo && this.memoEditAreaEl && prev.editAreaValue !== this.currentSettings.memoContent) {
+            this.memoEditAreaEl.value = this.currentSettings.memoContent || '';
+            prev.editAreaValue = this.currentSettings.memoContent;
+        }
+        // 高さ・スタイルの差分適用
+        if (prev.memoHeightMode !== this.currentSettings.memoHeightMode || prev.isEditingMemo !== this.isEditingMemo) {
+            this.applyContainerHeightStyles();
+            prev.memoHeightMode = this.currentSettings.memoHeightMode;
+        }
+        // フォーカス制御
+        if (this.isEditingMemo && this.memoEditAreaEl && document.activeElement !== this.memoEditAreaEl) {
+            this.memoEditAreaEl.focus();
+            if (this.currentSettings.memoHeightMode === 'auto') {
+                setTimeout(() => {
+                    if (this.memoEditAreaEl) this.memoEditAreaEl.dispatchEvent(new Event('input'));
+                }, 50);
+            }
         }
     }
 
@@ -271,6 +293,12 @@ export class MemoWidget implements WidgetImplementation {
         this.updateMemoEditUI();
     }
 
+    /**
+     * ウィジェットのDOM生成・初期化
+     * @param config ウィジェット設定
+     * @param app Obsidianアプリ
+     * @param plugin プラグイン本体
+     */
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         (this.constructor as typeof MemoWidget).widgetInstances.set(config.id, this);
 
@@ -335,6 +363,11 @@ export class MemoWidget implements WidgetImplementation {
         return this.widgetEl;
     }
 
+    /**
+     * 外部から設定変更を受けて状態・UIを更新
+     * @param newSettings 新しい設定
+     * @param widgetId 対象ウィジェットID
+     */
     public async updateExternalSettings(newSettings: Partial<MemoWidgetSettings>, widgetId?: string) {
         if (widgetId && this.config?.id !== widgetId) return;
         const widgetIdLog = `[${this.config.id}]`;
@@ -361,10 +394,18 @@ export class MemoWidget implements WidgetImplementation {
         // 設定の永続化は、ユーザーが設定タブで操作した際や、ウィジェット内で「保存」アクションを行った際に行うべき。
     }
 
+    /**
+     * ウィジェット破棄時のクリーンアップ
+     */
     onunload(): void {
         const widgetIdLog = `[${this.config?.id || 'MemoWidget'}]`;
         // console.log(`${widgetIdLog} onunload: Removing instance from static map.`);
         this.removeMemoEditAreaAutoResizeListener();
+        // 追加: メモ編集エリアのinputリスナーを確実に解除
+        if (this.memoEditAreaEl && this._memoEditAreaInputListener) {
+            this.memoEditAreaEl.removeEventListener('input', this._memoEditAreaInputListener);
+            this._memoEditAreaInputListener = null;
+        }
         (this.constructor as typeof MemoWidget).widgetInstances.delete(this.config.id);
         this.isEditingMemo = false;
     }
@@ -379,11 +420,16 @@ export class MemoWidget implements WidgetImplementation {
         // console.log(`[${widgetId}] Static removePersistentInstance for MemoWidget (map size: ${MemoWidget.widgetInstances.size})`);
     }
 
+    /**
+     * すべてのインスタンスをクリーンアップ
+     * @param plugin プラグイン本体
+     */
     public static cleanupAllPersistentInstances(plugin: WidgetBoardPlugin): void {
-        // console.log("Cleaning up all MemoWidget instances from static map.");
-        MemoWidget.widgetInstances.forEach(instance => {
-            // instance.onunload(); // もし必要なら
+        this.widgetInstances.forEach(instance => {
+            if (typeof instance.onunload === 'function') {
+                instance.onunload();
+            }
         });
-        MemoWidget.widgetInstances.clear();
+        this.widgetInstances.clear();
     }
 }

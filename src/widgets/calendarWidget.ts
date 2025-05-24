@@ -11,7 +11,10 @@ export interface CalendarWidgetSettings {
 // --- カレンダーウィジェットデフォルト設定 ---
 export const DEFAULT_CALENDAR_SETTINGS: CalendarWidgetSettings = {};
 
-// --- CalendarWidget クラス (元のコードから該当部分をここに移動) ---
+/**
+ * カレンダーウィジェット
+ * - 月表示、日付強調、差分更新UI
+ */
 export class CalendarWidget implements WidgetImplementation {
     id = 'calendar';
     private config!: WidgetConfig;
@@ -22,6 +25,19 @@ export class CalendarWidget implements WidgetImplementation {
     private currentDate: Date = new Date();
     private calendarContentEl!: HTMLElement;
 
+    /**
+     * インスタンス初期化
+     */
+    constructor() {
+        // ... 既存コード ...
+    }
+
+    /**
+     * ウィジェットのDOM生成・初期化
+     * @param config ウィジェット設定
+     * @param app Obsidianアプリ
+     * @param plugin プラグイン本体
+     */
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
         this.app = app;
@@ -45,6 +61,9 @@ export class CalendarWidget implements WidgetImplementation {
         return this.widgetEl;
     }
 
+    /**
+     * カレンダー本体を描画
+     */
     private renderCalendar() {
         if (!this.calendarContentEl) return;
         this.calendarContentEl.empty();
@@ -69,7 +88,11 @@ export class CalendarWidget implements WidgetImplementation {
         const weekdays = ['日', '月', '火', '水', '木', '金', '土']; // 日本語曜日
         const thead = table.createEl('thead');
         const trHead = thead.createEl('tr');
-        weekdays.forEach(day => trHead.createEl('th', { text: day }));
+        // forEach→mapでth要素配列生成→append
+        const ths = weekdays.map(day => {
+            return createEl('th', { text: day });
+        });
+        ths.forEach(th => trHead.appendChild(th));
 
         const tbody = table.createEl('tbody');
         const firstDayOfMonth = new Date(year, month, 1);
@@ -117,6 +140,11 @@ export class CalendarWidget implements WidgetImplementation {
         this.renderCalendar();
     }
 
+    /**
+     * 外部から設定変更を受けて状態・UIを更新
+     * @param newSettings 新しい設定
+     * @param widgetId 対象ウィジェットID
+     */
     public updateExternalSettings(newSettings: CalendarWidgetSettings, widgetId?: string) {
         if (widgetId && this.config?.id !== widgetId) return;
 
@@ -128,6 +156,9 @@ export class CalendarWidget implements WidgetImplementation {
         this.renderCalendar();
     }
 
+    /**
+     * ウィジェット破棄時のクリーンアップ
+     */
     onunload(): void {
         // No specific cleanup needed for calendar as it doesn't use intervals etc.
     }

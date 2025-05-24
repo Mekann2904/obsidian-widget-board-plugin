@@ -3,6 +3,7 @@ import { App, FuzzySuggestModal, Notice } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import { registeredWidgetImplementations } from './widgetRegistry';
 import type { WidgetImplementation, BoardConfiguration, WidgetConfig } from './interfaces';
+import cloneDeep from 'lodash.clonedeep';
 
 /**
  * 新しいウィジェットの種類を選択して追加するためのモーダル
@@ -50,7 +51,10 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
     }
 }
 
-
+/**
+ * ウィジェットボードのモーダル表示・管理を行うクラス
+ * - ボードのUI生成、ウィジェットのロード、設定パネル、ドラッグ＆ドロップ等を担当
+ */
 export class WidgetBoardModal {
     plugin: WidgetBoardPlugin;
     currentBoardConfig: BoardConfiguration;
@@ -81,9 +85,15 @@ export class WidgetBoardModal {
         CUSTOM_WIDTH: 'custom-width'
     } as const;
 
+    /**
+     * モーダルを初期化
+     * @param _app Obsidianアプリインスタンス
+     * @param plugin プラグイン本体
+     * @param boardConfig ボード設定
+     */
     constructor(_app: App, plugin: WidgetBoardPlugin, boardConfig: BoardConfiguration) {
         this.plugin = plugin;
-        this.currentBoardConfig = JSON.parse(JSON.stringify(boardConfig));
+        this.currentBoardConfig = cloneDeep(boardConfig);
         this.currentBoardId = boardConfig.id;
         const validModes = Object.values(WidgetBoardModal.MODES);
         if (!validModes.includes(this.currentBoardConfig.defaultMode as any)) {
@@ -98,9 +108,13 @@ export class WidgetBoardModal {
         this.modalEl.appendChild(this.contentEl);
     }
 
+    /**
+     * ボード設定を更新し、UIを再描画
+     * @param newBoardConfig 新しいボード設定
+     */
     public updateBoardConfiguration(newBoardConfig: BoardConfiguration) {
         if (!this.isOpen) return;
-        this.currentBoardConfig = JSON.parse(JSON.stringify(newBoardConfig));
+        this.currentBoardConfig = cloneDeep(newBoardConfig);
         this.currentBoardId = newBoardConfig.id;
         if (this.currentMode !== this.currentBoardConfig.defaultMode) {
             const validModes = Object.values(WidgetBoardModal.MODES);
@@ -121,13 +135,20 @@ export class WidgetBoardModal {
         }
     }
 
+    /**
+     * モーダルを開く（UI生成・初期化）
+     */
     open() {
         if (this.isOpen) return;
         document.body.appendChild(this.modalEl);
         this.onOpen();
     }
 
+    /**
+     * モーダルのUIを初期化・再描画
+     */
     onOpen() {
+        document.body.classList.add('wb-modal-open');
         this.isOpen = true;
         this.isEditMode = false; // 開いたときは必ず表示モードで開始
         const { contentEl, modalEl } = this;
@@ -239,10 +260,11 @@ export class WidgetBoardModal {
         let customWidthAnchorBtnContainer = displayControlsContainer.createDiv({ cls: 'custom-width-anchor-btns' });
         customWidthAnchorBtnContainer.style.display = this.currentMode === WidgetBoardModal.MODES.CUSTOM_WIDTH ? '' : 'none';
 
-        modeGroups.forEach((group, groupIdx) => {
+        // --- モードボタン生成 ---
+        this.modeButtons = modeGroups.flatMap((group, groupIdx) => {
             const groupDiv = displayControlsContainer.createDiv({ cls: 'wb-mode-group' });
             groupDiv.createEl('span', { text: group.label, cls: 'wb-mode-group-label' });
-            group.modes.forEach(modeClass => {
+            const buttons = group.modes.map(modeClass => {
                 let buttonText = '';
                 if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
                 else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = '右パネル（50vw）';
@@ -265,11 +287,12 @@ export class WidgetBoardModal {
                     }
                     customWidthAnchorBtnContainer.style.display = modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH ? '' : 'none';
                 });
-                this.modeButtons.push(button);
+                return button;
             });
             if (groupIdx < modeGroups.length - 1) {
                 displayControlsContainer.createEl('span', { text: '', cls: 'wb-mode-group-gap' });
             }
+            return buttons;
         });
 
         const anchors: Array<{ key: 'left' | 'center' | 'right', label: string }> = [
@@ -353,6 +376,10 @@ export class WidgetBoardModal {
         });
     }
 
+    /**
+     * ボード内のウィジェットをすべてロード
+     * @param container ウィジェット配置先の要素
+     */
     loadWidgets(container: HTMLElement) {
         const boardInGlobal = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
         const widgetsToLoad = boardInGlobal ? boardInGlobal.widgets : this.currentBoardConfig.widgets;
@@ -466,6 +493,10 @@ export class WidgetBoardModal {
         this.lastWidgetOrder = [...newOrder];
     }
 
+    /**
+     * ウィジェットを削除
+     * @param widgetId 削除対象ウィジェットID
+     */
     private async deleteWidget(widgetId: string) {
         const board = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
         if (!board) return;
@@ -564,6 +595,10 @@ export class WidgetBoardModal {
         }
     }
 
+    /**
+     * 表示モードを適用（パネル幅やクラス切替）
+     * @param newModeClass 新しいモードクラス
+     */
     applyMode(newModeClass: string) {
         const { modalEl } = this;
         const validModeClasses = Object.values(WidgetBoardModal.MODES) as string[];
@@ -599,6 +634,9 @@ export class WidgetBoardModal {
         });
     }
 
+    /**
+     * モーダルを閉じる
+     */
     close() {
         const { modalEl } = this;
         this.isClosing = true;
@@ -620,8 +658,12 @@ export class WidgetBoardModal {
                 }
             });
         }, 300);
+        document.body.classList.remove('wb-modal-open');
     }
 
+    /**
+     * モーダルが閉じられたときの後処理
+     */
     onClose() {
         this.isOpen = false;
         this.isClosing = false;
@@ -633,5 +675,6 @@ export class WidgetBoardModal {
         const { contentEl } = this;
         contentEl.empty();
         this.uiWidgetReferences = [];
+        document.body.classList.remove('wb-modal-open');
     }
 }
