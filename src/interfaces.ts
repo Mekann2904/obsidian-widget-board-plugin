@@ -47,4 +47,5 @@ export interface PluginGlobalSettings {
     timerStopwatchNotificationVolume?: number;
     pomodoroExportFormat?: import("./widgets/pomodoroWidget").PomodoroExportFormat;
     boardGroups?: BoardGroup[];
+    openBoardOnPomodoroEnd?: boolean;
 }

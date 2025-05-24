@@ -29,4 +29,5 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     timerStopwatchNotificationVolume: 0.5,
     pomodoroExportFormat: 'none',
     boardGroups: [],
+    openBoardOnPomodoroEnd: false,
 };

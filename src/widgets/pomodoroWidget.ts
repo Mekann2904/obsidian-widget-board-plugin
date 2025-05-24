@@ -553,6 +553,15 @@ export class PomodoroWidget implements WidgetImplementation {
         if (shouldExport && exportFormat !== 'none') {
             await this.exportSessionLogs(exportFormat);
         }
+        // --- 追加: ポモドーロ終了時に該当ボードを自動で開く ---
+        if (this.plugin.settings.openBoardOnPomodoroEnd) {
+            const boards = (this.plugin.settings as any).boards;
+            const board = boards?.find((b: any) => b.widgets?.some((w: any) => w.id === this.config.id));
+            if (board) {
+                this.plugin.openWidgetBoardById(board.id);
+                new Notice('ポモドーロ終了: ウィジェットボードを開きました。');
+            }
+        }
     }
     
     private skipToNextSessionConfirm() {

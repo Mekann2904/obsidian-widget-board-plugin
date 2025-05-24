@@ -123,6 +123,17 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 });
             });
+        // --- ポモドーロ終了時に該当ボードを自動で開く ---
+        new Setting(pomoAcc.body)
+            .setName('ポモドーロ終了時に該当ボードを自動で開く')
+            .setDesc('ONにすると、ポモドーロが終了したときにこのウィジェットが属するボードを自動で開きます。')
+            .addToggle(toggle => {
+                toggle.setValue(this.plugin.settings.openBoardOnPomodoroEnd ?? false)
+                    .onChange(async (value) => {
+                        this.plugin.settings.openBoardOnPomodoroEnd = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
         // --- エクスポート形式（グローバル設定） ---
         new Setting(pomoAcc.body)
             .setName('エクスポート形式')
