@@ -1,5 +1,5 @@
 // src/settingsTab.ts
-import { App, PluginSettingTab, Setting, Notice, DropdownComponent, SliderComponent, TextComponent } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, DropdownComponent, SliderComponent, TextComponent, Modal } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import type { BoardConfiguration, WidgetConfig } from './interfaces';
 import { DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
@@ -25,6 +25,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     plugin: WidgetBoardPlugin;
     private selectedBoardId: string | null = null;
     private boardDropdownEl: HTMLSelectElement | null = null;
+    private boardGroupBodyEl: HTMLElement | null = null;
 
     constructor(app: App, plugin: WidgetBoardPlugin) {
         super(app, plugin);
@@ -182,6 +183,11 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             const msg = this.plugin.settings.boards.length === 0 ? '利用可能なボードがありません。「ボード管理」から新しいボードを追加してください。' : '設定するボードを「ボード管理」から選択してください。';
             boardDetailContainer.createEl('p', { text: msg });
         }
+
+        // --- ボードグループ管理セクション ---
+        const boardGroupAcc = createAccordion('ボードグループ管理', false);
+        this.boardGroupBodyEl = boardGroupAcc.body;
+        this.renderBoardGroupManagementUI(this.boardGroupBodyEl);
     }
 
     private renderBoardManagementUI(containerEl: HTMLElement) {
@@ -647,6 +653,45 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             }
         }
     }
+
+    private renderBoardGroupManagementUI(containerEl: HTMLElement) {
+        containerEl.empty();
+        const groups = this.plugin.settings.boardGroups || [];
+        // グループ一覧
+        groups.forEach((group, idx) => {
+            const groupDiv = containerEl.createDiv({ cls: 'board-group-setting' });
+            new Setting(groupDiv)
+                .setName(group.name)
+                .setDesc(`ID: ${group.id}`)
+                .addButton(btn => btn.setIcon('pencil').setTooltip('編集').onClick(() => {
+                    this.openBoardGroupEditModal(group, idx);
+                }))
+                .addButton(btn => btn.setIcon('trash').setTooltip('削除').setWarning().onClick(async () => {
+                    if (!confirm(`グループ「${group.name}」を削除しますか？`)) return;
+                    this.plugin.settings.boardGroups = groups.filter((_, i) => i !== idx);
+                    await this.plugin.saveSettings();
+                    (this.plugin as any).registerAllBoardCommands?.();
+                    this.renderBoardGroupManagementUI(containerEl);
+                }));
+            groupDiv.createEl('div', { text: `ボード: ${group.boardIds.map(id => {
+                const b = this.plugin.settings.boards.find(b => b.id === id);
+                return b ? b.name : id;
+            }).join(', ')}` });
+            groupDiv.createEl('div', { text: `ホットキー: ${group.hotkey || '(未設定)'}` });
+        });
+        // 追加ボタン
+        new Setting(containerEl)
+            .addButton(btn => btn.setButtonText('新しいグループを追加').setCta().onClick(() => {
+                this.openBoardGroupEditModal();
+            }));
+    }
+
+    private openBoardGroupEditModal(group?: import('./interfaces').BoardGroup, editIdx?: number) {
+        new BoardGroupEditModal(this.app, this.plugin, () => {
+            // 保存後に必ず正しいbodyを再描画
+            if (this.boardGroupBodyEl) this.renderBoardGroupManagementUI(this.boardGroupBodyEl);
+        }, group, editIdx).open();
+    }
 }
 
 function playTestNotificationSound(plugin: any, soundType: string, volume: number) {
@@ -705,4 +750,92 @@ function playTestNotificationSound(plugin: any, soundType: string, volume: numbe
             });
         }
     } catch (e) { new Notice('音声の再生に失敗しました'); }
+}
+
+// --- グループ編集用モーダル ---
+class BoardGroupEditModal extends Modal {
+    plugin: WidgetBoardPlugin;
+    group?: import('./interfaces').BoardGroup;
+    editIdx?: number;
+    onSave: () => void;
+    constructor(app: App, plugin: WidgetBoardPlugin, onSave: () => void, group?: import('./interfaces').BoardGroup, editIdx?: number) {
+        super(app);
+        this.plugin = plugin;
+        this.group = group;
+        this.editIdx = editIdx;
+        this.onSave = onSave;
+    }
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('h2', { text: this.group ? 'グループを編集' : '新しいグループを追加' });
+        let name = this.group?.name || '';
+        let boardIds = this.group?.boardIds ? [...this.group.boardIds] : [];
+        // グループ名
+        new Setting(contentEl)
+            .setName('グループ名')
+            .addText(text => text.setValue(name).onChange(v => { name = v; }));
+        // ボード選択
+        contentEl.createEl('div', { text: 'グループに含めるボードを選択', cls: 'board-group-boardlist-label', attr: { style: 'margin-top:16px;margin-bottom:8px;font-weight:bold;' } });
+        const boardListDiv = contentEl.createDiv({ cls: 'board-group-boardlist', attr: { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;' } });
+        const renderBoardButtons = () => {
+            boardListDiv.empty();
+            this.plugin.settings.boards.forEach(b => {
+                const isSelected = boardIds.includes(b.id);
+                const btn = boardListDiv.createEl('button', {
+                    cls: isSelected ? 'selected is-active' : '',
+                });
+                btn.classList.add('mod-cta');
+                btn.style.minWidth = '64px';
+                btn.style.padding = '6px 16px';
+                btn.style.borderRadius = '6px';
+                btn.style.border = 'none';
+                btn.style.cursor = 'pointer';
+                btn.style.fontWeight = isSelected ? 'bold' : '';
+                btn.style.background = isSelected ? 'var(--interactive-accent)' : 'var(--background-modifier-box)';
+                btn.style.color = isSelected ? 'var(--text-on-accent)' : 'var(--text-normal)';
+                btn.innerHTML = b.name;
+                btn.onclick = () => {
+                    if (isSelected) {
+                        boardIds = boardIds.filter(x => x !== b.id);
+                    } else {
+                        boardIds.push(b.id);
+                    }
+                    renderBoardButtons();
+                };
+            });
+        };
+        renderBoardButtons();
+        // ホットキー欄は削除し、説明文を追加
+        contentEl.createEl('div', { text: '※グループのホットキー設定はObsidianの「設定 → ホットキー」画面で行ってください。', cls: 'board-group-hotkey-desc', attr: { style: 'margin-top:12px;margin-bottom:8px;font-size:0.95em;color:var(--text-faint);' } });
+        // 保存・キャンセルボタン横並び
+        const btnRow = contentEl.createDiv({ cls: 'modal-button-row', attr: { style: 'display:flex;justify-content:flex-end;gap:12px;margin-top:24px;' } });
+        new Setting(btnRow)
+            .addButton(btn => btn.setButtonText('保存').setCta().onClick(async () => {
+                if (!name.trim()) {
+                    new Notice('グループ名を入力してください');
+                    return;
+                }
+                if (boardIds.length === 0) {
+                    new Notice('1つ以上のボードを選択してください');
+                    return;
+                }
+                const newGroup = {
+                    id: this.group?.id || 'group-' + Date.now(),
+                    name: name.trim(),
+                    boardIds,
+                    hotkey: this.group?.hotkey // 既存値は維持（UIからは編集不可）
+                };
+                if (this.editIdx !== undefined) {
+                    this.plugin.settings.boardGroups![this.editIdx] = newGroup;
+                } else {
+                    this.plugin.settings.boardGroups = [...(this.plugin.settings.boardGroups || []), newGroup];
+                }
+                await this.plugin.saveSettings();
+                (this.plugin as any).registerAllBoardCommands?.();
+                this.onSave();
+                this.close();
+            }))
+            .addButton(btn => btn.setButtonText('キャンセル').onClick(() => this.close()));
+    }
 }

@@ -28,4 +28,5 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     timerStopwatchNotificationSound: 'default_beep',
     timerStopwatchNotificationVolume: 0.5,
     pomodoroExportFormat: 'none',
+    boardGroups: [],
 };

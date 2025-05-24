@@ -28,6 +28,14 @@ export interface BoardConfiguration {
     customWidthAnchor?: 'left' | 'center' | 'right';
 }
 
+// --- ボードグループ管理用インターフェース ---
+export interface BoardGroup {
+    id: string;
+    name: string;
+    boardIds: string[];
+    hotkey?: string;
+}
+
 // --- プラグイン全体の新しいトップレベル設定インターフェース ---
 export interface PluginGlobalSettings {
     boards: BoardConfiguration[];
@@ -38,4 +46,5 @@ export interface PluginGlobalSettings {
     timerStopwatchNotificationSound?: import("./widgets/timerStopwatchWidget").TimerSoundType;
     timerStopwatchNotificationVolume?: number;
     pomodoroExportFormat?: import("./widgets/pomodoroWidget").PomodoroExportFormat;
+    boardGroups?: BoardGroup[];
 }

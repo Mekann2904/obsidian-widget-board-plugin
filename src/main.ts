@@ -1,5 +1,5 @@
 // src/main.ts
-import { Plugin, Notice, Modal as ObsidianModal } from 'obsidian';
+import { Plugin, Notice, Modal as ObsidianModal, Hotkey, Modifier } from 'obsidian';
 import type { PluginGlobalSettings, BoardConfiguration, WidgetConfig } from './interfaces';
 import { DEFAULT_PLUGIN_SETTINGS, DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
 import { WidgetBoardModal } from './modal';
@@ -13,21 +13,12 @@ export default class WidgetBoardPlugin extends Plugin {
     settings: PluginGlobalSettings;
     widgetBoardModals: Map<string, WidgetBoardModal> = new Map();
     private isSaving: boolean = false;
+    private registeredGroupCommandIds: string[] = [];
 
     async onload() {
         console.log('Widget Board Plugin: Loading...');
         await this.loadSettings();
-
-        // ボードごとにコマンドを動的登録
-        this.settings.boards.forEach(board => {
-            // トグルコマンドのみ追加
-            this.addCommand({
-                id: `toggle-widget-board-${board.id}`,
-                name: `ウィジェットボードをトグル: ${board.name}`,
-                callback: () => this.toggleWidgetBoardById(board.id)
-            });
-        });
-
+        this.registerAllBoardCommands();
         this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());
         this.addSettingTab(new WidgetBoardSettingTab(this.app, this));
         console.log('Widget Board Plugin: Loaded.');
@@ -174,6 +165,62 @@ export default class WidgetBoardPlugin extends Plugin {
         } finally {
             this.isSaving = false;
         }
+    }
+
+    // グループコマンドの登録・再登録
+    registerAllBoardCommands() {
+        // 既存のグループコマンドを一旦解除
+        if ((this.app as any).commands && typeof (this.app as any).commands.removeCommand === 'function') {
+            this.registeredGroupCommandIds.forEach(id => {
+                (this.app as any).commands.removeCommand(id);
+            });
+        }
+        this.registeredGroupCommandIds = [];
+        // ボードごとにコマンドを動的登録
+        this.settings.boards.forEach(board => {
+            this.addCommand({
+                id: `toggle-widget-board-${board.id}`,
+                name: `ウィジェットボードをトグル: ${board.name}`,
+                callback: () => this.toggleWidgetBoardById(board.id)
+            });
+        });
+        // ボードグループごとにコマンドを動的登録
+        (this.settings.boardGroups || []).forEach(group => {
+            let hotkeys: Hotkey[] = [];
+            if (group.hotkey) {
+                const parts = group.hotkey.split('+');
+                if (parts.length > 1) {
+                    hotkeys = [{ modifiers: parts.slice(0, -1) as Modifier[], key: parts[parts.length - 1] }];
+                } else {
+                    hotkeys = [{ modifiers: [], key: group.hotkey }];
+                }
+            }
+            const cmdId = `open-board-group-${group.id}`;
+            this.addCommand({
+                id: cmdId,
+                name: `ボードグループをトグル: ${group.name}`,
+                hotkeys,
+                callback: () => {
+                    const anyOpen = (group.boardIds || []).some(boardId => {
+                        const modal = this.widgetBoardModals.get(boardId);
+                        return modal && modal.isOpen;
+                    });
+                    if (anyOpen) {
+                        (group.boardIds || []).forEach(boardId => {
+                            const modal = this.widgetBoardModals.get(boardId);
+                            if (modal && modal.isOpen) {
+                                modal.close();
+                            }
+                        });
+                    } else {
+                        (group.boardIds || []).forEach(boardId => {
+                            this.openWidgetBoardById(boardId);
+                        });
+                    }
+                }
+            });
+            this.registeredGroupCommandIds.push(cmdId);
+        });
     }
 }
 
