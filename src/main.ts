@@ -21,6 +21,12 @@ export default class WidgetBoardPlugin extends Plugin {
         this.registerAllBoardCommands();
         this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());
         this.addSettingTab(new WidgetBoardSettingTab(this.app, this));
+        // すべてのボードをトグルで非表示/表示するコマンドを追加
+        this.addCommand({
+            id: 'hide-all-widget-boards',
+            name: 'すべてのウィジェットボードを非表示',
+            callback: () => this.hideAllBoards()
+        });
         console.log('Widget Board Plugin: Loaded.');
     }
 
@@ -220,6 +226,15 @@ export default class WidgetBoardPlugin extends Plugin {
                 }
             });
             this.registeredGroupCommandIds.push(cmdId);
+        });
+    }
+
+    /**
+     * すべてのウィジェットボードを非表示にする
+     */
+    hideAllBoards() {
+        this.widgetBoardModals.forEach(modal => {
+            if (modal.isOpen) modal.close();
         });
     }
 }
