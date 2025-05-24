@@ -173,30 +173,67 @@ export class WidgetBoardModal {
         settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
         settingsBtn.setAttribute('aria-label', '設定を開く');
 
-        // --- リサイズハンドル ---
-        const resizeHandle = document.createElement('div');
-        resizeHandle.className = 'wb-panel-resize-handle';
-        modalEl.appendChild(resizeHandle);
-        let isResizing = false;
-        let startX = 0;
-        let startWidth = 0;
-        resizeHandle.addEventListener('mousedown', (e) => {
-            isResizing = true;
-            startX = e.clientX;
-            startWidth = modalEl.offsetWidth;
+        // --- リサイズハンドル（右端） ---
+        const resizeHandleRight = document.createElement('div');
+        resizeHandleRight.className = 'wb-panel-resize-handle wb-panel-resize-handle-right';
+        modalEl.appendChild(resizeHandleRight);
+        let isResizingRight = false;
+        let startXRight = 0;
+        let startWidthRight = 0;
+        resizeHandleRight.addEventListener('mousedown', (e) => {
+            isResizingRight = true;
+            startXRight = e.clientX;
+            startWidthRight = modalEl.offsetWidth;
             document.body.style.cursor = 'ew-resize';
             modalEl.classList.add('no-transition');
             e.preventDefault();
         });
         document.addEventListener('mousemove', (e) => {
-            if (!isResizing) return;
-            const dx = e.clientX - startX;
-            const newWidth = Math.max(200, startWidth + dx);
+            if (!isResizingRight) return;
+            const dx = e.clientX - startXRight;
+            const newWidth = Math.max(200, startWidthRight + dx);
             modalEl.style.width = newWidth + 'px';
         });
         document.addEventListener('mouseup', async (e) => {
-            if (!isResizing) return;
-            isResizing = false;
+            if (!isResizingRight) return;
+            isResizingRight = false;
+            document.body.style.cursor = '';
+            modalEl.classList.remove('no-transition');
+            const finalWidthPx = modalEl.offsetWidth;
+            const vw = (finalWidthPx / window.innerWidth) * 100;
+            this.currentCustomWidth = vw;
+            this.currentBoardConfig.customWidth = vw;
+            const boardToUpdate = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
+            if (boardToUpdate) {
+                boardToUpdate.customWidth = vw;
+                await this.plugin.saveSettings(this.currentBoardId);
+            }
+        });
+
+        // --- リサイズハンドル（左端） ---
+        const resizeHandleLeft = document.createElement('div');
+        resizeHandleLeft.className = 'wb-panel-resize-handle wb-panel-resize-handle-left';
+        modalEl.insertBefore(resizeHandleLeft, modalEl.firstChild);
+        let isResizingLeft = false;
+        let startXLeft = 0;
+        let startWidthLeft = 0;
+        resizeHandleLeft.addEventListener('mousedown', (e) => {
+            isResizingLeft = true;
+            startXLeft = e.clientX;
+            startWidthLeft = modalEl.offsetWidth;
+            document.body.style.cursor = 'ew-resize';
+            modalEl.classList.add('no-transition');
+            e.preventDefault();
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizingLeft) return;
+            const dx = e.clientX - startXLeft;
+            const newWidth = Math.max(200, startWidthLeft - dx); // 右とは逆方向
+            modalEl.style.width = newWidth + 'px';
+        });
+        document.addEventListener('mouseup', async (e) => {
+            if (!isResizingLeft) return;
+            isResizingLeft = false;
             document.body.style.cursor = '';
             modalEl.classList.remove('no-transition');
             const finalWidthPx = modalEl.offsetWidth;

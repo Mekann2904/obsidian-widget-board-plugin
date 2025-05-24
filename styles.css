@@ -630,19 +630,25 @@
   border-radius: 2px;
 }
 
-.wb-panel-resize-handle {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 8px;
-    height: 100%;
-    cursor: ew-resize;
-    z-index: 20;
-    background: transparent;
-    transition: background 0.2s;
+.wb-panel-resize-handle-right,
+.wb-panel-resize-handle-left {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10;
+  background: transparent;
 }
-.wb-panel-resize-handle:hover {
-    background: rgba(120,120,120,0.15);
+.wb-panel-resize-handle-right {
+  right: 0;
+}
+.wb-panel-resize-handle-left {
+  left: 0;
+}
+.widget-board-panel-custom:not(.custom-width-right):not(.custom-width-left):not(.custom-width-center) .wb-panel-resize-handle-left,
+.widget-board-panel-custom:not(.custom-width-right):not(.custom-width-left):not(.custom-width-center) .wb-panel-resize-handle-right {
+  display: none;
 }
 
 .widget-board-panel-custom.no-transition {
