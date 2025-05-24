@@ -174,16 +174,13 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         // --- ボード管理セクション ---
         const boardManagementAcc = createAccordion('ボード管理', false); // デフォルトで閉じる
         this.renderBoardManagementUI(boardManagementAcc.body);
-
-        // --- 選択されたボードの設定セクション ---
-        const boardDetailAcc = createAccordion('ボード詳細設定', false); // デフォルトで閉じる
-        boardDetailAcc.body.addClass('selected-board-settings-section');
+        // --- 選択されたボードの詳細設定をボード管理アコーディオン内に表示 ---
+        const boardDetailContainer = boardManagementAcc.body.createDiv({ cls: 'selected-board-settings-section' });
         if (this.selectedBoardId) {
-            this.renderSelectedBoardSettingsUI(boardDetailAcc.body);
+            this.renderSelectedBoardSettingsUI(boardDetailContainer);
         } else {
-            // ボードが一つもない、または選択されていない場合のメッセージ
             const msg = this.plugin.settings.boards.length === 0 ? '利用可能なボードがありません。「ボード管理」から新しいボードを追加してください。' : '設定するボードを「ボード管理」から選択してください。';
-            boardDetailAcc.body.createEl('p', { text: msg });
+            boardDetailContainer.createEl('p', { text: msg });
         }
     }
 
