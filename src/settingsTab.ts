@@ -276,6 +276,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             .addText(text => text
                 .setValue(board.name)
                 .onChange(async (value) => {
+                    // 入力途中は何もしない
+                })
+                .inputEl.addEventListener('blur', async () => {
+                    const value = text.inputEl.value;
                     board.name = value;
                     await this.plugin.saveSettings(board.id);
                     // boardDropdownElを直接操作
@@ -327,17 +331,21 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 text.setPlaceholder('例: 40')
                     .setValue(board.customWidth ? String(board.customWidth) : '')
                     .onChange(async (v) => {
-                        const n = parseFloat(v);
-                        if (!isNaN(n)) {
-                            board.customWidth = n;
-                            await this.plugin.saveSettings(board.id);
-                            if (n <= 0 || n > 100) {
-                                new Notice('1〜100の範囲でvwを指定することを推奨します。');
-                            }
-                        } else {
-                            new Notice('数値を入力してください（vw単位）');
-                        }
+                        // 入力途中は何もしない
                     });
+                text.inputEl.addEventListener('blur', async () => {
+                    const v = text.inputEl.value;
+                    const n = parseFloat(v);
+                    if (!isNaN(n)) {
+                        board.customWidth = n;
+                        await this.plugin.saveSettings(board.id);
+                        if (n <= 0 || n > 100) {
+                            new Notice('1〜100の範囲でvwを指定することを推奨します。');
+                        }
+                    } else {
+                        new Notice('数値を入力してください（vw単位）');
+                    }
+                });
             });
         customWidthSettingEl = customWidthSetting.settingEl;
         // カスタム幅基準位置ドロップダウン
@@ -449,17 +457,22 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 .setName(displayName)
                 .setDesc(`種類: ${widget.type} | ID: ${widget.id.substring(0,8)}...`);
 
-            titleSetting.addText(text => text
-                .setPlaceholder('(ウィジェット名)')
-                .setValue(widget.title)
-                .onChange(async (value) => {
+            titleSetting.addText(text => {
+                text.setPlaceholder('(ウィジェット名)')
+                    .setValue(widget.title)
+                    .onChange(async (value) => {
+                        // 入力途中は何もしない
+                    });
+                text.inputEl.addEventListener('blur', async () => {
+                    const value = text.inputEl.value;
                     widget.title = value.trim();
                     await this.plugin.saveSettings(board.id);
                     // タイトル変更時も同様のロジックで表示名を更新
                     const updatedDisplayName = widget.title || `(名称未設定 ${widgetTypeName})`;
                     titleSetting.setName(updatedDisplayName);
                     this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
-                }));
+                });
+            });
 
             titleSetting
                 .addExtraButton(cb => cb.setIcon('arrow-up').setTooltip('上に移動').setDisabled(index === 0)
@@ -570,14 +583,19 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 const { body: memoDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
 
                 new Setting(memoDetailBody).setName('メモ内容 (Markdown)').setDesc('メモウィジェットに表示する内容。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item')
-                    .addTextArea(text => text
-                        .setPlaceholder('ここにメモを記述...')
-                        .setValue(currentSettings.memoContent || '')
-                        .onChange(async (v) => {
+                    .addTextArea(text => {
+                        text.setPlaceholder('ここにメモを記述...')
+                            .setValue(currentSettings.memoContent || '')
+                            .onChange(async (v) => {
+                                // 入力途中は何もしない
+                            });
+                        text.inputEl.addEventListener('blur', async () => {
+                            const v = text.inputEl.value;
                             if(widget.settings) widget.settings.memoContent = v;
                             await this.plugin.saveSettings(board.id);
                             this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
-                        }));
+                        });
+                    });
 
                 let fixedHeightSettingEl: HTMLElement | null = null;
 
@@ -605,16 +623,20 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         text.setPlaceholder('120')
                             .setValue(String(currentSettings.fixedHeightPx ?? 120))
                             .onChange(async (v) => {
-                                const n = parseInt(v);
-                                if (!isNaN(n) && n > 0) {
-                                    currentSettings.fixedHeightPx = n;
-                                    await this.plugin.saveSettings(board.id);
-                                    this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
-                                } else {
-                                    new Notice('1以上の半角数値を入力してください。');
-                                    text.setValue(String(currentSettings.fixedHeightPx ?? 120));
-                                }
+                                // 入力途中は何もしない
                             });
+                        text.inputEl.addEventListener('blur', async () => {
+                            const v = text.inputEl.value;
+                            const n = parseInt(v);
+                            if (!isNaN(n) && n > 0) {
+                                currentSettings.fixedHeightPx = n;
+                                await this.plugin.saveSettings(board.id);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            } else {
+                                new Notice('1以上の半角数値を入力してください。');
+                                text.setValue(String(currentSettings.fixedHeightPx ?? 120));
+                            }
+                        });
                     });
                 fixedHeightSettingEl = heightSetting.settingEl;
                 if ((currentSettings.memoHeightMode || 'auto') !== 'fixed' && fixedHeightSettingEl) {
