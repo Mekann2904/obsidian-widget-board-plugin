@@ -814,6 +814,14 @@ button:hover, .wb-add-widget-btn:hover, .wb-panel-settings-toggle:hover {
   margin-bottom: 4px;
 }
 
+.wb-mode-group button.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-weight: bold;
+  border: 2px solid var(--interactive-accent-hover);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+}
+
 .wb-settings-panel, .wb-widget-container {
   padding: 10px;
   border-radius: 8px;
