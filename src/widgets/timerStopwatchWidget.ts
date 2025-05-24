@@ -265,8 +265,18 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         this.timerSecInput = secWrap.createEl('input', { type: 'number', cls: 'timer-input' });
         this.timerSecInput.setAttribute('min', '0'); this.timerSecInput.setAttribute('max', '59');
         secWrap.createSpan({ text: '秒' });
-        this.timerMinInput.oninput = () => this.handleTimerSettingsChange();
-        this.timerSecInput.oninput = () => this.handleTimerSettingsChange();
+        // oninputではバリデーションと表示のみ
+        this.timerMinInput.oninput = () => {
+            const val = Math.max(0, Math.min(999, parseInt(this.timerMinInput.value) || 0));
+            this.timerMinInput.value = String(val);
+        };
+        this.timerSecInput.oninput = () => {
+            const val = Math.max(0, Math.min(59, parseInt(this.timerSecInput.value) || 0));
+            this.timerSecInput.value = String(val);
+        };
+        // onblurでのみstateを更新
+        this.timerMinInput.onblur = () => this.handleTimerSettingsChange();
+        this.timerSecInput.onblur = () => this.handleTimerSettingsChange();
 
         this.displayEl = container.createEl('div', { cls: 'timer-display' });
         const controls = container.createEl('div', { cls: 'timer-controls setting-item' });
@@ -310,17 +320,33 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         this.currentSettings.timerSeconds = newSeconds;
 
         const newInitialSeconds = newMinutes * 60 + newSeconds;
-        this.updateInternalState(prevState => {
-            const updates: Partial<TimerStopwatchState> = { initialTimerSeconds: newInitialSeconds };
-            if (!prevState.running && prevState.mode === 'timer') updates.remainingSeconds = newInitialSeconds;
-            return updates;
-        });
+        // updateInternalStateを使わず、直接stateを書き換える
+        const state = TimerStopwatchWidget.widgetStates.get(this.config.id);
+        if (state) {
+            state.initialTimerSeconds = newInitialSeconds;
+            if (!state.running && state.mode === 'timer') {
+                state.remainingSeconds = newInitialSeconds;
+            }
+            TimerStopwatchWidget.widgetStates.set(this.config.id, state);
+        }
+
+        // 入力欄の値のみを直接更新（再描画しない）
+        if (document.activeElement !== this.timerMinInput) {
+            this.timerMinInput.value = String(newMinutes);
+        }
+        if (document.activeElement !== this.timerSecInput) {
+            this.timerSecInput.value = String(newSeconds);
+        }
+
+        // 残り時間表示など自分自身のみ再描画
+        this.updateDisplay();
 
         if (this.config && this.plugin.saveSettings) {
             // 保存する設定は currentSettings を参照する
             this.config.settings = { ...this.currentSettings }; // 音量設定なども含める
             this.plugin.saveSettings();
         }
+        // 他インスタンスへのnotifyInstancesToUpdateDisplay等は呼ばない
     }
 
     private handleSwitchMode(newMode: 'timer' | 'stopwatch') {
