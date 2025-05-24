@@ -1,8 +1,7 @@
 # Obsidian Widget Board Plugin  
-## ウィジェット開発マニュアル
+## ウィジェット開発マニュアル（最新版）
 
-このドキュメントは自動生成されました。
-
+このドキュメントは、現行コードベースに基づき自動生成されました。
 
 ---
 
@@ -10,420 +9,156 @@
 
 1. 概要
 2. ウィジェット開発フロー
-3. ウィジェット仕様一覧
-4. スタイルガイド
-5. ウィジェットID・設定管理の仕組み
-    - 5.1 ウィジェットIDとは
-    - 5.2 グローバル設定とは
-    - 5.3 MapによるIDごとのインスタンス・状態管理
-6. よくある質問
-7. 参考
-8. よく使う関数・メソッド一覧
-9. ウィジェット開発の最小要件
-10. 主要設定・管理ファイルの説明
-11. パフォーマンス最適化・設計ベストプラクティス
-12. 実践ガイド・FAQ・トラブルシューティング
+3. ウィジェット登録・管理の仕組み
+4. ウィジェット実装の最小要件
+5. 設定・状態管理の最新仕様
+6. 主要ファイルの役割
+7. サンプル実装例
+8. ベストプラクティス・FAQ
+9. 引用元
 
 ---
 
 ## 1. 概要
 
-このドキュメントは、Obsidian Widget Board Plugin用のウィジェットを新規開発・カスタマイズするためのガイドです。  
-ウィジェットの構造、開発手順、スタイルルール、既存仕様などをまとめています。
+このガイドは、Obsidian Widget Board Plugin用のウィジェットを新規開発・カスタマイズするための最新手順・仕様をまとめたものです。
 
 ---
 
 ## 2. ウィジェット開発フロー
 
 1. **ウィジェットの設計**
-    - どんな機能・UIを持つウィジェットかを決める
-    - 必要な設定項目やデータ構造を設計
+    - 機能・UI・設定項目を決める
 2. **ファイル作成**
-    - `src/widgets/` ディレクトリに新しいウィジェット用ファイルを作成（例: `src/widgets/MyWidget.ts`）
+    - `src/widgets/` に新しいウィジェットファイルを作成（例: `myWidget.ts`）
 3. **ウィジェットクラスの実装**
-    - 「Widget」ベースのクラスを作成し、`render()` メソッドでDOMを生成
-    - 設定値や状態管理が必要な場合は、クラス内で管理
-4. **スタイルの追加**
-    - `styles.css` にウィジェット固有のクラス名でスタイルを追加（例: `.my-widget { ... }`）
-    - 既存の共通クラス（例: `.widget`, `.widget-content` など）も活用
-5. **ウィジェットの登録**
-    - メインプラグインファイルで新ウィジェットを登録
-    - ウィジェット一覧や追加ボタンに反映
-6. **動作確認・デバッグ**
-    - Obsidian上でウィジェットを追加し、動作・UIを確認
-    - 必要に応じて修正
-7. **ドキュメント・コメント整備**
-    - コード内にJSDocやコメントを記載
-    - 使い方や注意点をまとめる
+    - `WidgetImplementation`インターフェースを実装
+    - `create()`でDOM生成、`updateExternalSettings()`で外部設定反映、`onunload()`でクリーンアップ[†1]
+4. **widgetRegistry.tsで登録**
+    - `registeredWidgetImplementations.set('my-widget', MyWidget);`[†2]
+5. **デフォルト設定の追加（必要に応じて）**
+    - `settingsDefaults.ts`でデフォルト設定を定義
+6. **スタイル追加**
+    - `styles.css`にウィジェット用クラスを追加
+7. **動作確認・デバッグ**
+    - Obsidian上で追加・動作確認
 
 ---
 
-## 3. ウィジェット仕様一覧
+## 3. ウィジェット登録・管理の仕組み
 
-- ルート要素: `.widget`
-- 内容エリア: `.widget-content`
-- タイトル: `<h4>`
-- 背景画像対応: `.has-background-image`
-- エラー表示: `.widget-error`, `.widget-unknown`
-
-### 主な既存ウィジェット例
-
-| 名前                | 主なクラス名                | 機能概要                      |
-|---------------------|-----------------------------|-------------------------------|
-| Pomodoro Timer      | `.pomodoro-timer-widget`    | ポモドーロタイマー            |
-| Memo                | `.memo-widget`              | メモウィジェット              |
-| Calendar            | `.calendar-widget`          | カレンダー表示                |
-| YouTube             | `.youtube-widget`           | YouTube埋め込み               |
-| Recent Notes        | `.recent-notes-widget`      | 最近編集したノート一覧        |
-| Theme Switcher      | `.theme-switcher-widget`    | テーマ切り替え                |
-
-### パネル表示モード
-
-- 右1/3: `.mode-right-third`
-- 右1/2: `.mode-right-half`
-- 左2/3: `.mode-left-two-third`
-- 左1/2: `.mode-left-half`
-- 中央1/2: `.mode-center-half`
-- 左1/3: `.mode-left-third`
-- 右2/3: `.mode-right-two-third`
-- 中央1/3: `.mode-center-third`
-- カスタム幅: `.custom-width-right`, `.custom-width-left`, `.custom-width-center`
-
-### その他の仕様
-
-- ウィジェットはドラッグ＆ドロップで並び替え可能
-- 編集モード時は削除ボタン（`.wb-widget-delete-btn`）が表示
-- 各ウィジェットは設定パネル（`.wb-settings-panel`）を持つことができる
+- **ウィジェットの登録**は`src/widgetRegistry.ts`で行う[†2]
+    - 例：
+      ```ts
+      import { MyWidget } from './widgets/myWidget';
+      registeredWidgetImplementations.set('my-widget', MyWidget);
+      ```
+- **registeredWidgetImplementations**（Map）は、ウィジェットタイプ名→クラスの対応表
+- **ウィジェット追加UI**や設定タブはこのMapから動的に選択肢を生成[†3]
+- **新規追加時の流れ**：
+    1. `src/widgets/`にファイル作成
+    2. クラス実装
+    3. `widgetRegistry.ts`で登録
+    4. 必要に応じてデフォルト設定を`settingsDefaults.ts`で定義
 
 ---
 
-## 4. スタイルガイド
+## 4. ウィジェット実装の最小要件
 
-- 共通クラス `.widget`, `.widget-content` をベースに拡張
-- 角丸・シャドウ・余白などは既存スタイルに合わせる
-- レスポンシブ対応（@mediaで幅調整）
-- ボタンや入力欄は共通クラスを利用
-- カスタムクラスは `-widget` や `-container` など命名規則を統一
-
-#### 例: 新規ウィジェット用CSS
-
-```css
-.my-widget {
-  /* widget共通スタイルを継承しつつ、独自の装飾を追加 */
-  background: var(--background-secondary);
-  border-radius: 10px;
-  padding: 16px;
-}
-.my-widget .widget-content {
-  /* 内容エリアのカスタマイズ */
-}
-```
-
----
-
-## 5. ウィジェットID・設定管理の仕組み
-
-### 5.1 ウィジェットIDとは
-
-- **ウィジェットID**は、各ウィジェットインスタンスを一意に識別するための文字列です。
-- 通常、ウィジェットを追加した際に自動生成されます（例: `widget-123456`）。
-- 設定や状態の保存・復元、ウィジェットの並び替え、削除などの操作時にIDが使われます。
-- **注意:**
-    - 同じ種類のウィジェットでも、インスタンスごとに異なるIDが割り当てられます。
-    - IDは手動で変更しないでください（内部的な整合性が崩れる可能性があります）。
-
-### 5.2 グローバル設定とは
-
-- **グローバル設定**とは、全ウィジェットや全ユーザーに共通する設定値のことです。
-    - 例: パネルの表示モード、テーマ、共通ショートカットなど
-- グローバル設定は、通常プラグインのメイン設定や`data.json`などで管理されます。
-
-#### コード例（ID・グローバル設定の利用）
-
-```js
-// ウィジェットの状態保存
-saveWidgetState(widgetId, state) {
-  this.data.widgets[widgetId] = state;
-  this.saveData();
-}
-
-// グローバル設定の保存
-saveGlobalSetting(key, value) {
-  this.data.global[key] = value;
-  this.saveData();
-}
-```
-
-### 5.3 MapによるIDごとのインスタンス・状態管理
-
-- 複数の同種ウィジェット（例：ポモドーロタイマー）を同時に扱う場合、それぞれのウィジェットの状態やインスタンスを区別して管理する必要があります。
-- そのため、ウィジェットID（string）をキーとして、インスタンスや状態をMapで管理します。
-
-#### インスタンス管理
-
-```ts
-private static widgetInstances: Map<string, PomodoroWidget> = new Map();
-```
-- 「ウィジェットID → PomodoroWidgetインスタンス」の対応表です。
-- 例：`widget-abc123`というIDのウィジェットがあれば、
-  `PomodoroWidget.widgetInstances.get('widget-abc123')` でそのインスタンスを取得できます。
-
-#### 状態管理
-
-```ts
-private static widgetStates: Map<string, any> = new Map();
-```
-- 「ウィジェットID → 状態オブジェクト（タイマーの残り時間や進行状況など）」の対応表です。
-- 例：`widget-abc123`の状態を取得・更新したい場合は
-  `PomodoroWidget.widgetStates.get('widget-abc123')`
-  `PomodoroWidget.widgetStates.set('widget-abc123', 新しい状態)`
-  のように操作します。
-
-#### 使い方の流れ
-
-1. **ウィジェット生成時**
-    - 新しいウィジェットが作られるとき、`widgetInstances`にインスタンスを登録します。
-    - 例：`widgetInstances.set(config.id, this);`
-2. **状態の更新**
-    - タイマーの開始・一時停止・リセットなどの操作時に、`widgetStates`の該当IDの値を更新します。
-    - 例：`widgetStates.set(this.config.id, { ...新しい状態 });`
-3. **状態の参照・同期**
-    - 画面の再描画や他の処理で、`widgetStates`から現在の状態を取得し、インスタンスのプロパティに反映します。
-4. **ウィジェット削除時**
-    - ウィジェットが削除されたら、`widgetInstances`や`widgetStates`から該当IDのエントリを削除します。
-
-#### メリット
-
-- IDで一意に管理できるため、同じ種類のウィジェットが複数あっても混乱しない。
-- 状態の保存・復元が簡単（Mapに入れるだけ）。
-- 全ウィジェットの一括処理や、特定IDだけの処理が容易。
-
-#### コード例（抜粋）
-
-```ts
-// インスタンス登録
-PomodoroWidget.widgetInstances.set(config.id, this);
-
-// 状態の保存
-PomodoroWidget.widgetStates.set(this.config.id, {
-  isRunning: this.isRunning,
-  remainingTime: this.remainingTime,
-  // ...他の状態
-});
-
-// 状態の取得
-const state = PomodoroWidget.widgetStates.get(this.config.id);
-if (state) {
-  this.isRunning = state.isRunning;
-  this.remainingTime = state.remainingTime;
-  // ...他の状態を同期
-}
-```
-
-#### 注意点
-
-- Mapはメモリ上の一時的な管理なので、永続化（保存）は別途必要です（通常は`plugin.saveSettings()`などで`data.json`に保存）。
-- ウィジェットのIDは一意であることが前提です。
-
----
-
-## 6. よくある質問
-
-**Q. ウィジェットの設定項目はどこで管理する？**  
-A. 各ウィジェットクラス内で管理し、設定パネル（`.wb-settings-panel`）でUIを提供します。
-
-**Q. ウィジェットの状態はどこで保存される？**  
-A. プラグインのデータストア（例: `data.json`）やObsidianのストレージに保存されます。
-
-**Q. 既存ウィジェットのスタイルを流用したい**  
-A. `.widget`, `.widget-content` などの共通クラスを利用し、必要に応じて独自クラスを追加してください。
-
----
-
-## 7. 参考
-
-- 既存の `src/widgets/` ディレクトリ内のウィジェット実装
-- `styles.css` のウィジェット関連スタイル
-- Obsidian公式ドキュメント
-
----
-
-## 8. よく使う関数・メソッド一覧
-
-### 1. UI生成・DOM操作
-
-- `createEl(tag, options)` ・・・要素を生成（例: `div`, `button`, `h4` など）
-- `createDiv(options)` ・・・`div`要素を生成
-- `setValue(value)` ・・・入力欄やドロップダウンの値をセット
-- `onChange(callback)` ・・・入力欄やドロップダウンの値変更時のイベント登録
-- `addEventListener(event, handler)` ・・・任意のDOMイベントを登録
-- `setName(name)` ・・・設定UIのラベル名をセット
-- `setDesc(description)` ・・・設定UIの説明文をセット
-- `addText(callback)` ・・・テキスト入力欄を追加
-- `addTextArea(callback)` ・・・複数行テキスト入力欄を追加
-- `addDropdown(callback)` ・・・ドロップダウンを追加
-- `addButton(callback)` ・・・ボタンを追加
-
-### 2. 設定・状態管理
-
-- `saveSettings(boardId?)` ・・・設定を保存（`data.json`などに永続化）
-- `updateExternalSettings(newSettings, widgetId?)` ・・・外部からウィジェットの設定を更新
-- `widgetInstances.set(id, instance)` ・・・IDごとにウィジェットインスタンスを登録
-- `widgetStates.set(id, state)` ・・・IDごとにウィジェットの状態を保存
-- `widgetInstances.get(id)` ・・・インスタンス取得
-- `widgetStates.get(id)` ・・・状態取得
-- `removePersistentInstance(widgetId, plugin)` ・・・インスタンスの静的マップから削除
-- `cleanupAllPersistentInstances(plugin)` ・・・すべてのインスタンスを静的マップから削除
-
-### 3. イベント・UI更新
-
-- `updateDisplay()` ・・・ウィジェットのUIを再描画
-- `updateMemoEditUI()` ・・・メモウィジェットの編集UIを更新
-- `handleShow()` ・・・モーダル表示時の処理
-
-### 4. その他
-
-- `setIcon(element, iconName)` ・・・ボタン等にアイコンをセット
-- `Notice(message, timeout)` ・・・Obsidianの通知を表示
-
-#### 使い方例
-
-```ts
-const button = container.createEl('button', { text: '保存' });
-button.addEventListener('click', () => {
-  // 保存処理
-  this.plugin.saveSettings();
-});
-
-dropdown.setValue('option1').onChange(value => {
-  // 値が変わったときの処理
-});
-```
-
----
-
-## 9. ウィジェット開発の最小要件
-
-ウィジェットを新規作成する際に最低限必要な要素は以下の通りです。
-
-### 1. ファイル・配置
-- `src/widgets/` ディレクトリ内にウィジェットごとのファイルを作成（例: `MyWidget.ts`）
-
-### 2. クラス定義
-- `WidgetImplementation` インターフェースを実装したクラスを作成
-- 必須プロパティ・メソッド：
+- `WidgetImplementation`インターフェースを実装すること[†1]
     - `id: string`（ウィジェット種別ID）
-    - `create(config, app, plugin): HTMLElement`（ウィジェットのDOM生成）
-
-### 3. 設定・状態管理
-- `config.settings` でウィジェットごとの設定値を管理
-- 必要に応じて内部状態（state）をクラス内で管理
-
-### 4. スタイル
-- `styles.css` にウィジェット用のクラス（例: `.my-widget`）を追加
-- 既存の `.widget`, `.widget-content` などの共通クラスを利用
-
-### 5. プラグインへの登録
-- メインプラグインファイルで新ウィジェットを登録し、追加できるようにする
-
----
-
-**これらを満たせば、基本的なウィジェットとして動作します。**
-
-ご不明点や追加情報が必要な場合はご連絡ください。 
+    - `create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement`
+    - `updateExternalSettings?(newSettings: any, widgetId?: string): void`（外部から設定変更を受けたときの反映）
+    - `onunload?(): void`（リソース解放・イベント解除など）
+- `WidgetConfig`型（`interfaces.ts`参照）
+    - `id`, `type`, `title`, `settings` など
+- **インスタンス・状態管理**
+    - 各ウィジェットクラスで`static widgetInstances: Map<string, ...>`や`static widgetStates: Map<string, ...>`を使う[†4]
+    - 例：
+      ```ts
+      private static widgetInstances: Map<string, MyWidget> = new Map();
+      private static widgetStates: Map<string, any> = new Map();
+      ```
 
 ---
 
-## 10. 主要設定・管理ファイルの説明
+## 5. 設定・状態管理の最新仕様
 
-### settingsDefaults.ts
-- プラグイン全体や各ウィジェットの「デフォルト設定値」を定義するファイルです。
-- 例：新規ボードやウィジェット追加時の初期値、各種ウィジェットのデフォルト設定オブジェクトなど。
-- 設定の初期化やリセット時にも利用されます。
+- **全体設定・ボード・ウィジェットの設定は`main.ts`の`settings`（`PluginGlobalSettings`型）で一元管理**[†5]
+- **各ウィジェットの状態・設定は`config.settings`で管理**[†4]
+- **インスタンス・状態管理**は各ウィジェットクラスのstatic Mapで行う[†4]
+- **永続化**は`plugin.saveSettings(boardId)`で行う[†5]
+- **設定タブや追加UIは`registeredWidgetImplementations`の内容に依存**[†3]
+- **IDは自動生成されるので手動変更しないこと**
 
-### settingsTab.ts
-- Obsidianの「設定」画面に表示される「ウィジェットボード設定」タブのUI・ロジックを管理するファイルです。
-- 各ウィジェットやボードの設定項目の追加・編集・保存処理を担当します。
-- ユーザーがGUIで設定を変更できるようにするための中心的な役割を持ちます。
+---
+
+## 6. 主要ファイルの役割
+
+- `main.ts`：プラグイン本体。設定・ボード・ウィジェットの管理、永続化、UI起動など[†5]
+- `settingsTab.ts`：設定タブUI。ボード・ウィジェットの追加/編集/削除[†6]
+- `widgetRegistry.ts`：ウィジェットの一覧・登録[†2]
+- `settingsDefaults.ts`：デフォルト設定の定義
+- `modal.ts`：ウィジェットボードのモーダルUI、ウィジェット追加モーダル[†3]
+- `widgets/xxxWidget.ts`：各ウィジェット本体[†4]
+- `interfaces.ts`：型定義[†1]
+
+---
+
+## 7. サンプル実装例
 
 ### widgetRegistry.ts
-- プラグインで利用可能なウィジェットの「一覧・登録・管理」を行うファイルです。
-- 各ウィジェットのクラスやメタ情報をまとめ、追加・削除・検索などの管理機能を提供します。
-- 新しいウィジェットをプラグインに認識させる際に重要な役割を果たします。
+```ts
+import { MyWidget } from './widgets/myWidget';
+registeredWidgetImplementations.set('my-widget', MyWidget);
+```
+
+### 新規ウィジェットクラス
+```ts
+import type { WidgetImplementation, WidgetConfig } from '../interfaces';
+import type WidgetBoardPlugin from '../main';
+
+export class MyWidget implements WidgetImplementation {
+  id = 'my-widget';
+  create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
+    // DOM生成処理
+    return document.createElement('div');
+  }
+  updateExternalSettings(newSettings: any, widgetId?: string) {
+    // 外部から設定変更を受けたときの反映処理
+  }
+  onunload?() {
+    // リソース解放・イベント解除など
+  }
+}
+```
+
+### インスタンス・状態管理例
+```ts
+private static widgetInstances: Map<string, MyWidget> = new Map();
+private static widgetStates: Map<string, any> = new Map();
+```
 
 ---
 
-## 11. パフォーマンス最適化・設計ベストプラクティス
+## 8. ベストプラクティス・FAQ
 
-### 11.1 差分更新UI
-- updateDisplayやupdateMemoEditUIなど、値が変化した場合のみDOMを更新する差分更新方式を推奨
-- 不要な再描画・再生成を避けることで、ウィジェット数が多い場合も快適な動作を維持
-
-### 11.2 Mapによるインスタンス・状態管理
-- widgetInstances, widgetStatesは必ずonunloadでクリーンアップ
-- cleanupAllPersistentInstancesで全インスタンスのonunloadを呼び、Mapをクリア
-
-### 11.3 イベントリスナーの管理
-- addEventListenerで登録したリスナーはonunloadで必ずremove
-- メモリリーク・多重登録を防ぐ
-
-### 11.4 forEach/for文の最適化
-- データ変換・集約はmap/filter/reduce等の関数型APIを優先
-- UI生成や副作用が主目的の場合のみforEach/for文を使用
-
-### 11.5 非同期処理の設計
-- async/awaitは逐次で問題ない箇所が多いが、複数I/Oを並列化したい場合はPromise.allを活用
-- ファイルI/Oや設定保存は逐次処理が安全
-
-### 11.6 ディープコピーの統一
-- JSON.parse(JSON.stringify(...))はlodash.clonedeepに統一
-- 型安全・循環参照対応
-
-### 11.7 仮想リスト・遅延描画
-- ノート一覧など大量データは仮想スクロール（windowing）で描画範囲を限定
-- IntersectionObserverやsetTimeoutで重いウィジェットは遅延描画
+- **IDやMapによるインスタンス管理はメモリ上のみ。永続化は必ず`plugin.saveSettings()`で行う**[†4][†5]
+- **設定UIや追加UIは`registeredWidgetImplementations`の内容に依存。登録漏れに注意**[†2][†3]
+- **onunloadでイベントリスナーやリソースを必ず解放**[†4]
+- **UIは差分更新方式（updateDisplay等）を推奨**[†4]
+- **デバッグはObsidianの開発者ツールやNoticeを活用**[†4][†5]
+- **詳細は各ウィジェットの既存実装や`interfaces.ts`を参照**[†1][†4]
 
 ---
 
-これらを守ることで、拡張性・保守性・パフォーマンスに優れたウィジェット開発が可能です。 
+## 9. 引用元
 
----
+[†1] `src/interfaces.ts`（11-19行目）WidgetImplementationインターフェース定義  
+[†2] `src/widgetRegistry.ts`（全体、特に13-19行目）ウィジェット登録  
+[†3] `src/modal.ts`（13-52行目、AddWidgetModalクラス）、`src/settingsTab.ts`（445行目以降、createAddButtonToBoard関数）ウィジェット追加UI  
+[†4] `src/widgets/pomodoroWidget.ts`（53行目以降）、`src/widgets/memoWidget.ts`（24行目以降）static Mapによるインスタンス・状態管理、onunload, updateDisplay等  
+[†5] `src/main.ts`（1-200行目、クラス定義部とsaveSettings, loadSettings）全体設定・永続化  
+[†6] `src/settingsTab.ts`（1-909行目）設定タブUI  
 
-## 12. 実践ガイド・FAQ・トラブルシューティング
-
-### 12.1 よくある開発パターン
-- **状態を永続化したい場合**
-    - `config.settings`に状態を保存し、`plugin.saveSettings()`で永続化
-    - 例: タイマーの残り時間やメモ内容
-- **複数インスタンスを区別したい場合**
-    - `config.id`を必ず利用し、Mapでインスタンス・状態を管理
-- **UIを動的に切り替えたい場合**
-    - 差分更新方式（updateDisplay等）で値が変化した時のみDOMを更新
-- **外部からウィジェット設定を更新したい場合**
-    - `updateExternalSettings(newSettings, widgetId)`を実装し、外部から呼び出す
-
-### 12.2 デバッグ・テストのコツ
-- Obsidianの「開発者ツール」（Cmd+Opt+I）でconsole出力・DOM構造を確認
-- `Notice('メッセージ')`でユーザー通知を活用
-- ウィジェットの`onunload`でリソース解放・イベント解除を必ず行う
-- 設定保存後は`plugin.saveSettings()`を忘れずに
-
-### 12.3 トラブルシューティング
-- **ウィジェットが表示されない**
-    - クラス名・ID・createメソッドの戻り値を再確認
-    - DOM生成時にエラーが出ていないかconsoleで確認
-- **設定が保存されない/反映されない**
-    - `config.settings`の更新と`plugin.saveSettings()`の呼び出しを確認
-- **イベントリスナーが多重登録される/解除されない**
-    - `onunload`で必ずremoveEventListenerを呼ぶ
-- **パフォーマンスが悪い**
-    - 差分更新UI・仮想リスト・遅延描画の導入を検討
-
-### 12.4 参考リンク・リソース
-- Obsidian公式APIリファレンス: https://publish.obsidian.md/api/
-- Obsidianコミュニティフォーラム: https://forum.obsidian.md/
-- プラグイン開発テンプレート: https://github.com/obsidianmd/obsidian-sample-plugin
-
----
-
-これらを活用し、より実践的かつトラブルに強いウィジェット開発を目指してください。 
+ご不明点や追加情報が必要な場合は、既存ウィジェットや主要ファイルの実装例を参照してください。 
