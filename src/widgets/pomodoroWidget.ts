@@ -156,7 +156,13 @@ export class PomodoroWidget implements WidgetImplementation {
         if (!state || !state.isRunning) return;
         state.remainingTime = (state.remainingTime || 0) - 1;
         if (state.remainingTime <= 0) {
-            this.handleSessionEndGlobal(configId);
+            const inst = this.widgetInstances.get(configId);
+            if (inst) {
+                console.log('tick: calling handleSessionEnd', inst);
+                void inst.handleSessionEnd();
+            } else {
+                this.handleSessionEndGlobal(configId);
+            }
         }
         this.widgetStates.set(configId, state);
         // インスタンスがあればUIも更新（状態も同期）
@@ -481,6 +487,7 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private async handleSessionEnd() {
+        console.log('handleSessionEnd called', this);
         if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
         this.isRunning = false;
         this.currentSessionEndTime = new Date();
@@ -527,8 +534,10 @@ export class PomodoroWidget implements WidgetImplementation {
                 end: timeStr,
                 memo: this.memoWidget?.getMemoContent() || ''
             });
+            console.log('skipToNextSessionConfirm: sessionLogs after push', this.sessionLogs);
             new Notice('作業が開始されていませんが、0秒の作業ログを記録してスキップします。', 5000);
             if (this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
+                console.log('skipToNextSessionConfirm: calling exportSessionLogs', this.sessionLogs);
                 this.exportSessionLogs(this.currentSettings.exportFormat);
             }
             // 通常のスキップ処理も実行
@@ -536,6 +545,25 @@ export class PomodoroWidget implements WidgetImplementation {
             return;
         }
         // 通常のスキップ処理
+        if (this.currentSessionStartTime) {
+            const startDate = this.currentSessionStartTime;
+            const endDate = new Date();
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
+            const startStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
+            const endStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+            this.sessionLogs.push({
+                date: dateStr,
+                start: startStr,
+                end: endStr,
+                memo: this.memoWidget?.getMemoContent() || ''
+            });
+            console.log('skipToNextSessionConfirm: normal skip, sessionLogs after push', this.sessionLogs);
+            if (this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
+                console.log('skipToNextSessionConfirm: calling exportSessionLogs (normal skip)', this.sessionLogs);
+                this.exportSessionLogs(this.currentSettings.exportFormat);
+            }
+        }
         PomodoroWidget.endSessionAndAdvance(this.config.id, this);
         new Notice("次のセッションへスキップしました。");
     }
@@ -648,6 +676,7 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private async exportSessionLogs(format: PomodoroExportFormat) {
+        console.log('exportSessionLogs called', this.sessionLogs);
         if (this.sessionLogs.length === 0) {
             new Notice("エクスポートするログがありません。");
             return;

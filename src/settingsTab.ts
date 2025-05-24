@@ -505,10 +505,14 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
 
                 const createNumInput = (parent: HTMLElement, label: string, desc: string, key: keyof Omit<PomodoroSettings, 'backgroundImageUrl' | 'memoContent'>) => {
                     new Setting(parent).setName(label).setDesc(desc).setClass('pomodoro-setting-item')
-                        .addText(text => text
-                            .setPlaceholder(String(DEFAULT_POMODORO_SETTINGS[key]))
-                            .setValue(String(currentSettings[key]))
-                            .onChange(async (v) => {
+                        .addText(text => {
+                            text.setPlaceholder(String(DEFAULT_POMODORO_SETTINGS[key]))
+                                .setValue(String(currentSettings[key]))
+                                .onChange(async (v) => {
+                                    // 入力途中は何もしない（バリデーションしない）
+                                });
+                            text.inputEl.addEventListener('blur', async () => {
+                                const v = text.inputEl.value;
                                 const n = parseInt(v);
                                 if (!isNaN(n) && n > 0) {
                                     (currentSettings as any)[key] = n;
@@ -518,7 +522,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                     new Notice('1以上の半角数値を入力してください。');
                                     text.setValue(String(currentSettings[key]));
                                 }
-                            }));
+                            });
+                        });
                 };
                 createNumInput(pomoDetailBody, '作業時間 (分)', 'ポモドーロの作業フェーズの時間。', 'workMinutes');
                 createNumInput(pomoDetailBody, '短い休憩 (分)', '短い休憩フェーズの時間。', 'shortBreakMinutes');
