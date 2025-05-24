@@ -134,6 +134,17 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+        // --- ポモドーロ終了時に自動で次のセッションを開始 ---
+        new Setting(pomoAcc.body)
+            .setName('ポモドーロ終了時に自動で次のセッションを開始')
+            .setDesc('ONにすると、ポモドーロが終了したときに自動で次のセッションを開始します。')
+            .addToggle(toggle => {
+                toggle.setValue(this.plugin.settings.autoStartNextPomodoroSession ?? false)
+                    .onChange(async (value) => {
+                        this.plugin.settings.autoStartNextPomodoroSession = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
         // --- エクスポート形式（グローバル設定） ---
         new Setting(pomoAcc.body)
             .setName('エクスポート形式')

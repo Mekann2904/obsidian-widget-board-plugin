@@ -85,6 +85,8 @@ export class PomodoroWidget implements WidgetImplementation {
     private currentSessionStartTime: Date | null = null;
     private currentSessionEndTime: Date | null = null;
 
+    private lastResetClickTime: number | null = null;
+
     /**
      * インスタンス初期化
      */
@@ -187,6 +189,7 @@ export class PomodoroWidget implements WidgetImplementation {
         const state = this.widgetStates.get(configId);
         if (!state) return;
         let msg = "";
+        let cycleEnded = false;
         if (state.currentPomodoroSet === 'work') {
             state.pomodorosCompletedInCycle = (state.pomodorosCompletedInCycle || 0) + 1;
             msg = `作業セッション (${state.workMinutes}分) が終了。`;
@@ -202,11 +205,13 @@ export class PomodoroWidget implements WidgetImplementation {
         } else {
             if(state.currentPomodoroSet === 'shortBreak') msg = `短い休憩 (${state.shortBreakMinutes}分) が終了。`;
             else msg = `長い休憩 (${state.longBreakMinutes}分) が終了。`;
-            state.currentPomodoroSet = 'work';
-            state.remainingTime = state.workMinutes * 60;
+            // サイクル終了時（長い休憩終了時）はサイクル数をリセット
             if (state.currentPomodoroSet === 'longBreak') {
                 state.pomodorosCompletedInCycle = 0;
+                cycleEnded = true;
             }
+            state.currentPomodoroSet = 'work';
+            state.remainingTime = state.workMinutes * 60;
             msg += "作業セッションを開始してください。";
         }
         state.isRunning = false;
@@ -219,6 +224,10 @@ export class PomodoroWidget implements WidgetImplementation {
             inst.pomodorosCompletedInCycle = state.pomodorosCompletedInCycle;
             inst.updateDisplay && inst.updateDisplay();
             inst.playSoundNotification && inst.playSoundNotification();
+            // サイクル終了時にポップアップ
+            if (cycleEnded) {
+                new Notice('おつかれさまでした', 8000);
+            }
         }
         this.clearGlobalIntervalIfNoneRunning();
     }
@@ -430,11 +439,21 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private resetCurrentTimerConfirm() {
-        this.pauseTimer(); // タイマーを止めてから状態をリセット
-        // 現在のセッションタイプとサイクル数は維持して時間だけリセット
-        this.resetTimerState(this.currentPomodoroSet, false); 
-        const statusText = this.statusDisplayEl?.textContent?.split('(')[0].trim() || '作業';
-        new Notice(`${statusText} をリセットしました。`);
+        const now = Date.now();
+        if (this.lastResetClickTime && now - this.lastResetClickTime < 1500) {
+            // 2回目の短時間リセットでサイクルもリセット
+            this.pauseTimer();
+            this.resetTimerState(this.currentPomodoroSet, true); // サイクルもリセット
+            new Notice('サイクル数もリセットしました。');
+            this.lastResetClickTime = null;
+        } else {
+            // 1回目は通常リセット
+            this.pauseTimer();
+            this.resetTimerState(this.currentPomodoroSet, false); // サイクルは維持
+            const statusText = this.statusDisplayEl?.textContent?.split('(')[0].trim() || '作業';
+            new Notice(`${statusText} をリセットしました。\n（サイクル数もリセットするにはもう一度すぐ押してください）`);
+            this.lastResetClickTime = now;
+        }
     }
     
     private resetTimerState(mode: 'work' | 'shortBreak' | 'longBreak', resetCycleCount: boolean) {
@@ -561,6 +580,12 @@ export class PomodoroWidget implements WidgetImplementation {
                 this.plugin.openWidgetBoardById(board.id);
                 new Notice('ポモドーロ終了: ウィジェットボードを開きました。');
             }
+        }
+        // --- 追加: ポモドーロ終了時に自動で次のセッションを開始 ---
+        if (this.plugin.settings.autoStartNextPomodoroSession) {
+            setTimeout(() => {
+                this.toggleStartPause();
+            }, 800);
         }
     }
     

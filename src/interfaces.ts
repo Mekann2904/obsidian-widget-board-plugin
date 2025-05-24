@@ -48,4 +48,5 @@ export interface PluginGlobalSettings {
     pomodoroExportFormat?: import("./widgets/pomodoroWidget").PomodoroExportFormat;
     boardGroups?: BoardGroup[];
     openBoardOnPomodoroEnd?: boolean;
+    autoStartNextPomodoroSession?: boolean;
 }

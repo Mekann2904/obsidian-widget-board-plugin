@@ -30,4 +30,5 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     pomodoroExportFormat: 'none',
     boardGroups: [],
     openBoardOnPomodoroEnd: false,
+    autoStartNextPomodoroSession: false,
 };
