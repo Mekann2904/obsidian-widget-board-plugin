@@ -515,8 +515,9 @@ export class PomodoroWidget implements WidgetImplementation {
             shouldExport = true;
         }
         PomodoroWidget.endSessionAndAdvance(this.config.id, this);
-        if (shouldExport && this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
-            await this.exportSessionLogs(this.currentSettings.exportFormat);
+        const exportFormat = this.plugin.settings.pomodoroExportFormat || 'none';
+        if (shouldExport && exportFormat !== 'none') {
+            await this.exportSessionLogs(exportFormat);
         }
     }
     
@@ -536,9 +537,10 @@ export class PomodoroWidget implements WidgetImplementation {
             });
             console.log('skipToNextSessionConfirm: sessionLogs after push', this.sessionLogs);
             new Notice('作業が開始されていませんが、0秒の作業ログを記録してスキップします。', 5000);
-            if (this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
+            const exportFormat = this.plugin.settings.pomodoroExportFormat || 'none';
+            if (exportFormat !== 'none') {
                 console.log('skipToNextSessionConfirm: calling exportSessionLogs', this.sessionLogs);
-                this.exportSessionLogs(this.currentSettings.exportFormat);
+                this.exportSessionLogs(exportFormat);
             }
             // 通常のスキップ処理も実行
             PomodoroWidget.endSessionAndAdvance(this.config.id, this);
@@ -559,9 +561,10 @@ export class PomodoroWidget implements WidgetImplementation {
                 memo: this.memoWidget?.getMemoContent() || ''
             });
             console.log('skipToNextSessionConfirm: normal skip, sessionLogs after push', this.sessionLogs);
-            if (this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
+            const exportFormat = this.plugin.settings.pomodoroExportFormat || 'none';
+            if (exportFormat !== 'none') {
                 console.log('skipToNextSessionConfirm: calling exportSessionLogs (normal skip)', this.sessionLogs);
-                this.exportSessionLogs(this.currentSettings.exportFormat);
+                this.exportSessionLogs(exportFormat);
             }
         }
         PomodoroWidget.endSessionAndAdvance(this.config.id, this);

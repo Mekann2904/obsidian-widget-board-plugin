@@ -37,4 +37,5 @@ export interface PluginGlobalSettings {
     pomodoroNotificationVolume?: number;
     timerStopwatchNotificationSound?: import("./widgets/timerStopwatchWidget").TimerSoundType;
     timerStopwatchNotificationVolume?: number;
+    pomodoroExportFormat?: import("./widgets/pomodoroWidget").PomodoroExportFormat;
 }

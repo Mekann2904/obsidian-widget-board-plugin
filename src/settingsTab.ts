@@ -66,8 +66,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             return { acc, header, body };
         };
 
-        // --- ポモドーロ通知音（全体設定） ---
-        const pomoAcc = createAccordion('ポモドーロ通知音（全体設定）', false); // デフォルトで閉じる
+        // --- ポモドーロ（グローバル設定） ---
+        const pomoAcc = createAccordion('ポモドーロ（グローバル設定）', false); // デフォルトで閉じる
         new Setting(pomoAcc.body)
             .setName('通知音')
             .setDesc('全てのポモドーロタイマーで使う通知音（個別設定より優先）')
@@ -110,9 +110,24 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 });
             });
+        // --- エクスポート形式（グローバル設定） ---
+        new Setting(pomoAcc.body)
+            .setName('エクスポート形式')
+            .setDesc('全てのポモドーロタイマーで使うログ記録形式（個別設定より優先）')
+            .addDropdown(dropdown => {
+                dropdown.addOption('none', '保存しない');
+                dropdown.addOption('csv', 'CSV');
+                dropdown.addOption('json', 'JSON');
+                dropdown.addOption('markdown', 'Markdown');
+                dropdown.setValue(this.plugin.settings.pomodoroExportFormat || 'none')
+                    .onChange(async (value) => {
+                        this.plugin.settings.pomodoroExportFormat = value as any;
+                        await this.plugin.saveSettings();
+                    });
+            });
 
         // --- タイマー／ストップウォッチ通知音（全体設定） ---
-        const timerAcc = createAccordion('タイマー／ストップウォッチ通知音（全体設定）', false); // デフォルトで閉じる
+        const timerAcc = createAccordion('タイマー／ストップウォッチ（グローバル設定）', false); // デフォルトで閉じる
         new Setting(timerAcc.body)
             .setName('通知音')
             .setDesc('全てのタイマー／ストップウォッチで使う通知音（個別設定より優先）')
@@ -540,26 +555,11 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                         }));
 
+                // --- 通知音・エクスポート形式はグローバル設定が適用される旨を表示 ---
                 new Setting(pomoDetailBody)
-                    .setName('通知音（全体設定が適用されます）')
-                    .setDesc('このウィジェットの通知音・音量は「ポモドーロ通知音（全体設定）」が使われます。')
+                    .setName('通知音・エクスポート形式')
+                    .setDesc('このウィジェットの通知音・エクスポート形式は「ポモドーロ（グローバル設定）」が適用されます。')
                     .setDisabled(true);
-
-                new Setting(pomoDetailBody)
-                    .setName('エクスポート形式')
-                    .setDesc('セッション終了時に自動保存する形式。noneで保存しません。')
-                    .addDropdown(dropdown => {
-                        dropdown.addOption('none', '保存しない');
-                        dropdown.addOption('csv', 'CSV');
-                        dropdown.addOption('json', 'JSON');
-                        dropdown.addOption('markdown', 'Markdown');
-                        dropdown.setValue(currentSettings.exportFormat || 'none')
-                            .onChange(async (v) => {
-                                currentSettings.exportFormat = v as any;
-                                await this.plugin.saveSettings(board.id);
-                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
-                            });
-                    });
 
             } else if (widget.type === 'memo') {
                 widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) } as MemoWidgetSettings;
