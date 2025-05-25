@@ -1,4 +1,4 @@
-import { App, Notice, setIcon, MarkdownRenderer } from 'obsidian';
+import { App, Notice, setIcon, MarkdownRenderer, Menu, TFile } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main';
 
@@ -11,16 +11,30 @@ export interface TweetWidgetFile {
 export interface TweetWidgetTweet {
     text: string;
     created: number;
+    id: string;
+
+    // Original optional fields
     files?: TweetWidgetFile[];
     like?: number;
     liked?: boolean;
     retweet?: number;
     retweeted?: boolean;
     edited?: boolean;
-    id: string;
-    replyTo?: string; 
     replyCount?: number;
+
+    // --- NEW PKM FIELDS ---
+    tags?: string[];
+    links?: string[];
+    contextNote?: string | null;
+    threadId?: string | null; // Renamed from replyTo for clarity
+    visibility?: "public" | "private" | "draft";
+    updated?: number;
+    deleted?: boolean;
+    bookmark?: boolean;
+    noteQuality?: "fleeting" | "literature" | "permanent";
+    taskStatus?: "todo" | "doing" | "done" | null;
 }
+
 
 export interface TweetWidgetSettings {
     tweets: TweetWidgetTweet[];
@@ -38,8 +52,6 @@ export const DEFAULT_TWEET_WIDGET_SETTINGS: TweetWidgetSettings = {
     verified: false,
 };
 
-const EMOJI_LIST = ['😀','😂','😍','🥺','😭','😊','😎','👍','🙏','🔥','🎉','💯','🥳','😇','🤔','😳','😅','😆','😢','😡','😱','🤗','😏','😴','😋','😜','😤','😇','😈','👀','👏','🙌','💪','🤝','💖','💔','✨','🌈','🍣','🍺','☕️','🍎','🍕','🍔','🍟','🍩','🍰','🎂','🍫','🍦','🍉','🍓','🍒','🍇','🍊','🍋','🍌','🍍','🥝','🥑','🥦','🥕','🌽','🍅','🥔','🍠','🍤','🍗','🍖','🍚','🍛','🍜','🍝','🍞','🥐','🥨','🥯','🥞','🧇','🥓','🥩','🥚','🧀','🥗','🥙','🥪','🥣','🥫','🍿','🍱','🍲','🍳','🥘','🥟','🥠','🥡','🦀','🦞','🦐','🦑','🦪','🍢','🍡','🍧','🍨','🍦','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🥧','🍯','🥜','🍞','🥐','🥖','🥨','🥯','🥞','🧇','🥓','🥩','🥚','🧀','🥗','🥙','🥪','🥣','🥫','🍿','🍱','🍲','🍳','🥘','🥟','🥠','🥡','🦀','🦞','🦐','🦑','🦪','🍢','🍡','🍧','🍨','🍦','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🥧','🍯','🥜'];
-
 export class TweetWidget implements WidgetImplementation {
     id = 'tweet-widget';
     private config!: WidgetConfig;
@@ -50,10 +62,11 @@ export class TweetWidget implements WidgetImplementation {
     private maxLength = 300;
     private attachedFiles: TweetWidgetFile[] = [];
     private editingTweetId: string | null = null;
-    private replyingToTweetId: string | null = null;
-    private pluginFolder: string = '';
+    private replyingToParentId: string | null = null;
+    private currentFilter: 'all' | 'active' | 'deleted' | 'bookmark' = 'active';
+    private detailTweetId: string | null = null;
+    private replyModalTweet: TweetWidgetTweet | null = null;
 
-    // create, load, save, UIレンダリングなどのコア部分は変更なし
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
         this.app = app;
@@ -77,12 +90,19 @@ export class TweetWidget implements WidgetImplementation {
             const exists = await this.app.vault.adapter.exists(dbPath);
             if (exists) {
                 const raw = await this.app.vault.adapter.read(dbPath);
-                this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...JSON.parse(raw) };
+                // Ensure default values for new fields on older tweets
+                const loadedSettings = JSON.parse(raw);
+                loadedSettings.tweets = loadedSettings.tweets.map((t: any) => ({
+                    deleted: false,
+                    ...t
+                }));
+                this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...loadedSettings };
             } else {
                 this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS };
                 await this.saveTweetsToFile();
             }
         } catch (e) {
+            console.error("Error loading tweet data:", e);
             this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS };
         }
     }
@@ -90,162 +110,238 @@ export class TweetWidget implements WidgetImplementation {
     private async saveTweetsToFile() {
         const dbPath = this.getTweetDbPath();
         const folder = dbPath.split('/').slice(0, -1).join('/');
-        const exists = await this.app.vault.adapter.exists(folder);
-        if (!exists) {
-            await this.app.vault.adapter.mkdir(folder);
+        try {
+            const exists = await this.app.vault.adapter.exists(folder);
+            if (!exists) {
+                await this.app.vault.adapter.mkdir(folder);
+            }
+            await this.app.vault.adapter.write(dbPath, JSON.stringify(this.currentSettings, null, 2));
+        } catch (e) {
+            console.error("Error saving tweet data:", e);
+            new Notice("Failed to save tweets. Check developer console.");
         }
-        await this.app.vault.adapter.write(dbPath, JSON.stringify(this.currentSettings, null, 2));
     }
 
     private renderTweetUI(container: HTMLElement) {
         container.empty();
-        const postBox = container.createDiv({ cls: 'tweet-post-box' });
-        const avatar = postBox.createDiv({ cls: 'tweet-avatar-large' });
-        let avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl && this.plugin.settings.tweetWidgetAvatarUrl.trim())
-            ? this.plugin.settings.tweetWidgetAvatarUrl.trim()
-            : (this.currentSettings.avatarUrl || '').trim();
-        if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
-        const avatarImg = document.createElement('img');
-        avatarImg.src = avatarUrl;
-        avatarImg.alt = 'avatar';
-        avatarImg.width = 44;
-        avatarImg.height = 44;
-        avatarImg.style.borderRadius = '50%';
-        avatar.appendChild(avatarImg);
-        const inputArea = postBox.createDiv({ cls: 'tweet-input-area-main' });
-        const replyInfoContainer = inputArea.createDiv({ cls: 'tweet-reply-info-container' });
-        if (this.replyingToTweetId) {
-            const replyingToTweet = this.currentSettings.tweets.find(t => t.id === this.replyingToTweetId);
-            if (replyingToTweet) {
-                const replyInfoDiv = replyInfoContainer.createDiv({ cls: 'tweet-reply-info' });
-                replyInfoDiv.setText(`${this.currentSettings.userId || '@you'} さんに返信中`);
-                const cancelReplyBtn = replyInfoDiv.createEl('button', { text: 'キャンセル', cls: 'tweet-cancel-reply-btn' });
-                cancelReplyBtn.onclick = () => {
-                    this.replyingToTweetId = null;
-                    this.renderTweetUI(this.widgetEl);
-                };
-            } else {
-                this.replyingToTweetId = null;
-            }
+        // --- 返信モーダル ---
+        if (this.replyModalTweet) {
+            this.renderReplyModal(container, this.replyModalTweet);
         }
-        const input = document.createElement('textarea');
-        input.rows = 2;
-        input.placeholder = this.replyingToTweetId ? '返信をポスト' : 'いまどうしてる？';
-        input.classList.add('tweet-textarea-main');
-        inputArea.appendChild(input);
-        const filePreviewArea = inputArea.createDiv({ cls: 'tweet-file-preview' });
-        this.renderFilePreview(filePreviewArea);
-        const iconBar = inputArea.createDiv({ cls: 'tweet-icon-bar' });
-        const imageBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main' });
-        setIcon(imageBtn, 'image');
-        imageBtn.title = '画像を添付';
-        const imageInput = document.createElement('input');
-        imageInput.type = 'file';
-        imageInput.accept = 'image/*';
-        imageInput.multiple = true;
-        imageInput.style.display = 'none';
-        imageBtn.onclick = () => imageInput.click();
-        iconBar.appendChild(imageInput);
-        imageInput.onchange = async () => {
-            if (!imageInput.files) return;
-            for (const file of Array.from(imageInput.files)) {
-                const dataUrl = await this.readFileAsDataUrl(file);
-                this.attachedFiles.push({ name: file.name, type: file.type, dataUrl });
-            }
-            this.renderFilePreview(filePreviewArea);
-            imageInput.value = '';
-        };
-        const gifBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main' });
-        setIcon(gifBtn, 'film');
-        gifBtn.title = 'GIFを添付';
-        const gifInput = document.createElement('input');
-        gifInput.type = 'file';
-        gifInput.accept = 'image/gif';
-        gifInput.multiple = true;
-        gifInput.style.display = 'none';
-        gifBtn.onclick = () => gifInput.click();
-        iconBar.appendChild(gifInput);
-        gifInput.onchange = async () => {
-            if (!gifInput.files) return;
-            for (const file of Array.from(gifInput.files)) {
-                const dataUrl = await this.readFileAsDataUrl(file);
-                this.attachedFiles.push({ name: file.name, type: file.type, dataUrl });
-            }
-            this.renderFilePreview(filePreviewArea);
-            gifInput.value = '';
-        };
-        const boldBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main' });
-        setIcon(boldBtn, 'bold');
-        boldBtn.title = '太字';
-        boldBtn.onclick = () => this.wrapSelection(input, '**');
-        const italicBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main' });
-        setIcon(italicBtn, 'italic');
-        italicBtn.title = '斜体';
-        italicBtn.onclick = () => this.wrapSelection(input, '*');
-        const bottomBar = inputArea.createDiv({ cls: 'tweet-bottom-bar' });
-        const charCount = bottomBar.createDiv({ cls: 'tweet-char-count-main' });
-        this.updateCharCount(charCount, 0);
-        const postBtn = bottomBar.createEl('button', { cls: 'tweet-post-btn-main', text: this.editingTweetId ? '編集完了' : (this.replyingToTweetId ? '返信する' : 'ポストする') });
-        postBtn.onclick = async () => {
-            const text = input.value.trim();
-            if (!text && this.attachedFiles.length === 0) return;
-            if (this.editingTweetId) {
-                const idx = this.currentSettings.tweets.findIndex(t => t.id === this.editingTweetId);
-                if (idx !== -1) {
-                    this.currentSettings.tweets[idx].text = text;
-                    this.currentSettings.tweets[idx].files = this.attachedFiles;
-                    this.currentSettings.tweets[idx].edited = true;
+        // --- 詳細表示ヘッダー ---
+        if (this.detailTweetId) {
+            const header = container.createDiv({ cls: 'tweet-detail-header' });
+            const backBtn = header.createEl('button', { cls: 'tweet-detail-header-back', text: '←' });
+            backBtn.onclick = () => {
+                this.detailTweetId = null;
+                this.renderTweetUI(this.widgetEl);
+            };
+            header.createDiv({ cls: 'tweet-detail-header-title', text: 'ポスト' });
+        }
+        // --- フィルタUIを最上部に生成（詳細時は非表示） ---
+        if (!this.detailTweetId) {
+            const filterBar = container.createDiv({ cls: 'tweet-filter-bar' });
+            const filterSelect = filterBar.createEl('select');
+            [
+                { value: 'all', label: 'すべて' },
+                { value: 'active', label: '通常のみ' },
+                { value: 'deleted', label: '非表示のみ' },
+                { value: 'bookmark', label: 'ブックマーク' }
+            ].forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.value;
+                option.text = opt.label;
+                filterSelect.appendChild(option);
+            });
+            filterSelect.value = this.currentFilter;
+            filterSelect.onchange = () => {
+                this.currentFilter = filterSelect.value as any;
+                this.detailTweetId = null;
+                this.renderTweetUI(this.widgetEl);
+            };
+        }
+        // --- 投稿欄 ---
+        if (!this.detailTweetId) {
+            const postBox = container.createDiv({ cls: 'tweet-post-box' });
+            const avatar = postBox.createDiv({ cls: 'tweet-avatar-large' });
+            let avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl && this.plugin.settings.tweetWidgetAvatarUrl.trim())
+                ? this.plugin.settings.tweetWidgetAvatarUrl.trim()
+                : (this.currentSettings.avatarUrl || '').trim();
+            if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+            const avatarImg = document.createElement('img');
+            avatarImg.src = avatarUrl;
+            avatarImg.alt = 'avatar';
+            avatarImg.width = 44;
+            avatarImg.height = 44;
+            avatarImg.style.borderRadius = '50%';
+            avatar.appendChild(avatarImg);
+
+            const inputArea = postBox.createDiv({ cls: 'tweet-input-area-main' });
+            const replyInfoContainer = inputArea.createDiv({ cls: 'tweet-reply-info-container' });
+            if (this.replyingToParentId) {
+                const replyingToTweet = this.currentSettings.tweets.find(t => t.id === this.replyingToParentId);
+                if (replyingToTweet) {
+                    const replyInfoDiv = replyInfoContainer.createDiv({ cls: 'tweet-reply-info' });
+                    replyInfoDiv.setText(`${this.currentSettings.userId || '@you'} さんに返信中`);
+                    const cancelReplyBtn = replyInfoDiv.createEl('button', { text: 'キャンセル', cls: 'tweet-cancel-reply-btn' });
+                    cancelReplyBtn.onclick = () => {
+                        this.replyingToParentId = null;
+                        this.renderTweetUI(this.widgetEl);
+                    };
+                } else {
+                    this.replyingToParentId = null;
                 }
-                this.editingTweetId = null;
-                new Notice('つぶやきを編集しました');
-            } else if (this.replyingToTweetId) {
-                this.currentSettings.tweets.unshift({ text, created: Date.now(), files: this.attachedFiles, like: 0, liked: false, retweet: 0, retweeted: false, edited: false, id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), replyTo: this.replyingToTweetId, replyCount: 0 });
-                const originalTweet = this.currentSettings.tweets.find(t => t.id === this.replyingToTweetId);
-                if (originalTweet) {
-                    originalTweet.replyCount = (originalTweet.replyCount || 0) + 1;
-                }
-                this.replyingToTweetId = null;
-                new Notice('返信を投稿しました');
-            } else {
-                this.currentSettings.tweets.unshift({ text, created: Date.now(), files: this.attachedFiles, like: 0, liked: false, retweet: 0, retweeted: false, edited: false, id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), replyCount: 0 });
-                new Notice('つぶやきを投稿しました');
             }
-            input.value = '';
-            this.attachedFiles = [];
-            await this.saveTweetsToFile();
-            this.renderTweetUI(this.widgetEl);
-        };
-        input.addEventListener('input', () => {
-            this.updateCharCount(charCount, input.value.length);
-        });
-        this.renderTweetList(container);
+
+            const input = document.createElement('textarea');
+            input.rows = 2;
+            input.placeholder = this.replyingToParentId ? '返信をポスト' : 'いまどうしてる？';
+            input.classList.add('tweet-textarea-main');
+            inputArea.appendChild(input);
+
+            const filePreviewArea = inputArea.createDiv({ cls: 'tweet-file-preview' });
+            this.renderFilePreview(filePreviewArea);
+
+            const iconBar = inputArea.createDiv({ cls: 'tweet-icon-bar' });
+            
+            // --- RESTORED BUTTONS ---
+            const imageBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main' });
+            setIcon(imageBtn, 'image');
+            imageBtn.title = '画像を添付';
+            const imageInput = document.createElement('input');
+            imageInput.type = 'file';
+            imageInput.accept = 'image/*';
+            imageInput.multiple = true;
+            imageInput.style.display = 'none';
+            imageBtn.onclick = () => imageInput.click();
+            iconBar.appendChild(imageInput);
+            imageInput.onchange = async () => {
+                if (!imageInput.files) return;
+                for (const file of Array.from(imageInput.files)) {
+                    const dataUrl = await this.readFileAsDataUrl(file);
+                    this.attachedFiles.push({ name: file.name, type: file.type, dataUrl });
+                }
+                this.renderFilePreview(filePreviewArea);
+                imageInput.value = '';
+            };
+
+            const gifBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main' });
+            setIcon(gifBtn, 'film');
+            gifBtn.title = 'GIFを添付';
+            const gifInput = document.createElement('input');
+            gifInput.type = 'file';
+            gifInput.accept = 'image/gif';
+            gifInput.multiple = true;
+            gifInput.style.display = 'none';
+            gifBtn.onclick = () => gifInput.click();
+            iconBar.appendChild(gifInput);
+            gifInput.onchange = async () => {
+                if (!gifInput.files) return;
+                for (const file of Array.from(gifInput.files)) {
+                    const dataUrl = await this.readFileAsDataUrl(file);
+                    this.attachedFiles.push({ name: file.name, type: file.type, dataUrl });
+                }
+                this.renderFilePreview(filePreviewArea);
+                gifInput.value = '';
+            };
+
+            const boldBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main' });
+            setIcon(boldBtn, 'bold');
+            boldBtn.title = '太字';
+            boldBtn.onclick = () => this.wrapSelection(input, '**');
+            
+            const italicBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main' });
+            setIcon(italicBtn, 'italic');
+            italicBtn.title = '斜体';
+            italicBtn.onclick = () => this.wrapSelection(input, '*');
+
+
+            const bottomBar = inputArea.createDiv({ cls: 'tweet-bottom-bar' });
+            const charCount = bottomBar.createDiv({ cls: 'tweet-char-count-main' });
+            this.updateCharCount(charCount, 0);
+
+            const postBtn = bottomBar.createEl('button', { cls: 'tweet-post-btn-main', text: this.editingTweetId ? '編集完了' : (this.replyingToParentId ? '返信する' : 'ポストする') });
+            postBtn.onclick = async () => {
+                const text = input.value.trim();
+                if (!text && this.attachedFiles.length === 0) return;
+
+                if (this.editingTweetId) {
+                    const idx = this.currentSettings.tweets.findIndex(t => t.id === this.editingTweetId);
+                    if (idx !== -1) {
+                        const tweet = this.currentSettings.tweets[idx];
+                        tweet.text = text;
+                        tweet.files = this.attachedFiles;
+                        tweet.edited = true;
+                        tweet.updated = Date.now();
+                        tweet.tags = this.parseTags(text);
+                        tweet.links = this.parseLinks(text);
+                    }
+                    this.editingTweetId = null;
+                    new Notice('つぶやきを編集しました');
+                } else {
+                    const newTweet: TweetWidgetTweet = {
+                        id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                        text,
+                        created: Date.now(),
+                        updated: Date.now(),
+                        files: this.attachedFiles,
+                        like: 0,
+                        liked: false,
+                        retweet: 0,
+                        retweeted: false,
+                        edited: false,
+                        replyCount: 0,
+                        deleted: false,
+                        bookmark: false,
+                        contextNote: null,
+                        threadId: this.replyingToParentId,
+                        visibility: 'public',
+                        noteQuality: 'fleeting',
+                        taskStatus: null,
+                        tags: this.parseTags(text),
+                        links: this.parseLinks(text),
+                    };
+
+                    this.currentSettings.tweets.unshift(newTweet);
+
+                    if (this.replyingToParentId) {
+                        const originalTweet = this.currentSettings.tweets.find(t => t.id === this.replyingToParentId);
+                        if (originalTweet) {
+                            originalTweet.replyCount = (originalTweet.replyCount || 0) + 1;
+                            originalTweet.updated = Date.now();
+                        }
+                        this.replyingToParentId = null;
+                        new Notice('返信を投稿しました');
+                    } else {
+                        new Notice('つぶやきを投稿しました');
+                    }
+                }
+
+                input.value = '';
+                this.attachedFiles = [];
+                await this.saveTweetsToFile();
+                this.renderTweetUI(this.widgetEl);
+            };
+
+            input.addEventListener('input', () => {
+                this.updateCharCount(charCount, input.value.length);
+            });
+        }
+        // --- リスト本体 ---
+        let listEl = container.createDiv({ cls: 'tweet-list-main' });
+        this.renderTweetList(listEl);
     }
 
     private renderFilePreview(container: HTMLElement) {
         container.empty();
         if (!this.attachedFiles.length) return;
+        container.addClass(`files-count-${this.attachedFiles.length}`);
         this.attachedFiles.forEach(file => {
-            if (file.type.startsWith('image/')) {
-                const img = document.createElement('img');
-                img.src = file.dataUrl;
-                img.alt = file.name;
-                img.className = 'tweet-file-image-main';
-                img.style.maxWidth = '320px';
-                img.style.maxHeight = '200px';
-                img.style.marginRight = '8px';
-                img.style.marginBottom = '4px';
-                container.appendChild(img);
-            } else {
-                const link = document.createElement('a');
-                link.href = file.dataUrl;
-                link.download = file.name;
-                link.textContent = file.name;
-                link.className = 'tweet-file-link-main';
-                link.style.display = 'inline-block';
-                link.style.marginRight = '8px';
-                link.style.marginBottom = '4px';
-                container.appendChild(link);
-            }
+            const img = document.createElement('img');
+            img.src = file.dataUrl;
+            img.alt = file.name;
+            img.className = 'tweet-file-image-main';
+            container.appendChild(img);
         });
     }
 
@@ -255,47 +351,149 @@ export class TweetWidget implements WidgetImplementation {
         else el.classList.remove('tweet-char-over');
     }
 
-    // --- ここからが修正箇所 ---
+    private parseTags(text: string): string[] {
+        const regex = /#([\w-]+)/g;
+        return (text.match(regex) || []).map(tag => tag.substring(1));
+    }
 
-    /**
-     * ツイートリスト全体をスレッド形式で描画します。
-     * 最新のアクティビティがあったスレッドを上部に表示し、親が削除されたリプライも表示します。
-     */
-    private renderTweetList(container: HTMLElement) {
-        let listEl = container.querySelector('.tweet-list-main') as HTMLElement;
-        if (!listEl) {
-            listEl = container.createDiv({ cls: 'tweet-list-main' });
-        } else {
-            listEl.empty();
-        }
+    private parseLinks(text: string): string[] {
+        const regex = /\[\[([^\]]+)\]\]/g;
+        const matches = text.matchAll(regex);
+        return Array.from(matches, m => m[1]);
+    }
+    
+    // --- CORRECTED THREAD RENDERING LOGIC ---
 
-        if (this.currentSettings.tweets.length === 0) {
-            listEl.createEl('div', { text: 'まだつぶやきがありません。' });
+    private renderTweetList(listEl: HTMLElement) {
+        listEl.empty();
+        let filteredTweets: TweetWidgetTweet[];
+        if (this.detailTweetId) {
+            // --- Twitter風 詳細表示 ---
+            const all = this.currentSettings.tweets;
+            const target = all.find(t => t.id === this.detailTweetId);
+            if (!target) return;
+            // 親ツイート（1件）
+            let parent: TweetWidgetTweet | null = null;
+            if (target.threadId) {
+                parent = all.find(t => t.id === target.threadId) || null;
+            }
+            // 子リプライ一覧
+            const replies = all.filter(t => t.threadId === target.id);
+            // --- 親ツイート ---
+            if (parent) {
+                listEl.createDiv({ cls: 'tweet-detail-section-sep' });
+                const parentWrap = listEl.createDiv({ cls: 'tweet-detail-parent' });
+                const tweetsById = new Map<string, TweetWidgetTweet>([[parent.id, parent]]);
+                this.renderSingleTweet(parent, parentWrap, tweetsById);
+                parentWrap.onclick = (e) => {
+                    if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
+                    this.detailTweetId = parent!.id;
+                    this.renderTweetUI(this.widgetEl);
+                };
+            }
+            // --- 選択ツイート ---
+            listEl.createDiv({ cls: 'tweet-detail-section-sep' });
+            const targetWrap = listEl.createDiv({ cls: 'tweet-detail-main' });
+            const tweetsById = new Map<string, TweetWidgetTweet>([[target.id, target]]);
+            this.renderSingleTweet(target, targetWrap, tweetsById);
+            // --- 返信欄 ---
+            const replyBox = listEl.createDiv({ cls: 'tweet-detail-reply-box' });
+            const avatar = replyBox.createDiv({ cls: 'tweet-detail-reply-avatar' });
+            let avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
+            if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+            avatar.createEl('img', { attr: { src: avatarUrl, width: 40, height: 40 } });
+            const inputArea = replyBox.createDiv({ cls: 'tweet-detail-reply-input' });
+            const textarea = document.createElement('textarea');
+            textarea.className = 'tweet-detail-reply-textarea';
+            textarea.placeholder = '返信をポスト';
+            inputArea.appendChild(textarea);
+            const replyBtn = document.createElement('button');
+            replyBtn.className = 'tweet-detail-reply-btn';
+            replyBtn.textContent = '返信';
+            replyBtn.onclick = async () => {
+                const text = textarea.value.trim();
+                if (!text) return;
+                const newTweet: TweetWidgetTweet = {
+                    id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                    text,
+                    created: Date.now(),
+                    updated: Date.now(),
+                    files: [],
+                    like: 0,
+                    liked: false,
+                    retweet: 0,
+                    retweeted: false,
+                    edited: false,
+                    replyCount: 0,
+                    deleted: false,
+                    bookmark: false,
+                    contextNote: null,
+                    threadId: target.id,
+                    visibility: 'public',
+                    noteQuality: 'fleeting',
+                    taskStatus: null,
+                    tags: this.parseTags(text),
+                    links: this.parseLinks(text),
+                };
+                this.currentSettings.tweets.unshift(newTweet);
+                target.replyCount = (target.replyCount || 0) + 1;
+                target.updated = Date.now();
+                await this.saveTweetsToFile();
+                textarea.value = '';
+                this.renderTweetUI(this.widgetEl);
+            };
+            inputArea.appendChild(replyBtn);
+            // --- 子リプライ一覧 ---
+            listEl.createDiv({ cls: 'tweet-detail-section-sep' });
+            if (replies.length > 0) {
+                replies.forEach(reply => {
+                    const replyWrap = listEl.createDiv({ cls: 'tweet-detail-reply' });
+                    const replyMap = new Map<string, TweetWidgetTweet>([[reply.id, reply]]);
+                    this.renderSingleTweet(reply, replyWrap, replyMap);
+                    replyWrap.onclick = (e) => {
+                        if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
+                        this.detailTweetId = reply.id;
+                        this.renderTweetUI(this.widgetEl);
+                    };
+                });
+            } else {
+                listEl.createDiv({ cls: 'tweet-detail-no-reply', text: 'リプライはありません' });
+            }
+            listEl.createDiv({ cls: 'tweet-detail-section-sep' });
             return;
         }
-
-        // 1. データ準備
+        // --- フィルタ適用 ---
+        if (this.currentFilter === 'all') {
+            filteredTweets = this.currentSettings.tweets;
+        } else if (this.currentFilter === 'deleted') {
+            filteredTweets = this.currentSettings.tweets.filter(t => t.deleted);
+        } else if (this.currentFilter === 'bookmark') {
+            filteredTweets = this.currentSettings.tweets.filter(t => t.bookmark);
+        } else {
+            filteredTweets = this.currentSettings.tweets.filter(t => !t.deleted);
+        }
+        if (filteredTweets.length === 0) {
+            listEl.createEl('div', { cls: 'tweet-empty-notice', text: 'まだつぶやきがありません。' });
+            return;
+        }
+        // --- 通常時はスレッド表示 ---
         const tweetsById = new Map<string, TweetWidgetTweet>();
-        this.currentSettings.tweets.forEach(t => tweetsById.set(t.id, t));
-
+        filteredTweets.forEach(t => tweetsById.set(t.id, t));
         const repliesByParentId = new Map<string, TweetWidgetTweet[]>();
-        this.currentSettings.tweets.forEach(t => {
-            if (t.replyTo) {
-                const replies = repliesByParentId.get(t.replyTo) || [];
+        filteredTweets.forEach(t => {
+            if (t.threadId) {
+                const replies = repliesByParentId.get(t.threadId) || [];
                 replies.push(t);
-                repliesByParentId.set(t.replyTo, replies);
+                repliesByParentId.set(t.threadId, replies);
             }
         });
         repliesByParentId.forEach(replies => replies.sort((a, b) => a.created - b.created));
-
-        // 2. スレッドごとの最終アクティビティ日時を計算する
-        const threadLastActivity = new Map<string, number>();
         const memo = new Map<string, number>();
         const getLatestTimestampInThread = (tweetId: string): number => {
             if (memo.has(tweetId)) return memo.get(tweetId)!;
-
-            const tweet = tweetsById.get(tweetId)!;
-            let maxTimestamp = tweet.created;
+            const tweet = tweetsById.get(tweetId);
+            if (!tweet) return 0;
+            let maxTimestamp = tweet.updated || tweet.created;
             const replies = repliesByParentId.get(tweetId) || [];
             for (const reply of replies) {
                 maxTimestamp = Math.max(maxTimestamp, getLatestTimestampInThread(reply.id));
@@ -303,25 +501,12 @@ export class TweetWidget implements WidgetImplementation {
             memo.set(tweetId, maxTimestamp);
             return maxTimestamp;
         };
-
-        // 3. 描画の起点となるツイート（トップレベル＋孤児リプライ）を特定
-        const rootItems = this.currentSettings.tweets.filter(t => {
-            return !t.replyTo || !tweetsById.has(t.replyTo);
-        });
-
-        // 4. 各起点ツイートの最終アクティビティを計算し、それでソートする
-        rootItems.forEach(tweet => {
-            const lastActivity = getLatestTimestampInThread(tweet.id);
-            threadLastActivity.set(tweet.id, lastActivity);
-        });
-        
+        const rootItems = filteredTweets.filter(t => !t.threadId || !tweetsById.has(t.threadId));
         rootItems.sort((a, b) => {
-            const lastActivityA = threadLastActivity.get(a.id) || a.created;
-            const lastActivityB = threadLastActivity.get(b.id) || b.created;
+            const lastActivityA = getLatestTimestampInThread(a.id);
+            const lastActivityB = getLatestTimestampInThread(b.id);
             return lastActivityB - lastActivityA;
         });
-
-        // 5. 描画用のリストを構築
         const displayList: { tweet: TweetWidgetTweet, level: number }[] = [];
         const addRepliesToDisplayList = (parentId: string, currentLevel: number) => {
             const replies = repliesByParentId.get(parentId);
@@ -332,206 +517,262 @@ export class TweetWidget implements WidgetImplementation {
                 });
             }
         };
-
         rootItems.forEach(tweet => {
             displayList.push({ tweet, level: 0 });
             addRepliesToDisplayList(tweet.id, 0);
         });
-
-        // 6. 構築したリストを元にDOMを生成
         displayList.forEach(({ tweet, level }) => {
             const wrapper = listEl.createDiv({ cls: 'tweet-thread-wrapper' });
-            wrapper.style.paddingLeft = `${level * 25}px`;
             wrapper.setAttribute('data-tweet-id', tweet.id);
-
+            wrapper.style.paddingLeft = `${level * 25}px`;
             const tweetContainer = wrapper.createDiv({ cls: 'tweet-item-container' });
-
             if (level > 0) {
-                tweetContainer.style.borderLeft = '2px solid #333';
+                tweetContainer.style.borderLeft = '2px solid rgba(128, 128, 128, 0.2)';
                 tweetContainer.style.paddingLeft = '12px';
             }
-            
             this.renderSingleTweet(tweet, tweetContainer, tweetsById);
+            // --- クリックで詳細表示 ---
+            wrapper.onclick = (e) => {
+                if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
+                this.detailTweetId = tweet.id;
+                this.renderTweetUI(this.widgetEl);
+            };
         });
     }
 
-    /**
-     * 個々のツイート要素を描画するヘルパー関数。
-     * @param tweet 描画するツイートオブジェクト
-     * @param container 描画先のHTML要素
-     * @param tweetsById 全ツイートのマップ（親の存在確認用）
-     */
     private renderSingleTweet(tweet: TweetWidgetTweet, container: HTMLElement, tweetsById: Map<string, TweetWidgetTweet>) {
+        container.empty();
         const item = container.createDiv({ cls: 'tweet-item-main' });
 
-        // ヘッダー
         const header = item.createDiv({ cls: 'tweet-item-header-main' });
         const avatar = header.createDiv({ cls: 'tweet-item-avatar-main' });
-        let avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl && this.plugin.settings.tweetWidgetAvatarUrl.trim())
-            ? this.plugin.settings.tweetWidgetAvatarUrl.trim()
-            : (this.currentSettings.avatarUrl || '').trim();
+        let avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
         if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
-        const avatarImg = document.createElement('img');
-        avatarImg.src = avatarUrl;
-        avatarImg.alt = 'avatar';
-        avatarImg.width = 36;
-        avatarImg.height = 36;
-        avatarImg.style.borderRadius = '50%';
-        avatar.appendChild(avatarImg);
+        avatar.createEl('img', { attr: { src: avatarUrl, width: 36, height: 36 } });
+
         const userInfo = header.createDiv({ cls: 'tweet-item-userinfo-main' });
         userInfo.createEl('span', { text: this.currentSettings.userName || 'あなた', cls: 'tweet-item-username-main' });
         if (this.currentSettings.verified) {
             const badge = userInfo.createSpan({ cls: 'tweet-item-badge-main' });
             setIcon(badge, 'badge-check');
-            badge.style.color = '#1d9bf0';
-            badge.style.margin = '0 2px';
         }
         userInfo.createEl('span', { text: this.currentSettings.userId || '@you', cls: 'tweet-item-userid-main' });
-        userInfo.createEl('span', { text: '・' + this.formatTimeAgo(tweet.created) + (tweet.edited ? '・編集済' : ''), cls: 'tweet-item-time-main' });
-        
-        // 返信先の表示（親の存在をチェック）
-        if (tweet.replyTo) {
-            const parentTweetExists = tweetsById.has(tweet.replyTo);
+        const timeText = '・' + this.formatTimeAgo(tweet.created) + (tweet.edited ? ' (編集済)' : '');
+        userInfo.createEl('span', { text: timeText, cls: 'tweet-item-time-main' });
+
+        if (tweet.threadId) {
+            const parentTweetExists = tweetsById.has(tweet.threadId);
             const replyToDiv = item.createDiv({ cls: 'tweet-item-reply-to' });
 
             if (parentTweetExists) {
-                const targetUser = this.currentSettings.userId || '@you';
-                replyToDiv.setText(`${targetUser} さんへの返信`);
-                replyToDiv.style.cursor = 'pointer';
+                const parentUser = this.currentSettings.userId || '@you';
+                replyToDiv.setText(`${parentUser} さんへの返信`);
                 replyToDiv.title = '元のツイートに移動';
                 replyToDiv.onclick = (e) => {
                     e.stopPropagation();
-                    const parentEl = this.widgetEl.querySelector(`[data-tweet-id="${tweet.replyTo}"]`) as HTMLElement;
+                    const parentEl = this.widgetEl.querySelector(`[data-tweet-id="${tweet.threadId}"]`) as HTMLElement;
                     if (parentEl) {
                         parentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        parentEl.style.transition = 'background-color 0.2s';
-                        parentEl.style.backgroundColor = 'rgba(29, 155, 240, 0.1)';
-                        setTimeout(() => {
-                            parentEl.style.backgroundColor = '';
-                        }, 1500);
+                        parentEl.addClass('highlight');
+                        setTimeout(() => parentEl.removeClass('highlight'), 1500);
                     }
                 };
             } else {
                 replyToDiv.setText('削除されたツイートへの返信');
-                replyToDiv.style.cursor = 'default';
-                replyToDiv.style.color = '#aaa';
+                replyToDiv.addClass('deleted-reply');
             }
         }
 
-        // 本文
         const textDiv = item.createDiv({ cls: 'tweet-item-text-main' });
         MarkdownRenderer.render(this.app, tweet.text, textDiv, this.app.workspace.getActiveFile()?.path || '', this.plugin);
-        
-        // 添付ファイル
+
         if (tweet.files && tweet.files.length) {
-            const filesDiv = item.createDiv({ cls: 'tweet-item-files-main' });
+            const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${tweet.files.length}` });
             tweet.files.forEach(file => {
-                if (file.type.startsWith('image/')) {
-                    const img = document.createElement('img');
-                    img.src = file.dataUrl;
-                    img.alt = file.name;
-                    img.className = 'tweet-item-image-main';
-                    img.style.maxWidth = '320px';
-                    img.style.maxHeight = '200px';
-                    img.style.display = 'block';
-                    img.style.margin = '8px auto';
-                    filesDiv.appendChild(img);
-                } else {
-                    const link = document.createElement('a');
-                    link.href = file.dataUrl;
-                    link.download = file.name;
-                    link.textContent = file.name;
-                    link.className = 'tweet-item-link-main';
-                    link.style.display = 'inline-block';
-                    link.style.marginRight = '8px';
-                    link.style.marginBottom = '4px';
-                    filesDiv.appendChild(link);
-                }
+                const img = filesDiv.createEl('img', { attr: { src: file.dataUrl, alt: file.name } });
+                img.className = 'tweet-item-image-main';
             });
         }
 
-        // アクションバー
+        const metadataDiv = item.createDiv({ cls: 'tweet-item-metadata-main' });
+        if (tweet.bookmark) metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: 'Bookmarked' });
+        if (tweet.visibility && tweet.visibility !== 'public') metadataDiv.createEl('span', { cls: 'tweet-chip visibility', text: tweet.visibility });
+        if (tweet.noteQuality && tweet.noteQuality !== 'fleeting') metadataDiv.createEl('span', { cls: 'tweet-chip quality', text: tweet.noteQuality });
+        if (tweet.taskStatus) metadataDiv.createEl('span', { cls: 'tweet-chip status', text: tweet.taskStatus });
+
+        if (tweet.tags && tweet.tags.length > 0) {
+            const tagsDiv = item.createDiv({ cls: 'tweet-item-tags-main' });
+            tweet.tags.forEach(tag => {
+                tagsDiv.createEl('a', { text: `#${tag}`, cls: 'tweet-tag', href: `#${tag}` });
+            });
+        }
+
         const actionBar = item.createDiv({ cls: 'tweet-action-bar-main' });
-        
-        const replyBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main' });
+
+        const replyBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main reply' });
         setIcon(replyBtn, 'message-square');
-        replyBtn.title = 'リプライ';
         replyBtn.onclick = () => {
-            this.replyingToTweetId = tweet.id;
-            this.editingTweetId = null;
+            this.replyModalTweet = tweet;
             this.renderTweetUI(this.widgetEl);
-            const input = this.widgetEl.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
-            if (input) {
-                input.focus();
-            }
         };
         replyBtn.createSpan({ text: String(tweet.replyCount || 0), cls: 'tweet-action-count-main' });
 
-        const likeBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main' });
-        setIcon(likeBtn, tweet.liked ? 'heart' : 'heart');
-        likeBtn.style.color = tweet.liked ? '#e0245e' : '#888';
-        likeBtn.title = 'いいね';
-        likeBtn.onclick = async () => {
-            tweet.liked = !tweet.liked;
-            tweet.like = (tweet.like || 0) + (tweet.liked ? 1 : -1);
-            await this.saveTweetsToFile();
-            this.renderTweetList(this.widgetEl.querySelector('.tweet-list-main')?.parentElement || this.widgetEl);
-        };
-        likeBtn.createSpan({ text: String(tweet.like || 0), cls: 'tweet-action-count-main' });
-
-        const rtBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main' });
+        const rtBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main retweet' });
         setIcon(rtBtn, 'repeat-2');
-        rtBtn.style.color = tweet.retweeted ? '#1d9bf0' : '#888';
-        rtBtn.title = 'リツイート';
+        if (tweet.retweeted) rtBtn.addClass('active');
         rtBtn.onclick = async () => {
             tweet.retweeted = !tweet.retweeted;
             tweet.retweet = (tweet.retweet || 0) + (tweet.retweeted ? 1 : -1);
             await this.saveTweetsToFile();
-            this.renderTweetList(this.widgetEl.querySelector('.tweet-list-main')?.parentElement || this.widgetEl);
+            this.renderTweetUI(this.widgetEl);
         };
         rtBtn.createSpan({ text: String(tweet.retweet || 0), cls: 'tweet-action-count-main' });
 
-        const editBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main' });
-        setIcon(editBtn, 'pencil');
-        editBtn.title = '編集';
-        editBtn.onclick = () => {
-            this.editingTweetId = tweet.id;
-            this.replyingToTweetId = null;
-            this.attachedFiles = tweet.files ? [...tweet.files] : [];
-            this.renderTweetUI(this.widgetEl);
-            const input = this.widgetEl.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
-            if (input) input.value = tweet.text;
-        };
-        
-        const delBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main' });
-        setIcon(delBtn, 'trash-2');
-        delBtn.title = '削除';
-        delBtn.onclick = async () => {
-            if (!confirm('このつぶやきを削除しますか？\n(このつぶやきへの返信は削除されません)')) return;
-
-            // 削除対象がリプライの場合、親ツイートのリプライ数を減らす
-            const tweetToDelete = this.currentSettings.tweets.find(t => t.id === tweet.id);
-            if (tweetToDelete && tweetToDelete.replyTo) {
-                const parentTweet = this.currentSettings.tweets.find(t => t.id === tweetToDelete.replyTo);
-                if (parentTweet) {
-                    parentTweet.replyCount = Math.max(0, (parentTweet.replyCount || 1) - 1);
-                }
-            }
-            // 該当ツイートのみをフィルタリングで除外
-            this.currentSettings.tweets = this.currentSettings.tweets.filter(t => t.id !== tweet.id);
+        const likeBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main like' });
+        setIcon(likeBtn, 'heart');
+        if (tweet.liked) likeBtn.addClass('active');
+        likeBtn.onclick = async () => {
+            tweet.liked = !tweet.liked;
+            tweet.like = (tweet.like || 0) + (tweet.liked ? 1 : -1);
             await this.saveTweetsToFile();
             this.renderTweetUI(this.widgetEl);
         };
+        likeBtn.createSpan({ text: String(tweet.like || 0), cls: 'tweet-action-count-main' });
+
+        const bookmarkBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main bookmark' });
+        setIcon(bookmarkBtn, 'bookmark');
+        if (tweet.bookmark) bookmarkBtn.addClass('active');
+        bookmarkBtn.onclick = async () => {
+            tweet.bookmark = !tweet.bookmark;
+            await this.saveTweetsToFile();
+            this.renderTweetUI(this.widgetEl);
+        };
+
+        const moreBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main more' });
+        setIcon(moreBtn, 'more-horizontal');
+        moreBtn.onclick = (e) => this.showMoreMenu(e, tweet);
     }
-    
-    // --- ここまでが修正箇所 ---
+
+    private showMoreMenu(event: MouseEvent, tweet: TweetWidgetTweet) {
+        const menu = new Menu();
+
+        menu.addItem((item) => item.setTitle("Edit").setIcon("pencil").onClick(() => {
+            this.editingTweetId = tweet.id;
+            this.replyingToParentId = null;
+            this.attachedFiles = tweet.files ? [...tweet.files] : [];
+            this.renderTweetUI(this.widgetEl);
+            const input = this.widgetEl.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
+            if (input) {
+                input.value = tweet.text;
+                input.focus();
+            }
+        }));
+        
+        if (tweet.deleted) {
+            menu.addItem(item => item.setTitle('復元').setIcon('rotate-ccw').onClick(async () => {
+                tweet.deleted = false;
+                tweet.updated = Date.now();
+                await this.saveTweetsToFile();
+                this.renderTweetUI(this.widgetEl);
+            }));
+        } else {
+            menu.addItem(item => item.setTitle('非表示').setIcon('eye-off').onClick(async () => {
+                tweet.deleted = true;
+                tweet.updated = Date.now();
+                await this.saveTweetsToFile();
+                this.renderTweetUI(this.widgetEl);
+            }));
+        }
+        menu.addItem(item => item.setTitle('⚠️ 完全削除').setIcon('x-circle')
+            .onClick(async () => {
+                if (!confirm('このつぶやきを完全に削除しますか？（元に戻せません）')) return;
+                this.currentSettings.tweets = this.currentSettings.tweets.filter(t => t.id !== tweet.id);
+                await this.saveTweetsToFile();
+                this.renderTweetUI(this.widgetEl);
+            }));
+        menu.addSeparator();
+
+        const addMenuItems = (
+            sectionTitle: string,
+            options: (string | null)[],
+            currentValue: string | null | undefined,
+            setValue: (v: any) => void,
+            labelMap?: Record<string, string>
+        ) => {
+            menu.addItem(item => item.setTitle(sectionTitle).setDisabled(true));
+            options.forEach(option => {
+                let label = option ? option.charAt(0).toUpperCase() + option.slice(1) : "None";
+                if (labelMap && option && labelMap[option]) label += `（${labelMap[option]}）`;
+                menu.addItem(item => item
+                    .setTitle(label)
+                    .setChecked(currentValue === option)
+                    .onClick(async () => {
+                        setValue(option);
+                        await this.saveTweetsToFile();
+                        this.renderTweetUI(this.widgetEl);
+                    })
+                )
+            });
+        };
+
+        addMenuItems("Visibility", ["public", "private", "draft"], tweet.visibility, v => tweet.visibility = v);
+        menu.addSeparator();
+        addMenuItems(
+            "Note Quality",
+            ["fleeting", "literature", "permanent"],
+            tweet.noteQuality,
+            v => tweet.noteQuality = v,
+            { fleeting: "アイデア", literature: "文献", permanent: "永久" }
+        );
+        menu.addSeparator();
+        addMenuItems("Task Status", [null, "todo", "doing", "done"], tweet.taskStatus, v => tweet.taskStatus = v);
+        menu.addSeparator();
+
+        menu.addItem(item => item
+            .setTitle("Open/Create Context Note")
+            .setIcon("file-text")
+            .onClick(async () => {
+                let notePath = tweet.contextNote;
+                const date = new Date(tweet.created).toISOString().split('T')[0];
+                const sanitizedText = tweet.text.slice(0, 30).replace(/[\\/:*?"<>|#\[\]]/g, '').trim();
+                let contextFolder = "ContextNotes";
+                const settings = (this.plugin as any).settings || {};
+                if (settings.tweetDbLocation === 'custom' && settings.tweetDbCustomPath) {
+                    const customBase = settings.tweetDbCustomPath.replace(/\/tweets\.json$/, '');
+                    const customBase2 = settings.tweetDbCustomPath.replace(/\/tweets\.json$/, '').replace(/\/$/, '');
+                    contextFolder = customBase2 + '/ContextNotes';
+                }
+                if (!await this.app.vault.adapter.exists(contextFolder)) {
+                    await this.app.vault.createFolder(contextFolder);
+                }
+                if (!notePath) {
+                    notePath = `${contextFolder}/${date}-${sanitizedText || 'note'}.md`;
+                    tweet.contextNote = notePath;
+                    await this.saveTweetsToFile();
+                    this.renderTweetUI(this.widgetEl);
+                }
+                if (!await this.app.vault.adapter.exists(notePath)) {
+                    await this.app.vault.create(notePath, `> ${tweet.text}\n\n---\n\n`);
+                }
+                const file = this.app.vault.getAbstractFileByPath(notePath);
+                if (file instanceof TFile) {
+                    this.app.workspace.getLeaf(true).openFile(file);
+                } else {
+                    new Notice("Context note not found!");
+                }
+            })
+        );
+
+        menu.showAtMouseEvent(event);
+    }
 
     private formatTimeAgo(time: number): string {
         const now = Date.now();
         const diff = Math.floor((now - time) / 1000);
-        if (diff < 60) return `${diff}秒前`;
-        if (diff < 3600) return `${Math.floor(diff / 60)}分前`;
-        if (diff < 86400) return `${Math.floor(diff / 3600)}時間前`;
+        if (diff < 60) return `${diff}s`;
+        if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+        if (diff < 2592000) return `${Math.floor(diff / 86400)}d`;
         const d = new Date(time);
         return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
     }
@@ -549,20 +790,17 @@ export class TweetWidget implements WidgetImplementation {
         const start = input.selectionStart;
         const end = input.selectionEnd;
         const value = input.value;
-        if (start === end) {
-            input.value = value.slice(0, start) + wrapper + wrapper + value.slice(end);
-            input.selectionStart = input.selectionEnd = start + wrapper.length;
-        } else {
-            input.value = value.slice(0, start) + wrapper + value.slice(start, end) + wrapper + value.slice(end);
-            input.selectionStart = start + wrapper.length;
-            input.selectionEnd = end + wrapper.length;
-        }
+        const selectedText = value.substring(start, end);
+        const replacement = wrapper + selectedText + wrapper;
+        input.value = value.substring(0, start) + replacement + value.substring(end);
+        input.selectionStart = start + wrapper.length;
+        input.selectionEnd = end + wrapper.length;
         input.focus();
     }
 
     updateExternalSettings(newSettings: any) {
         this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...(newSettings || {}) };
-        this.renderTweetList(this.widgetEl);
+        this.renderTweetUI(this.widgetEl);
     }
 
     private getTweetDbPath(): string {
@@ -571,7 +809,83 @@ export class TweetWidget implements WidgetImplementation {
         if (location === 'custom' && settings.tweetDbCustomPath) {
             return settings.tweetDbCustomPath;
         } else {
-            return 'tweet_db/tweets.json';
+            return `${this.plugin.manifest.dir || '.obsidian/plugins/widget-board'}/data/tweets.json`;
         }
+    }
+
+    private renderReplyModal(container: HTMLElement, tweet: TweetWidgetTweet) {
+        // バックドロップ
+        const backdrop = container.createDiv({ cls: 'tweet-reply-modal-backdrop' });
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) {
+                this.replyModalTweet = null;
+                this.renderTweetUI(this.widgetEl);
+            }
+        };
+        // モーダル本体
+        const modal = backdrop.createDiv({ cls: 'tweet-reply-modal' });
+        // ヘッダー
+        const header = modal.createDiv({ cls: 'tweet-reply-modal-header' });
+        header.createEl('span', { text: '返信' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = () => {
+            this.replyModalTweet = null;
+            this.renderTweetUI(this.widgetEl);
+        };
+        // 返信先ツイート簡易表示
+        const tweetBox = modal.createDiv({ cls: 'tweet-reply-modal-tweet' });
+        const tweetsById = new Map<string, TweetWidgetTweet>([[tweet.id, tweet]]);
+        this.renderSingleTweet(tweet, tweetBox, tweetsById);
+        // 入力欄
+        const inputArea = modal.createDiv({ cls: 'tweet-reply-modal-input' });
+        const textarea = document.createElement('textarea');
+        textarea.className = 'tweet-reply-modal-textarea';
+        textarea.placeholder = '返信をポスト';
+        inputArea.appendChild(textarea);
+        textarea.focus();
+        // 送信ボタン
+        const replyBtn = document.createElement('button');
+        replyBtn.className = 'tweet-reply-modal-btn';
+        replyBtn.textContent = '返信';
+        replyBtn.onclick = async () => {
+            const text = textarea.value.trim();
+            if (!text) return;
+            const newTweet: TweetWidgetTweet = {
+                id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                text,
+                created: Date.now(),
+                updated: Date.now(),
+                files: [],
+                like: 0,
+                liked: false,
+                retweet: 0,
+                retweeted: false,
+                edited: false,
+                replyCount: 0,
+                deleted: false,
+                bookmark: false,
+                contextNote: null,
+                threadId: tweet.id,
+                visibility: 'public',
+                noteQuality: 'fleeting',
+                taskStatus: null,
+                tags: this.parseTags(text),
+                links: this.parseLinks(text),
+            };
+            this.currentSettings.tweets.unshift(newTweet);
+            tweet.replyCount = (tweet.replyCount || 0) + 1;
+            tweet.updated = Date.now();
+            await this.saveTweetsToFile();
+            this.replyModalTweet = null;
+            this.renderTweetUI(this.widgetEl);
+        };
+        inputArea.appendChild(replyBtn);
+        // Escキーで閉じる
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.replyModalTweet = null;
+                this.renderTweetUI(this.widgetEl);
+            }
+        });
     }
 }
