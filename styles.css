@@ -407,12 +407,6 @@
 .calendar-widget.has-background-image .calendar-header button { border-color: rgba(200,200,200,0.5); color: #f0f0f0 !important; }
 .calendar-widget.has-background-image .calendar-header button .svg-icon { color: #f0f0f0 !important; }
 
-/* YouTube Widget Styles */
-.youtube-widget .widget-content { padding: 0; display:flex; flex-direction: column; align-items: stretch; background-color: #000; }
-.youtube-embed-container { width: 100%; flex-grow: 1; display:flex; justify-content:center; align-items:center; aspect-ratio: 16 / 9; overflow: hidden; }
-.youtube-embed-container iframe { width: 100% !important; height: 100% !important; border: none; }
-.youtube-embed-container:empty::after { content: 'YouTube埋め込みコードをウィジェット設定で入力してください'; color: var(--text-muted); font-size: var(--font-ui-small); padding: 10px; text-align: center; }
-.youtube-widget.has-background-image .widget-content { background-color: transparent; }
 
 
 /* Settings Tab Styles */
@@ -932,4 +926,238 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 }
 .file-view-widget .file-content th {
   background: var(--background-secondary-alt, #222);
+}
+
+/* --- tweet-widget main Twitter風 --- */
+.tweet-post-box {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1.5px solid var(--background-modifier-border, #444);
+  margin-bottom: 12px;
+}
+.tweet-avatar-large img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.tweet-input-area-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tweet-textarea-main {
+  width: 100%;
+  min-height: 48px;
+  background: transparent;
+  border: none;
+  color: var(--text-normal);
+  font-size: 1.15em;
+  resize: vertical;
+  outline: none;
+  padding: 8px 0;
+}
+.tweet-textarea-main::placeholder {
+  color: var(--text-faint);
+  font-size: 1.1em;
+}
+.tweet-icon-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 2px;
+}
+.tweet-icon-btn-main {
+  background: none;
+  border: none;
+  color: #1d9bf0;
+  font-size: 1.35em;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 4px 8px;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+}
+.tweet-icon-btn-main:hover {
+  background: var(--background-modifier-hover);
+  color: #0a7cd6;
+}
+.tweet-file-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 0 0;
+}
+.tweet-file-image-main {
+  max-width: 320px;
+  max-height: 200px;
+  border-radius: 12px;
+  border: 1px solid var(--background-modifier-border, #444);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.tweet-file-link-main {
+  color: var(--text-accent);
+  text-decoration: underline;
+  font-size: 0.98em;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+.tweet-bottom-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 2px;
+}
+.tweet-char-count-main {
+  color: var(--text-faint);
+  font-size: 0.95em;
+  margin-right: 8px;
+}
+.tweet-post-btn-main {
+  background: var(--background-modifier-border, #444);
+  color: var(--text-normal);
+  border: none;
+  border-radius: 999px;
+  padding: 6px 18px;
+  font-weight: bold;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.tweet-post-btn-main:hover {
+  background: #1d9bf0;
+  color: #fff;
+}
+.tweet-list-main {
+  margin: 0;
+  padding: 0;
+}
+.tweet-item-main {
+  border-bottom: 1.5px solid var(--background-modifier-border, #444);
+  padding: 16px 0 8px 0;
+  margin: 0;
+}
+.tweet-item-header-main {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2px;
+}
+.tweet-item-avatar-main img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.tweet-item-userinfo-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1em;
+}
+.tweet-item-username-main {
+  font-weight: bold;
+  color: var(--text-normal);
+  margin-right: 4px;
+}
+.tweet-item-time-main {
+  color: var(--text-faint);
+  font-size: 0.97em;
+}
+.tweet-item-text-main {
+  font-size: 1.13em;
+  margin: 2px 0 0 0;
+  word-break: break-all;
+  color: var(--text-normal);
+}
+.tweet-item-files-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.tweet-item-image-main {
+  max-width: 320px;
+  max-height: 200px;
+  border-radius: 12px;
+  border: 1px solid var(--background-modifier-border, #444);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  display: block;
+  margin: 0 auto;
+}
+.tweet-item-link-main {
+  color: var(--text-accent);
+  text-decoration: underline;
+  font-size: 0.98em;
+  background: var(--background-secondary);
+  border-radius: 4px;
+  padding: 2px 6px;
+  margin-right: 4px;
+  margin-bottom: 4px;
+  display: inline-block;
+}
+.tweet-action-bar-main {
+  display: flex;
+  gap: 16px;
+  margin-top: 8px;
+  align-items: center;
+}
+.tweet-action-btn-main {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.15em;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 4px 8px;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tweet-action-btn-main:hover {
+  background: var(--background-modifier-hover);
+  color: #1d9bf0;
+}
+.tweet-action-count-main {
+  font-size: 0.98em;
+  margin-left: 2px;
+  color: var(--text-faint);
+}
+.tweet-item-badge-main {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 2px;
+  margin-right: 2px;
+  font-size: 1.1em;
+}
+.tweet-item-userid-main {
+  color: var(--text-faint);
+  font-size: 0.97em;
+  margin-left: 4px;
+}
+.tweet-emoji-picker-main {
+  z-index: 9999;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border, #444);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  max-width: 320px;
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }

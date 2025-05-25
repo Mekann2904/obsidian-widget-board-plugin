@@ -7,6 +7,7 @@ import { RecentNotesWidget } from './widgets/recentNotesWidget';
 import { ThemeSwitcherWidget } from './widgets/themeSwitcherWidget';
 import { TimerStopwatchWidget } from './widgets/timerStopwatchWidget';
 import { FileViewWidget } from './widgets/FileViewWidget';
+import { TweetWidget } from './widgets/tweetWidget';
 
 export const registeredWidgetImplementations: Map<string, new () => WidgetImplementation> = new Map();
 
@@ -18,6 +19,7 @@ registeredWidgetImplementations.set('recent-notes', RecentNotesWidget);
 registeredWidgetImplementations.set('theme-switcher', ThemeSwitcherWidget);
 registeredWidgetImplementations.set('timer-stopwatch', TimerStopwatchWidget);
 registeredWidgetImplementations.set('file-view-widget', FileViewWidget);
+registeredWidgetImplementations.set('tweet-widget', TweetWidget);
 
 // 新しいウィジェットを追加する場合：
 // 1. src/widgets/に新しいウィジェットファイルを作成 (例: newWidget.ts)

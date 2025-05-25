@@ -7,7 +7,7 @@ export interface WidgetConfig {
     id: string;
     type: string;
     title: string;
-    settings?: any;
+    settings?: any; // TweetWidgetSettings なども含む
 }
 
 // --- ウィジェット実装のインターフェース ---
@@ -49,4 +49,7 @@ export interface PluginGlobalSettings {
     boardGroups?: BoardGroup[];
     openBoardOnPomodoroEnd?: boolean;
     autoStartNextPomodoroSession?: boolean;
+    tweetDbLocation?: 'vault' | 'plugin' | 'custom';
+    tweetDbCustomPath?: string;
+    tweetWidgetAvatarUrl?: string;
 }
