@@ -34,4 +34,12 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     tweetDbLocation: 'vault',
     tweetDbCustomPath: '',
     tweetWidgetAvatarUrl: '',
+    geminiApiKey: '',
+    llm: {
+        gemini: {
+            apiKey: '',
+            model: 'gemini-2.0-flash-exp'
+        }
+    },
+    showAiHistory: false,
 };

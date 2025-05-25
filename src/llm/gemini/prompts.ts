@@ -1,0 +1,1 @@
+export const geminiPrompt = "次の内容に対して、親しみやすい日本語で短いリプライを作ってください: {tweet}"; 

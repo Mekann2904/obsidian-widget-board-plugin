@@ -1,6 +1,8 @@
 import { App, Notice, setIcon, MarkdownRenderer, Menu, TFile } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main';
+import { GeminiProvider } from '../llm/gemini/geminiApi';
+import { deobfuscate } from '../utils';
 
 export interface TweetWidgetFile {
     name: string;
@@ -33,6 +35,9 @@ export interface TweetWidgetTweet {
     bookmark?: boolean;
     noteQuality?: "fleeting" | "literature" | "permanent";
     taskStatus?: "todo" | "doing" | "done" | null;
+    userId?: string;
+    userName?: string;
+    verified?: boolean;
 }
 
 
@@ -546,17 +551,22 @@ export class TweetWidget implements WidgetImplementation {
 
         const header = item.createDiv({ cls: 'tweet-item-header-main' });
         const avatar = header.createDiv({ cls: 'tweet-item-avatar-main' });
-        let avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
-        if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+        let avatarUrl;
+        if (tweet.userId && tweet.userId.startsWith('@ai-')) {
+            avatarUrl = 'https://www.gravatar.com/avatar/?d=identicon&s=64'; // AI専用アバター
+        } else {
+            avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
+            if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+        }
         avatar.createEl('img', { attr: { src: avatarUrl, width: 36, height: 36 } });
 
         const userInfo = header.createDiv({ cls: 'tweet-item-userinfo-main' });
-        userInfo.createEl('span', { text: this.currentSettings.userName || 'あなた', cls: 'tweet-item-username-main' });
-        if (this.currentSettings.verified) {
+        userInfo.createEl('span', { text: tweet.userName || this.currentSettings.userName || 'あなた', cls: 'tweet-item-username-main' });
+        if (tweet.verified || this.currentSettings.verified) {
             const badge = userInfo.createSpan({ cls: 'tweet-item-badge-main' });
             setIcon(badge, 'badge-check');
         }
-        userInfo.createEl('span', { text: this.currentSettings.userId || '@you', cls: 'tweet-item-userid-main' });
+        userInfo.createEl('span', { text: tweet.userId || this.currentSettings.userId || '@you', cls: 'tweet-item-userid-main' });
         const timeText = '・' + this.formatTimeAgo(tweet.created) + (tweet.edited ? ' (編集済)' : '');
         userInfo.createEl('span', { text: timeText, cls: 'tweet-item-time-main' });
 
@@ -651,6 +661,78 @@ export class TweetWidget implements WidgetImplementation {
         const moreBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main more' });
         setIcon(moreBtn, 'more-horizontal');
         moreBtn.onclick = (e) => this.showMoreMenu(e, tweet);
+
+        // --- Geminiリプライボタン（自分のツイートのみ） ---
+        if ((this.currentSettings.userId === '@you' || !this.currentSettings.userId) && tweet.id && this.plugin.settings.llm?.gemini?.apiKey) {
+            const geminiBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main gemini-reply' });
+            setIcon(geminiBtn, 'bot');
+            geminiBtn.title = 'Geminiでリプライ生成';
+            geminiBtn.onclick = async (e) => {
+                e.stopPropagation();
+                geminiBtn.setAttribute('disabled', 'true');
+                geminiBtn.innerHTML = '...';
+                try {
+                    const llmGemini = this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' };
+                    // --- スレッド履歴を収集 ---
+                    const thread = this.collectThreadHistory(tweet);
+                    // スレッドを遡って直近のAI userIdを探す
+                    let aiUserId = this.findLatestAiUserIdInThread(tweet) || this.generateAiUserId();
+                    const replyText = await GeminiProvider.generateReply('', {
+                        apiKey: deobfuscate(llmGemini.apiKey || ''),
+                        tweetText: tweet.text,
+                        model: llmGemini.model || 'gemini-2.0-flash-exp',
+                        thread: thread
+                    });
+                    // AIリプライとして投稿
+                    const aiReply: TweetWidgetTweet = {
+                        id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                        text: replyText,
+                        created: Date.now(),
+                        updated: Date.now(),
+                        files: [],
+                        like: 0,
+                        liked: false,
+                        retweet: 0,
+                        retweeted: false,
+                        edited: false,
+                        replyCount: 0,
+                        deleted: false,
+                        bookmark: false,
+                        contextNote: null,
+                        threadId: tweet.id,
+                        visibility: 'public',
+                        noteQuality: 'fleeting',
+                        taskStatus: null,
+                        tags: this.parseTags(replyText),
+                        links: this.parseLinks(replyText),
+                        userId: aiUserId,
+                        userName: 'AI',
+                        verified: true
+                    };
+                    this.currentSettings.tweets.unshift(aiReply);
+                    tweet.replyCount = (tweet.replyCount || 0) + 1;
+                    tweet.updated = Date.now();
+                    await this.saveTweetsToFile();
+                    this.renderTweetUI(this.widgetEl);
+                } catch (err) {
+                    new Notice('Geminiリプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err)));
+                } finally {
+                    geminiBtn.removeAttribute('disabled');
+                    geminiBtn.innerHTML = '';
+                    setIcon(geminiBtn, 'bot');
+                }
+            };
+        }
+
+        // --- AIリプライなら会話履歴を下に表示 ---
+        if (tweet.userId && tweet.userId.startsWith('@ai-') && this.plugin.settings.showAiHistory) {
+            const aiHistoryDiv = item.createDiv({ cls: 'tweet-ai-history' });
+            aiHistoryDiv.createEl('div', { text: 'このAIとの会話履歴:', cls: 'tweet-ai-history-label' });
+            const aiHistory = this.getAiThreadHistory(tweet.userId);
+            aiHistory.forEach(h => {
+                aiHistoryDiv.createEl('div', { text: `${h.userName || (h.userId && h.userId.startsWith('@ai-') ? 'AI' : 'あなた')}: ${h.text}`, cls: 'tweet-ai-history-item' });
+            });
+        }
     }
 
     private showMoreMenu(event: MouseEvent, tweet: TweetWidgetTweet) {
@@ -887,5 +969,62 @@ export class TweetWidget implements WidgetImplementation {
                 this.renderTweetUI(this.widgetEl);
             }
         });
+    }
+
+    // AIリプライ用のuserId生成関数
+    private generateAiUserId(): string {
+        return `@ai-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    }
+
+    // スレッド履歴を収集する関数
+    private collectThreadHistory(tweet: TweetWidgetTweet): { role: string, content: string }[] {
+        const history: { role: string, content: string }[] = [];
+        let current: TweetWidgetTweet | undefined = tweet;
+        const tweetsById = new Map(this.currentSettings.tweets.map(t => [t.id, t]));
+        // 遡って親をたどる
+        while (current) {
+            const role = current.userId && current.userId.startsWith('@ai-') ? 'assistant' : 'user';
+            history.unshift({ role, content: current.text });
+            if (current.threadId) {
+                current = tweetsById.get(current.threadId);
+            } else {
+                break;
+            }
+        }
+        return history;
+    }
+
+    // AI IDごとの会話履歴を取得
+    private getAiThreadHistory(aiUserId: string): TweetWidgetTweet[] {
+        // そのAI IDのツイートと、その親をたどる
+        const result: TweetWidgetTweet[] = [];
+        const tweetsById = new Map(this.currentSettings.tweets.map(t => [t.id, t]));
+        // 最新のAIツイートを探す
+        const latestAi = this.currentSettings.tweets.find(t => t.userId === aiUserId);
+        let current = latestAi;
+        while (current) {
+            result.unshift(current);
+            if (current.threadId) {
+                current = tweetsById.get(current.threadId);
+            } else {
+                break;
+            }
+        }
+        return result;
+    }
+
+    // スレッドを遡って直近のAI userIdを探す
+    private findLatestAiUserIdInThread(tweet: TweetWidgetTweet): string | null {
+        const tweetsById = new Map(this.currentSettings.tweets.map(t => [t.id, t]));
+        let current: TweetWidgetTweet | undefined = tweet;
+        while (current) {
+            if (current.userId && current.userId.startsWith('@ai-')) return current.userId;
+            if (current.threadId) {
+                current = tweetsById.get(current.threadId);
+            } else {
+                break;
+            }
+        }
+        return null;
     }
 }

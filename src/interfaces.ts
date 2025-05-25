@@ -36,6 +36,20 @@ export interface BoardGroup {
     hotkey?: string;
 }
 
+// --- LLMグローバル設定用インターフェース ---
+export interface LLMSettings {
+    gemini: {
+        apiKey: string;
+        model: string;
+    };
+    openai?: {
+        apiKey: string;
+        model: string;
+        baseUrl: string;
+    };
+    // 他のLLMもここに追加可能
+}
+
 // --- プラグイン全体の新しいトップレベル設定インターフェース ---
 export interface PluginGlobalSettings {
     boards: BoardConfiguration[];
@@ -52,4 +66,7 @@ export interface PluginGlobalSettings {
     tweetDbLocation?: 'vault' | 'plugin' | 'custom';
     tweetDbCustomPath?: string;
     tweetWidgetAvatarUrl?: string;
+    geminiApiKey?: string;
+    llm?: LLMSettings;
+    showAiHistory?: boolean;
 }
