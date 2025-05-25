@@ -917,3 +917,19 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .memo-widget-edit-container, .memo-widget-container {
     overflow: visible !important;
 }
+
+/* FileViewWidgetのMarkdownテーブル用スタイル */
+.file-view-widget .file-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+.file-view-widget .file-content th,
+.file-view-widget .file-content td {
+  border: 1px solid var(--background-modifier-border, #444);
+  padding: 4px 8px;
+  text-align: left;
+}
+.file-view-widget .file-content th {
+  background: var(--background-secondary-alt, #222);
+}
