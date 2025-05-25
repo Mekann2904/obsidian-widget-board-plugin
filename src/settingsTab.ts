@@ -685,7 +685,56 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     fixedHeightSettingEl.style.display = 'none';
                 }
 
+            } else if (widget.type === 'file-view-widget') {
+                // FileViewWidgetの高さ設定
+                const currentSettings = widget.settings || {};
+                const { body: fileViewDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
 
+                let fixedHeightSettingEl: HTMLElement | null = null;
+
+                new Setting(fileViewDetailBody)
+                    .setName('表示エリアの高さモード')
+                    .setDesc('自動調整（内容にfit）または固定高さを選択')
+                    .addDropdown(dropdown => {
+                        dropdown.addOption('auto', '自動（内容にfit）');
+                        dropdown.addOption('fixed', '固定');
+                        dropdown.setValue(currentSettings.heightMode || 'auto')
+                            .onChange(async (value) => {
+                                currentSettings.heightMode = value;
+                                await this.plugin.saveSettings(board.id);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                if (fixedHeightSettingEl) {
+                                    fixedHeightSettingEl.style.display = (value === 'fixed') ? '' : 'none';
+                                }
+                            });
+                    });
+
+                const heightSetting = new Setting(fileViewDetailBody)
+                    .setName('固定高さ(px)')
+                    .setDesc('固定モード時の高さ（px）')
+                    .addText(text => {
+                        text.setPlaceholder('200')
+                            .setValue(String(currentSettings.fixedHeightPx ?? 200))
+                            .onChange(async (v) => {
+                                // 入力途中は何もしない
+                            });
+                        text.inputEl.addEventListener('blur', async () => {
+                            const v = text.inputEl.value;
+                            const n = parseInt(v);
+                            if (!isNaN(n) && n > 0) {
+                                currentSettings.fixedHeightPx = n;
+                                await this.plugin.saveSettings(board.id);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            } else {
+                                new Notice('1以上の半角数値を入力してください。');
+                                text.setValue(String(currentSettings.fixedHeightPx ?? 200));
+                            }
+                        });
+                    });
+                fixedHeightSettingEl = heightSetting.settingEl;
+                if ((currentSettings.heightMode || 'auto') !== 'fixed' && fixedHeightSettingEl) {
+                    fixedHeightSettingEl.style.display = 'none';
+                }
             } else if (widget.type === 'calendar') {
                 widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings || {}) } as CalendarWidgetSettings;
                 if (Object.keys(widget.settings).length > 0) {
