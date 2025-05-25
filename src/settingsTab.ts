@@ -1,5 +1,5 @@
 // src/settingsTab.ts
-import { App, PluginSettingTab, Setting, Notice, DropdownComponent, SliderComponent, TextComponent, Modal } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, DropdownComponent, SliderComponent, TextComponent, Modal, TFile, TFolder, FuzzySuggestModal } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import type { BoardConfiguration, WidgetConfig } from './interfaces';
 import { DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
@@ -9,6 +9,7 @@ import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget'
 import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/calendarWidget';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
+import { DEFAULT_TWEET_WIDGET_SETTINGS } from './widgets/tweetWidget';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
 
 // ウィジェットタイプに対応する表示名のマッピング
@@ -20,6 +21,7 @@ const WIDGET_TYPE_DISPLAY_NAMES: { [key: string]: string } = {
     'recent-notes': '最近編集したノート',
     'theme-switcher': 'テーマ切り替え',
     'file-view': 'ファイルビューア',
+    'tweet-widget': 'つぶやき',
 };
 
 /**
@@ -204,6 +206,111 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     this.plugin.settings.timerStopwatchNotificationVolume = value;
                     valueLabel.textContent = String(value.toFixed(2));
                     await this.plugin.saveSettings();
+                });
+            });
+
+        // --- つぶやき（グローバル設定） ---
+        const tweetGlobalAcc = createAccordion('つぶやき（グローバル設定）', false);
+        // DB保存先
+        let customPathSettingEl: HTMLElement | null = null;
+        new Setting(tweetGlobalAcc.body)
+            .setName('保存先')
+            .setDesc('つぶやきデータ（tweets.json）の保存場所を選択できます。')
+            .addDropdown(dropdown => {
+                dropdown.addOption('vault', 'Vaultルート（デフォルト）');
+                dropdown.addOption('custom', 'カスタムパス（Vault内のフォルダ）');
+                dropdown.setValue(this.plugin.settings.tweetDbLocation || 'vault')
+                    .onChange(async (value) => {
+                        this.plugin.settings.tweetDbLocation = value as 'vault' | 'custom';
+                        await this.plugin.saveSettings();
+                        if (customPathSettingEl) {
+                            customPathSettingEl.style.display = (value === 'custom') ? '' : 'none';
+                        }
+                    });
+            });
+        // カスタムパス入力欄
+        const customPathSetting = new Setting(tweetGlobalAcc.body)
+            .setName('カスタムパス')
+            .setDesc('Vault内のフォルダのみ指定可能（例: myfolder）→ tweets.jsonが自動で付きます')
+            .addText(text => {
+                text.setPlaceholder('myfolder')
+                    .setValue(this.plugin.settings.tweetDbCustomPath?.replace(/\/tweets\.json$/, '') || '')
+                    .onChange(async (v) => {
+                        // 入力途中は何もしない
+                    });
+                text.inputEl.addEventListener('blur', async () => {
+                    let v = text.inputEl.value.trim();
+                    if (v.startsWith('/') || v.match(/^([A-Za-z]:\\|\\|~)/)) {
+                        new Notice('Vault内の相対パスのみ指定できます。絶対パスやVault外は不可です。');
+                        text.setValue(this.plugin.settings.tweetDbCustomPath?.replace(/\/tweets\.json$/, '') || '');
+                        return;
+                    }
+                    // tweets.jsonが末尾についていなければ、TFolderか判定
+                    if (!v.endsWith('/tweets.json')) {
+                        const folder = this.app.vault.getAbstractFileByPath(v) as TFolder;
+                        if (!folder || !(folder instanceof TFolder)) {
+                            new Notice('Vault内のフォルダのみ指定できます。');
+                            text.setValue(this.plugin.settings.tweetDbCustomPath?.replace(/\/tweets\.json$/, '') || '');
+                            return;
+                        }
+                        v = v.replace(/\/$/, '') + '/tweets.json';
+                    }
+                    this.plugin.settings.tweetDbCustomPath = v;
+                    await this.plugin.saveSettings();
+                });
+            })
+            .addExtraButton(btn => {
+                btn.setIcon('search');
+                btn.setTooltip('Vault内のフォルダをサジェスト');
+                btn.onClick(() => {
+                    // フォルダのみをサジェスト
+                    const folders = this.app.vault.getAllLoadedFiles()
+                        .map(f => f.parent)
+                        .filter((f): f is TFolder => !!f && f instanceof TFolder);
+                    const uniqueFolders = Array.from(new Set(folders.map(f => f.path))).sort();
+                    class FolderSuggestModal extends FuzzySuggestModal<string> {
+                        constructor(app: App, private paths: string[], private onChoose: (path: string) => void) {
+                            super(app);
+                            this.setPlaceholder('Vault内のフォルダを検索...');
+                        }
+                        getItems(): string[] { return this.paths; }
+                        getItemText(item: string): string { return item; }
+                        onChooseItem(item: string) { this.onChoose(item); }
+                    }
+                    new FolderSuggestModal(this.app, uniqueFolders, (chosenPath) => {
+                        const fullPath = chosenPath.replace(/\/$/, '') + '/tweets.json';
+                        const textComp = customPathSetting.components[0] as TextComponent;
+                        if (textComp && textComp.inputEl) textComp.inputEl.value = fullPath;
+                        this.plugin.settings.tweetDbCustomPath = fullPath;
+                        this.plugin.saveSettings();
+                    }).open();
+                });
+            });
+        customPathSettingEl = customPathSetting.settingEl;
+        if ((this.plugin.settings.tweetDbLocation || 'vault') !== 'custom' && customPathSettingEl) {
+            customPathSettingEl.style.display = 'none';
+        }
+        // ユーザーアイコンURL
+        new Setting(tweetGlobalAcc.body)
+            .setName('ユーザーアイコンURL')
+            .setDesc('つぶやきウィジェットで使うアバター画像のURLを指定してください（例: https://.../avatar.png）')
+            .addText(text => {
+                text.setPlaceholder('https://example.com/avatar.png')
+                    .setValue(this.plugin.settings.tweetWidgetAvatarUrl || '')
+                    .onChange(async (v) => {
+                        // 入力途中は何もしない
+                    });
+                text.inputEl.addEventListener('blur', async () => {
+                    const v = text.inputEl.value.trim();
+                    this.plugin.settings.tweetWidgetAvatarUrl = v;
+                    await this.plugin.saveSettings();
+                    // すべてのtweet-widgetインスタンスに反映
+                    this.plugin.settings.boards.forEach(board => {
+                        board.widgets.filter(w => w.type === 'tweet-widget').forEach(w => {
+                            if (!w.settings) w.settings = {};
+                            w.settings.avatarUrl = v;
+                        });
+                    });
                 });
             });
 
@@ -477,6 +584,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         createAddButtonToBoard("テーマ切り替え", "theme-switcher", {});
         createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS });
         createAddButtonToBoard("ファイルビューア追加", "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 });
+        createAddButtonToBoard("つぶやき追加", "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS);
 
         this.renderWidgetListForBoard(widgetListEl, board);
     }
