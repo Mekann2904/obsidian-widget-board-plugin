@@ -851,13 +851,14 @@ export class PomodoroWidget implements WidgetImplementation {
                     const lines = existing.split('\n').filter(l => l.trim() !== '');
                     if (lines.length > 1) {
                         for (let i = 1; i < lines.length; i++) {
-                            const [date, start, end, memo] = lines[i].split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+                            // カラム順: date, start, end, sessionType, memo
+                            const [date, start, end, sessionType, memo] = lines[i].split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
                             allLogs.push({
                                 date: date || '',
                                 start: start || '',
                                 end: end || '',
+                                sessionType: (sessionType as 'work'|'shortBreak'|'longBreak') || 'work',
                                 memo: memo ? memo.replace(/^"|"$/g, '').replace(/""/g, '"') : '',
-                                sessionType: 'work',
                             });
                         }
                     }
