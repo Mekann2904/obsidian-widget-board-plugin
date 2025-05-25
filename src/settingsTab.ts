@@ -19,6 +19,7 @@ const WIDGET_TYPE_DISPLAY_NAMES: { [key: string]: string } = {
     'calendar': 'カレンダー',
     'recent-notes': '最近編集したノート',
     'theme-switcher': 'テーマ切り替え',
+    'file-view': 'ファイルビューア',
 };
 
 /**
@@ -475,6 +476,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         createAddButtonToBoard("最近編集したノート", "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS);
         createAddButtonToBoard("テーマ切り替え", "theme-switcher", {});
         createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS });
+        createAddButtonToBoard("ファイルビューア追加", "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 });
 
         this.renderWidgetListForBoard(widgetListEl, board);
     }
