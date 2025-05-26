@@ -55,6 +55,63 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
         containerEl.createEl('h2', { text: 'ウィジェットボード設定' });
+        // --- ベースフォルダ入力欄 ---
+        let customPathSettingEl: HTMLElement | null = null;
+        const baseFolderSetting = new Setting(containerEl)
+            .setName('ベースフォルダ（グローバル）')
+            .setDesc('全ウィジェット共通のデータ保存先となるVault内のフォルダを指定します（例: myfolder）。\nこのフォルダ配下に各ウィジェットのデータやノートが保存されます。');
+        baseFolderSetting.addText(text => {
+            text.setPlaceholder('myfolder')
+                .setValue(this.plugin.settings.baseFolder || '')
+                .onChange(async (v) => {
+                    // 入力途中は何もしない
+                });
+            text.inputEl.addEventListener('blur', async () => {
+                let v = text.inputEl.value.trim();
+                if (v.startsWith('/') || v.match(/^([A-Za-z]:\\|\\|~)/)) {
+                    new Notice('Vault内の相対パスのみ指定できます。絶対パスやVault外は不可です。');
+                    text.setValue(this.plugin.settings.baseFolder || '');
+                    return;
+                }
+                // フォルダ存在チェック
+                const folder = this.app.vault.getAbstractFileByPath(v);
+                if (!folder || folder.constructor.name !== 'TFolder') {
+                    new Notice('Vault内のフォルダのみ指定できます。');
+                    text.setValue(this.plugin.settings.baseFolder || '');
+                    return;
+                }
+                this.plugin.settings.baseFolder = v;
+                await this.plugin.saveSettings();
+            });
+            // サジェストボタン用クロージャ
+            baseFolderSetting.addExtraButton(btn => {
+                btn.setIcon('search');
+                btn.setTooltip('Vault内のフォルダをサジェスト');
+                btn.onClick(() => {
+                    const folders = this.app.vault.getAllLoadedFiles()
+                        .filter((f): f is TFolder => f instanceof TFolder);
+                    class FolderSuggestModal extends FuzzySuggestModal<TFolder> {
+                        constructor(app: App, private folders: TFolder[], private onChoose: (folder: TFolder) => void) {
+                            super(app);
+                            this.setPlaceholder('Vault内のフォルダを検索...');
+                        }
+                        getItems(): TFolder[] { return this.folders; }
+                        getItemText(item: TFolder): string { return item.path; }
+                        onChooseItem(item: TFolder) { this.onChoose(item); }
+                    }
+                    new FolderSuggestModal(this.app, folders, (folder) => {
+                        text.setValue(folder.path);
+                        this.plugin.settings.baseFolder = folder.path;
+                        this.plugin.saveSettings();
+                    }).open();
+                });
+            });
+        });
+
+        customPathSettingEl = baseFolderSetting.settingEl as HTMLElement;
+        if (customPathSettingEl) {
+            customPathSettingEl.style.display = (this.plugin.settings.tweetDbLocation || 'vault') !== 'custom' ? 'none' : '';
+        }
 
         // --- アコーディオン生成ヘルパー (トップレベル用) ---
         const createAccordion = (title: string, defaultOpen: boolean = false) => {
@@ -265,7 +322,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         // --- つぶやき（グローバル設定） ---
         const tweetGlobalAcc = createAccordion('つぶやき（グローバル設定）', false);
         // DB保存先
-        let customPathSettingEl: HTMLElement | null = null;
         new Setting(tweetGlobalAcc.body)
             .setName('保存先')
             .setDesc('つぶやきデータ（tweets.json）の保存場所を選択できます。')
@@ -276,6 +332,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.tweetDbLocation = value as 'vault' | 'custom';
                         await this.plugin.saveSettings();
+                        // もしcustomPathSettingElがHTMLElementなら表示切り替え
                         if (customPathSettingEl) {
                             customPathSettingEl.style.display = (value === 'custom') ? '' : 'none';
                         }
@@ -318,68 +375,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
-        // カスタムパス入力欄
-        const customPathSetting = new Setting(tweetGlobalAcc.body)
-            .setName('カスタムパス')
-            .setDesc('Vault内のフォルダのみ指定可能（例: myfolder）→ tweets.jsonが自動で付きます')
-            .addText(text => {
-                text.setPlaceholder('myfolder')
-                    .setValue(this.plugin.settings.tweetDbCustomPath?.replace(/\/tweets\.json$/, '') || '')
-                    .onChange(async (v) => {
-                        // 入力途中は何もしない
-                    });
-                text.inputEl.addEventListener('blur', async () => {
-                    let v = text.inputEl.value.trim();
-                    if (v.startsWith('/') || v.match(/^([A-Za-z]:\\|\\|~)/)) {
-                        new Notice('Vault内の相対パスのみ指定できます。絶対パスやVault外は不可です。');
-                        text.setValue(this.plugin.settings.tweetDbCustomPath?.replace(/\/tweets\.json$/, '') || '');
-                        return;
-                    }
-                    // tweets.jsonが末尾についていなければ、TFolderか判定
-                    if (!v.endsWith('/tweets.json')) {
-                        const folder = this.app.vault.getAbstractFileByPath(v) as TFolder;
-                        if (!folder || !(folder instanceof TFolder)) {
-                            new Notice('Vault内のフォルダのみ指定できます。');
-                            text.setValue(this.plugin.settings.tweetDbCustomPath?.replace(/\/tweets\.json$/, '') || '');
-                            return;
-                        }
-                        v = v.replace(/\/$/, '') + '/tweets.json';
-                    }
-                    this.plugin.settings.tweetDbCustomPath = v;
-                    await this.plugin.saveSettings();
-                });
-            })
-            .addExtraButton(btn => {
-                btn.setIcon('search');
-                btn.setTooltip('Vault内のフォルダをサジェスト');
-                btn.onClick(() => {
-                    // フォルダのみをサジェスト
-                    const folders = this.app.vault.getAllLoadedFiles()
-                        .map(f => f.parent)
-                        .filter((f): f is TFolder => !!f && f instanceof TFolder);
-                    const uniqueFolders = Array.from(new Set(folders.map(f => f.path))).sort();
-                    class FolderSuggestModal extends FuzzySuggestModal<string> {
-                        constructor(app: App, private paths: string[], private onChoose: (path: string) => void) {
-                            super(app);
-                            this.setPlaceholder('Vault内のフォルダを検索...');
-                        }
-                        getItems(): string[] { return this.paths; }
-                        getItemText(item: string): string { return item; }
-                        onChooseItem(item: string) { this.onChoose(item); }
-                    }
-                    new FolderSuggestModal(this.app, uniqueFolders, (chosenPath) => {
-                        const fullPath = chosenPath.replace(/\/$/, '') + '/tweets.json';
-                        const textComp = customPathSetting.components[0] as TextComponent;
-                        if (textComp && textComp.inputEl) textComp.inputEl.value = fullPath;
-                        this.plugin.settings.tweetDbCustomPath = fullPath;
-                        this.plugin.saveSettings();
-                    }).open();
-                });
-            });
-        customPathSettingEl = customPathSetting.settingEl;
-        if ((this.plugin.settings.tweetDbLocation || 'vault') !== 'custom' && customPathSettingEl) {
-            customPathSettingEl.style.display = 'none';
-        }
         // ユーザーアイコンURL
         new Setting(tweetGlobalAcc.body)
             .setName('ユーザーアイコンURL')

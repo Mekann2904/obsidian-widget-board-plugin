@@ -141,7 +141,12 @@ export class TweetWidget implements WidgetImplementation {
         const notifTab = tabBar.createEl('button', { text: '通知', cls: 'tweet-tab-btn' });
         if (this.currentTab === 'home') homeTab.classList.add('active');
         if (this.currentTab === 'notification') notifTab.classList.add('active');
-        homeTab.onclick = () => { this.currentTab = 'home'; this.renderPostUI(this.widgetEl); };
+        homeTab.onclick = async () => {
+            this.currentTab = 'home';
+            this.detailPostId = null;
+            await this.loadTweetsFromFile();
+            this.renderPostUI(this.widgetEl);
+        };
         notifTab.onclick = () => { this.currentTab = 'notification'; this.renderPostUI(this.widgetEl); };
         // --- タブごとに表示内容を切り替え ---
         if (this.currentTab === 'notification') {
@@ -191,7 +196,7 @@ export class TweetWidget implements WidgetImplementation {
                     if (n.from.userId && n.from.userId.startsWith('@ai-')) {
                         const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
                         if (aiAvatars.length > 0) {
-                            const idx = this.getAiAvatarIndex(n.from.userId, aiAvatars.length);
+                            const idx = this.getAiAvatarIndex(n.from.userId || '', aiAvatars.length);
                             avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
                         } else {
                             avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -267,10 +272,9 @@ export class TweetWidget implements WidgetImplementation {
                 const replyingToPost = this.currentSettings.posts.find(t => t.id === this.replyingToParentId);
                 if (replyingToPost) {
                     if (replyingToPost.userId && replyingToPost.userId.startsWith('@ai-')) {
-                        // AIアバター選択ロジック
                         const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
                         if (aiAvatars.length > 0) {
-                            const idx = this.getAiAvatarIndex(replyingToPost.userId, aiAvatars.length);
+                            const idx = this.getAiAvatarIndex(replyingToPost.userId || '', aiAvatars.length);
                             avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
                         } else {
                             avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -696,7 +700,7 @@ export class TweetWidget implements WidgetImplementation {
         if (post.userId && post.userId.startsWith('@ai-')) {
             const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
             if (aiAvatars.length > 0) {
-                const idx = this.getAiAvatarIndex(post.userId, aiAvatars.length);
+                const idx = this.getAiAvatarIndex(post.userId || '', aiAvatars.length);
                 avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
             } else {
                 avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -850,9 +854,12 @@ export class TweetWidget implements WidgetImplementation {
         const rtBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main retweet' });
         setIcon(rtBtn, 'repeat-2');
         if (post.retweeted) rtBtn.addClass('active');
+        else rtBtn.removeClass('active');
         rtBtn.onclick = async () => {
             post.retweeted = !post.retweeted;
             post.retweet = (post.retweet || 0) + (post.retweeted ? 1 : -1);
+            if (post.retweeted) rtBtn.addClass('active');
+            else rtBtn.removeClass('active');
             await this.saveTweetsToFile();
             this.renderPostUI(this.widgetEl);
         };
@@ -861,9 +868,12 @@ export class TweetWidget implements WidgetImplementation {
         const likeBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main like' });
         setIcon(likeBtn, 'heart');
         if (post.liked) likeBtn.addClass('active');
+        else likeBtn.removeClass('active');
         likeBtn.onclick = async () => {
             post.liked = !post.liked;
             post.like = (post.like || 0) + (post.liked ? 1 : -1);
+            if (post.liked) likeBtn.addClass('active');
+            else likeBtn.removeClass('active');
             await this.saveTweetsToFile();
             this.renderPostUI(this.widgetEl);
         };
@@ -872,8 +882,11 @@ export class TweetWidget implements WidgetImplementation {
         const bookmarkBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main bookmark' });
         setIcon(bookmarkBtn, 'bookmark');
         if (post.bookmark) bookmarkBtn.addClass('active');
+        else bookmarkBtn.removeClass('active');
         bookmarkBtn.onclick = async () => {
             post.bookmark = !post.bookmark;
+            if (post.bookmark) bookmarkBtn.addClass('active');
+            else bookmarkBtn.removeClass('active');
             await this.saveTweetsToFile();
             this.renderPostUI(this.widgetEl);
         };
@@ -983,7 +996,7 @@ export class TweetWidget implements WidgetImplementation {
                 if (r.userId && r.userId.startsWith('@ai-')) {
                     const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
                     if (aiAvatars.length > 0) {
-                        const i = this.getAiAvatarIndex(r.userId, aiAvatars.length);
+                        const i = this.getAiAvatarIndex(r.userId || '', aiAvatars.length);
                         avatarUrl = aiAvatars[i] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
                     } else {
                         avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -1038,7 +1051,20 @@ export class TweetWidget implements WidgetImplementation {
                 this.currentSettings.posts = this.currentSettings.posts.filter(t => t.id !== post.id);
                 await this.saveTweetsToFile();
                 this.renderPostUI(this.widgetEl);
-            }));
+            })
+        );
+        menu.addItem(item => item
+            .setTitle('🧹 スレッドを完全削除')
+            .setIcon('trash')
+            .onClick(async () => {
+                if (!confirm('このスレッド（親＋リプライ）を完全に削除しますか？（元に戻せません）')) return;
+                // 親＋リプライ＋多段リプライをすべて削除
+                const threadIds = this.collectThreadIdsRecursive(post.id, this.currentSettings.posts);
+                this.currentSettings.posts = this.currentSettings.posts.filter(t => !threadIds.includes(t.id));
+                await this.saveTweetsToFile();
+                this.renderPostUI(this.widgetEl);
+            })
+        );
         menu.addSeparator();
 
         const addMenuItems = (
@@ -1085,11 +1111,9 @@ export class TweetWidget implements WidgetImplementation {
                 const date = new Date(post.created).toISOString().split('T')[0];
                 const sanitizedText = post.text.slice(0, 30).replace(/[\\/:*?"<>|#\[\]]/g, '').trim();
                 let contextFolder = "ContextNotes";
-                const settings = (this.plugin as any).settings || {};
-                if (settings.tweetDbLocation === 'custom' && settings.tweetDbCustomPath) {
-                    const customBase = settings.tweetDbCustomPath.replace(/\/posts\.json$/, '');
-                    const customBase2 = settings.tweetDbCustomPath.replace(/\/posts\.json$/, '').replace(/\/$/, '');
-                    contextFolder = customBase2 + '/ContextNotes';
+                const baseFolder = (this.plugin as any).settings.baseFolder;
+                if (baseFolder) {
+                    contextFolder = baseFolder + '/ContextNotes';
                 }
                 if (!await this.app.vault.adapter.exists(contextFolder)) {
                     await this.app.vault.createFolder(contextFolder);
@@ -1163,30 +1187,69 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     private renderReplyModal(container: HTMLElement, post: TweetWidgetPost) {
-        // バックドロップ
-        const backdrop = container.createDiv({ cls: 'tweet-reply-modal-backdrop' });
+        // バックドロップとモーダルはdocument.body直下に
+        const backdrop = document.createElement('div');
+        backdrop.className = 'tweet-reply-modal-backdrop';
         backdrop.onclick = (e) => {
             if (e.target === backdrop) {
                 this.replyModalPost = null;
                 this.renderPostUI(this.widgetEl);
+                backdrop.remove();
             }
         };
-        // モーダル本体
-        const modal = backdrop.createDiv({ cls: 'tweet-reply-modal' });
+        document.body.appendChild(backdrop);
+        const modal = document.createElement('div');
+        modal.className = 'tweet-reply-modal';
+        backdrop.appendChild(modal);
+        // --- ウィジェット中央の絶対座標を取得する関数 ---
+        function getWidgetAbsoluteCenter(widgetEl: HTMLElement): { x: number, y: number } {
+            const rect = widgetEl.getBoundingClientRect();
+            let x = rect.left + rect.width / 2 + window.scrollX;
+            let y = rect.top + rect.height / 2 + window.scrollY;
+            let parent = widgetEl.parentElement;
+            while (parent) {
+                if (parent.scrollLeft) x -= parent.scrollLeft;
+                if (parent.scrollTop) y -= parent.scrollTop;
+                parent = parent.parentElement;
+            }
+            return { x, y };
+        }
+        setTimeout(() => {
+            const { x, y } = getWidgetAbsoluteCenter(this.widgetEl);
+            modal.style.position = 'absolute';
+            modal.style.left = `${x}px`;
+            modal.style.top = `${y}px`;
+            modal.style.transform = 'translate(-50%, -50%)';
+            modal.style.margin = '0';
+            modal.style.zIndex = '100000';
+        }, 0);
+        // 以降、modalに内容をappendChildで追加
         // ヘッダー
-        const header = modal.createDiv({ cls: 'tweet-reply-modal-header' });
-        header.createEl('span', { text: '返信' });
-        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        const header = document.createElement('div');
+        header.className = 'tweet-reply-modal-header';
+        const headerTitle = document.createElement('span');
+        headerTitle.textContent = '返信';
+        header.appendChild(headerTitle);
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.className = 'tweet-reply-modal-close';
         closeBtn.onclick = () => {
             this.replyModalPost = null;
             this.renderPostUI(this.widgetEl);
+            backdrop.remove();
         };
+        header.appendChild(closeBtn);
+        modal.appendChild(header);
         // 返信先ポスト簡易表示
-        const postBox = modal.createDiv({ cls: 'tweet-reply-modal-post' });
+        const postBox = document.createElement('div');
+        postBox.className = 'tweet-reply-modal-post';
+        modal.appendChild(postBox);
         const postsById = new Map<string, TweetWidgetPost>([[post.id, post]]);
         this.renderSinglePost(post, postBox, postsById);
         // 入力欄
-        const inputArea = modal.createDiv({ cls: 'tweet-reply-modal-input' });
+        const inputArea = document.createElement('div');
+        inputArea.className = 'tweet-reply-modal-input';
+        modal.appendChild(inputArea);
         const textarea = document.createElement('textarea');
         textarea.className = 'tweet-reply-modal-textarea';
         textarea.placeholder = '返信をポスト';
@@ -1229,6 +1292,7 @@ export class TweetWidget implements WidgetImplementation {
             await this.saveTweetsToFile();
             this.replyModalPost = null;
             this.renderPostUI(this.widgetEl);
+            backdrop.remove();
             // AI自動リプライは親ポスト（post）を渡す
             if (newPost.userId && newPost.userId.startsWith('@ai-')) {
                 // AIの投稿にはAI自動リプライを発火しない
@@ -1258,6 +1322,7 @@ export class TweetWidget implements WidgetImplementation {
             if (e.key === 'Escape') {
                 this.replyModalPost = null;
                 this.renderPostUI(this.widgetEl);
+                backdrop.remove();
             }
         });
     }
@@ -1267,5 +1332,15 @@ export class TweetWidget implements WidgetImplementation {
         let hash = 0;
         for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
         return Math.abs(hash) % len;
+    }
+
+    // --- 追加: スレッド内の全子孫ポストIDを再帰的に集める ---
+    private collectThreadIdsRecursive(rootId: string, posts: TweetWidgetPost[]): string[] {
+        const ids = [rootId];
+        const children = posts.filter(t => t.threadId === rootId);
+        for (const child of children) {
+            ids.push(...this.collectThreadIdsRecursive(child.id, posts));
+        }
+        return ids;
     }
 }

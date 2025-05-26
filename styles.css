@@ -1207,16 +1207,15 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   border: 1px solid var(--background-modifier-border, #444);
 }
 .tweet-detail-main {
-  background: #262b33;
-  border-radius: 16px;
-  padding: 28px 22px;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: 0 !important;
   margin: 0 0 24px 0;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.13);
-  font-size: 1.13em;
-  border: 1.5px solid var(--background-modifier-border, #444);
 }
 .tweet-detail-reply {
   margin-left: 0;
+  padding: 0 !important;
   position: relative;
 }
 .tweet-thread-reply-wrapper {
@@ -1624,24 +1623,25 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.55);
-  z-index: 10000;
+  z-index: 99999 !important;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .tweet-reply-modal {
+  position: absolute !important;
+  min-width: 540px;
+  max-width: 98vw;
+  width: 700px;
+  max-height: 92vh;
   background: var(--background-secondary, #23272e);
   border-radius: 20px;
   box-shadow: 0 4px 32px rgba(0,0,0,0.22);
-  padding: 0 0 18px 0;
-  min-width: 340px;
-  max-width: 98vw;
-  width: 480px;
-  max-height: 92vh;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  position: relative;
+  z-index: 100000 !important;
+  padding: 0 0 18px 0;
 }
 .tweet-reply-modal-header {
   display: flex;
@@ -1712,14 +1712,33 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   background: #A68AF9;
   color: #fff;
 }
-@media (max-width: 600px) {
+@media (max-width: 800px) {
   .tweet-reply-modal {
     min-width: 0;
     width: 98vw;
     padding: 0 0 8px 0;
+    left: 50% !important;
+    top: 4vh !important;
+    transform: translate(-50%, 0) !important;
   }
   .tweet-reply-modal-header, .tweet-reply-modal-tweet, .tweet-reply-modal-input {
     padding-left: 8px;
     padding-right: 8px;
   }
+}
+
+.tweet-reply-modal-header,
+.tweet-reply-modal-tweet,
+.tweet-reply-modal-input {
+  padding-left: 32px;
+  padding-right: 32px;
+}
+
+.tweet-reply-modal-input {
+  padding-bottom: 12px;
+}
+
+.tweet-action-btn-main.active {
+  color: #8a5cf5;
+  background: var(--background-modifier-hover);
 }

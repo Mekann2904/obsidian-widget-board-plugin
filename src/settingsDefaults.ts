@@ -53,4 +53,5 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     aiReplyDelayMinMs: 1500,
     /** AIリプライの最大遅延（ms） */
     aiReplyDelayMaxMs: 7000,
+    baseFolder: '',
 };

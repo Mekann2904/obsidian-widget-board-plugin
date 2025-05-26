@@ -90,4 +90,8 @@ export interface PluginGlobalSettings {
      * AIリプライの最大遅延（ms）
      */
     aiReplyDelayMaxMs?: number;
+    /**
+     * 全ウィジェット共通のデータ保存先となるVault内のフォルダ
+     */
+    baseFolder?: string;
 }
