@@ -52,6 +52,7 @@ export interface TweetWidgetSettings {
     userName?: string;
     userId?: string;
     verified?: boolean;
+    aiDebateMaxTurns?: number; // AI議論の最大ターン数
 }
 
 export const DEFAULT_TWEET_WIDGET_SETTINGS: TweetWidgetSettings = {
@@ -60,6 +61,7 @@ export const DEFAULT_TWEET_WIDGET_SETTINGS: TweetWidgetSettings = {
     userName: 'あなた',
     userId: '@you',
     verified: false,
+    aiDebateMaxTurns: 5,
 };
 
 export class TweetWidget implements WidgetImplementation {
@@ -77,6 +79,21 @@ export class TweetWidget implements WidgetImplementation {
     private detailPostId: string | null = null;
     private replyModalPost: TweetWidgetPost | null = null;
     private currentTab: 'home' | 'notification' = 'home';
+
+    // --- AI議論の役割・フェーズ定義 ---
+    private AI_DEBATE_ROLES = [
+        { userId: '@ai-1', userName: '肯定派AI', role: '肯定派', prompt: 'あなたはこの議題に賛成の立場で主張してください。' },
+        { userId: '@ai-2', userName: '否定派AI', role: '否定派', prompt: 'あなたはこの議題に反対の立場で主張してください。' },
+        { userId: '@ai-3', userName: '中立AI', role: '中立', prompt: 'あなたは中立的な立場でバランスよく意見を述べてください。' },
+        { userId: '@ai-facilitator', userName: 'ファシリテーターAI', role: '進行役', prompt: '議論をまとめて結論を出してください。' }
+    ];
+
+    private AI_DEBATE_PHASES = [
+        { key: 'assertion', label: '主張フェーズ', desc: '自分の立場から意見を述べてください。' },
+        { key: 'question', label: '質問フェーズ', desc: '他のAIに質問してください。' },
+        { key: 'summary', label: '集約フェーズ', desc: '意見をまとめてください。' },
+        { key: 'conclusion', label: '結論フェーズ', desc: '議論を総括し、結論を出してください。' }
+    ];
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
@@ -458,60 +475,74 @@ export class TweetWidget implements WidgetImplementation {
                     }
                     this.editingPostId = null;
                     new Notice('つぶやきを編集しました');
-                } else {
-                    const newPost: TweetWidgetPost = {
-                        id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-                        text,
-                        created: Date.now(),
-                        updated: Date.now(),
-                        files: this.attachedFiles,
-                        like: 0,
-                        liked: false,
-                        retweet: 0,
-                        retweeted: false,
-                        edited: false,
-                        replyCount: 0,
-                        deleted: false,
-                        bookmark: false,
-                        contextNote: null,
-                        threadId: this.replyingToParentId,
-                        visibility: 'public',
-                        noteQuality: 'fleeting',
-                        taskStatus: null,
-                        tags: parseTags(text),
-                        links: parseLinks(text),
-                        userId: this.currentSettings.userId || '@you',
-                        userName: this.currentSettings.userName || 'あなた',
-                    };
+                }
+                const newPost: TweetWidgetPost = {
+                    id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                    text,
+                    created: Date.now(),
+                    updated: Date.now(),
+                    files: this.attachedFiles,
+                    like: 0,
+                    liked: false,
+                    retweet: 0,
+                    retweeted: false,
+                    edited: false,
+                    replyCount: 0,
+                    deleted: false,
+                    bookmark: false,
+                    contextNote: null,
+                    threadId: this.replyingToParentId,
+                    visibility: 'public',
+                    noteQuality: 'fleeting',
+                    taskStatus: null,
+                    tags: parseTags(text),
+                    links: parseLinks(text),
+                    userId: this.currentSettings.userId || '@you',
+                    userName: this.currentSettings.userName || 'あなた',
+                };
 
-                    // 人間の投稿は即時で記録・保存・表示
+                if (isAiDebateTrigger(newPost)) {
+                    // まず人間の投稿を追加
                     this.currentSettings.posts.unshift(newPost);
                     await this.saveTweetsToFile();
-                    this.renderPostUI(this.widgetEl);
-
-                    // AIリプライは非同期でディレイ発火
-                    if (newPost.userId && newPost.userId.startsWith('@ai-')) {
-                        // AIの投稿にはAI自動リプライを発火しない
-                    } else if (shouldAutoReply(newPost, this.plugin.settings)) {
-                        generateAiReply({
-                            tweet: newPost,
-                            allTweets: this.currentSettings.posts,
-                            llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' },
-                            saveReply: async (reply) => {
-                                this.currentSettings.posts.unshift(reply);
-                                newPost.replyCount = (newPost.replyCount || 0) + 1;
-                                newPost.updated = Date.now();
-                                await this.saveTweetsToFile();
-                                this.renderPostUI(this.widgetEl);
-                            },
-                            parseTags: parseTags.bind(this),
-                            parseLinks: parseLinks.bind(this),
-                            onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err))),
-                            settings: this.plugin.settings,
-                            delay: !isExplicitAiTrigger(newPost),
-                        }); // awaitしない
-                    }
-
+                    // その後AI議論を開始
+                    startAiDebate({
+                        initialPost: newPost,
+                        allPosts: this.currentSettings.posts,
+                        settings: this.plugin.settings,
+                        llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' },
+                        saveReply: async (reply) => {
+                            this.currentSettings.posts.unshift(reply);
+                            newPost.replyCount = (newPost.replyCount || 0) + 1;
+                            newPost.updated = Date.now();
+                            await this.saveTweetsToFile();
+                            this.renderPostUI(this.widgetEl);
+                        },
+                        parseTags: parseTags.bind(this),
+                        parseLinks: parseLinks.bind(this),
+                        onError: (err) => new Notice('AI議論生成に失敗しました: ' + (err instanceof Error ? err.message : String(err))),
+                    });
+                } else if (shouldAutoReply(newPost, this.plugin.settings)) {
+                    generateAiReply({
+                        tweet: newPost,
+                        allTweets: this.currentSettings.posts,
+                        llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' },
+                        saveReply: async (reply) => {
+                            this.currentSettings.posts.unshift(reply);
+                            newPost.replyCount = (newPost.replyCount || 0) + 1;
+                            newPost.updated = Date.now();
+                            await this.saveTweetsToFile();
+                            this.renderPostUI(this.widgetEl);
+                        },
+                        parseTags: parseTags.bind(this),
+                        parseLinks: parseLinks.bind(this),
+                        onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err))),
+                        settings: this.plugin.settings,
+                        delay: !isExplicitAiTrigger(newPost),
+                    }); // awaitしない
+                } else {
+                    // 通常投稿
+                    this.currentSettings.posts.unshift(newPost);
                     if (this.replyingToParentId) {
                         const originalPost = this.currentSettings.posts.find(t => t.id === this.replyingToParentId);
                         if (originalPost) {
@@ -523,12 +554,11 @@ export class TweetWidget implements WidgetImplementation {
                     } else {
                         new Notice('つぶやきを投稿しました');
                     }
+                    input.value = '';
+                    this.attachedFiles = [];
+                    await this.saveTweetsToFile();
+                    this.renderPostUI(this.widgetEl);
                 }
-
-                input.value = '';
-                this.attachedFiles = [];
-                await this.saveTweetsToFile();
-                this.renderPostUI(this.widgetEl);
             };
 
             input.addEventListener('input', () => {
@@ -896,13 +926,13 @@ export class TweetWidget implements WidgetImplementation {
                     const threadText = thread.map((t: TweetWidgetPost) =>
                         (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text
                     ).join('\n');
-                    const promptText = geminiPrompt.replace('{post}', threadText);
+                    const promptText = geminiPrompt.replace('{tweet}', threadText);
                     let replyText = await GeminiProvider.generateReply(promptText, {
                         apiKey: deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''),
-                        post: post,
+                        tweet: post,
                         thread: thread,
                         model: this.plugin.settings.llm?.gemini?.model || 'gemini-2.0-flash-exp',
-                        postText: threadText,
+                        tweetText: threadText,
                     });
                     // 万一JSON形式で返ってきた場合もreplyだけ抽出
                     try {
@@ -964,10 +994,22 @@ export class TweetWidget implements WidgetImplementation {
         }
 
         // --- ここから追加：リプライしたユーザーのアバターを下部に表示（最適化） ---
-        const replies = this.currentSettings.posts.filter(t => t.threadId === post.id);
-        const uniqueUsers = new Map();
-        replies.forEach(r => {
-            if (r.userId) uniqueUsers.set(r.userId, r);
+        // 再帰的に全子孫リプライを取得
+        function getAllDescendantReplies(postId: string, posts: TweetWidgetPost[]): TweetWidgetPost[] {
+            const result: TweetWidgetPost[] = [];
+            const stack = posts.filter(t => t.threadId === postId);
+            while (stack.length > 0) {
+                const reply = stack.pop()!;
+                result.push(reply);
+                stack.push(...posts.filter(t => t.threadId === reply.id));
+            }
+            return result;
+        }
+        const allReplies = getAllDescendantReplies(post.id, this.currentSettings.posts);
+        // @youは除外し、userIdでユニーク化
+        const uniqueUsers = new Map<string, TweetWidgetPost>();
+        allReplies.forEach(r => {
+            if (r.userId && r.userId !== '@you') uniqueUsers.set(r.userId, r);
         });
         if (uniqueUsers.size > 0) {
             const reactedDiv = item.createDiv({ cls: 'tweet-reacted-users-main' });
@@ -1267,5 +1309,188 @@ export class TweetWidget implements WidgetImplementation {
         let hash = 0;
         for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
         return Math.abs(hash) % len;
+    }
+}
+
+// @ai議論トリガー検出
+function isAiDebateTrigger(post: TweetWidgetPost): boolean {
+    return post.text.includes('@ai議論');
+}
+
+// AI議論自動展開
+async function startAiDebate({
+    initialPost,
+    allPosts,
+    settings,
+    llmGemini,
+    saveReply,
+    parseTags,
+    parseLinks,
+    onError,
+}: {
+    initialPost: TweetWidgetPost,
+    allPosts: TweetWidgetPost[],
+    settings: any,
+    llmGemini: { apiKey: string, model: string },
+    saveReply: (reply: TweetWidgetPost) => Promise<void>,
+    parseTags: (text: string) => string[],
+    parseLinks: (text: string) => string[],
+    onError?: (err: any) => void,
+}) {
+    const ROLES = [
+        { userId: '@ai-1', userName: '肯定派AI', role: '肯定派', prompt: 'あなたはこの議題に賛成の立場で主張してください。' },
+        { userId: '@ai-2', userName: '否定派AI', role: '否定派', prompt: 'あなたはこの議題に反対の立場で主張してください。' }
+    ];
+    const PHASES = [
+        { key: 'statement', label: '発言', desc: '自分の立場から意見を述べてください。' },
+        { key: 'question', label: '質問', desc: '相手に質問してください。' }
+    ];
+    const facilitator = { userId: '@ai-facilitator', userName: 'ファシリテーターAI', role: '進行役', prompt: '議論をまとめて結論を出してください。' };
+    let lastPost = initialPost;
+    const maxSets = settings.aiDebateMaxSets || 5;
+    const maxStatement = settings.aiDebateMaxStatementPerSet || 1;
+    const maxQuestion = settings.aiDebateMaxQuestionPerSet || 1;
+    const maxTotal = settings.aiDebateMaxTotalRequests || 50;
+    let requestCount = 0;
+    for (let set = 0; set < maxSets; set++) {
+        // 各立場の発言
+        for (const role of ROLES) {
+            for (let s = 0; s < maxStatement; s++) {
+                if (requestCount >= maxTotal) return;
+                try {
+                    const thread = getFullThreadHistory(lastPost, allPosts);
+                    const threadText = thread.map(t => (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text).join('\n');
+                    const prompt = `${role.prompt}\n${PHASES[0].desc}\n${threadText}`;
+                    let replyText = await GeminiProvider.generateReply(prompt, {
+                        apiKey: deobfuscate(llmGemini.apiKey || ''),
+                        tweet: lastPost,
+                        thread: thread,
+                        model: llmGemini.model || 'gemini-2.0-flash-exp',
+                        tweetText: threadText,
+                    });
+                    try { const parsed = JSON.parse(replyText); if (parsed && typeof parsed.reply === 'string') replyText = parsed.reply; } catch {}
+                    const aiReply: TweetWidgetPost = {
+                        id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                        text: replyText,
+                        created: Date.now(),
+                        updated: Date.now(),
+                        files: [],
+                        like: 0,
+                        liked: false,
+                        retweet: 0,
+                        retweeted: false,
+                        edited: false,
+                        replyCount: 0,
+                        deleted: false,
+                        bookmark: false,
+                        contextNote: null,
+                        threadId: lastPost.id,
+                        visibility: 'public',
+                        noteQuality: 'fleeting',
+                        taskStatus: null,
+                        tags: parseTags(replyText),
+                        links: parseLinks(replyText),
+                        userId: role.userId,
+                        userName: role.userName,
+                        verified: true
+                    };
+                    if (saveReply) await saveReply(aiReply);
+                    lastPost = aiReply;
+                    requestCount++;
+                } catch (err) { if (onError) onError(err); return; }
+            }
+        }
+        // 各立場の質問
+        for (const role of ROLES) {
+            for (let q = 0; q < maxQuestion; q++) {
+                if (requestCount >= maxTotal) return;
+                try {
+                    const thread = getFullThreadHistory(lastPost, allPosts);
+                    const threadText = thread.map(t => (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text).join('\n');
+                    const prompt = `${role.prompt}\n${PHASES[1].desc}\n${threadText}`;
+                    let replyText = await GeminiProvider.generateReply(prompt, {
+                        apiKey: deobfuscate(llmGemini.apiKey || ''),
+                        tweet: lastPost,
+                        thread: thread,
+                        model: llmGemini.model || 'gemini-2.0-flash-exp',
+                        tweetText: threadText,
+                    });
+                    try { const parsed = JSON.parse(replyText); if (parsed && typeof parsed.reply === 'string') replyText = parsed.reply; } catch {}
+                    const aiReply: TweetWidgetPost = {
+                        id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                        text: replyText,
+                        created: Date.now(),
+                        updated: Date.now(),
+                        files: [],
+                        like: 0,
+                        liked: false,
+                        retweet: 0,
+                        retweeted: false,
+                        edited: false,
+                        replyCount: 0,
+                        deleted: false,
+                        bookmark: false,
+                        contextNote: null,
+                        threadId: lastPost.id,
+                        visibility: 'public',
+                        noteQuality: 'fleeting',
+                        taskStatus: null,
+                        tags: parseTags(replyText),
+                        links: parseLinks(replyText),
+                        userId: role.userId,
+                        userName: role.userName,
+                        verified: true
+                    };
+                    if (saveReply) await saveReply(aiReply);
+                    lastPost = aiReply;
+                    requestCount++;
+                } catch (err) { if (onError) onError(err); return; }
+            }
+        }
+    }
+    // --- 集約・結論（ファシリテーター） ---
+    for (const phase of ['集約', '結論']) {
+        if (requestCount >= maxTotal) return;
+        try {
+            const thread = getFullThreadHistory(lastPost, allPosts);
+            const threadText = thread.map(t => (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text).join('\n');
+            const prompt = `${facilitator.prompt}\n${phase}フェーズです。議論をまとめてください。\n${threadText}`;
+            let replyText = await GeminiProvider.generateReply(prompt, {
+                apiKey: deobfuscate(llmGemini.apiKey || ''),
+                tweet: lastPost,
+                thread: thread,
+                model: llmGemini.model || 'gemini-2.0-flash-exp',
+                tweetText: threadText,
+            });
+            try { const parsed = JSON.parse(replyText); if (parsed && typeof parsed.reply === 'string') replyText = parsed.reply; } catch {}
+            const aiReply: TweetWidgetPost = {
+                id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                text: replyText,
+                created: Date.now(),
+                updated: Date.now(),
+                files: [],
+                like: 0,
+                liked: false,
+                retweet: 0,
+                retweeted: false,
+                edited: false,
+                replyCount: 0,
+                deleted: false,
+                bookmark: false,
+                contextNote: null,
+                threadId: lastPost.id,
+                visibility: 'public',
+                noteQuality: 'fleeting',
+                taskStatus: null,
+                tags: parseTags(replyText),
+                links: parseLinks(replyText),
+                userId: facilitator.userId,
+                userName: facilitator.userName,
+                verified: true
+            };
+            if (saveReply) await saveReply(aiReply);
+            lastPost = aiReply;
+            requestCount++;
+        } catch (err) { if (onError) onError(err); return; }
     }
 }

@@ -90,4 +90,24 @@ export interface PluginGlobalSettings {
      * AIリプライの最大遅延（ms）
      */
     aiReplyDelayMaxMs?: number;
+    /**
+     * AI議論の最大ターン数
+     */
+    aiDebateMaxTurns?: number;
+    /**
+     * AI議論の最大セット数
+     */
+    aiDebateMaxSets?: number;
+    /**
+     * 1セット内の各立場の発言回数
+     */
+    aiDebateMaxStatementPerSet?: number;
+    /**
+     * 1セット内の各立場の質問回数
+     */
+    aiDebateMaxQuestionPerSet?: number;
+    /**
+     * AI議論のリクエスト総数上限
+     */
+    aiDebateMaxTotalRequests?: number;
 }

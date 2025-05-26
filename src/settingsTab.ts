@@ -453,6 +453,66 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+        new Setting(tweetGlobalAcc.body)
+            .setName('AI議論の最大セット数')
+            .setDesc('1回の@ai議論で繰り返すセット数（例: 5セット）。')
+            .addText(text => {
+                text.setPlaceholder('5')
+                    .setValue(String(this.plugin.settings.aiDebateMaxSets ?? 5));
+                text.inputEl.addEventListener('blur', async () => {
+                    let v = text.inputEl.value;
+                    let n = parseInt(v, 10);
+                    if (isNaN(n) || n < 1) n = 5;
+                    if (n > 20) n = 20;
+                    this.plugin.settings.aiDebateMaxSets = n;
+                    await this.plugin.saveSettings();
+                });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('1セット内の各立場の発言回数')
+            .setDesc('1セット内で各立場が発言する最大回数（例: 1回）。')
+            .addText(text => {
+                text.setPlaceholder('1')
+                    .setValue(String(this.plugin.settings.aiDebateMaxStatementPerSet ?? 1));
+                text.inputEl.addEventListener('blur', async () => {
+                    let v = text.inputEl.value;
+                    let n = parseInt(v, 10);
+                    if (isNaN(n) || n < 1) n = 1;
+                    if (n > 10) n = 10;
+                    this.plugin.settings.aiDebateMaxStatementPerSet = n;
+                    await this.plugin.saveSettings();
+                });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('1セット内の各立場の質問回数')
+            .setDesc('1セット内で各立場が質問する最大回数（例: 1回）。')
+            .addText(text => {
+                text.setPlaceholder('1')
+                    .setValue(String(this.plugin.settings.aiDebateMaxQuestionPerSet ?? 1));
+                text.inputEl.addEventListener('blur', async () => {
+                    let v = text.inputEl.value;
+                    let n = parseInt(v, 10);
+                    if (isNaN(n) || n < 0) n = 1;
+                    if (n > 10) n = 10;
+                    this.plugin.settings.aiDebateMaxQuestionPerSet = n;
+                    await this.plugin.saveSettings();
+                });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('AI議論のリクエスト総数上限')
+            .setDesc('1回の@ai議論で発生するAIリクエスト（発言＋質問）の最大数（例: 50回）。')
+            .addText(text => {
+                text.setPlaceholder('50')
+                    .setValue(String(this.plugin.settings.aiDebateMaxTotalRequests ?? 50));
+                text.inputEl.addEventListener('blur', async () => {
+                    let v = text.inputEl.value;
+                    let n = parseInt(v, 10);
+                    if (isNaN(n) || n < 1) n = 50;
+                    if (n > 150) n = 150;
+                    this.plugin.settings.aiDebateMaxTotalRequests = n;
+                    await this.plugin.saveSettings();
+                });
+            });
 
         // --- ボード管理セクション ---
         const boardManagementAcc = createAccordion('ボード管理', false); // デフォルトで閉じる
