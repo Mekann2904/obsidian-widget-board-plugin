@@ -196,7 +196,7 @@ export class TweetWidget implements WidgetImplementation {
                     if (n.from.userId && n.from.userId.startsWith('@ai-')) {
                         const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
                         if (aiAvatars.length > 0) {
-                            const idx = this.getAiAvatarIndex(n.from.userId, aiAvatars.length);
+                            const idx = this.getAiAvatarIndex(n.from.userId || '', aiAvatars.length);
                             avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
                         } else {
                             avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -272,10 +272,9 @@ export class TweetWidget implements WidgetImplementation {
                 const replyingToPost = this.currentSettings.posts.find(t => t.id === this.replyingToParentId);
                 if (replyingToPost) {
                     if (replyingToPost.userId && replyingToPost.userId.startsWith('@ai-')) {
-                        // AIアバター選択ロジック
                         const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
                         if (aiAvatars.length > 0) {
-                            const idx = this.getAiAvatarIndex(replyingToPost.userId, aiAvatars.length);
+                            const idx = this.getAiAvatarIndex(replyingToPost.userId || '', aiAvatars.length);
                             avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
                         } else {
                             avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -701,7 +700,7 @@ export class TweetWidget implements WidgetImplementation {
         if (post.userId && post.userId.startsWith('@ai-')) {
             const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
             if (aiAvatars.length > 0) {
-                const idx = this.getAiAvatarIndex(post.userId, aiAvatars.length);
+                const idx = this.getAiAvatarIndex(post.userId || '', aiAvatars.length);
                 avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
             } else {
                 avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -997,7 +996,7 @@ export class TweetWidget implements WidgetImplementation {
                 if (r.userId && r.userId.startsWith('@ai-')) {
                     const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
                     if (aiAvatars.length > 0) {
-                        const i = this.getAiAvatarIndex(r.userId, aiAvatars.length);
+                        const i = this.getAiAvatarIndex(r.userId || '', aiAvatars.length);
                         avatarUrl = aiAvatars[i] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
                     } else {
                         avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -1052,14 +1051,15 @@ export class TweetWidget implements WidgetImplementation {
                 this.currentSettings.posts = this.currentSettings.posts.filter(t => t.id !== post.id);
                 await this.saveTweetsToFile();
                 this.renderPostUI(this.widgetEl);
-            }));
+            })
+        );
         menu.addItem(item => item
             .setTitle('🧹 スレッドを完全削除')
             .setIcon('trash')
             .onClick(async () => {
                 if (!confirm('このスレッド（親＋リプライ）を完全に削除しますか？（元に戻せません）')) return;
-                // 親＋リプライをすべて削除
-                const threadIds = [post.id, ...this.currentSettings.posts.filter(t => t.threadId === post.id).map(t => t.id)];
+                // 親＋リプライ＋多段リプライをすべて削除
+                const threadIds = this.collectThreadIdsRecursive(post.id, this.currentSettings.posts);
                 this.currentSettings.posts = this.currentSettings.posts.filter(t => !threadIds.includes(t.id));
                 await this.saveTweetsToFile();
                 this.renderPostUI(this.widgetEl);
@@ -1332,5 +1332,15 @@ export class TweetWidget implements WidgetImplementation {
         let hash = 0;
         for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
         return Math.abs(hash) % len;
+    }
+
+    // --- 追加: スレッド内の全子孫ポストIDを再帰的に集める ---
+    private collectThreadIdsRecursive(rootId: string, posts: TweetWidgetPost[]): string[] {
+        const ids = [rootId];
+        const children = posts.filter(t => t.threadId === rootId);
+        for (const child of children) {
+            ids.push(...this.collectThreadIdsRecursive(child.id, posts));
+        }
+        return ids;
     }
 }
