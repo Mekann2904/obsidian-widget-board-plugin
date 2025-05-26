@@ -34,4 +34,23 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     tweetDbLocation: 'vault',
     tweetDbCustomPath: '',
     tweetWidgetAvatarUrl: '',
+    geminiApiKey: '',
+    llm: {
+        gemini: {
+            apiKey: '',
+            model: 'gemini-2.0-flash-exp'
+        }
+    },
+    showAiHistory: false,
+    aiAvatarUrls: '',
+    /** AIリプライの1分あたり発火上限（-1で無制限） */
+    aiReplyRpm: 2,
+    /** AIリプライの1日あたり発火上限（-1で無制限） */
+    aiReplyRpd: 10,
+    /** AIリプライをトリガーワードなしでも自動発火させる */
+    aiReplyTriggerless: false,
+    /** AIリプライの最小遅延（ms） */
+    aiReplyDelayMinMs: 1500,
+    /** AIリプライの最大遅延（ms） */
+    aiReplyDelayMaxMs: 7000,
 };

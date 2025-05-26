@@ -7,7 +7,7 @@ import { RecentNotesWidget } from './widgets/recentNotesWidget';
 import { ThemeSwitcherWidget } from './widgets/themeSwitcherWidget';
 import { TimerStopwatchWidget } from './widgets/timerStopwatchWidget';
 import { FileViewWidget } from './widgets/FileViewWidget';
-import { TweetWidget } from './widgets/tweetWidget';
+import { TweetWidget } from './widgets/tweetWidget/tweetWidget';
 
 export const registeredWidgetImplementations: Map<string, new () => WidgetImplementation> = new Map();
 

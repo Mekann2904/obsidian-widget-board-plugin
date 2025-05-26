@@ -9,7 +9,8 @@ import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget'
 import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/calendarWidget';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
-import { DEFAULT_TWEET_WIDGET_SETTINGS } from './widgets/tweetWidget';
+import { DEFAULT_TWEET_WIDGET_SETTINGS } from './widgets/tweetWidget/tweetWidget';
+import { obfuscate, deobfuscate } from './utils';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
 
 // ウィジェットタイプに対応する表示名のマッピング
@@ -209,6 +210,58 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 });
             });
 
+        // --- LLMグローバル設定 ---
+        const llmAcc = createAccordion('LLM（グローバル設定）', false);
+        llmAcc.body.createEl('h4', { text: 'Gemini' });
+        // Gemini APIキー
+        new Setting(llmAcc.body)
+            .setName('Gemini APIキー')
+            .setDesc('Google Gemini APIのキーを入力してください。')
+            .addText(text => {
+                text.inputEl.type = 'password'; // マスキング
+                text.setPlaceholder('sk-...')
+                    .setValue(deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''))
+                    .onChange(async (v) => { /* 入力途中は何もしない */ });
+                // 表示/非表示トグルボタン
+                const toggleBtn = document.createElement('button');
+                toggleBtn.type = 'button';
+                toggleBtn.textContent = '表示';
+                toggleBtn.style.marginLeft = '8px';
+                toggleBtn.onclick = () => {
+                    if (text.inputEl.type === 'password') {
+                        text.inputEl.type = 'text';
+                        toggleBtn.textContent = '非表示';
+                    } else {
+                        text.inputEl.type = 'password';
+                        toggleBtn.textContent = '表示';
+                    }
+                };
+                text.inputEl.parentElement?.appendChild(toggleBtn);
+                text.inputEl.addEventListener('blur', async () => {
+                    const plain = text.inputEl.value.trim();
+                    if (!this.plugin.settings.llm) {
+                        this.plugin.settings.llm = { gemini: { apiKey: '', model: 'gemini-2.0-flash-exp' } };
+                    }
+                    if (!this.plugin.settings.llm.gemini) {
+                        this.plugin.settings.llm.gemini = { apiKey: '', model: 'gemini-2.0-flash-exp' };
+                    }
+                    this.plugin.settings.llm.gemini.apiKey = obfuscate(plain);
+                    await this.plugin.saveSettings();
+                });
+            });
+        // Gemini モデル名
+        new Setting(llmAcc.body)
+            .setName('モデル名')
+            .setDesc('例: gemini-2.0-flash-exp')
+            .addText(text => {
+                text.setValue(this.plugin.settings.llm?.gemini?.model || 'gemini-2.0-flash-exp')
+                    .onChange(async (v) => {
+                        if (!this.plugin.settings.llm) this.plugin.settings.llm = { gemini: { apiKey: '', model: 'gemini-2.0-flash-exp' } };
+                        this.plugin.settings.llm.gemini.model = v;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
         // --- つぶやき（グローバル設定） ---
         const tweetGlobalAcc = createAccordion('つぶやき（グローバル設定）', false);
         // DB保存先
@@ -226,6 +279,43 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         if (customPathSettingEl) {
                             customPathSettingEl.style.display = (value === 'custom') ? '' : 'none';
                         }
+                    });
+            });
+        // --- AIリプライ発火上限設定 ---
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライをトリガーワードなしでも自動発火させる')
+            .setDesc('ONにすると「@ai」や「#ai-reply」などのトリガーワードがなくても、全ての投稿がAIリプライ候補になります。')
+            .addToggle(toggle => {
+                toggle.setValue(this.plugin.settings.aiReplyTriggerless ?? false)
+                    .onChange(async (value) => {
+                        this.plugin.settings.aiReplyTriggerless = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライの1分あたり発火上限（RPM）')
+            .setDesc('-1で無制限。0は発火しません。')
+            .addText(text => {
+                text.setPlaceholder('-1（無制限）')
+                    .setValue(String(this.plugin.settings.aiReplyRpm ?? 2))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n)) n = 2;
+                        this.plugin.settings.aiReplyRpm = n;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライの1日あたり発火上限（RPD）')
+            .setDesc('-1で無制限。0は発火しません。')
+            .addText(text => {
+                text.setPlaceholder('-1（無制限）')
+                    .setValue(String(this.plugin.settings.aiReplyRpd ?? 10))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n)) n = 10;
+                        this.plugin.settings.aiReplyRpd = n;
+                        await this.plugin.saveSettings();
                     });
             });
         // カスタムパス入力欄
@@ -312,6 +402,56 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         });
                     });
                 });
+            });
+        // AIの会話履歴を表示
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIの会話履歴を表示')
+            .setDesc('AIリプライの下に会話履歴を表示する（デフォルト: オフ）')
+            .addToggle(toggle => {
+                toggle.setValue(this.plugin.settings.showAiHistory ?? false)
+                    .onChange(async (value) => {
+                        this.plugin.settings.showAiHistory = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        // AIアバター画像URLリスト
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIアバター画像URLリスト')
+            .setDesc('AIごとに使い分けるアバター画像のURLをカンマ区切りで指定（例: https://.../ai1.png, https://.../ai2.png）')
+            .addTextArea(text => {
+                text.setPlaceholder('https://example.com/ai1.png, https://example.com/ai2.png')
+                    .setValue(this.plugin.settings.aiAvatarUrls || '')
+                    .onChange(async (v) => {
+                        this.plugin.settings.aiAvatarUrls = v;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        // --- AIリプライ遅延設定 ---
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライの最小遅延（ms）')
+            .setDesc('AIリプライを送るまでの最小待機時間（ミリ秒）。例: 1500 = 1.5秒')
+            .addText(text => {
+                text.setPlaceholder('1500')
+                    .setValue(String(this.plugin.settings.aiReplyDelayMinMs ?? 1500))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n) || n < 0) n = 1500;
+                        this.plugin.settings.aiReplyDelayMinMs = n;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライの最大遅延（ms）')
+            .setDesc('AIリプライを送るまでの最大待機時間（ミリ秒）。例: 7000 = 7秒')
+            .addText(text => {
+                text.setPlaceholder('7000')
+                    .setValue(String(this.plugin.settings.aiReplyDelayMaxMs ?? 7000))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n) || n < 0) n = 7000;
+                        this.plugin.settings.aiReplyDelayMaxMs = n;
+                        await this.plugin.saveSettings();
+                    });
             });
 
         // --- ボード管理セクション ---
