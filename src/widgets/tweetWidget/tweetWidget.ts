@@ -1,8 +1,8 @@
 import { App, Notice, setIcon, MarkdownRenderer, Menu, TFile } from 'obsidian';
-import type { WidgetConfig, WidgetImplementation } from '../interfaces';
-import type WidgetBoardPlugin from '../main';
-import { GeminiProvider } from '../llm/gemini/geminiApi';
-import { deobfuscate } from '../utils';
+import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
+import type WidgetBoardPlugin from '../../main';
+import { GeminiProvider } from '../../llm/gemini/geminiApi';
+import { deobfuscate } from '../../utils';
 import { geminiPrompt } from 'src/llm/gemini/prompts';
 
 export interface TweetWidgetFile {

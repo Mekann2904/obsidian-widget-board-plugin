@@ -9,7 +9,7 @@ import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget'
 import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/calendarWidget';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
-import { DEFAULT_TWEET_WIDGET_SETTINGS } from './widgets/tweetWidget';
+import { DEFAULT_TWEET_WIDGET_SETTINGS } from './widgets/tweetWidget/tweetWidget';
 import { obfuscate, deobfuscate } from './utils';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
 
