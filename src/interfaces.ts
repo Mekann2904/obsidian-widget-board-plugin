@@ -69,4 +69,5 @@ export interface PluginGlobalSettings {
     geminiApiKey?: string;
     llm?: LLMSettings;
     showAiHistory?: boolean;
+    aiAvatarUrls?: string;
 }

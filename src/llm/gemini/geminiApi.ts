@@ -7,18 +7,25 @@ export const GeminiProvider: LLMProvider = {
   name: 'Gemini',
   async generateReply(prompt, context) {
     const apiKey = context.apiKey;
-    const tweetText = context.tweetText;
     const model = context.model || 'gemini-2.0-flash-exp';
     const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/';
     const url = `${baseUrl}${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
     let contents;
-    if (Array.isArray(context.thread) && context.thread.length > 1) {
-      // スレッド履歴がある場合は会話形式で送る
-      contents = context.thread.map(item => ({ role: item.role, parts: [{ text: item.content }] }));
+    if (prompt) {
+      contents = [ { parts: [ { text: prompt } ] } ];
+    } else if (Array.isArray(context.thread) && context.thread.length > 1) {
+      // スレッド履歴がある場合は会話形式で送る（旧ロジック）
+      contents = context.thread.map(item => ({
+        role: item.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: item.content }]
+      }));
+      contents.push({
+        role: 'user',
+        parts: [{ text: geminiPrompt.replace('{tweet}', context.tweetText) }]
+      });
     } else {
-      // 単発の場合は従来通り
       contents = [
-        { parts: [{ text: geminiPrompt.replace('{tweet}', tweetText) }] }
+        { parts: [{ text: geminiPrompt.replace('{tweet}', context.tweetText) }] }
       ];
     }
     const body = { contents };
@@ -28,6 +35,7 @@ export const GeminiProvider: LLMProvider = {
       body: JSON.stringify(body)
     });
     const json = await res.json();
-    return json?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'リプライ生成に失敗しました';
+    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'リプライ生成に失敗しました';
+    return text;
   }
 }; 

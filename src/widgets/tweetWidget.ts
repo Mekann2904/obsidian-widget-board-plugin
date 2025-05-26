@@ -3,6 +3,7 @@ import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main';
 import { GeminiProvider } from '../llm/gemini/geminiApi';
 import { deobfuscate } from '../utils';
+import { geminiPrompt } from 'src/llm/gemini/prompts';
 
 export interface TweetWidgetFile {
     name: string;
@@ -169,17 +170,99 @@ export class TweetWidget implements WidgetImplementation {
         if (!this.detailTweetId) {
             const postBox = container.createDiv({ cls: 'tweet-post-box' });
             const avatar = postBox.createDiv({ cls: 'tweet-avatar-large' });
-            let avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl && this.plugin.settings.tweetWidgetAvatarUrl.trim())
-                ? this.plugin.settings.tweetWidgetAvatarUrl.trim()
-                : (this.currentSettings.avatarUrl || '').trim();
-            if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
-            const avatarImg = document.createElement('img');
-            avatarImg.src = avatarUrl;
-            avatarImg.alt = 'avatar';
-            avatarImg.width = 44;
-            avatarImg.height = 44;
+            let avatarUrl: string = '';
+            if (this.replyingToParentId) {
+                const replyingToTweet = this.currentSettings.tweets.find(t => t.id === this.replyingToParentId);
+                if (replyingToTweet) {
+                    if (replyingToTweet.userId && replyingToTweet.userId.startsWith('@ai-')) {
+                        // AIアバター選択ロジック
+                        const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
+                        if (aiAvatars.length > 0) {
+                            const idx = this.getAiAvatarIndex(replyingToTweet.userId, aiAvatars.length);
+                            avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
+                        } else {
+                            avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+                        }
+                    } else {
+                        avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
+                        if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+                    }
+                } else {
+                    this.replyingToParentId = null;
+                }
+            } else {
+                avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl && this.plugin.settings.tweetWidgetAvatarUrl.trim())
+                    ? this.plugin.settings.tweetWidgetAvatarUrl.trim()
+                    : (this.currentSettings.avatarUrl || '').trim();
+                if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+            }
+            const avatarImg = avatar.createEl('img', { attr: { src: avatarUrl as string, width: 44, height: 44 } });
             avatarImg.style.borderRadius = '50%';
-            avatar.appendChild(avatarImg);
+            avatarImg.style.cursor = 'zoom-in';
+            avatarImg.onclick = (e) => {
+                e.stopPropagation();
+                // 既存のモーダルがあれば削除
+                const oldModal = document.querySelector('.tweet-avatar-modal-backdrop');
+                if (oldModal) oldModal.remove();
+                // バックドロップ
+                const backdrop = document.createElement('div');
+                backdrop.className = 'tweet-avatar-modal-backdrop';
+                backdrop.style.position = 'fixed';
+                backdrop.style.top = '0';
+                backdrop.style.left = '0';
+                backdrop.style.width = '100vw';
+                backdrop.style.height = '100vh';
+                backdrop.style.background = 'rgba(0,0,0,0.55)';
+                backdrop.style.zIndex = '9999';
+                backdrop.style.display = 'flex';
+                backdrop.style.alignItems = 'center';
+                backdrop.style.justifyContent = 'center';
+                backdrop.onclick = (ev) => {
+                    if (ev.target === backdrop) backdrop.remove();
+                };
+                // モーダル本体
+                const modal = document.createElement('div');
+                modal.className = 'tweet-avatar-modal-content';
+                modal.style.background = 'transparent';
+                modal.style.borderRadius = '16px';
+                modal.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
+                modal.style.padding = '16px';
+                modal.style.display = 'flex';
+                modal.style.flexDirection = 'column';
+                modal.style.alignItems = 'center';
+                // 画像
+                const img = document.createElement('img');
+                img.src = avatarUrl;
+                img.alt = 'avatar-large';
+                img.style.maxWidth = '320px';
+                img.style.maxHeight = '320px';
+                img.style.borderRadius = '16px';
+                img.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
+                img.style.background = '#fff';
+                img.style.display = 'block';
+                modal.appendChild(img);
+                // 閉じるボタン
+                const closeBtn = document.createElement('button');
+                closeBtn.textContent = '×';
+                closeBtn.style.marginTop = '12px';
+                closeBtn.style.fontSize = '1.5em';
+                closeBtn.style.background = 'none';
+                closeBtn.style.border = 'none';
+                closeBtn.style.color = '#fff';
+                closeBtn.style.cursor = 'pointer';
+                closeBtn.onclick = () => backdrop.remove();
+                modal.appendChild(closeBtn);
+                // Escキーで閉じる
+                const escHandler = (ev: KeyboardEvent) => {
+                    if (ev.key === 'Escape') {
+                        backdrop.remove();
+                        window.removeEventListener('keydown', escHandler);
+                    }
+                };
+                window.addEventListener('keydown', escHandler);
+                backdrop.appendChild(modal);
+                document.body.appendChild(backdrop);
+            };
 
             const inputArea = postBox.createDiv({ cls: 'tweet-input-area-main' });
             const replyInfoContainer = inputArea.createDiv({ cls: 'tweet-reply-info-container' });
@@ -309,6 +392,10 @@ export class TweetWidget implements WidgetImplementation {
 
                     this.currentSettings.tweets.unshift(newTweet);
 
+                    if (this.shouldAutoReply(newTweet)) {
+                        this.generateAiReply(newTweet);
+                    }
+
                     if (this.replyingToParentId) {
                         const originalTweet = this.currentSettings.tweets.find(t => t.id === this.replyingToParentId);
                         if (originalTweet) {
@@ -406,7 +493,7 @@ export class TweetWidget implements WidgetImplementation {
             const avatar = replyBox.createDiv({ cls: 'tweet-detail-reply-avatar' });
             let avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
             if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
-            avatar.createEl('img', { attr: { src: avatarUrl, width: 40, height: 40 } });
+            avatar.createEl('img', { attr: { src: avatarUrl as string, width: 40, height: 40 } });
             const inputArea = replyBox.createDiv({ cls: 'tweet-detail-reply-input' });
             const textarea = document.createElement('textarea');
             textarea.className = 'tweet-detail-reply-textarea';
@@ -551,14 +638,86 @@ export class TweetWidget implements WidgetImplementation {
 
         const header = item.createDiv({ cls: 'tweet-item-header-main' });
         const avatar = header.createDiv({ cls: 'tweet-item-avatar-main' });
-        let avatarUrl;
+        let avatarUrl: string = '';
         if (tweet.userId && tweet.userId.startsWith('@ai-')) {
-            avatarUrl = 'https://www.gravatar.com/avatar/?d=identicon&s=64'; // AI専用アバター
+            const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
+            if (aiAvatars.length > 0) {
+                const idx = this.getAiAvatarIndex(tweet.userId, aiAvatars.length);
+                avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
+            } else {
+                avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+            }
         } else {
             avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
             if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
         }
-        avatar.createEl('img', { attr: { src: avatarUrl, width: 36, height: 36 } });
+        const avatarImg = avatar.createEl('img', { attr: { src: avatarUrl as string, width: 36, height: 36 } });
+        // --- アバター拡大プレビュー機能 ---
+        avatarImg.style.cursor = 'zoom-in';
+        avatarImg.onclick = (e) => {
+            e.stopPropagation();
+            // 既存のモーダルがあれば削除
+            const oldModal = document.querySelector('.tweet-avatar-modal-backdrop');
+            if (oldModal) oldModal.remove();
+            // バックドロップ
+            const backdrop = document.createElement('div');
+            backdrop.className = 'tweet-avatar-modal-backdrop';
+            backdrop.style.position = 'fixed';
+            backdrop.style.top = '0';
+            backdrop.style.left = '0';
+            backdrop.style.width = '100vw';
+            backdrop.style.height = '100vh';
+            backdrop.style.background = 'rgba(0,0,0,0.55)';
+            backdrop.style.zIndex = '9999';
+            backdrop.style.display = 'flex';
+            backdrop.style.alignItems = 'center';
+            backdrop.style.justifyContent = 'center';
+            backdrop.onclick = (ev) => {
+                if (ev.target === backdrop) backdrop.remove();
+            };
+            // モーダル本体
+            const modal = document.createElement('div');
+            modal.className = 'tweet-avatar-modal-content';
+            modal.style.background = 'transparent';
+            modal.style.borderRadius = '16px';
+            modal.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
+            modal.style.padding = '16px';
+            modal.style.display = 'flex';
+            modal.style.flexDirection = 'column';
+            modal.style.alignItems = 'center';
+            // 画像
+            const img = document.createElement('img');
+            img.src = avatarUrl;
+            img.alt = 'avatar-large';
+            img.style.maxWidth = '320px';
+            img.style.maxHeight = '320px';
+            img.style.borderRadius = '16px';
+            img.style.boxShadow = '0 2px 16px rgba(0,0,0,0.18)';
+            img.style.background = '#fff';
+            img.style.display = 'block';
+            modal.appendChild(img);
+            // 閉じるボタン
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = '×';
+            closeBtn.style.marginTop = '12px';
+            closeBtn.style.fontSize = '1.5em';
+            closeBtn.style.background = 'none';
+            closeBtn.style.border = 'none';
+            closeBtn.style.color = '#fff';
+            closeBtn.style.cursor = 'pointer';
+            closeBtn.onclick = () => backdrop.remove();
+            modal.appendChild(closeBtn);
+            // Escキーで閉じる
+            const escHandler = (ev: KeyboardEvent) => {
+                if (ev.key === 'Escape') {
+                    backdrop.remove();
+                    window.removeEventListener('keydown', escHandler);
+                }
+            };
+            window.addEventListener('keydown', escHandler);
+            backdrop.appendChild(modal);
+            document.body.appendChild(backdrop);
+        };
 
         const userInfo = header.createDiv({ cls: 'tweet-item-userinfo-main' });
         userInfo.createEl('span', { text: tweet.userName || this.currentSettings.userName || 'あなた', cls: 'tweet-item-username-main' });
@@ -594,7 +753,15 @@ export class TweetWidget implements WidgetImplementation {
         }
 
         const textDiv = item.createDiv({ cls: 'tweet-item-text-main' });
-        MarkdownRenderer.render(this.app, tweet.text, textDiv, this.app.workspace.getActiveFile()?.path || '', this.plugin);
+        // --- AIリプライがJSON形式ならreplyだけ抽出 ---
+        let displayText = tweet.text;
+        try {
+            const parsed = JSON.parse(displayText);
+            if (parsed && typeof parsed.reply === 'string') {
+                displayText = parsed.reply;
+            }
+        } catch {}
+        MarkdownRenderer.render(this.app, displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', this.plugin);
 
         if (tweet.files && tweet.files.length) {
             const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${tweet.files.length}` });
@@ -673,16 +840,26 @@ export class TweetWidget implements WidgetImplementation {
                 geminiBtn.innerHTML = '...';
                 try {
                     const llmGemini = this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' };
-                    // --- スレッド履歴を収集 ---
-                    const thread = this.collectThreadHistory(tweet);
-                    // スレッドを遡って直近のAI userIdを探す
-                    let aiUserId = this.findLatestAiUserIdInThread(tweet) || this.generateAiUserId();
-                    const replyText = await GeminiProvider.generateReply('', {
+                    const thread = this.getFullThreadHistory(tweet);
+                    // 履歴を「AI: ...」「あなた: ...」形式でテキスト化
+                    const threadText = thread.map(t =>
+                        (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text
+                    ).join('\n');
+                    const promptText = geminiPrompt.replace('{tweet}', threadText);
+                    let replyText = await GeminiProvider.generateReply(promptText, {
                         apiKey: deobfuscate(llmGemini.apiKey || ''),
-                        tweetText: tweet.text,
+                        tweet: tweet,
+                        thread: thread,
                         model: llmGemini.model || 'gemini-2.0-flash-exp',
-                        thread: thread
+                        tweetText: threadText,
                     });
+                    // 万一JSON形式で返ってきた場合もreplyだけ抽出
+                    try {
+                        const parsed = JSON.parse(replyText);
+                        if (parsed && typeof parsed.reply === 'string') {
+                            replyText = parsed.reply;
+                        }
+                    } catch {}
                     // AIリプライとして投稿
                     const aiReply: TweetWidgetTweet = {
                         id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
@@ -705,7 +882,7 @@ export class TweetWidget implements WidgetImplementation {
                         taskStatus: null,
                         tags: this.parseTags(replyText),
                         links: this.parseLinks(replyText),
-                        userId: aiUserId,
+                        userId: this.findLatestAiUserIdInThread(tweet) || this.generateAiUserId(),
                         userName: 'AI',
                         verified: true
                     };
@@ -728,7 +905,7 @@ export class TweetWidget implements WidgetImplementation {
         if (tweet.userId && tweet.userId.startsWith('@ai-') && this.plugin.settings.showAiHistory) {
             const aiHistoryDiv = item.createDiv({ cls: 'tweet-ai-history' });
             aiHistoryDiv.createEl('div', { text: 'このAIとの会話履歴:', cls: 'tweet-ai-history-label' });
-            const aiHistory = this.getAiThreadHistory(tweet.userId);
+            const aiHistory = this.getFullThreadHistory(tweet);
             aiHistory.forEach(h => {
                 aiHistoryDiv.createEl('div', { text: `${h.userName || (h.userId && h.userId.startsWith('@ai-') ? 'AI' : 'あなた')}: ${h.text}`, cls: 'tweet-ai-history-item' });
             });
@@ -960,6 +1137,10 @@ export class TweetWidget implements WidgetImplementation {
             await this.saveTweetsToFile();
             this.replyModalTweet = null;
             this.renderTweetUI(this.widgetEl);
+            // AI自動リプライは親ツイート（tweet）を渡す
+            if (this.shouldAutoReply(newTweet)) {
+                this.generateAiReply(tweet);
+            }
         };
         inputArea.appendChild(replyBtn);
         // Escキーで閉じる
@@ -976,15 +1157,13 @@ export class TweetWidget implements WidgetImplementation {
         return `@ai-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     }
 
-    // スレッド履歴を収集する関数
-    private collectThreadHistory(tweet: TweetWidgetTweet): { role: string, content: string }[] {
-        const history: { role: string, content: string }[] = [];
-        let current: TweetWidgetTweet | undefined = tweet;
+    // スレッドのルートから現在までの全履歴を時系列で取得
+    private getFullThreadHistory(tweet: TweetWidgetTweet): TweetWidgetTweet[] {
         const tweetsById = new Map(this.currentSettings.tweets.map(t => [t.id, t]));
-        // 遡って親をたどる
+        const history: TweetWidgetTweet[] = [];
+        let current: TweetWidgetTweet | undefined = tweet;
         while (current) {
-            const role = current.userId && current.userId.startsWith('@ai-') ? 'assistant' : 'user';
-            history.unshift({ role, content: current.text });
+            history.unshift(current);
             if (current.threadId) {
                 current = tweetsById.get(current.threadId);
             } else {
@@ -994,23 +1173,11 @@ export class TweetWidget implements WidgetImplementation {
         return history;
     }
 
-    // AI IDごとの会話履歴を取得
-    private getAiThreadHistory(aiUserId: string): TweetWidgetTweet[] {
-        // そのAI IDのツイートと、その親をたどる
-        const result: TweetWidgetTweet[] = [];
-        const tweetsById = new Map(this.currentSettings.tweets.map(t => [t.id, t]));
-        // 最新のAIツイートを探す
-        const latestAi = this.currentSettings.tweets.find(t => t.userId === aiUserId);
-        let current = latestAi;
-        while (current) {
-            result.unshift(current);
-            if (current.threadId) {
-                current = tweetsById.get(current.threadId);
-            } else {
-                break;
-            }
-        }
-        return result;
+    // userIdからAIアバター配列のインデックスを決定
+    private getAiAvatarIndex(userId: string, len: number): number {
+        let hash = 0;
+        for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+        return Math.abs(hash) % len;
     }
 
     // スレッドを遡って直近のAI userIdを探す
@@ -1026,5 +1193,70 @@ export class TweetWidget implements WidgetImplementation {
             }
         }
         return null;
+    }
+
+    // 自動リプライ判定関数
+    private shouldAutoReply(tweet: TweetWidgetTweet): boolean {
+        return tweet.text.includes('@ai') || Boolean(tweet.tags && tweet.tags.includes('ai-reply'));
+    }
+
+    // AIリプライ生成関数（json柔軟化）
+    private async generateAiReply(tweet: TweetWidgetTweet) {
+        try {
+            const llmGemini = this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' };
+            const thread = this.getFullThreadHistory(tweet);
+            // 履歴を「AI: ...」「あなた: ...」形式でテキスト化
+            const threadText = thread.map(t =>
+                (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text
+            ).join('\n');
+            const promptText = geminiPrompt.replace('{tweet}', threadText);
+            let replyText = await GeminiProvider.generateReply(promptText, {
+                apiKey: deobfuscate(llmGemini.apiKey || ''),
+                tweet: tweet,
+                thread: thread,
+                model: llmGemini.model || 'gemini-2.0-flash-exp',
+                tweetText: threadText,
+            });
+            // 万一JSON形式で返ってきた場合もreplyだけ抽出
+            try {
+                const parsed = JSON.parse(replyText);
+                if (parsed && typeof parsed.reply === 'string') {
+                    replyText = parsed.reply;
+                }
+            } catch {}
+            // AIリプライとして投稿
+            const aiReply: TweetWidgetTweet = {
+                id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+                text: replyText,
+                created: Date.now(),
+                updated: Date.now(),
+                files: [],
+                like: 0,
+                liked: false,
+                retweet: 0,
+                retweeted: false,
+                edited: false,
+                replyCount: 0,
+                deleted: false,
+                bookmark: false,
+                contextNote: null,
+                threadId: tweet.id,
+                visibility: 'public',
+                noteQuality: 'fleeting',
+                taskStatus: null,
+                tags: this.parseTags(replyText),
+                links: this.parseLinks(replyText),
+                userId: this.findLatestAiUserIdInThread(tweet) || this.generateAiUserId(),
+                userName: 'AI',
+                verified: true
+            };
+            this.currentSettings.tweets.unshift(aiReply);
+            tweet.replyCount = (tweet.replyCount || 0) + 1;
+            tweet.updated = Date.now();
+            await this.saveTweetsToFile();
+            this.renderTweetUI(this.widgetEl);
+        } catch (err) {
+            new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err)));
+        }
     }
 }

@@ -377,6 +377,18 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+        // AIアバター画像URLリスト
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIアバター画像URLリスト')
+            .setDesc('AIごとに使い分けるアバター画像のURLをカンマ区切りで指定（例: https://.../ai1.png, https://.../ai2.png）')
+            .addTextArea(text => {
+                text.setPlaceholder('https://example.com/ai1.png, https://example.com/ai2.png')
+                    .setValue(this.plugin.settings.aiAvatarUrls || '')
+                    .onChange(async (v) => {
+                        this.plugin.settings.aiAvatarUrls = v;
+                        await this.plugin.saveSettings();
+                    });
+            });
 
         // --- ボード管理セクション ---
         const boardManagementAcc = createAccordion('ボード管理', false); // デフォルトで閉じる

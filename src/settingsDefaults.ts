@@ -42,4 +42,5 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
         }
     },
     showAiHistory: false,
+    aiAvatarUrls: '',
 };
