@@ -973,7 +973,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .tweet-icon-btn-main {
   background: none;
   border: none;
-  color: #1d9bf0;
+  color: #A68AF9;
   font-size: 1.35em;
   cursor: pointer;
   border-radius: 6px;
@@ -984,7 +984,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 }
 .tweet-icon-btn-main:hover {
   background: var(--background-modifier-hover);
-  color: #0a7cd6;
+  color: #A68AF9;
 }
 .tweet-file-preview {
   display: flex;
@@ -1034,7 +1034,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   transition: background 0.2s;
 }
 .tweet-post-btn-main:hover {
-  background: #1d9bf0;
+  background: #A68AF9;
   color: #fff;
 }
 .tweet-list-main {
@@ -1053,7 +1053,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 }
 .tweet-item-main:hover {
   box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-  border-color: var(--interactive-accent, #4f8cff);
+  border-color: var(--interactive-accent, #A68AF9);
 }
 .tweet-item-header-main {
   display: flex;
@@ -1137,7 +1137,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 }
 .tweet-action-btn-main:hover {
   background: var(--background-modifier-hover);
-  color: #1d9bf0;
+  color: #A68AF9;
 }
 .tweet-action-count-main {
   font-size: 0.98em;
@@ -1187,7 +1187,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   transition: background 0.18s, color 0.18s;
 }
 .tweet-detail-back-btn:hover {
-  background: #1d9bf0;
+  background: #A68AF9;
   color: #fff;
 }
 .tweet-detail-section-sep {
@@ -1317,7 +1317,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 }
 .tweet-action-btn-main:hover {
   background: var(--background-modifier-hover);
-  color: #1d9bf0;
+  color: #A68AF9;
 }
 .tweet-action-count-main {
   font-size: 0.98em;
@@ -1443,7 +1443,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .tweet-notification-title {
   font-size: 1.08em;
   font-weight: bold;
-  color: var(--text-accent, #1d9bf0);
+  color: var(--text-accent, #A68AF9);
   margin-bottom: 8px;
 }
 .tweet-notification-item {
@@ -1487,7 +1487,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 }
 .tweet-notification-titleline {
   font-weight: bold;
-  color: var(--text-accent, #1d9bf0);
+  color: var(--text-accent, #A68AF9);
   font-size: 1.08em;
   margin-bottom: 2px;
 }
@@ -1522,8 +1522,8 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   outline: none;
 }
 .tweet-tab-btn.active {
-  color: var(--text-accent, #1d9bf0);
-  border-bottom: 2.5px solid var(--text-accent, #1d9bf0);
+  color: var(--text-accent, #A68AF9);
+  border-bottom: 2.5px solid var(--text-accent, #A68AF9);
   background: var(--background-secondary, #23272e);
 }
 
@@ -1598,7 +1598,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   margin-left: 8px;
 }
 .tweet-detail-reply-btn:hover {
-  background: #1d9bf0;
+  background: #A68AF9;
   color: #fff;
 }
 .tweet-detail-reply {
@@ -1616,7 +1616,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 }
 .tweet-detail-reply:hover {
   box-shadow: 0 4px 24px rgba(0,0,0,0.18);
-  border-color: var(--interactive-accent, #4f8cff);
+  border-color: var(--interactive-accent, #A68AF9);
 }
 
 /* --- tweet-widget アバターモーダル --- */
@@ -1709,7 +1709,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   margin-left: 10px;
 }
 .tweet-reply-modal-btn:hover {
-  background: #1d9bf0;
+  background: #A68AF9;
   color: #fff;
 }
 @media (max-width: 600px) {
