@@ -582,57 +582,17 @@ export class TweetWidget implements WidgetImplementation {
         // --- 通常時はスレッド表示 ---
         const tweetsById = new Map<string, TweetWidgetTweet>();
         filteredTweets.forEach(t => tweetsById.set(t.id, t));
-        const repliesByParentId = new Map<string, TweetWidgetTweet[]>();
-        filteredTweets.forEach(t => {
-            if (t.threadId) {
-                const replies = repliesByParentId.get(t.threadId) || [];
-                replies.push(t);
-                repliesByParentId.set(t.threadId, replies);
-            }
-        });
-        repliesByParentId.forEach(replies => replies.sort((a, b) => a.created - b.created));
-        const memo = new Map<string, number>();
-        const getLatestTimestampInThread = (tweetId: string): number => {
-            if (memo.has(tweetId)) return memo.get(tweetId)!;
-            const tweet = tweetsById.get(tweetId);
-            if (!tweet) return 0;
-            let maxTimestamp = tweet.updated || tweet.created;
-            const replies = repliesByParentId.get(tweetId) || [];
-            for (const reply of replies) {
-                maxTimestamp = Math.max(maxTimestamp, getLatestTimestampInThread(reply.id));
-            }
-            memo.set(tweetId, maxTimestamp);
-            return maxTimestamp;
-        };
+        // 返信（リプライ）を除外し、親ポストのみリスト表示
         const rootItems = filteredTweets.filter(t => !t.threadId || !tweetsById.has(t.threadId));
         rootItems.sort((a, b) => {
-            const lastActivityA = getLatestTimestampInThread(a.id);
-            const lastActivityB = getLatestTimestampInThread(b.id);
+            const lastActivityA = a.updated || a.created;
+            const lastActivityB = b.updated || b.created;
             return lastActivityB - lastActivityA;
         });
-        const displayList: { tweet: TweetWidgetTweet, level: number }[] = [];
-        const addRepliesToDisplayList = (parentId: string, currentLevel: number) => {
-            const replies = repliesByParentId.get(parentId);
-            if (replies) {
-                replies.forEach(reply => {
-                    displayList.push({ tweet: reply, level: currentLevel + 1 });
-                    addRepliesToDisplayList(reply.id, currentLevel + 1);
-                });
-            }
-        };
         rootItems.forEach(tweet => {
-            displayList.push({ tweet, level: 0 });
-            addRepliesToDisplayList(tweet.id, 0);
-        });
-        displayList.forEach(({ tweet, level }) => {
             const wrapper = listEl.createDiv({ cls: 'tweet-thread-wrapper' });
             wrapper.setAttribute('data-tweet-id', tweet.id);
-            wrapper.style.paddingLeft = `${level * 25}px`;
             const tweetContainer = wrapper.createDiv({ cls: 'tweet-item-container' });
-            if (level > 0) {
-                tweetContainer.style.borderLeft = '2px solid rgba(128, 128, 128, 0.2)';
-                tweetContainer.style.paddingLeft = '12px';
-            }
             this.renderSingleTweet(tweet, tweetContainer, tweetsById);
             // --- クリックで詳細表示 ---
             wrapper.onclick = (e) => {
@@ -918,6 +878,44 @@ export class TweetWidget implements WidgetImplementation {
             aiHistory.forEach((h: TweetWidgetTweet) => {
                 aiHistoryDiv.createEl('div', { text: `${h.userName || (h.userId && h.userId.startsWith('@ai-') ? 'AI' : 'あなた')}: ${h.text}`, cls: 'tweet-ai-history-item' });
             });
+        }
+
+        // --- ここから追加：リプライしたユーザーのアバターを下部に表示（最適化） ---
+        const replies = this.currentSettings.tweets.filter(t => t.threadId === tweet.id);
+        const uniqueUsers = new Map();
+        replies.forEach(r => {
+            if (r.userId) uniqueUsers.set(r.userId, r);
+        });
+        if (uniqueUsers.size > 0) {
+            const reactedDiv = item.createDiv({ cls: 'tweet-reacted-users-main' });
+            // 横並び用のflex行
+            const row = reactedDiv.createDiv({ cls: 'tweet-reacted-row' });
+            row.createDiv({ text: 'この人たちが反応しています！', cls: 'tweet-reacted-label' });
+            const avatarsDiv = row.createDiv({ cls: 'tweet-reacted-avatars' });
+            // 最大5人まで表示
+            const usersArr = Array.from(uniqueUsers.values());
+            const maxAvatars = 5;
+            usersArr.slice(0, maxAvatars).forEach((r, idx) => {
+                let avatarUrl = '';
+                if (r.userId && r.userId.startsWith('@ai-')) {
+                    const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
+                    if (aiAvatars.length > 0) {
+                        const i = this.getAiAvatarIndex(r.userId, aiAvatars.length);
+                        avatarUrl = aiAvatars[i] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
+                    } else {
+                        avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+                    }
+                } else {
+                    avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
+                    if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+                }
+                const av = avatarsDiv.createEl('img', { attr: { src: avatarUrl, width: 24, height: 24, title: r.userName || r.userId || '' } });
+                av.className = 'tweet-reacted-avatar-img';
+                av.style.zIndex = String(10 + maxAvatars - idx); // 重なり順
+            });
+            if (usersArr.length > maxAvatars) {
+                const more = avatarsDiv.createDiv({ cls: 'tweet-reacted-avatar-more', text: `+${usersArr.length - maxAvatars}` });
+            }
         }
     }
 

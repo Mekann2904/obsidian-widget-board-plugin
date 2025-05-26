@@ -1042,9 +1042,18 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   padding: 0;
 }
 .tweet-item-main {
-  border-bottom: 1.5px solid var(--background-modifier-border, #444);
-  padding: 16px 0 8px 0;
+  background: var(--background-secondary, #23272e);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  border: 1px solid var(--divider-color, #444);
+  padding: 18px 20px 12px 20px;
   margin: 0;
+  transition: box-shadow 0.2s, border 0.2s;
+  position: relative;
+}
+.tweet-item-main:hover {
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  border-color: var(--interactive-accent, #4f8cff);
 }
 .tweet-item-header-main {
   display: flex;
@@ -1592,4 +1601,72 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   border: none;
   color: #fff;
   cursor: pointer;
+}
+
+.tweet-thread-wrapper {
+  margin-bottom: 20px;
+  /* カード間の余白 */
+}
+
+.tweet-reacted-users-main {
+  margin-top: 14px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--background-modifier-border, #444);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.tweet-reacted-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+.tweet-reacted-label {
+  font-size: 0.98em;
+  color: var(--text-faint);
+  margin-bottom: 0;
+  margin-left: 2px;
+  flex: 1 1 auto;
+}
+.tweet-reacted-avatars {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  position: relative;
+  min-width: 0;
+}
+.tweet-reacted-avatar-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid var(--background-modifier-border, #444);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
+  background: #222;
+  margin-left: -10px;
+  transition: box-shadow 0.18s, border-color 0.18s;
+}
+.tweet-reacted-avatar-img:first-child {
+  margin-left: 0;
+}
+.tweet-reacted-avatar-more {
+  width: 28px;
+  height: 24px;
+  border-radius: 12px;
+  background: var(--background-secondary, #23272e);
+  color: var(--text-faint);
+  font-size: 0.98em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: -10px;
+  border: 1.5px solid var(--background-modifier-border, #444);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
+  font-weight: bold;
+  z-index: 1;
 }
