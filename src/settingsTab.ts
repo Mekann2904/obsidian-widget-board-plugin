@@ -281,6 +281,43 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         }
                     });
             });
+        // --- AIリプライ発火上限設定 ---
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライをトリガーワードなしでも自動発火させる')
+            .setDesc('ONにすると「@ai」や「#ai-reply」などのトリガーワードがなくても、全ての投稿がAIリプライ候補になります。')
+            .addToggle(toggle => {
+                toggle.setValue(this.plugin.settings.aiReplyTriggerless ?? false)
+                    .onChange(async (value) => {
+                        this.plugin.settings.aiReplyTriggerless = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライの1分あたり発火上限（RPM）')
+            .setDesc('-1で無制限。0は発火しません。')
+            .addText(text => {
+                text.setPlaceholder('-1（無制限）')
+                    .setValue(String(this.plugin.settings.aiReplyRpm ?? 2))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n)) n = 2;
+                        this.plugin.settings.aiReplyRpm = n;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライの1日あたり発火上限（RPD）')
+            .setDesc('-1で無制限。0は発火しません。')
+            .addText(text => {
+                text.setPlaceholder('-1（無制限）')
+                    .setValue(String(this.plugin.settings.aiReplyRpd ?? 10))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n)) n = 10;
+                        this.plugin.settings.aiReplyRpd = n;
+                        await this.plugin.saveSettings();
+                    });
+            });
         // カスタムパス入力欄
         const customPathSetting = new Setting(tweetGlobalAcc.body)
             .setName('カスタムパス')
@@ -386,6 +423,33 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .setValue(this.plugin.settings.aiAvatarUrls || '')
                     .onChange(async (v) => {
                         this.plugin.settings.aiAvatarUrls = v;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        // --- AIリプライ遅延設定 ---
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライの最小遅延（ms）')
+            .setDesc('AIリプライを送るまでの最小待機時間（ミリ秒）。例: 1500 = 1.5秒')
+            .addText(text => {
+                text.setPlaceholder('1500')
+                    .setValue(String(this.plugin.settings.aiReplyDelayMinMs ?? 1500))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n) || n < 0) n = 1500;
+                        this.plugin.settings.aiReplyDelayMinMs = n;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('AIリプライの最大遅延（ms）')
+            .setDesc('AIリプライを送るまでの最大待機時間（ミリ秒）。例: 7000 = 7秒')
+            .addText(text => {
+                text.setPlaceholder('7000')
+                    .setValue(String(this.plugin.settings.aiReplyDelayMaxMs ?? 7000))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n) || n < 0) n = 7000;
+                        this.plugin.settings.aiReplyDelayMaxMs = n;
                         await this.plugin.saveSettings();
                     });
             });

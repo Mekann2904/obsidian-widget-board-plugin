@@ -4,7 +4,7 @@ import type WidgetBoardPlugin from '../../main';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
 import { geminiPrompt } from 'src/llm/gemini/prompts';
-import { generateAiReply, shouldAutoReply, findLatestAiUserIdInThread, getFullThreadHistory, generateAiUserId } from './aiReply';
+import { generateAiReply, shouldAutoReply, findLatestAiUserIdInThread, getFullThreadHistory, generateAiUserId, isExplicitAiTrigger } from './aiReply';
 import { parseTags, parseLinks, formatTimeAgo, readFileAsDataUrl, wrapSelection } from './tweetWidgetUtils';
 import { loadTweetsFromFile, saveTweetsToFile } from './tweetWidgetDb';
 import { loadAiRepliesFromFile, saveAiRepliesToFile } from './tweetWidgetAiDb';
@@ -394,10 +394,14 @@ export class TweetWidget implements WidgetImplementation {
                         links: parseLinks(text),
                     };
 
+                    // 人間の投稿は即時で記録・保存・表示
                     this.currentSettings.tweets.unshift(newTweet);
+                    await this.saveTweetsToFile();
+                    this.renderTweetUI(this.widgetEl);
 
-                    if (shouldAutoReply(newTweet)) {
-                        await generateAiReply({
+                    // AIリプライは非同期でディレイ発火
+                    if (shouldAutoReply(newTweet, this.plugin.settings)) {
+                        generateAiReply({
                             tweet: newTweet,
                             allTweets: this.currentSettings.tweets,
                             llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' },
@@ -410,8 +414,10 @@ export class TweetWidget implements WidgetImplementation {
                             },
                             parseTags: parseTags.bind(this),
                             parseLinks: parseLinks.bind(this),
-                            onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err)))
-                        });
+                            onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err))),
+                            settings: this.plugin.settings,
+                            delay: !isExplicitAiTrigger(newTweet),
+                        }); // awaitしない
                     }
 
                     if (this.replyingToParentId) {
@@ -1141,8 +1147,8 @@ export class TweetWidget implements WidgetImplementation {
             this.replyModalTweet = null;
             this.renderTweetUI(this.widgetEl);
             // AI自動リプライは親ツイート（tweet）を渡す
-            if (shouldAutoReply(newTweet)) {
-                await generateAiReply({
+            if (shouldAutoReply(newTweet, this.plugin.settings)) {
+                generateAiReply({
                     tweet: tweet,
                     allTweets: this.currentSettings.tweets,
                     llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' },
@@ -1155,8 +1161,10 @@ export class TweetWidget implements WidgetImplementation {
                     },
                     parseTags: parseTags.bind(this),
                     parseLinks: parseLinks.bind(this),
-                    onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err)))
-                });
+                    onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err))),
+                    settings: this.plugin.settings,
+                    delay: !isExplicitAiTrigger(newTweet),
+                }); // awaitしない
             }
         };
         inputArea.appendChild(replyBtn);

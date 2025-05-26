@@ -70,4 +70,24 @@ export interface PluginGlobalSettings {
     llm?: LLMSettings;
     showAiHistory?: boolean;
     aiAvatarUrls?: string;
+    /**
+     * AIリプライの1分あたり発火上限（-1で無制限）
+     */
+    aiReplyRpm?: number;
+    /**
+     * AIリプライの1日あたり発火上限（-1で無制限）
+     */
+    aiReplyRpd?: number;
+    /**
+     * AIリプライをトリガーワードなしでも自動発火させる（trueで全投稿が候補）
+     */
+    aiReplyTriggerless?: boolean;
+    /**
+     * AIリプライの最小遅延（ms）
+     */
+    aiReplyDelayMinMs?: number;
+    /**
+     * AIリプライの最大遅延（ms）
+     */
+    aiReplyDelayMaxMs?: number;
 }

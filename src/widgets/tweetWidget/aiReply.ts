@@ -2,6 +2,7 @@ import { geminiPrompt } from 'src/llm/gemini/prompts';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
 import type { TweetWidgetTweet } from './tweetWidget';
+import type { PluginGlobalSettings } from '../../interfaces';
 
 // AIリプライ用のuserId生成関数
 export function generateAiUserId(): string {
@@ -39,8 +40,55 @@ export function findLatestAiUserIdInThread(tweet: TweetWidgetTweet, allTweets: T
     return null;
 }
 
-// 自動リプライ判定関数
-export function shouldAutoReply(tweet: TweetWidgetTweet): boolean {
+// --- AIリプライ発火ガバナンス用 ---
+const aiReplyMinuteMap = new Map<string, number[]>(); // userId→[タイムスタンプ配列]
+const aiReplyDayMap = new Map<string, number>(); // userId_YYYYMMDD→count
+
+// 自動リプライ判定関数（ガバナンス付き）
+export function shouldAutoReply(
+    tweet: TweetWidgetTweet,
+    settings: PluginGlobalSettings
+): boolean {
+    // トリガーワード判定（オプションでスキップ）
+    if (!settings.aiReplyTriggerless) {
+        const hasTrigger = tweet.text.includes('@ai') || Boolean(tweet.tags && tweet.tags.includes('ai-reply'));
+        if (!hasTrigger) return false;
+    }
+    // --- RPM/RPDガバナンス ---
+    const userId = tweet.userId || 'unknown';
+    const now = Date.now();
+    const minuteAgo = now - 60 * 1000;
+    const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+    const userDayKey = `${userId}_${today}`;
+    // RPM
+    const rpm = typeof settings.aiReplyRpm === 'number' ? settings.aiReplyRpm : 2;
+    if (rpm === 0) return false;
+    if (rpm > 0) {
+        const arr = aiReplyMinuteMap.get(userId) || [];
+        const recent = arr.filter(ts => ts > minuteAgo);
+        if (recent.length >= rpm) return false;
+        recent.push(now);
+        aiReplyMinuteMap.set(userId, recent);
+    }
+    // RPD
+    const rpd = typeof settings.aiReplyRpd === 'number' ? settings.aiReplyRpd : 10;
+    if (rpd === 0) return false;
+    if (rpd > 0) {
+        const dayCount = aiReplyDayMap.get(userDayKey) || 0;
+        if (dayCount >= rpd) return false;
+        aiReplyDayMap.set(userDayKey, dayCount + 1);
+    }
+    return true;
+}
+
+// ランダムディレイ関数
+function randomDelay(minMs: number, maxMs: number): Promise<void> {
+    const ms = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// 明示的トリガー判定関数
+export function isExplicitAiTrigger(tweet: TweetWidgetTweet): boolean {
     return tweet.text.includes('@ai') || Boolean(tweet.tags && tweet.tags.includes('ai-reply'));
 }
 
@@ -53,6 +101,8 @@ export async function generateAiReply({
     parseTags,
     parseLinks,
     onError,
+    settings,
+    delay,
 }: {
     tweet: TweetWidgetTweet,
     allTweets: TweetWidgetTweet[],
@@ -61,8 +111,17 @@ export async function generateAiReply({
     parseTags: (text: string) => string[],
     parseLinks: (text: string) => string[],
     onError?: (err: any) => void,
+    settings: PluginGlobalSettings,
+    delay: boolean,
 }) {
     try {
+        // --- 人間らしい遅延 ---
+        if (delay) {
+            const minMs = typeof settings.aiReplyDelayMinMs === 'number' ? settings.aiReplyDelayMinMs : 1500;
+            const maxMs = typeof settings.aiReplyDelayMaxMs === 'number' ? settings.aiReplyDelayMaxMs : 7000;
+            await randomDelay(minMs, maxMs);
+        }
+        // ...既存AIリプ生成処理...
         const thread = getFullThreadHistory(tweet, allTweets);
         const threadText = thread.map(t =>
             (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text
