@@ -76,6 +76,7 @@ export class TweetWidget implements WidgetImplementation {
     private currentFilter: 'all' | 'active' | 'deleted' | 'bookmark' = 'active';
     private detailTweetId: string | null = null;
     private replyModalTweet: TweetWidgetTweet | null = null;
+    private currentTab: 'home' | 'notification' = 'home';
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
@@ -134,6 +135,93 @@ export class TweetWidget implements WidgetImplementation {
 
     private renderTweetUI(container: HTMLElement) {
         container.empty();
+        // --- サイドバー切り替え ---
+        const tabBar = container.createDiv({ cls: 'tweet-tab-bar' });
+        const homeTab = tabBar.createEl('button', { text: 'ホーム', cls: 'tweet-tab-btn' });
+        const notifTab = tabBar.createEl('button', { text: '通知', cls: 'tweet-tab-btn' });
+        if (this.currentTab === 'home') homeTab.classList.add('active');
+        if (this.currentTab === 'notification') notifTab.classList.add('active');
+        homeTab.onclick = () => { this.currentTab = 'home'; this.renderTweetUI(this.widgetEl); };
+        notifTab.onclick = () => { this.currentTab = 'notification'; this.renderTweetUI(this.widgetEl); };
+        // --- タブごとに表示内容を切り替え ---
+        if (this.currentTab === 'notification') {
+            // 通知リストのみ表示
+            const myUserId = this.currentSettings.userId || '@you';
+            // デバッグ: 全ツイートのuserId, threadId, textを出力
+            console.log('【通知デバッグ】全ツイート一覧:');
+            this.currentSettings.tweets.forEach(t => {
+                console.log({id: t.id, userId: t.userId, threadId: t.threadId, text: t.text});
+            });
+            const notifications: { type: string, from: TweetWidgetTweet, to: TweetWidgetTweet }[] = [];
+            // すべてのツイートに対して「自分以外のuserId」からのアクションを通知として抽出
+            this.currentSettings.tweets.forEach(t => {
+                // リプライ: 自分のツイートに他人がリプライした場合
+                if (t.threadId) {
+                    const parent = this.currentSettings.tweets.find(pt => pt.id === t.threadId);
+                    if (parent && parent.userId === myUserId && t.userId !== myUserId) {
+                        notifications.push({ type: 'reply', from: t, to: parent });
+                    }
+                }
+                // いいね: 自分のツイートに他人がいいねした場合
+                if (t.like && t.like > 0 && t.userId !== myUserId) {
+                    const target = this.currentSettings.tweets.find(pt => pt.id === t.id && pt.userId === myUserId);
+                    if (target) notifications.push({ type: 'like', from: t, to: target });
+                }
+                // リツイート: 自分のツイートに他人がリツイートした場合
+                if (t.retweet && t.retweet > 0 && t.userId !== myUserId) {
+                    const target = this.currentSettings.tweets.find(pt => pt.id === t.id && pt.userId === myUserId);
+                    if (target) notifications.push({ type: 'retweet', from: t, to: target });
+                }
+            });
+            console.log('【通知デバッグ】抽出された通知:', notifications);
+            if (notifications.length > 0) {
+                const notifBox = container.createDiv({ cls: 'tweet-notification-list' });
+                notifBox.createDiv({ text: '通知', cls: 'tweet-notification-title' });
+                notifications.slice(0, 20).forEach(n => {
+                    const notif = notifBox.createDiv({ cls: 'tweet-notification-item' });
+                    notif.onclick = () => {
+                        // スレッド詳細へジャンプ
+                        this.detailTweetId = n.to.id;
+                        this.currentTab = 'home';
+                        this.renderTweetUI(this.widgetEl);
+                    };
+                    // 1行目: アバター＋ユーザー名＋アクション
+                    const row = notif.createDiv({ cls: 'tweet-notification-row' });
+                    let avatarUrl = '';
+                    if (n.from.userId && n.from.userId.startsWith('@ai-')) {
+                        const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
+                        if (aiAvatars.length > 0) {
+                            const idx = this.getAiAvatarIndex(n.from.userId, aiAvatars.length);
+                            avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
+                        } else {
+                            avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+                        }
+                    } else {
+                        avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
+                        if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
+                    }
+                    row.createEl('img', { attr: { src: avatarUrl, width: 36, height: 36 }, cls: 'tweet-notification-avatar' });
+                    const titleLine = row.createDiv({ cls: 'tweet-notification-titleline' });
+                    titleLine.createSpan({ text: n.from.userName || n.from.userId || '誰か', cls: 'tweet-notification-user' });
+                    if (n.type === 'reply') titleLine.createSpan({ text: ' がリプライしました', cls: 'tweet-notification-action' });
+                    if (n.type === 'like') titleLine.createSpan({ text: ' がいいねしました', cls: 'tweet-notification-action' });
+                    if (n.type === 'retweet') titleLine.createSpan({ text: ' がリツイートしました', cls: 'tweet-notification-action' });
+                    // 2行目: 内容
+                    let content = '';
+                    if (n.type === 'reply') {
+                        content = `「${n.from.text.slice(0, 40)}...」\n→「${n.to.text.slice(0, 40)}...」`;
+                    } else {
+                        content = `「${n.to.text.slice(0, 56)}...」`;
+                    }
+                    notif.createDiv({ text: content, cls: 'tweet-notification-contentline' });
+                });
+            } else {
+                container.createDiv({ text: '通知はありません', cls: 'tweet-notification-empty' });
+            }
+            return;
+        }
+        // --- ここから下はホーム（つぶやき一覧） ---
+        // 通知リスト（仮）は削除（ホームでは表示しない）
         // --- 返信モーダル ---
         if (this.replyModalTweet) {
             this.renderReplyModal(container, this.replyModalTweet);
@@ -392,6 +480,8 @@ export class TweetWidget implements WidgetImplementation {
                         taskStatus: null,
                         tags: parseTags(text),
                         links: parseLinks(text),
+                        userId: this.currentSettings.userId || '@you',
+                        userName: this.currentSettings.userName || 'あなた',
                     };
 
                     // 人間の投稿は即時で記録・保存・表示
@@ -537,6 +627,8 @@ export class TweetWidget implements WidgetImplementation {
                     taskStatus: null,
                     tags: parseTags(text),
                     links: parseLinks(text),
+                    userId: this.currentSettings.userId || '@you',
+                    userName: this.currentSettings.userName || 'あなた',
                 };
                 this.currentSettings.tweets.unshift(newTweet);
                 target.replyCount = (target.replyCount || 0) + 1;
@@ -549,10 +641,15 @@ export class TweetWidget implements WidgetImplementation {
             // --- 子リプライ一覧 ---
             listEl.createDiv({ cls: 'tweet-detail-section-sep' });
             if (replies.length > 0) {
-                replies.forEach(reply => {
-                    const replyWrap = listEl.createDiv({ cls: 'tweet-detail-reply' });
+                replies.forEach((reply, idx) => {
+                    // スレッド線付きラッパー
+                    const replyWrap = listEl.createDiv({ cls: 'tweet-thread-reply-wrapper' });
+                    if (idx < replies.length - 1) {
+                        replyWrap.createDiv({ cls: 'tweet-thread-reply-line' });
+                    }
+                    const replyCard = replyWrap.createDiv({ cls: 'tweet-detail-reply' });
                     const replyMap = new Map<string, TweetWidgetTweet>([[reply.id, reply]]);
-                    this.renderSingleTweet(reply, replyWrap, replyMap);
+                    this.renderSingleTweet(reply, replyCard, replyMap);
                     replyWrap.onclick = (e) => {
                         if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
                         this.detailTweetId = reply.id;
@@ -830,6 +927,7 @@ export class TweetWidget implements WidgetImplementation {
                         }
                     } catch {}
                     // AIリプライとして投稿
+                    const aiUserId = findLatestAiUserIdInThread(tweet, this.currentSettings.tweets) || generateAiUserId();
                     const aiReply: TweetWidgetTweet = {
                         id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
                         text: replyText,
@@ -851,7 +949,7 @@ export class TweetWidget implements WidgetImplementation {
                         taskStatus: null,
                         tags: parseTags(replyText),
                         links: parseLinks(replyText),
-                        userId: findLatestAiUserIdInThread(tweet, this.currentSettings.tweets) || generateAiUserId(),
+                        userId: aiUserId.startsWith('@ai-') ? aiUserId : generateAiUserId(),
                         userName: 'AI',
                         verified: true
                     };
@@ -1137,6 +1235,8 @@ export class TweetWidget implements WidgetImplementation {
                 taskStatus: null,
                 tags: parseTags(text),
                 links: parseLinks(text),
+                userId: this.currentSettings.userId || '@you',
+                userName: this.currentSettings.userName || 'あなた',
             };
             this.currentSettings.tweets.unshift(newTweet);
             tweet.replyCount = (tweet.replyCount || 0) + 1;
