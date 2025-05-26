@@ -15,7 +15,7 @@ export interface TweetWidgetFile {
     dataUrl: string;
 }
 
-export interface TweetWidgetTweet {
+export interface TweetWidgetPost {
     text: string;
     created: number;
     id: string;
@@ -47,7 +47,7 @@ export interface TweetWidgetTweet {
 
 
 export interface TweetWidgetSettings {
-    tweets: TweetWidgetTweet[];
+    posts: TweetWidgetPost[];
     avatarUrl?: string;
     userName?: string;
     userId?: string;
@@ -55,7 +55,7 @@ export interface TweetWidgetSettings {
 }
 
 export const DEFAULT_TWEET_WIDGET_SETTINGS: TweetWidgetSettings = {
-    tweets: [],
+    posts: [],
     avatarUrl: '',
     userName: 'あなた',
     userId: '@you',
@@ -71,11 +71,11 @@ export class TweetWidget implements WidgetImplementation {
     private currentSettings!: TweetWidgetSettings;
     private maxLength = 300;
     private attachedFiles: TweetWidgetFile[] = [];
-    private editingTweetId: string | null = null;
+    private editingPostId: string | null = null;
     private replyingToParentId: string | null = null;
     private currentFilter: 'all' | 'active' | 'deleted' | 'bookmark' = 'active';
-    private detailTweetId: string | null = null;
-    private replyModalTweet: TweetWidgetTweet | null = null;
+    private detailPostId: string | null = null;
+    private replyModalPost: TweetWidgetPost | null = null;
     private currentTab: 'home' | 'notification' = 'home';
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
@@ -84,14 +84,14 @@ export class TweetWidget implements WidgetImplementation {
         this.plugin = plugin;
         this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS };
         this.loadTweetsFromFile().then(() => {
-            this.renderTweetUI(this.widgetEl);
+            this.renderPostUI(this.widgetEl);
         });
         config.settings = this.currentSettings;
         this.attachedFiles = [];
         this.widgetEl = document.createElement('div');
         this.widgetEl.classList.add('widget', 'tweet-widget');
         this.widgetEl.setAttribute('data-widget-id', config.id);
-        this.renderTweetUI(this.widgetEl);
+        this.renderPostUI(this.widgetEl);
         return this.widgetEl;
     }
 
@@ -101,9 +101,9 @@ export class TweetWidget implements WidgetImplementation {
             const exists = await this.app.vault.adapter.exists(dbPath);
             if (exists) {
                 const raw = await this.app.vault.adapter.read(dbPath);
-                // Ensure default values for new fields on older tweets
+                // Ensure default values for new fields on older posts
                 const loadedSettings = JSON.parse(raw);
-                loadedSettings.tweets = loadedSettings.tweets.map((t: any) => ({
+                loadedSettings.posts = loadedSettings.posts.map((t: any) => ({
                     deleted: false,
                     ...t
                 }));
@@ -133,7 +133,7 @@ export class TweetWidget implements WidgetImplementation {
         }
     }
 
-    private renderTweetUI(container: HTMLElement) {
+    private renderPostUI(container: HTMLElement) {
         container.empty();
         // --- サイドバー切り替え ---
         const tabBar = container.createDiv({ cls: 'tweet-tab-bar' });
@@ -141,35 +141,35 @@ export class TweetWidget implements WidgetImplementation {
         const notifTab = tabBar.createEl('button', { text: '通知', cls: 'tweet-tab-btn' });
         if (this.currentTab === 'home') homeTab.classList.add('active');
         if (this.currentTab === 'notification') notifTab.classList.add('active');
-        homeTab.onclick = () => { this.currentTab = 'home'; this.renderTweetUI(this.widgetEl); };
-        notifTab.onclick = () => { this.currentTab = 'notification'; this.renderTweetUI(this.widgetEl); };
+        homeTab.onclick = () => { this.currentTab = 'home'; this.renderPostUI(this.widgetEl); };
+        notifTab.onclick = () => { this.currentTab = 'notification'; this.renderPostUI(this.widgetEl); };
         // --- タブごとに表示内容を切り替え ---
         if (this.currentTab === 'notification') {
             // 通知リストのみ表示
             const myUserId = this.currentSettings.userId || '@you';
-            // デバッグ: 全ツイートのuserId, threadId, textを出力
-            console.log('【通知デバッグ】全ツイート一覧:');
-            this.currentSettings.tweets.forEach(t => {
+            // デバッグ: 全ポストのuserId, threadId, textを出力
+            console.log('【通知デバッグ】全ポスト一覧:');
+            this.currentSettings.posts.forEach(t => {
                 console.log({id: t.id, userId: t.userId, threadId: t.threadId, text: t.text});
             });
-            const notifications: { type: string, from: TweetWidgetTweet, to: TweetWidgetTweet }[] = [];
-            // すべてのツイートに対して「自分以外のuserId」からのアクションを通知として抽出
-            this.currentSettings.tweets.forEach(t => {
-                // リプライ: 自分のツイートに他人がリプライした場合
+            const notifications: { type: string, from: TweetWidgetPost, to: TweetWidgetPost }[] = [];
+            // すべてのポストに対して「自分以外のuserId」からのアクションを通知として抽出
+            this.currentSettings.posts.forEach(t => {
+                // リプライ: 自分のポストに他人がリプライした場合
                 if (t.threadId) {
-                    const parent = this.currentSettings.tweets.find(pt => pt.id === t.threadId);
+                    const parent = this.currentSettings.posts.find(pt => pt.id === t.threadId);
                     if (parent && parent.userId === myUserId && t.userId !== myUserId) {
                         notifications.push({ type: 'reply', from: t, to: parent });
                     }
                 }
-                // いいね: 自分のツイートに他人がいいねした場合
+                // いいね: 自分のポストに他人がいいねした場合
                 if (t.like && t.like > 0 && t.userId !== myUserId) {
-                    const target = this.currentSettings.tweets.find(pt => pt.id === t.id && pt.userId === myUserId);
+                    const target = this.currentSettings.posts.find(pt => pt.id === t.id && pt.userId === myUserId);
                     if (target) notifications.push({ type: 'like', from: t, to: target });
                 }
-                // リツイート: 自分のツイートに他人がリツイートした場合
+                // リツイート: 自分のポストに他人がリツイートした場合
                 if (t.retweet && t.retweet > 0 && t.userId !== myUserId) {
-                    const target = this.currentSettings.tweets.find(pt => pt.id === t.id && pt.userId === myUserId);
+                    const target = this.currentSettings.posts.find(pt => pt.id === t.id && pt.userId === myUserId);
                     if (target) notifications.push({ type: 'retweet', from: t, to: target });
                 }
             });
@@ -181,9 +181,9 @@ export class TweetWidget implements WidgetImplementation {
                     const notif = notifBox.createDiv({ cls: 'tweet-notification-item' });
                     notif.onclick = () => {
                         // スレッド詳細へジャンプ
-                        this.detailTweetId = n.to.id;
+                        this.detailPostId = n.to.id;
                         this.currentTab = 'home';
-                        this.renderTweetUI(this.widgetEl);
+                        this.renderPostUI(this.widgetEl);
                     };
                     // 1行目: アバター＋ユーザー名＋アクション
                     const row = notif.createDiv({ cls: 'tweet-notification-row' });
@@ -223,21 +223,21 @@ export class TweetWidget implements WidgetImplementation {
         // --- ここから下はホーム（つぶやき一覧） ---
         // 通知リスト（仮）は削除（ホームでは表示しない）
         // --- 返信モーダル ---
-        if (this.replyModalTweet) {
-            this.renderReplyModal(container, this.replyModalTweet);
+        if (this.replyModalPost) {
+            this.renderReplyModal(container, this.replyModalPost);
         }
         // --- 詳細表示ヘッダー ---
-        if (this.detailTweetId) {
+        if (this.detailPostId) {
             const header = container.createDiv({ cls: 'tweet-detail-header' });
             const backBtn = header.createEl('button', { cls: 'tweet-detail-header-back', text: '←' });
             backBtn.onclick = () => {
-                this.detailTweetId = null;
-                this.renderTweetUI(this.widgetEl);
+                this.detailPostId = null;
+                this.renderPostUI(this.widgetEl);
             };
             header.createDiv({ cls: 'tweet-detail-header-title', text: 'ポスト' });
         }
         // --- フィルタUIを最上部に生成（詳細時は非表示） ---
-        if (!this.detailTweetId) {
+        if (!this.detailPostId) {
             const filterBar = container.createDiv({ cls: 'tweet-filter-bar' });
             const filterSelect = filterBar.createEl('select');
             [
@@ -254,23 +254,23 @@ export class TweetWidget implements WidgetImplementation {
             filterSelect.value = this.currentFilter;
             filterSelect.onchange = () => {
                 this.currentFilter = filterSelect.value as any;
-                this.detailTweetId = null;
-                this.renderTweetUI(this.widgetEl);
+                this.detailPostId = null;
+                this.renderPostUI(this.widgetEl);
             };
         }
         // --- 投稿欄 ---
-        if (!this.detailTweetId) {
+        if (!this.detailPostId) {
             const postBox = container.createDiv({ cls: 'tweet-post-box' });
             const avatar = postBox.createDiv({ cls: 'tweet-avatar-large' });
             let avatarUrl: string = '';
             if (this.replyingToParentId) {
-                const replyingToTweet = this.currentSettings.tweets.find(t => t.id === this.replyingToParentId);
-                if (replyingToTweet) {
-                    if (replyingToTweet.userId && replyingToTweet.userId.startsWith('@ai-')) {
+                const replyingToPost = this.currentSettings.posts.find(t => t.id === this.replyingToParentId);
+                if (replyingToPost) {
+                    if (replyingToPost.userId && replyingToPost.userId.startsWith('@ai-')) {
                         // AIアバター選択ロジック
                         const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
                         if (aiAvatars.length > 0) {
-                            const idx = this.getAiAvatarIndex(replyingToTweet.userId, aiAvatars.length);
+                            const idx = this.getAiAvatarIndex(replyingToPost.userId, aiAvatars.length);
                             avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
                         } else {
                             avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -359,14 +359,14 @@ export class TweetWidget implements WidgetImplementation {
             const inputArea = postBox.createDiv({ cls: 'tweet-input-area-main' });
             const replyInfoContainer = inputArea.createDiv({ cls: 'tweet-reply-info-container' });
             if (this.replyingToParentId) {
-                const replyingToTweet = this.currentSettings.tweets.find(t => t.id === this.replyingToParentId);
-                if (replyingToTweet) {
+                const replyingToPost = this.currentSettings.posts.find(t => t.id === this.replyingToParentId);
+                if (replyingToPost) {
                     const replyInfoDiv = replyInfoContainer.createDiv({ cls: 'tweet-reply-info' });
                     replyInfoDiv.setText(`${this.currentSettings.userId || '@you'} さんに返信中`);
                     const cancelReplyBtn = replyInfoDiv.createEl('button', { text: 'キャンセル', cls: 'tweet-cancel-reply-btn' });
                     cancelReplyBtn.onclick = () => {
                         this.replyingToParentId = null;
-                        this.renderTweetUI(this.widgetEl);
+                        this.renderPostUI(this.widgetEl);
                     };
                 } else {
                     this.replyingToParentId = null;
@@ -440,26 +440,26 @@ export class TweetWidget implements WidgetImplementation {
             const charCount = bottomBar.createDiv({ cls: 'tweet-char-count-main' });
             this.updateCharCount(charCount, 0);
 
-            const postBtn = bottomBar.createEl('button', { cls: 'tweet-post-btn-main', text: this.editingTweetId ? '編集完了' : (this.replyingToParentId ? '返信する' : 'ポストする') });
+            const postBtn = bottomBar.createEl('button', { cls: 'tweet-post-btn-main', text: this.editingPostId ? '編集完了' : (this.replyingToParentId ? '返信する' : 'ポストする') });
             postBtn.onclick = async () => {
                 const text = input.value.trim();
                 if (!text && this.attachedFiles.length === 0) return;
 
-                if (this.editingTweetId) {
-                    const idx = this.currentSettings.tweets.findIndex(t => t.id === this.editingTweetId);
+                if (this.editingPostId) {
+                    const idx = this.currentSettings.posts.findIndex(t => t.id === this.editingPostId);
                     if (idx !== -1) {
-                        const tweet = this.currentSettings.tweets[idx];
-                        tweet.text = text;
-                        tweet.files = this.attachedFiles;
-                        tweet.edited = true;
-                        tweet.updated = Date.now();
-                        tweet.tags = parseTags(text);
-                        tweet.links = parseLinks(text);
+                        const post = this.currentSettings.posts[idx];
+                        post.text = text;
+                        post.files = this.attachedFiles;
+                        post.edited = true;
+                        post.updated = Date.now();
+                        post.tags = parseTags(text);
+                        post.links = parseLinks(text);
                     }
-                    this.editingTweetId = null;
+                    this.editingPostId = null;
                     new Notice('つぶやきを編集しました');
                 } else {
-                    const newTweet: TweetWidgetTweet = {
+                    const newPost: TweetWidgetPost = {
                         id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
                         text,
                         created: Date.now(),
@@ -485,36 +485,38 @@ export class TweetWidget implements WidgetImplementation {
                     };
 
                     // 人間の投稿は即時で記録・保存・表示
-                    this.currentSettings.tweets.unshift(newTweet);
+                    this.currentSettings.posts.unshift(newPost);
                     await this.saveTweetsToFile();
-                    this.renderTweetUI(this.widgetEl);
+                    this.renderPostUI(this.widgetEl);
 
                     // AIリプライは非同期でディレイ発火
-                    if (shouldAutoReply(newTweet, this.plugin.settings)) {
+                    if (newPost.userId && newPost.userId.startsWith('@ai-')) {
+                        // AIの投稿にはAI自動リプライを発火しない
+                    } else if (shouldAutoReply(newPost, this.plugin.settings)) {
                         generateAiReply({
-                            tweet: newTweet,
-                            allTweets: this.currentSettings.tweets,
+                            tweet: newPost,
+                            allTweets: this.currentSettings.posts,
                             llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' },
                             saveReply: async (reply) => {
-                                this.currentSettings.tweets.unshift(reply);
-                                newTweet.replyCount = (newTweet.replyCount || 0) + 1;
-                                newTweet.updated = Date.now();
+                                this.currentSettings.posts.unshift(reply);
+                                newPost.replyCount = (newPost.replyCount || 0) + 1;
+                                newPost.updated = Date.now();
                                 await this.saveTweetsToFile();
-                                this.renderTweetUI(this.widgetEl);
+                                this.renderPostUI(this.widgetEl);
                             },
                             parseTags: parseTags.bind(this),
                             parseLinks: parseLinks.bind(this),
                             onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err))),
                             settings: this.plugin.settings,
-                            delay: !isExplicitAiTrigger(newTweet),
+                            delay: !isExplicitAiTrigger(newPost),
                         }); // awaitしない
                     }
 
                     if (this.replyingToParentId) {
-                        const originalTweet = this.currentSettings.tweets.find(t => t.id === this.replyingToParentId);
-                        if (originalTweet) {
-                            originalTweet.replyCount = (originalTweet.replyCount || 0) + 1;
-                            originalTweet.updated = Date.now();
+                        const originalPost = this.currentSettings.posts.find(t => t.id === this.replyingToParentId);
+                        if (originalPost) {
+                            originalPost.replyCount = (originalPost.replyCount || 0) + 1;
+                            originalPost.updated = Date.now();
                         }
                         this.replyingToParentId = null;
                         new Notice('返信を投稿しました');
@@ -526,7 +528,7 @@ export class TweetWidget implements WidgetImplementation {
                 input.value = '';
                 this.attachedFiles = [];
                 await this.saveTweetsToFile();
-                this.renderTweetUI(this.widgetEl);
+                this.renderPostUI(this.widgetEl);
             };
 
             input.addEventListener('input', () => {
@@ -535,7 +537,7 @@ export class TweetWidget implements WidgetImplementation {
         }
         // --- リスト本体 ---
         let listEl = container.createDiv({ cls: 'tweet-list-main' });
-        this.renderTweetList(listEl);
+        this.renderPostList(listEl);
     }
 
     private renderFilePreview(container: HTMLElement) {
@@ -557,44 +559,29 @@ export class TweetWidget implements WidgetImplementation {
         else el.classList.remove('tweet-char-over');
     }
 
-    private renderTweetList(listEl: HTMLElement) {
+    private renderPostList(listEl: HTMLElement) {
         listEl.empty();
-        let filteredTweets: TweetWidgetTweet[];
-        if (this.detailTweetId) {
+        let filteredPosts: TweetWidgetPost[];
+        if (this.detailPostId) {
             // --- Twitter風 詳細表示 ---
-            const all = this.currentSettings.tweets;
-            const target = all.find(t => t.id === this.detailTweetId);
+            const all = this.currentSettings.posts;
+            const target = all.find(t => t.id === this.detailPostId);
             if (!target) return;
-            // 親ツイート（1件）
-            let parent: TweetWidgetTweet | null = null;
+            // 親ポスト（1件）
+            let parent: TweetWidgetPost | null = null;
             if (target.threadId) {
                 parent = all.find(t => t.id === target.threadId) || null;
-            }
-            // 子リプライ一覧
-            const replies = all.filter(t => t.threadId === target.id);
-            // --- 親ツイート ---
-            if (parent) {
-                listEl.createDiv({ cls: 'tweet-detail-section-sep' });
-                const parentWrap = listEl.createDiv({ cls: 'tweet-detail-parent' });
-                const tweetsById = new Map<string, TweetWidgetTweet>([[parent.id, parent]]);
-                this.renderSingleTweet(parent, parentWrap, tweetsById);
-                parentWrap.onclick = (e) => {
-                    if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
-                    this.detailTweetId = parent!.id;
-                    this.renderTweetUI(this.widgetEl);
-                };
-            }
-            // --- 選択ツイート ---
-            listEl.createDiv({ cls: 'tweet-detail-section-sep' });
+            };
+            // --- 親ポストを最上部に表示 ---
             const targetWrap = listEl.createDiv({ cls: 'tweet-detail-main' });
-            const tweetsById = new Map<string, TweetWidgetTweet>([[target.id, target]]);
-            this.renderSingleTweet(target, targetWrap, tweetsById);
-            // --- 返信欄 ---
+            const postsById = new Map<string, TweetWidgetPost>([[target.id, target]]);
+            this.renderSinglePost(target, targetWrap, postsById);
+            // --- 返信入力欄 ---
             const replyBox = listEl.createDiv({ cls: 'tweet-detail-reply-box' });
             const avatar = replyBox.createDiv({ cls: 'tweet-detail-reply-avatar' });
             let avatarUrl = (this.plugin.settings.tweetWidgetAvatarUrl || this.currentSettings.avatarUrl || '').trim();
             if (!avatarUrl) avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
-            avatar.createEl('img', { attr: { src: avatarUrl as string, width: 40, height: 40 } });
+            avatar.createEl('img', { attr: { src: avatarUrl as string, width: 44, height: 44 } });
             const inputArea = replyBox.createDiv({ cls: 'tweet-detail-reply-input' });
             const textarea = document.createElement('textarea');
             textarea.className = 'tweet-detail-reply-textarea';
@@ -606,7 +593,7 @@ export class TweetWidget implements WidgetImplementation {
             replyBtn.onclick = async () => {
                 const text = textarea.value.trim();
                 if (!text) return;
-                const newTweet: TweetWidgetTweet = {
+                const newPost: TweetWidgetPost = {
                     id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
                     text,
                     created: Date.now(),
@@ -630,87 +617,86 @@ export class TweetWidget implements WidgetImplementation {
                     userId: this.currentSettings.userId || '@you',
                     userName: this.currentSettings.userName || 'あなた',
                 };
-                this.currentSettings.tweets.unshift(newTweet);
+                this.currentSettings.posts.unshift(newPost);
                 target.replyCount = (target.replyCount || 0) + 1;
                 target.updated = Date.now();
                 await this.saveTweetsToFile();
                 textarea.value = '';
-                this.renderTweetUI(this.widgetEl);
+                this.renderPostUI(this.widgetEl);
             };
             inputArea.appendChild(replyBtn);
-            // --- 子リプライ一覧 ---
+            // --- リプライツリー（再帰的） ---
             listEl.createDiv({ cls: 'tweet-detail-section-sep' });
-            if (replies.length > 0) {
-                replies.forEach((reply, idx) => {
-                    // スレッド線付きラッパー
-                    const replyWrap = listEl.createDiv({ cls: 'tweet-thread-reply-wrapper' });
-                    if (idx < replies.length - 1) {
-                        replyWrap.createDiv({ cls: 'tweet-thread-reply-line' });
-                    }
-                    const replyCard = replyWrap.createDiv({ cls: 'tweet-detail-reply' });
-                    const replyMap = new Map<string, TweetWidgetTweet>([[reply.id, reply]]);
-                    this.renderSingleTweet(reply, replyCard, replyMap);
-                    replyWrap.onclick = (e) => {
+            const renderRecursiveReplies = (parentId: string, container: HTMLElement, depth: number = 0) => {
+                const replies = this.currentSettings.posts.filter(t => t.threadId === parentId);
+                replies.forEach(reply => {
+                    const replyCard = container.createDiv({ cls: 'tweet-detail-reply' });
+                    replyCard.style.marginLeft = `${depth * 24}px`;
+                    const replyMap = new Map<string, TweetWidgetPost>([[reply.id, reply]]);
+                    this.renderSinglePost(reply, replyCard, replyMap);
+                    replyCard.onclick = (e) => {
                         if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
-                        this.detailTweetId = reply.id;
-                        this.renderTweetUI(this.widgetEl);
+                        this.detailPostId = reply.id;
+                        this.renderPostUI(this.widgetEl);
                     };
+                    renderRecursiveReplies(reply.id, container, depth + 1);
                 });
-            } else {
+            };
+            renderRecursiveReplies(target.id, listEl);
+            if (this.currentSettings.posts.filter(t => t.threadId === target.id).length === 0) {
                 listEl.createDiv({ cls: 'tweet-detail-no-reply', text: 'リプライはありません' });
             }
-            listEl.createDiv({ cls: 'tweet-detail-section-sep' });
             return;
         }
         // --- フィルタ適用 ---
         if (this.currentFilter === 'all') {
-            filteredTweets = this.currentSettings.tweets;
+            filteredPosts = this.currentSettings.posts;
         } else if (this.currentFilter === 'deleted') {
-            filteredTweets = this.currentSettings.tweets.filter(t => t.deleted);
+            filteredPosts = this.currentSettings.posts.filter(t => t.deleted);
         } else if (this.currentFilter === 'bookmark') {
-            filteredTweets = this.currentSettings.tweets.filter(t => t.bookmark);
+            filteredPosts = this.currentSettings.posts.filter(t => t.bookmark);
         } else {
-            filteredTweets = this.currentSettings.tweets.filter(t => !t.deleted);
+            filteredPosts = this.currentSettings.posts.filter(t => !t.deleted);
         }
-        if (filteredTweets.length === 0) {
+        if (filteredPosts.length === 0) {
             listEl.createEl('div', { cls: 'tweet-empty-notice', text: 'まだつぶやきがありません。' });
             return;
         }
         // --- 通常時はスレッド表示 ---
-        const tweetsById = new Map<string, TweetWidgetTweet>();
-        filteredTweets.forEach(t => tweetsById.set(t.id, t));
+        const postsById = new Map<string, TweetWidgetPost>();
+        filteredPosts.forEach(t => postsById.set(t.id, t));
         // 返信（リプライ）を除外し、親ポストのみリスト表示
-        const rootItems = filteredTweets.filter(t => !t.threadId || !tweetsById.has(t.threadId));
+        const rootItems = filteredPosts.filter(t => !t.threadId || !postsById.has(t.threadId));
         rootItems.sort((a, b) => {
             const lastActivityA = a.updated || a.created;
             const lastActivityB = b.updated || b.created;
             return lastActivityB - lastActivityA;
         });
-        rootItems.forEach(tweet => {
+        rootItems.forEach(post => {
             const wrapper = listEl.createDiv({ cls: 'tweet-thread-wrapper' });
-            wrapper.setAttribute('data-tweet-id', tweet.id);
-            const tweetContainer = wrapper.createDiv({ cls: 'tweet-item-container' });
-            this.renderSingleTweet(tweet, tweetContainer, tweetsById);
+            wrapper.setAttribute('data-tweet-id', post.id);
+            const postContainer = wrapper.createDiv({ cls: 'tweet-item-container' });
+            this.renderSinglePost(post, postContainer, postsById);
             // --- クリックで詳細表示 ---
             wrapper.onclick = (e) => {
                 if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
-                this.detailTweetId = tweet.id;
-                this.renderTweetUI(this.widgetEl);
+                this.detailPostId = post.id;
+                this.renderPostUI(this.widgetEl);
             };
         });
     }
 
-    private renderSingleTweet(tweet: TweetWidgetTweet, container: HTMLElement, tweetsById: Map<string, TweetWidgetTweet>) {
+    private renderSinglePost(post: TweetWidgetPost, container: HTMLElement, postsById: Map<string, TweetWidgetPost>) {
         container.empty();
         const item = container.createDiv({ cls: 'tweet-item-main' });
 
         const header = item.createDiv({ cls: 'tweet-item-header-main' });
         const avatar = header.createDiv({ cls: 'tweet-item-avatar-main' });
         let avatarUrl: string = '';
-        if (tweet.userId && tweet.userId.startsWith('@ai-')) {
+        if (post.userId && post.userId.startsWith('@ai-')) {
             const aiAvatars = (this.plugin.settings.aiAvatarUrls || '').split(',').map(s => s.trim()).filter(Boolean);
             if (aiAvatars.length > 0) {
-                const idx = this.getAiAvatarIndex(tweet.userId, aiAvatars.length);
+                const idx = this.getAiAvatarIndex(post.userId, aiAvatars.length);
                 avatarUrl = aiAvatars[idx] || 'https://www.gravatar.com/avatar/?d=mp&s=64';
             } else {
                 avatarUrl = 'https://www.gravatar.com/avatar/?d=mp&s=64';
@@ -788,26 +774,25 @@ export class TweetWidget implements WidgetImplementation {
         };
 
         const userInfo = header.createDiv({ cls: 'tweet-item-userinfo-main' });
-        userInfo.createEl('span', { text: tweet.userName || this.currentSettings.userName || 'あなた', cls: 'tweet-item-username-main' });
-        if (tweet.verified || this.currentSettings.verified) {
+        userInfo.createEl('span', { text: post.userName || this.currentSettings.userName || 'あなた', cls: 'tweet-item-username-main' });
+        if (post.verified || this.currentSettings.verified) {
             const badge = userInfo.createSpan({ cls: 'tweet-item-badge-main' });
             setIcon(badge, 'badge-check');
         }
-        userInfo.createEl('span', { text: tweet.userId || this.currentSettings.userId || '@you', cls: 'tweet-item-userid-main' });
-        const timeText = '・' + this.formatTimeAgo(tweet.created) + (tweet.edited ? ' (編集済)' : '');
+        userInfo.createEl('span', { text: post.userId || this.currentSettings.userId || '@you', cls: 'tweet-item-userid-main' });
+        const timeText = '・' + this.formatTimeAgo(post.created) + (post.edited ? ' (編集済)' : '');
         userInfo.createEl('span', { text: timeText, cls: 'tweet-item-time-main' });
 
-        if (tweet.threadId) {
-            const parentTweetExists = tweetsById.has(tweet.threadId);
+        if (post.threadId) {
+            const parentPost = this.currentSettings.posts.find(t => t.id === post.threadId);
+            const parentPostExists = parentPost && !parentPost.deleted;
             const replyToDiv = item.createDiv({ cls: 'tweet-item-reply-to' });
-
-            if (parentTweetExists) {
-                const parentUser = this.currentSettings.userId || '@you';
-                replyToDiv.setText(`${parentUser} さんへの返信`);
-                replyToDiv.title = '元のツイートに移動';
+            if (parentPostExists) {
+                replyToDiv.setText('ポストへの返信');
+                replyToDiv.title = '元のポストに移動';
                 replyToDiv.onclick = (e) => {
                     e.stopPropagation();
-                    const parentEl = this.widgetEl.querySelector(`[data-tweet-id="${tweet.threadId}"]`) as HTMLElement;
+                    const parentEl = this.widgetEl.querySelector(`[data-tweet-id="${post.threadId}"]`) as HTMLElement;
                     if (parentEl) {
                         parentEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         parentEl.addClass('highlight');
@@ -815,14 +800,14 @@ export class TweetWidget implements WidgetImplementation {
                     }
                 };
             } else {
-                replyToDiv.setText('削除されたツイートへの返信');
+                replyToDiv.setText('削除されたポストへの返信');
                 replyToDiv.addClass('deleted-reply');
             }
         }
 
         const textDiv = item.createDiv({ cls: 'tweet-item-text-main' });
         // --- AIリプライがJSON形式ならreplyだけ抽出 ---
-        let displayText = tweet.text;
+        let displayText = post.text;
         try {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') {
@@ -831,23 +816,23 @@ export class TweetWidget implements WidgetImplementation {
         } catch {}
         MarkdownRenderer.render(this.app, displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', this.plugin);
 
-        if (tweet.files && tweet.files.length) {
-            const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${tweet.files.length}` });
-            tweet.files.forEach(file => {
+        if (post.files && post.files.length) {
+            const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${post.files.length}` });
+            post.files.forEach(file => {
                 const img = filesDiv.createEl('img', { attr: { src: file.dataUrl, alt: file.name } });
                 img.className = 'tweet-item-image-main';
             });
         }
 
         const metadataDiv = item.createDiv({ cls: 'tweet-item-metadata-main' });
-        if (tweet.bookmark) metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: 'Bookmarked' });
-        if (tweet.visibility && tweet.visibility !== 'public') metadataDiv.createEl('span', { cls: 'tweet-chip visibility', text: tweet.visibility });
-        if (tweet.noteQuality && tweet.noteQuality !== 'fleeting') metadataDiv.createEl('span', { cls: 'tweet-chip quality', text: tweet.noteQuality });
-        if (tweet.taskStatus) metadataDiv.createEl('span', { cls: 'tweet-chip status', text: tweet.taskStatus });
+        if (post.bookmark) metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: 'Bookmarked' });
+        if (post.visibility && post.visibility !== 'public') metadataDiv.createEl('span', { cls: 'tweet-chip visibility', text: post.visibility });
+        if (post.noteQuality && post.noteQuality !== 'fleeting') metadataDiv.createEl('span', { cls: 'tweet-chip quality', text: post.noteQuality });
+        if (post.taskStatus) metadataDiv.createEl('span', { cls: 'tweet-chip status', text: post.taskStatus });
 
-        if (tweet.tags && tweet.tags.length > 0) {
+        if (post.tags && post.tags.length > 0) {
             const tagsDiv = item.createDiv({ cls: 'tweet-item-tags-main' });
-            tweet.tags.forEach(tag => {
+            post.tags.forEach(tag => {
                 tagsDiv.createEl('a', { text: `#${tag}`, cls: 'tweet-tag', href: `#${tag}` });
             });
         }
@@ -857,48 +842,48 @@ export class TweetWidget implements WidgetImplementation {
         const replyBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main reply' });
         setIcon(replyBtn, 'message-square');
         replyBtn.onclick = () => {
-            this.replyModalTweet = tweet;
-            this.renderTweetUI(this.widgetEl);
+            this.replyModalPost = post;
+            this.renderPostUI(this.widgetEl);
         };
-        replyBtn.createSpan({ text: String(tweet.replyCount || 0), cls: 'tweet-action-count-main' });
+        replyBtn.createSpan({ text: String(post.replyCount || 0), cls: 'tweet-action-count-main' });
 
         const rtBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main retweet' });
         setIcon(rtBtn, 'repeat-2');
-        if (tweet.retweeted) rtBtn.addClass('active');
+        if (post.retweeted) rtBtn.addClass('active');
         rtBtn.onclick = async () => {
-            tweet.retweeted = !tweet.retweeted;
-            tweet.retweet = (tweet.retweet || 0) + (tweet.retweeted ? 1 : -1);
+            post.retweeted = !post.retweeted;
+            post.retweet = (post.retweet || 0) + (post.retweeted ? 1 : -1);
             await this.saveTweetsToFile();
-            this.renderTweetUI(this.widgetEl);
+            this.renderPostUI(this.widgetEl);
         };
-        rtBtn.createSpan({ text: String(tweet.retweet || 0), cls: 'tweet-action-count-main' });
+        rtBtn.createSpan({ text: String(post.retweet || 0), cls: 'tweet-action-count-main' });
 
         const likeBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main like' });
         setIcon(likeBtn, 'heart');
-        if (tweet.liked) likeBtn.addClass('active');
+        if (post.liked) likeBtn.addClass('active');
         likeBtn.onclick = async () => {
-            tweet.liked = !tweet.liked;
-            tweet.like = (tweet.like || 0) + (tweet.liked ? 1 : -1);
+            post.liked = !post.liked;
+            post.like = (post.like || 0) + (post.liked ? 1 : -1);
             await this.saveTweetsToFile();
-            this.renderTweetUI(this.widgetEl);
+            this.renderPostUI(this.widgetEl);
         };
-        likeBtn.createSpan({ text: String(tweet.like || 0), cls: 'tweet-action-count-main' });
+        likeBtn.createSpan({ text: String(post.like || 0), cls: 'tweet-action-count-main' });
 
         const bookmarkBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main bookmark' });
         setIcon(bookmarkBtn, 'bookmark');
-        if (tweet.bookmark) bookmarkBtn.addClass('active');
+        if (post.bookmark) bookmarkBtn.addClass('active');
         bookmarkBtn.onclick = async () => {
-            tweet.bookmark = !tweet.bookmark;
+            post.bookmark = !post.bookmark;
             await this.saveTweetsToFile();
-            this.renderTweetUI(this.widgetEl);
+            this.renderPostUI(this.widgetEl);
         };
 
         const moreBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main more' });
         setIcon(moreBtn, 'more-horizontal');
-        moreBtn.onclick = (e) => this.showMoreMenu(e, tweet);
+        moreBtn.onclick = (e) => this.showMoreMenu(e, post);
 
-        // --- Geminiリプライボタン（自分のツイートのみ） ---
-        if ((this.currentSettings.userId === '@you' || !this.currentSettings.userId) && tweet.id && this.plugin.settings.llm?.gemini?.apiKey) {
+        // --- Geminiリプライボタン（自分のポストのみ） ---
+        if ((this.currentSettings.userId === '@you' || !this.currentSettings.userId) && post.id && this.plugin.settings.llm?.gemini?.apiKey) {
             const geminiBtn = actionBar.createEl('button', { cls: 'tweet-action-btn-main gemini-reply' });
             setIcon(geminiBtn, 'bot');
             geminiBtn.title = 'Geminiでリプライ生成';
@@ -907,17 +892,17 @@ export class TweetWidget implements WidgetImplementation {
                 geminiBtn.setAttribute('disabled', 'true');
                 geminiBtn.innerHTML = '...';
                 try {
-                    const thread = getFullThreadHistory(tweet, this.currentSettings.tweets);
-                    const threadText = thread.map((t: TweetWidgetTweet) =>
+                    const thread = getFullThreadHistory(post, this.currentSettings.posts);
+                    const threadText = thread.map((t: TweetWidgetPost) =>
                         (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text
                     ).join('\n');
-                    const promptText = geminiPrompt.replace('{tweet}', threadText);
+                    const promptText = geminiPrompt.replace('{post}', threadText);
                     let replyText = await GeminiProvider.generateReply(promptText, {
                         apiKey: deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''),
-                        tweet: tweet,
+                        post: post,
                         thread: thread,
                         model: this.plugin.settings.llm?.gemini?.model || 'gemini-2.0-flash-exp',
-                        tweetText: threadText,
+                        postText: threadText,
                     });
                     // 万一JSON形式で返ってきた場合もreplyだけ抽出
                     try {
@@ -927,8 +912,8 @@ export class TweetWidget implements WidgetImplementation {
                         }
                     } catch {}
                     // AIリプライとして投稿
-                    const aiUserId = findLatestAiUserIdInThread(tweet, this.currentSettings.tweets) || generateAiUserId();
-                    const aiReply: TweetWidgetTweet = {
+                    const aiUserId = findLatestAiUserIdInThread(post, this.currentSettings.posts) || generateAiUserId();
+                    const aiReply: TweetWidgetPost = {
                         id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
                         text: replyText,
                         created: Date.now(),
@@ -943,7 +928,7 @@ export class TweetWidget implements WidgetImplementation {
                         deleted: false,
                         bookmark: false,
                         contextNote: null,
-                        threadId: tweet.id,
+                        threadId: post.id,
                         visibility: 'public',
                         noteQuality: 'fleeting',
                         taskStatus: null,
@@ -953,11 +938,11 @@ export class TweetWidget implements WidgetImplementation {
                         userName: 'AI',
                         verified: true
                     };
-                    this.currentSettings.tweets.unshift(aiReply);
-                    tweet.replyCount = (tweet.replyCount || 0) + 1;
-                    tweet.updated = Date.now();
+                    this.currentSettings.posts.unshift(aiReply);
+                    post.replyCount = (post.replyCount || 0) + 1;
+                    post.updated = Date.now();
                     await this.saveTweetsToFile();
-                    this.renderTweetUI(this.widgetEl);
+                    this.renderPostUI(this.widgetEl);
                 } catch (err) {
                     new Notice('Geminiリプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err)));
                 } finally {
@@ -969,17 +954,17 @@ export class TweetWidget implements WidgetImplementation {
         }
 
         // --- AIリプライなら会話履歴を下に表示 ---
-        if (tweet.userId && tweet.userId.startsWith('@ai-') && this.plugin.settings.showAiHistory) {
+        if (post.userId && post.userId.startsWith('@ai-') && this.plugin.settings.showAiHistory) {
             const aiHistoryDiv = item.createDiv({ cls: 'tweet-ai-history' });
             aiHistoryDiv.createEl('div', { text: 'このAIとの会話履歴:', cls: 'tweet-ai-history-label' });
-            const aiHistory = getFullThreadHistory(tweet, this.currentSettings.tweets);
-            aiHistory.forEach((h: TweetWidgetTweet) => {
+            const aiHistory = getFullThreadHistory(post, this.currentSettings.posts);
+            aiHistory.forEach((h: TweetWidgetPost) => {
                 aiHistoryDiv.createEl('div', { text: `${h.userName || (h.userId && h.userId.startsWith('@ai-') ? 'AI' : 'あなた')}: ${h.text}`, cls: 'tweet-ai-history-item' });
             });
         }
 
         // --- ここから追加：リプライしたユーザーのアバターを下部に表示（最適化） ---
-        const replies = this.currentSettings.tweets.filter(t => t.threadId === tweet.id);
+        const replies = this.currentSettings.posts.filter(t => t.threadId === post.id);
         const uniqueUsers = new Map();
         replies.forEach(r => {
             if (r.userId) uniqueUsers.set(r.userId, r);
@@ -1017,42 +1002,42 @@ export class TweetWidget implements WidgetImplementation {
         }
     }
 
-    private showMoreMenu(event: MouseEvent, tweet: TweetWidgetTweet) {
+    private showMoreMenu(event: MouseEvent, post: TweetWidgetPost) {
         const menu = new Menu();
 
         menu.addItem((item) => item.setTitle("Edit").setIcon("pencil").onClick(() => {
-            this.editingTweetId = tweet.id;
+            this.editingPostId = post.id;
             this.replyingToParentId = null;
-            this.attachedFiles = tweet.files ? [...tweet.files] : [];
-            this.renderTweetUI(this.widgetEl);
+            this.attachedFiles = post.files ? [...post.files] : [];
+            this.renderPostUI(this.widgetEl);
             const input = this.widgetEl.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
             if (input) {
-                input.value = tweet.text;
+                input.value = post.text;
                 input.focus();
             }
         }));
         
-        if (tweet.deleted) {
+        if (post.deleted) {
             menu.addItem(item => item.setTitle('復元').setIcon('rotate-ccw').onClick(async () => {
-                tweet.deleted = false;
-                tweet.updated = Date.now();
+                post.deleted = false;
+                post.updated = Date.now();
                 await this.saveTweetsToFile();
-                this.renderTweetUI(this.widgetEl);
+                this.renderPostUI(this.widgetEl);
             }));
         } else {
             menu.addItem(item => item.setTitle('非表示').setIcon('eye-off').onClick(async () => {
-                tweet.deleted = true;
-                tweet.updated = Date.now();
+                post.deleted = true;
+                post.updated = Date.now();
                 await this.saveTweetsToFile();
-                this.renderTweetUI(this.widgetEl);
+                this.renderPostUI(this.widgetEl);
             }));
         }
         menu.addItem(item => item.setTitle('⚠️ 完全削除').setIcon('x-circle')
             .onClick(async () => {
                 if (!confirm('このつぶやきを完全に削除しますか？（元に戻せません）')) return;
-                this.currentSettings.tweets = this.currentSettings.tweets.filter(t => t.id !== tweet.id);
+                this.currentSettings.posts = this.currentSettings.posts.filter(t => t.id !== post.id);
                 await this.saveTweetsToFile();
-                this.renderTweetUI(this.widgetEl);
+                this.renderPostUI(this.widgetEl);
             }));
         menu.addSeparator();
 
@@ -1073,37 +1058,37 @@ export class TweetWidget implements WidgetImplementation {
                     .onClick(async () => {
                         setValue(option);
                         await this.saveTweetsToFile();
-                        this.renderTweetUI(this.widgetEl);
+                        this.renderPostUI(this.widgetEl);
                     })
                 )
             });
         };
 
-        addMenuItems("Visibility", ["public", "private", "draft"], tweet.visibility, v => tweet.visibility = v);
+        addMenuItems("Visibility", ["public", "private", "draft"], post.visibility, v => post.visibility = v);
         menu.addSeparator();
         addMenuItems(
             "Note Quality",
             ["fleeting", "literature", "permanent"],
-            tweet.noteQuality,
-            v => tweet.noteQuality = v,
+            post.noteQuality,
+            v => post.noteQuality = v,
             { fleeting: "アイデア", literature: "文献", permanent: "永久" }
         );
         menu.addSeparator();
-        addMenuItems("Task Status", [null, "todo", "doing", "done"], tweet.taskStatus, v => tweet.taskStatus = v);
+        addMenuItems("Task Status", [null, "todo", "doing", "done"], post.taskStatus, v => post.taskStatus = v);
         menu.addSeparator();
 
         menu.addItem(item => item
             .setTitle("Open/Create Context Note")
             .setIcon("file-text")
             .onClick(async () => {
-                let notePath = tweet.contextNote;
-                const date = new Date(tweet.created).toISOString().split('T')[0];
-                const sanitizedText = tweet.text.slice(0, 30).replace(/[\\/:*?"<>|#\[\]]/g, '').trim();
+                let notePath = post.contextNote;
+                const date = new Date(post.created).toISOString().split('T')[0];
+                const sanitizedText = post.text.slice(0, 30).replace(/[\\/:*?"<>|#\[\]]/g, '').trim();
                 let contextFolder = "ContextNotes";
                 const settings = (this.plugin as any).settings || {};
                 if (settings.tweetDbLocation === 'custom' && settings.tweetDbCustomPath) {
-                    const customBase = settings.tweetDbCustomPath.replace(/\/tweets\.json$/, '');
-                    const customBase2 = settings.tweetDbCustomPath.replace(/\/tweets\.json$/, '').replace(/\/$/, '');
+                    const customBase = settings.tweetDbCustomPath.replace(/\/posts\.json$/, '');
+                    const customBase2 = settings.tweetDbCustomPath.replace(/\/posts\.json$/, '').replace(/\/$/, '');
                     contextFolder = customBase2 + '/ContextNotes';
                 }
                 if (!await this.app.vault.adapter.exists(contextFolder)) {
@@ -1111,12 +1096,12 @@ export class TweetWidget implements WidgetImplementation {
                 }
                 if (!notePath) {
                     notePath = `${contextFolder}/${date}-${sanitizedText || 'note'}.md`;
-                    tweet.contextNote = notePath;
+                    post.contextNote = notePath;
                     await this.saveTweetsToFile();
-                    this.renderTweetUI(this.widgetEl);
+                    this.renderPostUI(this.widgetEl);
                 }
                 if (!await this.app.vault.adapter.exists(notePath)) {
-                    await this.app.vault.create(notePath, `> ${tweet.text}\n\n---\n\n`);
+                    await this.app.vault.create(notePath, `> ${post.text}\n\n---\n\n`);
                 }
                 const file = this.app.vault.getAbstractFileByPath(notePath);
                 if (file instanceof TFile) {
@@ -1164,7 +1149,7 @@ export class TweetWidget implements WidgetImplementation {
 
     updateExternalSettings(newSettings: any) {
         this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...(newSettings || {}) };
-        this.renderTweetUI(this.widgetEl);
+        this.renderPostUI(this.widgetEl);
     }
 
     private getTweetDbPath(): string {
@@ -1173,17 +1158,17 @@ export class TweetWidget implements WidgetImplementation {
         if (location === 'custom' && settings.tweetDbCustomPath) {
             return settings.tweetDbCustomPath;
         } else {
-            return `${this.plugin.manifest.dir || '.obsidian/plugins/widget-board'}/data/tweets.json`;
+            return `${this.plugin.manifest.dir || '.obsidian/plugins/widget-board'}/data/posts.json`;
         }
     }
 
-    private renderReplyModal(container: HTMLElement, tweet: TweetWidgetTweet) {
+    private renderReplyModal(container: HTMLElement, post: TweetWidgetPost) {
         // バックドロップ
         const backdrop = container.createDiv({ cls: 'tweet-reply-modal-backdrop' });
         backdrop.onclick = (e) => {
             if (e.target === backdrop) {
-                this.replyModalTweet = null;
-                this.renderTweetUI(this.widgetEl);
+                this.replyModalPost = null;
+                this.renderPostUI(this.widgetEl);
             }
         };
         // モーダル本体
@@ -1193,13 +1178,13 @@ export class TweetWidget implements WidgetImplementation {
         header.createEl('span', { text: '返信' });
         const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
         closeBtn.onclick = () => {
-            this.replyModalTweet = null;
-            this.renderTweetUI(this.widgetEl);
+            this.replyModalPost = null;
+            this.renderPostUI(this.widgetEl);
         };
-        // 返信先ツイート簡易表示
-        const tweetBox = modal.createDiv({ cls: 'tweet-reply-modal-tweet' });
-        const tweetsById = new Map<string, TweetWidgetTweet>([[tweet.id, tweet]]);
-        this.renderSingleTweet(tweet, tweetBox, tweetsById);
+        // 返信先ポスト簡易表示
+        const postBox = modal.createDiv({ cls: 'tweet-reply-modal-post' });
+        const postsById = new Map<string, TweetWidgetPost>([[post.id, post]]);
+        this.renderSinglePost(post, postBox, postsById);
         // 入力欄
         const inputArea = modal.createDiv({ cls: 'tweet-reply-modal-input' });
         const textarea = document.createElement('textarea');
@@ -1214,7 +1199,7 @@ export class TweetWidget implements WidgetImplementation {
         replyBtn.onclick = async () => {
             const text = textarea.value.trim();
             if (!text) return;
-            const newTweet: TweetWidgetTweet = {
+            const newPost: TweetWidgetPost = {
                 id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
                 text,
                 created: Date.now(),
@@ -1229,7 +1214,7 @@ export class TweetWidget implements WidgetImplementation {
                 deleted: false,
                 bookmark: false,
                 contextNote: null,
-                threadId: tweet.id,
+                threadId: post.id,
                 visibility: 'public',
                 noteQuality: 'fleeting',
                 taskStatus: null,
@@ -1238,30 +1223,32 @@ export class TweetWidget implements WidgetImplementation {
                 userId: this.currentSettings.userId || '@you',
                 userName: this.currentSettings.userName || 'あなた',
             };
-            this.currentSettings.tweets.unshift(newTweet);
-            tweet.replyCount = (tweet.replyCount || 0) + 1;
-            tweet.updated = Date.now();
+            this.currentSettings.posts.unshift(newPost);
+            post.replyCount = (post.replyCount || 0) + 1;
+            post.updated = Date.now();
             await this.saveTweetsToFile();
-            this.replyModalTweet = null;
-            this.renderTweetUI(this.widgetEl);
-            // AI自動リプライは親ツイート（tweet）を渡す
-            if (shouldAutoReply(newTweet, this.plugin.settings)) {
+            this.replyModalPost = null;
+            this.renderPostUI(this.widgetEl);
+            // AI自動リプライは親ポスト（post）を渡す
+            if (newPost.userId && newPost.userId.startsWith('@ai-')) {
+                // AIの投稿にはAI自動リプライを発火しない
+            } else if (shouldAutoReply(newPost, this.plugin.settings)) {
                 generateAiReply({
-                    tweet: tweet,
-                    allTweets: this.currentSettings.tweets,
+                    tweet: newPost,
+                    allTweets: this.currentSettings.posts,
                     llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' },
                     saveReply: async (reply) => {
-                        this.currentSettings.tweets.unshift(reply);
-                        tweet.replyCount = (tweet.replyCount || 0) + 1;
-                        tweet.updated = Date.now();
+                        this.currentSettings.posts.unshift(reply);
+                        newPost.replyCount = (newPost.replyCount || 0) + 1;
+                        newPost.updated = Date.now();
                         await this.saveTweetsToFile();
-                        this.renderTweetUI(this.widgetEl);
+                        this.renderPostUI(this.widgetEl);
                     },
                     parseTags: parseTags.bind(this),
                     parseLinks: parseLinks.bind(this),
                     onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err))),
                     settings: this.plugin.settings,
-                    delay: !isExplicitAiTrigger(newTweet),
+                    delay: !isExplicitAiTrigger(newPost),
                 }); // awaitしない
             }
         };
@@ -1269,8 +1256,8 @@ export class TweetWidget implements WidgetImplementation {
         // Escキーで閉じる
         textarea.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                this.replyModalTweet = null;
-                this.renderTweetUI(this.widgetEl);
+                this.replyModalPost = null;
+                this.renderPostUI(this.widgetEl);
             }
         });
     }

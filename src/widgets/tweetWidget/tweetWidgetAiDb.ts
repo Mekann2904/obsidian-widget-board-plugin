@@ -1,12 +1,12 @@
 import type { App } from 'obsidian';
-import type { TweetWidgetTweet } from './tweetWidget';
+import type { TweetWidgetPost } from './tweetWidget';
 
-export async function loadAiRepliesFromFile(app: App, dbPath: string): Promise<TweetWidgetTweet[]> {
+export async function loadAiRepliesFromFile(app: App, dbPath: string): Promise<TweetWidgetPost[]> {
     try {
         const exists = await app.vault.adapter.exists(dbPath);
         if (exists) {
             const raw = await app.vault.adapter.read(dbPath);
-            return JSON.parse(raw) as TweetWidgetTweet[];
+            return JSON.parse(raw) as TweetWidgetPost[];
         } else {
             await saveAiRepliesToFile(app, dbPath, []);
             return [];
@@ -17,7 +17,7 @@ export async function loadAiRepliesFromFile(app: App, dbPath: string): Promise<T
     }
 }
 
-export async function saveAiRepliesToFile(app: App, dbPath: string, aiReplies: TweetWidgetTweet[]): Promise<void> {
+export async function saveAiRepliesToFile(app: App, dbPath: string, aiReplies: TweetWidgetPost[]): Promise<void> {
     const folder = dbPath.split('/').slice(0, -1).join('/');
     try {
         const exists = await app.vault.adapter.exists(folder);

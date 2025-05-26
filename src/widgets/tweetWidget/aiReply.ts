@@ -1,7 +1,7 @@
 import { geminiPrompt } from 'src/llm/gemini/prompts';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
-import type { TweetWidgetTweet } from './tweetWidget';
+import type { TweetWidgetPost } from './tweetWidget';
 import type { PluginGlobalSettings } from '../../interfaces';
 
 // AIリプライ用のuserId生成関数
@@ -10,10 +10,10 @@ export function generateAiUserId(): string {
 }
 
 // スレッドのルートから現在までの全履歴を時系列で取得
-export function getFullThreadHistory(tweet: TweetWidgetTweet, allTweets: TweetWidgetTweet[]): TweetWidgetTweet[] {
+export function getFullThreadHistory(tweet: TweetWidgetPost, allTweets: TweetWidgetPost[]): TweetWidgetPost[] {
     const tweetsById = new Map(allTweets.map(t => [t.id, t]));
-    const history: TweetWidgetTweet[] = [];
-    let current: TweetWidgetTweet | undefined = tweet;
+    const history: TweetWidgetPost[] = [];
+    let current: TweetWidgetPost | undefined = tweet;
     while (current) {
         history.unshift(current);
         if (current.threadId) {
@@ -26,9 +26,9 @@ export function getFullThreadHistory(tweet: TweetWidgetTweet, allTweets: TweetWi
 }
 
 // スレッドを遡って直近のAI userIdを探す
-export function findLatestAiUserIdInThread(tweet: TweetWidgetTweet, allTweets: TweetWidgetTweet[]): string | null {
+export function findLatestAiUserIdInThread(tweet: TweetWidgetPost, allTweets: TweetWidgetPost[]): string | null {
     const tweetsById = new Map(allTweets.map(t => [t.id, t]));
-    let current: TweetWidgetTweet | undefined = tweet;
+    let current: TweetWidgetPost | undefined = tweet;
     while (current) {
         if (current.userId && current.userId.startsWith('@ai-')) return current.userId;
         if (current.threadId) {
@@ -46,9 +46,11 @@ const aiReplyDayMap = new Map<string, number>(); // userId_YYYYMMDD→count
 
 // 自動リプライ判定関数（ガバナンス付き）
 export function shouldAutoReply(
-    tweet: TweetWidgetTweet,
+    tweet: TweetWidgetPost,
     settings: PluginGlobalSettings
 ): boolean {
+    // AI投稿には絶対に自動リプライしない
+    if (tweet.userId && tweet.userId.startsWith('@ai-')) return false;
     // トリガーワード判定（オプションでスキップ）
     if (!settings.aiReplyTriggerless) {
         const hasTrigger = tweet.text.includes('@ai') || Boolean(tweet.tags && tweet.tags.includes('ai-reply'));
@@ -88,7 +90,7 @@ function randomDelay(minMs: number, maxMs: number): Promise<void> {
 }
 
 // 明示的トリガー判定関数
-export function isExplicitAiTrigger(tweet: TweetWidgetTweet): boolean {
+export function isExplicitAiTrigger(tweet: TweetWidgetPost): boolean {
     return tweet.text.includes('@ai') || Boolean(tweet.tags && tweet.tags.includes('ai-reply'));
 }
 
@@ -104,10 +106,10 @@ export async function generateAiReply({
     settings,
     delay,
 }: {
-    tweet: TweetWidgetTweet,
-    allTweets: TweetWidgetTweet[],
+    tweet: TweetWidgetPost,
+    allTweets: TweetWidgetPost[],
     llmGemini: { apiKey: string, model: string },
-    saveReply: (reply: TweetWidgetTweet) => Promise<void>,
+    saveReply: (reply: TweetWidgetPost) => Promise<void>,
     parseTags: (text: string) => string[],
     parseLinks: (text: string) => string[],
     onError?: (err: any) => void,
@@ -140,7 +142,7 @@ export async function generateAiReply({
                 replyText = parsed.reply;
             }
         } catch {}
-        const aiReply: TweetWidgetTweet = {
+        const aiReply: TweetWidgetPost = {
             id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
             text: replyText,
             created: Date.now(),
