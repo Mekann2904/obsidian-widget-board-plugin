@@ -1554,3 +1554,42 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   margin-left: 2px;
   color: var(--text-faint);
 }
+
+/* --- tweet-widget アバターモーダル --- */
+.tweet-avatar-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.55);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tweet-avatar-modal-content {
+  background: transparent;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tweet-avatar-modal-content img {
+  max-width: 320px;
+  max-height: 320px;
+  border-radius: 16px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.18);
+  background: #fff;
+  display: block;
+}
+.tweet-avatar-modal-content button {
+  margin-top: 12px;
+  font-size: 1.5em;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+}

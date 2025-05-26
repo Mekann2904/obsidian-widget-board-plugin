@@ -4,6 +4,10 @@ import type WidgetBoardPlugin from '../../main';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
 import { geminiPrompt } from 'src/llm/gemini/prompts';
+import { generateAiReply, shouldAutoReply, findLatestAiUserIdInThread, getFullThreadHistory, generateAiUserId } from './aiReply';
+import { parseTags, parseLinks, formatTimeAgo, readFileAsDataUrl, wrapSelection } from './tweetWidgetUtils';
+import { loadTweetsFromFile, saveTweetsToFile } from './tweetWidgetDb';
+import { loadAiRepliesFromFile, saveAiRepliesToFile } from './tweetWidgetAiDb';
 
 export interface TweetWidgetFile {
     name: string;
@@ -361,8 +365,8 @@ export class TweetWidget implements WidgetImplementation {
                         tweet.files = this.attachedFiles;
                         tweet.edited = true;
                         tweet.updated = Date.now();
-                        tweet.tags = this.parseTags(text);
-                        tweet.links = this.parseLinks(text);
+                        tweet.tags = parseTags(text);
+                        tweet.links = parseLinks(text);
                     }
                     this.editingTweetId = null;
                     new Notice('つぶやきを編集しました');
@@ -386,14 +390,28 @@ export class TweetWidget implements WidgetImplementation {
                         visibility: 'public',
                         noteQuality: 'fleeting',
                         taskStatus: null,
-                        tags: this.parseTags(text),
-                        links: this.parseLinks(text),
+                        tags: parseTags(text),
+                        links: parseLinks(text),
                     };
 
                     this.currentSettings.tweets.unshift(newTweet);
 
-                    if (this.shouldAutoReply(newTweet)) {
-                        this.generateAiReply(newTweet);
+                    if (shouldAutoReply(newTweet)) {
+                        await generateAiReply({
+                            tweet: newTweet,
+                            allTweets: this.currentSettings.tweets,
+                            llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' },
+                            saveReply: async (reply) => {
+                                this.currentSettings.tweets.unshift(reply);
+                                newTweet.replyCount = (newTweet.replyCount || 0) + 1;
+                                newTweet.updated = Date.now();
+                                await this.saveTweetsToFile();
+                                this.renderTweetUI(this.widgetEl);
+                            },
+                            parseTags: parseTags.bind(this),
+                            parseLinks: parseLinks.bind(this),
+                            onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err)))
+                        });
                     }
 
                     if (this.replyingToParentId) {
@@ -442,19 +460,6 @@ export class TweetWidget implements WidgetImplementation {
         if (len > this.maxLength) el.classList.add('tweet-char-over');
         else el.classList.remove('tweet-char-over');
     }
-
-    private parseTags(text: string): string[] {
-        const regex = /#([\w-]+)/g;
-        return (text.match(regex) || []).map(tag => tag.substring(1));
-    }
-
-    private parseLinks(text: string): string[] {
-        const regex = /\[\[([^\]]+)\]\]/g;
-        const matches = text.matchAll(regex);
-        return Array.from(matches, m => m[1]);
-    }
-    
-    // --- CORRECTED THREAD RENDERING LOGIC ---
 
     private renderTweetList(listEl: HTMLElement) {
         listEl.empty();
@@ -524,8 +529,8 @@ export class TweetWidget implements WidgetImplementation {
                     visibility: 'public',
                     noteQuality: 'fleeting',
                     taskStatus: null,
-                    tags: this.parseTags(text),
-                    links: this.parseLinks(text),
+                    tags: parseTags(text),
+                    links: parseLinks(text),
                 };
                 this.currentSettings.tweets.unshift(newTweet);
                 target.replyCount = (target.replyCount || 0) + 1;
@@ -839,18 +844,16 @@ export class TweetWidget implements WidgetImplementation {
                 geminiBtn.setAttribute('disabled', 'true');
                 geminiBtn.innerHTML = '...';
                 try {
-                    const llmGemini = this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' };
-                    const thread = this.getFullThreadHistory(tweet);
-                    // 履歴を「AI: ...」「あなた: ...」形式でテキスト化
-                    const threadText = thread.map(t =>
+                    const thread = getFullThreadHistory(tweet, this.currentSettings.tweets);
+                    const threadText = thread.map((t: TweetWidgetTweet) =>
                         (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text
                     ).join('\n');
                     const promptText = geminiPrompt.replace('{tweet}', threadText);
                     let replyText = await GeminiProvider.generateReply(promptText, {
-                        apiKey: deobfuscate(llmGemini.apiKey || ''),
+                        apiKey: deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''),
                         tweet: tweet,
                         thread: thread,
-                        model: llmGemini.model || 'gemini-2.0-flash-exp',
+                        model: this.plugin.settings.llm?.gemini?.model || 'gemini-2.0-flash-exp',
                         tweetText: threadText,
                     });
                     // 万一JSON形式で返ってきた場合もreplyだけ抽出
@@ -880,9 +883,9 @@ export class TweetWidget implements WidgetImplementation {
                         visibility: 'public',
                         noteQuality: 'fleeting',
                         taskStatus: null,
-                        tags: this.parseTags(replyText),
-                        links: this.parseLinks(replyText),
-                        userId: this.findLatestAiUserIdInThread(tweet) || this.generateAiUserId(),
+                        tags: parseTags(replyText),
+                        links: parseLinks(replyText),
+                        userId: findLatestAiUserIdInThread(tweet, this.currentSettings.tweets) || generateAiUserId(),
                         userName: 'AI',
                         verified: true
                     };
@@ -905,8 +908,8 @@ export class TweetWidget implements WidgetImplementation {
         if (tweet.userId && tweet.userId.startsWith('@ai-') && this.plugin.settings.showAiHistory) {
             const aiHistoryDiv = item.createDiv({ cls: 'tweet-ai-history' });
             aiHistoryDiv.createEl('div', { text: 'このAIとの会話履歴:', cls: 'tweet-ai-history-label' });
-            const aiHistory = this.getFullThreadHistory(tweet);
-            aiHistory.forEach(h => {
+            const aiHistory = getFullThreadHistory(tweet, this.currentSettings.tweets);
+            aiHistory.forEach((h: TweetWidgetTweet) => {
                 aiHistoryDiv.createEl('div', { text: `${h.userName || (h.userId && h.userId.startsWith('@ai-') ? 'AI' : 'あなた')}: ${h.text}`, cls: 'tweet-ai-history-item' });
             });
         }
@@ -1128,8 +1131,8 @@ export class TweetWidget implements WidgetImplementation {
                 visibility: 'public',
                 noteQuality: 'fleeting',
                 taskStatus: null,
-                tags: this.parseTags(text),
-                links: this.parseLinks(text),
+                tags: parseTags(text),
+                links: parseLinks(text),
             };
             this.currentSettings.tweets.unshift(newTweet);
             tweet.replyCount = (tweet.replyCount || 0) + 1;
@@ -1138,8 +1141,22 @@ export class TweetWidget implements WidgetImplementation {
             this.replyModalTweet = null;
             this.renderTweetUI(this.widgetEl);
             // AI自動リプライは親ツイート（tweet）を渡す
-            if (this.shouldAutoReply(newTweet)) {
-                this.generateAiReply(tweet);
+            if (shouldAutoReply(newTweet)) {
+                await generateAiReply({
+                    tweet: tweet,
+                    allTweets: this.currentSettings.tweets,
+                    llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' },
+                    saveReply: async (reply) => {
+                        this.currentSettings.tweets.unshift(reply);
+                        tweet.replyCount = (tweet.replyCount || 0) + 1;
+                        tweet.updated = Date.now();
+                        await this.saveTweetsToFile();
+                        this.renderTweetUI(this.widgetEl);
+                    },
+                    parseTags: parseTags.bind(this),
+                    parseLinks: parseLinks.bind(this),
+                    onError: (err) => new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err)))
+                });
             }
         };
         inputArea.appendChild(replyBtn);
@@ -1152,111 +1169,10 @@ export class TweetWidget implements WidgetImplementation {
         });
     }
 
-    // AIリプライ用のuserId生成関数
-    private generateAiUserId(): string {
-        return `@ai-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-    }
-
-    // スレッドのルートから現在までの全履歴を時系列で取得
-    private getFullThreadHistory(tweet: TweetWidgetTweet): TweetWidgetTweet[] {
-        const tweetsById = new Map(this.currentSettings.tweets.map(t => [t.id, t]));
-        const history: TweetWidgetTweet[] = [];
-        let current: TweetWidgetTweet | undefined = tweet;
-        while (current) {
-            history.unshift(current);
-            if (current.threadId) {
-                current = tweetsById.get(current.threadId);
-            } else {
-                break;
-            }
-        }
-        return history;
-    }
-
     // userIdからAIアバター配列のインデックスを決定
     private getAiAvatarIndex(userId: string, len: number): number {
         let hash = 0;
         for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
         return Math.abs(hash) % len;
-    }
-
-    // スレッドを遡って直近のAI userIdを探す
-    private findLatestAiUserIdInThread(tweet: TweetWidgetTweet): string | null {
-        const tweetsById = new Map(this.currentSettings.tweets.map(t => [t.id, t]));
-        let current: TweetWidgetTweet | undefined = tweet;
-        while (current) {
-            if (current.userId && current.userId.startsWith('@ai-')) return current.userId;
-            if (current.threadId) {
-                current = tweetsById.get(current.threadId);
-            } else {
-                break;
-            }
-        }
-        return null;
-    }
-
-    // 自動リプライ判定関数
-    private shouldAutoReply(tweet: TweetWidgetTweet): boolean {
-        return tweet.text.includes('@ai') || Boolean(tweet.tags && tweet.tags.includes('ai-reply'));
-    }
-
-    // AIリプライ生成関数（json柔軟化）
-    private async generateAiReply(tweet: TweetWidgetTweet) {
-        try {
-            const llmGemini = this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-2.0-flash-exp' };
-            const thread = this.getFullThreadHistory(tweet);
-            // 履歴を「AI: ...」「あなた: ...」形式でテキスト化
-            const threadText = thread.map(t =>
-                (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text
-            ).join('\n');
-            const promptText = geminiPrompt.replace('{tweet}', threadText);
-            let replyText = await GeminiProvider.generateReply(promptText, {
-                apiKey: deobfuscate(llmGemini.apiKey || ''),
-                tweet: tweet,
-                thread: thread,
-                model: llmGemini.model || 'gemini-2.0-flash-exp',
-                tweetText: threadText,
-            });
-            // 万一JSON形式で返ってきた場合もreplyだけ抽出
-            try {
-                const parsed = JSON.parse(replyText);
-                if (parsed && typeof parsed.reply === 'string') {
-                    replyText = parsed.reply;
-                }
-            } catch {}
-            // AIリプライとして投稿
-            const aiReply: TweetWidgetTweet = {
-                id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-                text: replyText,
-                created: Date.now(),
-                updated: Date.now(),
-                files: [],
-                like: 0,
-                liked: false,
-                retweet: 0,
-                retweeted: false,
-                edited: false,
-                replyCount: 0,
-                deleted: false,
-                bookmark: false,
-                contextNote: null,
-                threadId: tweet.id,
-                visibility: 'public',
-                noteQuality: 'fleeting',
-                taskStatus: null,
-                tags: this.parseTags(replyText),
-                links: this.parseLinks(replyText),
-                userId: this.findLatestAiUserIdInThread(tweet) || this.generateAiUserId(),
-                userName: 'AI',
-                verified: true
-            };
-            this.currentSettings.tweets.unshift(aiReply);
-            tweet.replyCount = (tweet.replyCount || 0) + 1;
-            tweet.updated = Date.now();
-            await this.saveTweetsToFile();
-            this.renderTweetUI(this.widgetEl);
-        } catch (err) {
-            new Notice('AI自動リプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err)));
-        }
     }
 }
