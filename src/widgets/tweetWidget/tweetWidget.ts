@@ -702,17 +702,17 @@ export class TweetWidget implements WidgetImplementation {
             const lastActivityB = b.updated || b.created;
             return lastActivityB - lastActivityA;
         });
+        // 差分レンダリング: 既存要素はそのまま、必要なものだけ描画/更新
         rootItems.forEach(post => {
-            const wrapper = listEl.createDiv({ cls: 'tweet-thread-wrapper' });
-            wrapper.setAttribute('data-tweet-id', post.id);
-            const postContainer = wrapper.createDiv({ cls: 'tweet-item-container' });
-            this.renderSinglePost(post, postContainer, postsById);
-            // --- クリックで詳細表示 ---
-            wrapper.onclick = (e) => {
-                if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
-                this.detailPostId = post.id;
-                this.renderPostUI(this.widgetEl);
-            };
+            this.renderOrUpdateSinglePost(post, listEl, postsById);
+        });
+        // 不要になった要素を削除
+        const existingIds = new Set(rootItems.map(p => p.id));
+        Array.from(listEl.querySelectorAll('.tweet-thread-wrapper')).forEach((el) => {
+            const id = el.getAttribute('data-tweet-id');
+            if (id && !existingIds.has(id)) {
+                el.parentElement?.removeChild(el);
+            }
         });
     }
 
@@ -1406,6 +1406,42 @@ export class TweetWidget implements WidgetImplementation {
                 }
             }
         });
+    }
+
+    // 差分レンダリング: 投稿1件だけ描画または更新
+    private renderOrUpdateSinglePost(post: TweetWidgetPost, listEl: HTMLElement, postsById: Map<string, TweetWidgetPost>) {
+        let wrapper = listEl.querySelector(`[data-tweet-id="${post.id}"]`) as HTMLElement | null;
+        if (wrapper) {
+            // 既存→差し替え
+            const postContainer = wrapper.querySelector('.tweet-item-container') as HTMLElement;
+            if (postContainer) {
+                this.renderSinglePost(post, postContainer, postsById);
+            }
+        } else {
+            // 新規→先頭に追加
+            wrapper = document.createElement('div');
+            wrapper.className = 'tweet-thread-wrapper';
+            wrapper.setAttribute('data-tweet-id', post.id);
+            const postContainer = document.createElement('div');
+            postContainer.className = 'tweet-item-container';
+            wrapper.appendChild(postContainer);
+            this.renderSinglePost(post, postContainer, postsById);
+            // クリックで詳細表示
+            wrapper.onclick = (e) => {
+                if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
+                this.detailPostId = post.id;
+                this.renderPostUI(this.widgetEl);
+            };
+            listEl.insertBefore(wrapper, listEl.firstChild);
+        }
+    }
+
+    // 差分レンダリング: 投稿1件だけリストから削除
+    private removePostFromList(postId: string, listEl: HTMLElement) {
+        const wrapper = listEl.querySelector(`[data-tweet-id="${postId}"]`);
+        if (wrapper && wrapper.parentElement) {
+            wrapper.parentElement.removeChild(wrapper);
+        }
     }
 }
 
