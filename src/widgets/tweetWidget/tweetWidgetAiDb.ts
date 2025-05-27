@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import type { TweetWidgetPost } from './tweetWidget';
+import type { TweetWidgetPost } from './types';
 
 export async function loadAiRepliesFromFile(app: App, dbPath: string): Promise<TweetWidgetPost[]> {
     try {

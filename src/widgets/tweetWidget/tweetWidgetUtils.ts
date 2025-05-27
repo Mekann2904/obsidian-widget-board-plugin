@@ -1,3 +1,5 @@
+import type { TweetWidgetPost } from './types';
+
 export function parseTags(text: string): string[] {
     const regex = /#([\w-]+)/g;
     return (text.match(regex) || []).map(tag => tag.substring(1));
@@ -42,7 +44,7 @@ export function wrapSelection(input: HTMLTextAreaElement, wrapper: string) {
 }
 
 // TweetWidgetPost型のバリデーション関数
-export function validatePost(raw: any): import('./tweetWidget').TweetWidgetPost {
+export function validatePost(raw: any): TweetWidgetPost {
     return {
         id: raw.id || 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
         text: typeof raw.text === 'string' ? raw.text : '',

@@ -1,7 +1,7 @@
 import { geminiPrompt } from 'src/llm/gemini/prompts';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
-import type { TweetWidgetPost } from './tweetWidget';
+import type { TweetWidgetPost } from './types';
 import type { PluginGlobalSettings } from '../../interfaces';
 
 // AIリプライ用のuserId生成関数
