@@ -1,7 +1,7 @@
 import { geminiPrompt } from 'src/llm/gemini/prompts';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
-import type { TweetWidgetPost } from './tweetWidget';
+import type { TweetWidgetPost, AiGovernanceData } from './types'; // AiGovernanceData をインポート
 import type { PluginGlobalSettings } from '../../interfaces';
 
 // AIリプライ用のuserId生成関数
@@ -40,47 +40,68 @@ export function findLatestAiUserIdInThread(tweet: TweetWidgetPost, allTweets: Tw
     return null;
 }
 
-// --- AIリプライ発火ガバナンス用 ---
-const aiReplyMinuteMap = new Map<string, number[]>(); // userId→[タイムスタンプ配列]
-const aiReplyDayMap = new Map<string, number>(); // userId_YYYYMMDD→count
+interface ShouldAutoReplyResult {
+    allow: boolean;
+    updatedGovernanceData: AiGovernanceData;
+}
 
 // 自動リプライ判定関数（ガバナンス付き）
 export function shouldAutoReply(
     tweet: TweetWidgetPost,
-    settings: PluginGlobalSettings
-): boolean {
+    settings: PluginGlobalSettings,
+    currentGovernanceData: AiGovernanceData // 現在のガバナンスデータを引数で受け取る
+): ShouldAutoReplyResult {
+    // 新しいガバナンスデータオブジェクトを作成（元のオブジェクトを直接変更しないため）
+    const updatedGovernanceData: AiGovernanceData = {
+        minuteMap: { ...(currentGovernanceData.minuteMap || {}) },
+        dayMap: { ...(currentGovernanceData.dayMap || {}) },
+    };
+
     // AI投稿には絶対に自動リプライしない
-    if (tweet.userId && tweet.userId.startsWith('@ai-')) return false;
-    // トリガーワード判定（オプションでスキップ）
-    if (!settings.aiReplyTriggerless) {
-        const hasTrigger = tweet.text.includes('@ai') || Boolean(tweet.tags && tweet.tags.includes('ai-reply'));
-        if (!hasTrigger) return false;
+    if (tweet.userId && tweet.userId.startsWith('@ai-')) {
+        return { allow: false, updatedGovernanceData };
     }
+    // トリガーワード判定（オプションでスキップ）
+    if (!settings.aiReplyTriggerless && !isExplicitAiTrigger(tweet)) {
+        return { allow: false, updatedGovernanceData };
+    }
+
     // --- RPM/RPDガバナンス ---
-    const userId = tweet.userId || 'unknown';
+    const userId = tweet.userId || 'unknown_user'; // ユーザーIDがない場合は固定の識別子を使用
     const now = Date.now();
     const minuteAgo = now - 60 * 1000;
     const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
     const userDayKey = `${userId}_${today}`;
-    // RPM
-    const rpm = typeof settings.aiReplyRpm === 'number' ? settings.aiReplyRpm : 2;
-    if (rpm === 0) return false;
-    if (rpm > 0) {
-        const arr = aiReplyMinuteMap.get(userId) || [];
-        const recent = arr.filter(ts => ts > minuteAgo);
-        if (recent.length >= rpm) return false;
-        recent.push(now);
-        aiReplyMinuteMap.set(userId, recent);
+
+    // RPM (Replies Per Minute)
+    const rpmLimit = typeof settings.aiReplyRpm === 'number' ? settings.aiReplyRpm : 2;
+    if (rpmLimit === 0) return { allow: false, updatedGovernanceData }; // 0なら常に拒否
+
+    if (rpmLimit > 0) {
+        const userMinuteTimestamps = updatedGovernanceData.minuteMap[userId] || [];
+        const recentTimestamps = userMinuteTimestamps.filter(ts => ts > minuteAgo);
+        if (recentTimestamps.length >= rpmLimit) {
+            return { allow: false, updatedGovernanceData };
+        }
+        // 許可する場合、タイムスタンプを追加して更新
+        recentTimestamps.push(now);
+        updatedGovernanceData.minuteMap[userId] = recentTimestamps;
     }
-    // RPD
-    const rpd = typeof settings.aiReplyRpd === 'number' ? settings.aiReplyRpd : 10;
-    if (rpd === 0) return false;
-    if (rpd > 0) {
-        const dayCount = aiReplyDayMap.get(userDayKey) || 0;
-        if (dayCount >= rpd) return false;
-        aiReplyDayMap.set(userDayKey, dayCount + 1);
+
+    // RPD (Replies Per Day)
+    const rpdLimit = typeof settings.aiReplyRpd === 'number' ? settings.aiReplyRpd : 10;
+    if (rpdLimit === 0) return { allow: false, updatedGovernanceData }; // 0なら常に拒否
+
+    if (rpdLimit > 0) {
+        const dayCount = updatedGovernanceData.dayMap[userDayKey] || 0;
+        if (dayCount >= rpdLimit) {
+            return { allow: false, updatedGovernanceData };
+        }
+        // 許可する場合、カウントを増やして更新
+        updatedGovernanceData.dayMap[userDayKey] = dayCount + 1;
     }
-    return true;
+
+    return { allow: true, updatedGovernanceData };
 }
 
 // ランダムディレイ関数
@@ -117,31 +138,31 @@ export async function generateAiReply({
     delay: boolean,
 }) {
     try {
-        // --- 人間らしい遅延 ---
         if (delay) {
             const minMs = typeof settings.aiReplyDelayMinMs === 'number' ? settings.aiReplyDelayMinMs : 1500;
             const maxMs = typeof settings.aiReplyDelayMaxMs === 'number' ? settings.aiReplyDelayMaxMs : 7000;
             await randomDelay(minMs, maxMs);
         }
-        // ...既存AIリプ生成処理...
+
         const thread = getFullThreadHistory(tweet, allTweets);
         const threadText = thread.map(t =>
             (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text
         ).join('\n');
-        const promptText = geminiPrompt.replace('{tweet}', threadText);
+        const promptText = geminiPrompt.replace('{tweet}', threadText); // 以前は {post} だったのを修正
+
         let replyText = await GeminiProvider.generateReply(promptText, {
             apiKey: deobfuscate(llmGemini.apiKey || ''),
-            tweet: tweet,
-            thread: thread,
-            model: llmGemini.model || 'gemini-2.0-flash-exp',
-            tweetText: threadText,
+            // tweet, thread, tweetText はGeminiProviderが必須としないなら削除可能
+            // modelは必須
+            model: llmGemini.model || 'gemini-1.5-flash-latest', // モデル名を最新に
         });
         try {
             const parsed = JSON.parse(replyText);
             if (parsed && typeof parsed.reply === 'string') {
                 replyText = parsed.reply;
             }
-        } catch {}
+        } catch {} // JSONパース失敗時はそのままのテキストを使用
+
         const aiReply: TweetWidgetPost = {
             id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
             text: replyText,
@@ -169,6 +190,7 @@ export async function generateAiReply({
         };
         await saveReply(aiReply);
     } catch (err) {
+        console.error("Error in generateAiReply:", err);
         if (onError) onError(err);
     }
-} 
+}
