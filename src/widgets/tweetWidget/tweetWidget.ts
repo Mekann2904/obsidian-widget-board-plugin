@@ -103,16 +103,25 @@ export class TweetWidget implements WidgetImplementation {
             const exists = await this.app.vault.adapter.exists(dbPath);
             if (exists) {
                 const raw = await this.app.vault.adapter.read(dbPath);
-                // Ensure default values for new fields on older posts
-                const loadedSettings = JSON.parse(raw);
-                loadedSettings.posts = loadedSettings.posts.map((t: any) => validatePost(t));
-                this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...loadedSettings };
+                try {
+                    const loadedSettings = JSON.parse(raw);
+                    loadedSettings.posts = loadedSettings.posts.map((t: any) => validatePost(t));
+                    this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...loadedSettings };
+                } catch (jsonErr) {
+                    // データ破損時はバックアップを作成し、初期化
+                    const backupPath = dbPath + '.bak_' + Date.now();
+                    await this.app.vault.adapter.write(backupPath, raw);
+                    new Notice('つぶやきデータが壊れていたため、バックアップを作成し初期化しました。\n' + backupPath);
+                    this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS };
+                    await this.saveTweetsToFile();
+                }
             } else {
                 this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS };
                 await this.saveTweetsToFile();
             }
         } catch (e) {
             console.error("Error loading tweet data:", e);
+            new Notice('つぶやきデータの読み込みに失敗しました: ' + (e instanceof Error ? e.message : String(e)));
             this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS };
         }
         this.updatePostsById();
@@ -137,7 +146,7 @@ export class TweetWidget implements WidgetImplementation {
             await this.app.vault.adapter.write(dbPath, JSON.stringify(this.currentSettings, null, 2));
         } catch (e) {
             console.error("Error saving tweet data:", e);
-            new Notice("Failed to save tweets. Check developer console.");
+            new Notice("つぶやきデータの保存に失敗しました: " + (e instanceof Error ? e.message : String(e)));
         }
         this.updatePostsById();
     }
