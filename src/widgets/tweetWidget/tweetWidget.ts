@@ -77,6 +77,7 @@ export class TweetWidget implements WidgetImplementation {
     private detailPostId: string | null = null;
     private replyModalPost: TweetWidgetPost | null = null;
     private currentTab: 'home' | 'notification' = 'home';
+    private saveTimeout: number | null = null;
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
@@ -116,6 +117,14 @@ export class TweetWidget implements WidgetImplementation {
             console.error("Error loading tweet data:", e);
             this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS };
         }
+    }
+
+    private async saveTweetsToFileDebounced() {
+        if (this.saveTimeout) clearTimeout(this.saveTimeout);
+        this.saveTimeout = window.setTimeout(() => {
+            this.saveTweetsToFile();
+            this.saveTimeout = null;
+        }, 500);
     }
 
     private async saveTweetsToFile() {
@@ -491,7 +500,7 @@ export class TweetWidget implements WidgetImplementation {
                     // 人間の投稿は即時で記録・保存・表示
                     this.currentSettings.posts.unshift(newPost);
                     this.recountAllReplyCounts();
-                    await this.saveTweetsToFile();
+                    await this.saveTweetsToFileDebounced();
                     this.renderPostUI(this.widgetEl);
 
                     // AIリプライは非同期でディレイ発火
@@ -506,7 +515,7 @@ export class TweetWidget implements WidgetImplementation {
                                 this.currentSettings.posts.unshift(reply);
                                 newPost.replyCount = (newPost.replyCount || 0) + 1;
                                 newPost.updated = Date.now();
-                                await this.saveTweetsToFile();
+                                await this.saveTweetsToFileDebounced();
                                 this.renderPostUI(this.widgetEl);
                             },
                             parseTags: parseTags.bind(this),
@@ -532,7 +541,7 @@ export class TweetWidget implements WidgetImplementation {
 
                 input.value = '';
                 this.attachedFiles = [];
-                await this.saveTweetsToFile();
+                await this.saveTweetsToFileDebounced();
                 this.renderPostUI(this.widgetEl);
             };
 
@@ -625,7 +634,7 @@ export class TweetWidget implements WidgetImplementation {
                 this.currentSettings.posts.unshift(newPost);
                 target.replyCount = (target.replyCount || 0) + 1;
                 target.updated = Date.now();
-                await this.saveTweetsToFile();
+                await this.saveTweetsToFileDebounced();
                 textarea.value = '';
                 this.renderPostUI(this.widgetEl);
             };
@@ -865,7 +874,7 @@ export class TweetWidget implements WidgetImplementation {
             post.retweet = (post.retweet || 0) + (post.retweeted ? 1 : -1);
             if (post.retweeted) rtBtn.addClass('active');
             else rtBtn.removeClass('active');
-            await this.saveTweetsToFile();
+            await this.saveTweetsToFileDebounced();
             this.renderPostUI(this.widgetEl);
         };
         rtBtn.createSpan({ text: String(post.retweet || 0), cls: 'tweet-action-count-main' });
@@ -879,7 +888,7 @@ export class TweetWidget implements WidgetImplementation {
             post.like = (post.like || 0) + (post.liked ? 1 : -1);
             if (post.liked) likeBtn.addClass('active');
             else likeBtn.removeClass('active');
-            await this.saveTweetsToFile();
+            await this.saveTweetsToFileDebounced();
             this.renderPostUI(this.widgetEl);
         };
         likeBtn.createSpan({ text: String(post.like || 0), cls: 'tweet-action-count-main' });
@@ -892,7 +901,7 @@ export class TweetWidget implements WidgetImplementation {
             post.bookmark = !post.bookmark;
             if (post.bookmark) bookmarkBtn.addClass('active');
             else bookmarkBtn.removeClass('active');
-            await this.saveTweetsToFile();
+            await this.saveTweetsToFileDebounced();
             this.renderPostUI(this.widgetEl);
         };
 
@@ -959,7 +968,7 @@ export class TweetWidget implements WidgetImplementation {
                     this.currentSettings.posts.unshift(aiReply);
                     post.replyCount = (post.replyCount || 0) + 1;
                     post.updated = Date.now();
-                    await this.saveTweetsToFile();
+                    await this.saveTweetsToFileDebounced();
                     this.renderPostUI(this.widgetEl);
                 } catch (err) {
                     new Notice('Geminiリプライ生成に失敗しました: ' + (err instanceof Error ? err.message : String(err)));
@@ -1039,14 +1048,14 @@ export class TweetWidget implements WidgetImplementation {
             menu.addItem(item => item.setTitle('復元').setIcon('rotate-ccw').onClick(async () => {
                 post.deleted = false;
                 post.updated = Date.now();
-                await this.saveTweetsToFile();
+                await this.saveTweetsToFileDebounced();
                 this.renderPostUI(this.widgetEl);
             }));
         } else {
             menu.addItem(item => item.setTitle('非表示').setIcon('eye-off').onClick(async () => {
                 post.deleted = true;
                 post.updated = Date.now();
-                await this.saveTweetsToFile();
+                await this.saveTweetsToFileDebounced();
                 this.renderPostUI(this.widgetEl);
             }));
         }
@@ -1062,7 +1071,7 @@ export class TweetWidget implements WidgetImplementation {
                 }
                 this.currentSettings.posts = this.currentSettings.posts.filter(t => t.id !== post.id);
                 this.recountAllReplyCounts();
-                await this.saveTweetsToFile();
+                await this.saveTweetsToFileDebounced();
                 this.renderPostUI(this.widgetEl);
             })
         );
@@ -1087,7 +1096,7 @@ export class TweetWidget implements WidgetImplementation {
                 }
                 this.currentSettings.posts = this.currentSettings.posts.filter(t => !threadIds.includes(t.id));
                 this.recountAllReplyCounts();
-                await this.saveTweetsToFile();
+                await this.saveTweetsToFileDebounced();
                 this.renderPostUI(this.widgetEl);
             })
         );
@@ -1109,7 +1118,7 @@ export class TweetWidget implements WidgetImplementation {
                     .setChecked(currentValue === option)
                     .onClick(async () => {
                         setValue(option);
-                        await this.saveTweetsToFile();
+                        await this.saveTweetsToFileDebounced();
                         this.renderPostUI(this.widgetEl);
                     })
                 )
@@ -1147,7 +1156,7 @@ export class TweetWidget implements WidgetImplementation {
                 if (!notePath) {
                     notePath = `${contextFolder}/${date}-${sanitizedText || 'note'}.md`;
                     post.contextNote = notePath;
-                    await this.saveTweetsToFile();
+                    await this.saveTweetsToFileDebounced();
                     this.renderPostUI(this.widgetEl);
                 }
                 if (!await this.app.vault.adapter.exists(notePath)) {
@@ -1315,7 +1324,7 @@ export class TweetWidget implements WidgetImplementation {
             this.currentSettings.posts.unshift(newPost);
             post.replyCount = (post.replyCount || 0) + 1;
             post.updated = Date.now();
-            await this.saveTweetsToFile();
+            await this.saveTweetsToFileDebounced();
             this.replyModalPost = null;
             this.renderPostUI(this.widgetEl);
             backdrop.remove();
@@ -1331,7 +1340,7 @@ export class TweetWidget implements WidgetImplementation {
                         this.currentSettings.posts.unshift(reply);
                         newPost.replyCount = (newPost.replyCount || 0) + 1;
                         newPost.updated = Date.now();
-                        await this.saveTweetsToFile();
+                        await this.saveTweetsToFileDebounced();
                         this.renderPostUI(this.widgetEl);
                     },
                     parseTags: parseTags.bind(this),
