@@ -490,6 +490,7 @@ export class TweetWidget implements WidgetImplementation {
 
                     // 人間の投稿は即時で記録・保存・表示
                     this.currentSettings.posts.unshift(newPost);
+                    this.recountAllReplyCounts();
                     await this.saveTweetsToFile();
                     this.renderPostUI(this.widgetEl);
 
@@ -1052,7 +1053,15 @@ export class TweetWidget implements WidgetImplementation {
         menu.addItem(item => item.setTitle('⚠️ 完全削除').setIcon('x-circle')
             .onClick(async () => {
                 if (!confirm('このつぶやきを完全に削除しますか？（元に戻せません）')) return;
+                // 親のreplyCountを調整
+                if (post.threadId) {
+                    const parent = this.currentSettings.posts.find(t => t.id === post.threadId);
+                    if (parent && typeof parent.replyCount === 'number') {
+                        parent.replyCount = Math.max(0, parent.replyCount - 1);
+                    }
+                }
                 this.currentSettings.posts = this.currentSettings.posts.filter(t => t.id !== post.id);
+                this.recountAllReplyCounts();
                 await this.saveTweetsToFile();
                 this.renderPostUI(this.widgetEl);
             })
@@ -1062,9 +1071,22 @@ export class TweetWidget implements WidgetImplementation {
             .setIcon('trash')
             .onClick(async () => {
                 if (!confirm('このスレッド（親＋リプライ）を完全に削除しますか？（元に戻せません）')) return;
-                // 親＋リプライ＋多段リプライをすべて削除
+                // 削除対象IDリスト
                 const threadIds = this.collectThreadIdsRecursive(post.id, this.currentSettings.posts);
+                // 親がいればreplyCountを調整
+                if (post.threadId) {
+                    const parent = this.currentSettings.posts.find(t => t.id === post.threadId);
+                    if (parent && typeof parent.replyCount === 'number') {
+                        // 削除対象のうち親の直下リプライ数だけ減らす
+                        const directReplies = threadIds.filter(id => {
+                            const p = this.currentSettings.posts.find(t => t.id === id);
+                            return p && p.threadId === parent.id;
+                        }).length;
+                        parent.replyCount = Math.max(0, parent.replyCount - directReplies);
+                    }
+                }
                 this.currentSettings.posts = this.currentSettings.posts.filter(t => !threadIds.includes(t.id));
+                this.recountAllReplyCounts();
                 await this.saveTweetsToFile();
                 this.renderPostUI(this.widgetEl);
             })
@@ -1346,5 +1368,22 @@ export class TweetWidget implements WidgetImplementation {
             ids.push(...this.collectThreadIdsRecursive(child.id, posts));
         }
         return ids;
+    }
+
+    // --- 追加: replyCountを全件再計算する関数 ---
+    private recountAllReplyCounts() {
+        // まず全て0にリセット
+        this.currentSettings.posts.forEach(post => {
+            post.replyCount = 0;
+        });
+        // 各リプライの親に+1
+        this.currentSettings.posts.forEach(post => {
+            if (post.threadId) {
+                const parent = this.currentSettings.posts.find(t => t.id === post.threadId);
+                if (parent) {
+                    parent.replyCount = (parent.replyCount || 0) + 1;
+                }
+            }
+        });
     }
 }
