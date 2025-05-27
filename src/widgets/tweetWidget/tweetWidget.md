@@ -5,8 +5,6 @@ src/widgets/tweetWidget/
 ├── TweetRepository.ts
 ├── TweetStore.ts
 ├── tweetWidget.ts
-├── tweetWidgetAiDb.ts
-├── tweetWidgetDb.ts
 ├── tweetWidgetUI.ts
 ├── tweetWidgetUtils.ts
 └── types.ts
@@ -16,23 +14,27 @@ src/widgets/tweetWidget/
 ```mermaid
 
 graph TD
-  %% types.ts
   types["types.ts"]
-  TweetWidgetPost["TweetWidgetPost"]
-  TweetWidgetSettings["TweetWidgetSettings"]
-  TweetWidgetFile["TweetWidgetFile"]
-  types --> TweetWidgetPost
-  types --> TweetWidgetSettings
-  types --> TweetWidgetFile
-
-  %% constants.ts
   constants["constants.ts"]
+  utils["tweetWidgetUtils.ts"]
+  store["TweetStore.ts"]
+  repo["TweetRepository.ts"]
+  aiReply["aiReply.ts"]
+  ui["tweetWidgetUI.ts"]
+  widget["tweetWidget.ts"]
+
+  %% types
+  types --> TweetWidgetFile
+  types --> TweetWidgetPost
+  types --> AiGovernanceData
+  types --> TweetWidgetSettings
+
+  %% constants
   constants --> DEFAULT_TWEET_WIDGET_SETTINGS
   constants --> MAX_TWEET_LENGTH
   constants --> types
 
-  %% tweetWidgetUtils.ts
-  utils["tweetWidgetUtils.ts"]
+  %% utils
   utils --> parseTags
   utils --> parseLinks
   utils --> formatTimeAgo
@@ -41,34 +43,19 @@ graph TD
   utils --> validatePost
   utils --> types
 
-  %% tweetWidgetDb.ts
-  db["tweetWidgetDb.ts"]
-  db --> loadTweetsFromFile
-  db --> saveTweetsToFile
-  db --> types
-  db --> utils
-
-  %% tweetWidgetAiDb.ts
-  aiDb["tweetWidgetAiDb.ts"]
-  aiDb --> aiDbFunction1
-  aiDb --> types
-
-  %% TweetStore.ts
-  store["TweetStore.ts"]
-  store --> TweetStoreClass
+  %% store
+  store --> TweetStore
   store --> types
   store --> utils
 
-  %% TweetRepository.ts
-  repo["TweetRepository.ts"]
-  repo --> TweetRepositoryClass
+  %% repo
+  repo --> TweetRepository
   repo --> validatePost
-  repo --> db
   repo --> constants
   repo --> types
+  repo --> utils
 
-  %% aiReply.ts
-  aiReply["aiReply.ts"]
+  %% aiReply
   aiReply --> generateAiReply
   aiReply --> shouldAutoReply
   aiReply --> getFullThreadHistory
@@ -77,23 +64,20 @@ graph TD
   aiReply --> generateAiUserId
   aiReply --> types
   aiReply --> utils
-  aiReply --> aiDb
 
-  %% tweetWidgetUI.ts
-  ui["tweetWidgetUI.ts"]
-  ui --> TweetWidgetUIClass
+  %% ui
+  ui --> TweetWidgetUI
   ui --> parseTags
   ui --> parseLinks
   ui --> formatTimeAgo
   ui --> types
   ui --> utils
 
-  %% tweetWidget.ts
-  widget["tweetWidget.ts"]
-  widget --> TweetWidgetClass
-  widget --> TweetWidgetUIClass
-  widget --> TweetStoreClass
-  widget --> TweetRepositoryClass
+  %% widget
+  widget --> TweetWidget
+  widget --> TweetWidgetUI
+  widget --> TweetStore
+  widget --> TweetRepository
   widget --> generateAiReply
   widget --> shouldAutoReply
   widget --> findLatestAiUserIdInThread
@@ -128,7 +112,6 @@ graph TD
 - **findLatestAiUserIdInThread**: スレッド内で直近のAIユーザーIDを探索。
 - **isExplicitAiTrigger**: 投稿本文やタグにAIリプライの明示的トリガー（@aiやai-replyタグ）が含まれるか判定。
 - **generateAiUserId**: 新しいAIユーザーID（@ai-xxxxxx形式）を生成。
-- **内部ガバナンス用マップ**: 1分/1日あたりのAIリプライ回数を管理。
 
 **使われ方**: TweetWidget本体からAIリプライが必要なときに呼び出され、生成されたリプライは投稿リストに追加される。
 
@@ -175,27 +158,7 @@ graph TD
 
 ---
 
-### 6. **tweetWidgetAiDb.ts**
-**役割**: AI関連のデータベース操作（AIリプライ履歴など）を扱う。
-
-- **AIリプライの履歴管理**: AIリプライの発火履歴やガバナンス用のデータ保存・取得。
-- **AIリプライの回数制限や履歴参照**。
-
-**使われ方**: aiReply.tsや本体からAIリプライのガバナンス・履歴参照時に利用。
-
----
-
-### 7. **tweetWidgetDb.ts**
-**役割**: 投稿データのファイル保存・読み込みの低レベルなユーティリティ。
-
-- **loadTweetsFromFile / saveTweetsToFile**: Obsidian Vault APIを使い、JSONデータの読み書きを行う。
-- **バリデーションや初期化も一部担当**。
-
-**使われ方**: TweetRepositoryや本体から呼び出され、データの永続化・復元を担う。
-
----
-
-### 8. **tweetWidgetUI.ts**
+### 6. **tweetWidgetUI.ts**
 **役割**: TweetWidgetのUI描画・イベント処理を集約。
 
 - **TweetWidgetUIクラス**: DOM操作、ボタンや入力欄の描画、ユーザー操作への反応、リプライモーダルや通知タブの描画など。
@@ -206,7 +169,7 @@ graph TD
 
 ---
 
-### 9. **tweetWidgetUtils.ts**
+### 7. **tweetWidgetUtils.ts**
 **役割**: TweetWidgetで使う汎用的なユーティリティ関数を集約。
 
 - **parseTags/parseLinks**: 投稿本文からタグやリンクを抽出。
@@ -219,7 +182,7 @@ graph TD
 
 ---
 
-### 10. **types.ts**
+### 8. **types.ts**
 **役割**: TweetWidgetで使う型定義（インターフェース）を集約。
 
 - **TweetWidgetPost**: 投稿データの型。

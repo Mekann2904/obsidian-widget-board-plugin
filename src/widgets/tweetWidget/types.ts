@@ -42,6 +42,13 @@ export interface TweetWidgetPost {
     verified?: boolean;
 }
 
+export interface AiGovernanceData {
+    /** ユーザーIDごとの直近1分間のリプライタイムスタンプの配列 */
+    minuteMap: Record<string, number[]>; // 例: { "userId1": [1678886400000, 1678886410000], ... }
+    /** ユーザーIDと日付ごとのリプライ回数 */
+    dayMap: Record<string, number>;    // 例: { "userId1_20230315": 5, ... }
+}
+
 /**
  * ウィジェット全体の設定と全投稿を保持するデータ構造
  */
@@ -51,4 +58,6 @@ export interface TweetWidgetSettings {
     userName?: string;
     userId?: string;
     verified?: boolean;
+    /** AIリプライのガバナンス情報 */
+    aiGovernance?: AiGovernanceData;
 }

@@ -161,7 +161,24 @@ export class TweetWidget implements WidgetImplementation {
 
     private triggerAiReply(post: TweetWidgetPost) {
         if (post.userId?.startsWith('@ai-')) return;
-        if (shouldAutoReply(post, this.plugin.settings)) {
+
+        // 1. Storeから現在のガバナンスデータを取得 (なければ初期値)
+        const currentGovernance = this.store.settings.aiGovernance || { minuteMap: {}, dayMap: {} };
+
+        // 2. shouldAutoReply を呼び出し、結果と更新されたガバナンスデータを取得
+        const { allow, updatedGovernanceData } = shouldAutoReply(
+            post,
+            this.plugin.settings, // PluginGlobalSettingsを渡す
+            currentGovernance
+        );
+
+        // 3. ガバナンスデータをStoreに保存 (更新があった場合)
+        if (JSON.stringify(currentGovernance) !== JSON.stringify(updatedGovernanceData)) {
+            this.store.settings.aiGovernance = updatedGovernanceData;
+            // 必要に応じて this.saveDataDebounced();
+        }
+
+        if (allow) {
             generateAiReply({
                 tweet: post,
                 allTweets: this.store.settings.posts,

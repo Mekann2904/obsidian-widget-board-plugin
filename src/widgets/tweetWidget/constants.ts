@@ -9,6 +9,10 @@ export const DEFAULT_TWEET_WIDGET_SETTINGS: TweetWidgetSettings = {
     userName: 'あなた',
     userId: '@you',
     verified: false,
+    aiGovernance: {
+        minuteMap: {},
+        dayMap: {},
+    },
 };
 
 /**
