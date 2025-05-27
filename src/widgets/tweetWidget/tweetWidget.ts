@@ -105,10 +105,7 @@ export class TweetWidget implements WidgetImplementation {
                 const raw = await this.app.vault.adapter.read(dbPath);
                 // Ensure default values for new fields on older posts
                 const loadedSettings = JSON.parse(raw);
-                loadedSettings.posts = loadedSettings.posts.map((t: any) => ({
-                    deleted: false,
-                    ...t
-                }));
+                loadedSettings.posts = loadedSettings.posts.map((t: any) => validatePost(t));
                 this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...loadedSettings };
             } else {
                 this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS };
@@ -1402,4 +1399,33 @@ export class TweetWidget implements WidgetImplementation {
             }
         });
     }
+}
+
+// TweetWidgetPost型のバリデーション関数を追加
+function validatePost(raw: any): TweetWidgetPost {
+    return {
+        id: raw.id || 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        text: typeof raw.text === 'string' ? raw.text : '',
+        created: typeof raw.created === 'number' ? raw.created : Date.now(),
+        updated: typeof raw.updated === 'number' ? raw.updated : Date.now(),
+        files: Array.isArray(raw.files) ? raw.files : [],
+        like: typeof raw.like === 'number' ? raw.like : 0,
+        liked: !!raw.liked,
+        retweet: typeof raw.retweet === 'number' ? raw.retweet : 0,
+        retweeted: !!raw.retweeted,
+        edited: !!raw.edited,
+        replyCount: typeof raw.replyCount === 'number' ? raw.replyCount : 0,
+        deleted: !!raw.deleted,
+        bookmark: !!raw.bookmark,
+        contextNote: typeof raw.contextNote === 'string' ? raw.contextNote : null,
+        threadId: typeof raw.threadId === 'string' ? raw.threadId : null,
+        visibility: raw.visibility || 'public',
+        noteQuality: raw.noteQuality || 'fleeting',
+        taskStatus: raw.taskStatus || null,
+        tags: Array.isArray(raw.tags) ? raw.tags : [],
+        links: Array.isArray(raw.links) ? raw.links : [],
+        userId: typeof raw.userId === 'string' ? raw.userId : '@you',
+        userName: typeof raw.userName === 'string' ? raw.userName : 'あなた',
+        verified: !!raw.verified
+    };
 }
