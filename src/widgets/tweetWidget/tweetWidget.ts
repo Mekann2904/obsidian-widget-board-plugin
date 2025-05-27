@@ -592,16 +592,16 @@ export class TweetWidget implements WidgetImplementation {
         if (this.detailPostId) {
             // --- Twitter風 詳細表示 ---
             const all = this.currentSettings.posts;
-            const target = all.find(t => t.id === this.detailPostId);
+            const target = this.postsById.get(this.detailPostId);
             if (!target) return;
             // 親ポスト（1件）
             let parent: TweetWidgetPost | null = null;
             if (target.threadId) {
-                parent = all.find(t => t.id === target.threadId) || null;
+                parent = this.postsById.get(target.threadId) || null;
             };
             // --- 親ポストを最上部に表示 ---
             const targetWrap = listEl.createDiv({ cls: 'tweet-detail-main' });
-            const postsById = new Map<string, TweetWidgetPost>([[target.id, target]]);
+            const postsById = this.postsById;
             this.renderSinglePost(target, targetWrap, postsById);
             // --- 返信入力欄 ---
             const replyBox = listEl.createDiv({ cls: 'tweet-detail-reply-box' });
@@ -663,7 +663,7 @@ export class TweetWidget implements WidgetImplementation {
                     // インデントの最大値を設定
                     const indentDepth = Math.min(depth, MAX_REPLY_DEPTH);
                     replyCard.style.marginLeft = `${indentDepth * 24}px`;
-                    const replyMap = new Map<string, TweetWidgetPost>([[reply.id, reply]]);
+                    const replyMap = this.postsById;
                     this.renderSinglePost(reply, replyCard, replyMap);
                     replyCard.onclick = (e) => {
                         if ((e.target as HTMLElement).closest('.tweet-action-bar-main')) return;
@@ -694,8 +694,7 @@ export class TweetWidget implements WidgetImplementation {
             return;
         }
         // --- 通常時はスレッド表示 ---
-        const postsById = new Map<string, TweetWidgetPost>();
-        filteredPosts.forEach(t => postsById.set(t.id, t));
+        const postsById = this.postsById;
         // 返信（リプライ）を除外し、親ポストのみリスト表示
         const rootItems = filteredPosts.filter(t => !t.threadId || !postsById.has(t.threadId));
         rootItems.sort((a, b) => {
@@ -815,7 +814,7 @@ export class TweetWidget implements WidgetImplementation {
         userInfo.createEl('span', { text: timeText, cls: 'tweet-item-time-main' });
 
         if (post.threadId) {
-            const parentPost = this.currentSettings.posts.find(t => t.id === post.threadId);
+            const parentPost = postsById.get(post.threadId);
             const parentPostExists = parentPost && !parentPost.deleted;
             const replyToDiv = item.createDiv({ cls: 'tweet-item-reply-to' });
             if (parentPostExists) {
@@ -1292,7 +1291,7 @@ export class TweetWidget implements WidgetImplementation {
         const postBox = document.createElement('div');
         postBox.className = 'tweet-reply-modal-post';
         modal.appendChild(postBox);
-        const postsById = new Map<string, TweetWidgetPost>([[post.id, post]]);
+        const postsById = this.postsById;
         this.renderSinglePost(post, postBox, postsById);
         // 入力欄
         const inputArea = document.createElement('div');
