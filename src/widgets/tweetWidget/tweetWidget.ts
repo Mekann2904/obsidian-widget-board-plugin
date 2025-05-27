@@ -78,6 +78,7 @@ export class TweetWidget implements WidgetImplementation {
     private replyModalPost: TweetWidgetPost | null = null;
     private currentTab: 'home' | 'notification' = 'home';
     private saveTimeout: number | null = null;
+    private postsById: Map<string, TweetWidgetPost> = new Map();
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
@@ -117,6 +118,7 @@ export class TweetWidget implements WidgetImplementation {
             console.error("Error loading tweet data:", e);
             this.currentSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS };
         }
+        this.updatePostsById();
     }
 
     private async saveTweetsToFileDebounced() {
@@ -140,6 +142,11 @@ export class TweetWidget implements WidgetImplementation {
             console.error("Error saving tweet data:", e);
             new Notice("Failed to save tweets. Check developer console.");
         }
+        this.updatePostsById();
+    }
+
+    private updatePostsById() {
+        this.postsById = new Map(this.currentSettings.posts.map(t => [t.id, t]));
     }
 
     private renderPostUI(container: HTMLElement) {
