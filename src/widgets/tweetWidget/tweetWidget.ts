@@ -631,11 +631,15 @@ export class TweetWidget implements WidgetImplementation {
             inputArea.appendChild(replyBtn);
             // --- リプライツリー（再帰的） ---
             listEl.createDiv({ cls: 'tweet-detail-section-sep' });
+            // インデントの最大値を設定
+            const MAX_REPLY_DEPTH = 1;
             const renderRecursiveReplies = (parentId: string, container: HTMLElement, depth: number = 0) => {
                 const replies = this.currentSettings.posts.filter(t => t.threadId === parentId);
                 replies.forEach(reply => {
                     const replyCard = container.createDiv({ cls: 'tweet-detail-reply' });
-                    replyCard.style.marginLeft = `${depth * 24}px`;
+                    // インデントの最大値を設定
+                    const indentDepth = Math.min(depth, MAX_REPLY_DEPTH);
+                    replyCard.style.marginLeft = `${indentDepth * 24}px`;
                     const replyMap = new Map<string, TweetWidgetPost>([[reply.id, reply]]);
                     this.renderSinglePost(reply, replyCard, replyMap);
                     replyCard.onclick = (e) => {
