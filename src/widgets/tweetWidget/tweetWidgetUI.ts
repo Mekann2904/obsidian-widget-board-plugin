@@ -408,7 +408,19 @@ export class TweetWidgetUI {
                 tagsDiv.createEl('a', { text: `#${tag}`, cls: 'tweet-tag', href: `#${tag}` });
             });
         }
-        
+
+        if (post.userId && post.userId.startsWith('@ai-') && this.widget.plugin.settings.showAiHistory) {
+            const historyDiv = item.createDiv({ cls: 'tweet-ai-history-main' });
+            historyDiv.createEl('div', { text: '会話履歴', cls: 'tweet-ai-history-title' });
+            const thread = getFullThreadHistory(post, this.widget.currentSettings.posts);
+            thread.forEach((t, idx) => {
+                const line = historyDiv.createDiv({ cls: 'tweet-ai-history-line' });
+                const who = t.userId && t.userId.startsWith('@ai-') ? 'AI' : (t.userName || t.userId || 'あなた');
+                line.createSpan({ text: `${who}: `, cls: 'tweet-ai-history-who' });
+                line.createSpan({ text: t.text, cls: 'tweet-ai-history-text' });
+            });
+        }
+
         this.renderActionBar(item, post);
         
         if (!isDetail) {

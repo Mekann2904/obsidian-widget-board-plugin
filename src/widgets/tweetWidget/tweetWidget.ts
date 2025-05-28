@@ -321,7 +321,30 @@ export class TweetWidget implements WidgetImplementation {
         try {
             const thread = getFullThreadHistory(post, this.store.settings.posts);
             const threadText = thread.map(t => `${t.userName || t.userId}: ${t.text}`).join('\n');
-            const promptText = geminiPrompt.replace('{post}', threadText);
+            // スレッドの最後の投稿の投稿日時を取得
+            const lastPost = thread[thread.length - 1];
+            const date = new Date(lastPost.created);
+            const dateStr = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${date.getHours()}時${date.getMinutes().toString().padStart(2, '0')}分`;
+            // 時間帯ラベルを判定
+            function getTimeZoneLabel(date: Date): string {
+                const hour = date.getHours();
+                if (hour >= 0 && hour < 3) return "未明";
+                if (hour >= 3 && hour < 6) return "明け方";
+                if (hour >= 6 && hour < 9) return "朝";
+                if (hour >= 9 && hour < 12) return "昼前";
+                if (hour >= 12 && hour < 15) return "昼過ぎ";
+                if (hour >= 15 && hour < 18) return "夕方";
+                if (hour >= 18 && hour < 21) return "夜のはじめ頃";
+                if (hour >= 21 && hour < 24) return "夜遅く";
+                return "";
+            }
+            const timeZoneLabel = getTimeZoneLabel(date);
+            const dateWithZone = `${dateStr}（この時間帯は「${timeZoneLabel}」です）`;
+            // プロンプトに投稿日時＋時間帯を埋め込む
+            const promptText = geminiPrompt.replace('{postDate}', dateWithZone).replace('{tweet}', threadText);
+
+            // ここでプロンプトをコンソール出力
+            console.log('[Gemini Prompt]', promptText);
             
             let replyText = await GeminiProvider.generateReply(promptText, {
                 apiKey: deobfuscate(this.plugin.settings.llm!.gemini!.apiKey),
