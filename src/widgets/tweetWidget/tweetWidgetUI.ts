@@ -25,6 +25,14 @@ export class TweetWidgetUI {
         this.container.empty();
         this.postsById = this.widget.postsById;
 
+        if (this.widget.editingPostId) {
+            const post = this.postsById.get(this.widget.editingPostId);
+            if (post) {
+                this.renderEditModal(post);
+                return;
+            }
+        }
+
         const tabBar = this.container.createDiv({ cls: 'tweet-tab-bar' });
         this.renderTabBar(tabBar);
 
@@ -586,6 +594,55 @@ export class TweetWidgetUI {
             closeModal();
         };
 
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                closeModal();
+            }
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                replyBtn.click();
+            }
+        });
+    }
+
+    private renderEditModal(post: TweetWidgetPost): void {
+        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
+        const closeModal = () => {
+            this.widget.editingPostId = null;
+            backdrop.remove();
+            this.render();
+        };
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) closeModal();
+        };
+        const modal = backdrop.createDiv('tweet-reply-modal');
+        const widgetRect = this.container.getBoundingClientRect();
+        modal.style.position = 'fixed';
+        modal.style.top = `${widgetRect.top + 50}px`;
+        const modalWidth = Math.min(widgetRect.width - 40, 600);
+        modal.style.width = `${modalWidth}px`;
+        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+
+        const header = modal.createDiv('tweet-reply-modal-header');
+        header.createSpan({ text: 'つぶやきを編集' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = closeModal;
+
+        const postBox = modal.createDiv('tweet-reply-modal-post');
+        this.renderSinglePost(post, postBox, true);
+
+        const inputArea = modal.createDiv('tweet-reply-modal-input');
+        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: 'つぶやきを編集', rows: 3 } });
+        textarea.value = post.text;
+        textarea.focus();
+
+        const replyBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: '編集完了' });
+        replyBtn.onclick = async () => {
+            const text = textarea.value.trim();
+            if (!text) return;
+            await this.widget.submitPost(text);
+            closeModal();
+        };
         textarea.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 e.stopPropagation();
