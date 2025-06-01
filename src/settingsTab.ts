@@ -1031,6 +1031,50 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .setName('通知音（全体設定が適用されます）')
                     .setDesc('このウィジェットの通知音・音量は「タイマー／ストップウォッチ通知音（全体設定）」が使われます。')
                     .setDisabled(true);
+            } else if (widget.type === 'reflection-widget') {
+                widget.settings = { ...REFLECTION_WIDGET_DEFAULT_SETTINGS, ...(widget.settings || {}) };
+                const currentSettings = widget.settings;
+                const { body: reflectionDetailBody } = createWidgetAccordion(settingsEl, 'AIまとめ詳細設定');
+
+                new Setting(reflectionDetailBody)
+                    .setName('AIまとめ自動発火を有効にする')
+                    .setDesc('ONにすると、指定した間隔で自動的にAIまとめを生成します。')
+                    .addToggle(toggle => {
+                        toggle.setValue(currentSettings.aiSummaryAutoEnabled ?? false)
+                            .onChange(async (value) => {
+                                currentSettings.aiSummaryAutoEnabled = value;
+                                await this.plugin.saveSettings(board.id);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            });
+                    });
+                new Setting(reflectionDetailBody)
+                    .setName('自動発火の間隔（時間）')
+                    .setDesc('-1で自動発火しません。1以上で何時間ごとに自動生成するか指定。')
+                    .addText(text => {
+                        text.setPlaceholder('-1')
+                            .setValue(String(currentSettings.aiSummaryAutoIntervalHours ?? -1))
+                            .onChange(async (v) => {
+                                // 入力途中は何もしない
+                            });
+                        text.inputEl.addEventListener('blur', async () => {
+                            let n = parseInt(text.inputEl.value, 10);
+                            if (isNaN(n)) n = -1;
+                            currentSettings.aiSummaryAutoIntervalHours = n;
+                            await this.plugin.saveSettings(board.id);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                        });
+                    });
+                new Setting(reflectionDetailBody)
+                    .setName('手動発火ボタンを表示')
+                    .setDesc('ONにすると、ウィジェット内に「まとめ生成」ボタンが表示されます。')
+                    .addToggle(toggle => {
+                        toggle.setValue(currentSettings.aiSummaryManualEnabled ?? true)
+                            .onChange(async (value) => {
+                                currentSettings.aiSummaryManualEnabled = value;
+                                await this.plugin.saveSettings(board.id);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            });
+                    });
             }
         });
     }
