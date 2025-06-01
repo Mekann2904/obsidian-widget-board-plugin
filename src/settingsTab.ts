@@ -10,6 +10,7 @@ import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/cal
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from 'src/widgets/tweetWidget/constants';
+import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 import { obfuscate, deobfuscate } from './utils';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
 
@@ -23,6 +24,7 @@ const WIDGET_TYPE_DISPLAY_NAMES: { [key: string]: string } = {
     'theme-switcher': 'テーマ切り替え',
     'file-view': 'ファイルビューア',
     'tweet-widget': 'つぶやき',
+    'reflection-widget': '振り返りレポート',
 };
 
 /**
@@ -750,6 +752,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS });
         createAddButtonToBoard("ファイルビューア追加", "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 });
         createAddButtonToBoard("つぶやき追加", "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS);
+        createAddButtonToBoard("振り返りレポート", "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS);
 
         this.renderWidgetListForBoard(widgetListEl, board);
     }

@@ -5,9 +5,9 @@ import type WidgetBoardPlugin from './main'; // WidgetBoardPlugin の型情報�
 // --- ウィジェット設定のベース ---
 export interface WidgetConfig {
     id: string;
-    type: string;
+    type: string; // 例: 'pomodoro', 'memo', 'tweet-widget', 'reflection-widget' など
     title: string;
-    settings?: any; // TweetWidgetSettings なども含む
+    settings?: any; // TweetWidgetSettings, ReflectionWidgetSettings なども含む
 }
 
 // --- ウィジェット実装のインターフェース ---
