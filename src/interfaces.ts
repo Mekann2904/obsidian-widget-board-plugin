@@ -94,4 +94,6 @@ export interface PluginGlobalSettings {
      * 全ウィジェット共通のデータ保存先となるVault内のフォルダ
      */
     baseFolder?: string;
+    defaultTweetPeriod?: string;
+    defaultTweetCustomDays?: number;
 }

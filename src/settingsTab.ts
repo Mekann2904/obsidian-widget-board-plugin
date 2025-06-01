@@ -448,6 +448,36 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+        // --- つぶやきウィジェットのデフォルト表示期間 ---
+        new Setting(tweetGlobalAcc.body)
+            .setName('つぶやきウィジェットのデフォルト表示期間')
+            .setDesc('つぶやきウィジェットを開いたときに最初に表示される期間を選択できます。')
+            .addDropdown(dropdown => {
+                dropdown.addOption('all', '全期間');
+                dropdown.addOption('1d', '1日');
+                dropdown.addOption('3d', '3日');
+                dropdown.addOption('7d', '1週間');
+                dropdown.addOption('30d', '1ヶ月');
+                dropdown.addOption('custom', 'カスタム');
+                dropdown.setValue(this.plugin.settings.defaultTweetPeriod || 'all')
+                    .onChange(async (value) => {
+                        this.plugin.settings.defaultTweetPeriod = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('つぶやきウィジェットのカスタム期間（日数）')
+            .setDesc('デフォルト期間が「カスタム」の場合に使われます。')
+            .addText(text => {
+                text.setPlaceholder('1')
+                    .setValue(String(this.plugin.settings.defaultTweetCustomDays ?? 1))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n) || n < 1) n = 1;
+                        this.plugin.settings.defaultTweetCustomDays = n;
+                        await this.plugin.saveSettings();
+                    });
+            });
 
         // --- ボード管理セクション ---
         const boardManagementAcc = createAccordion('ボード管理', false); // デフォルトで閉じる

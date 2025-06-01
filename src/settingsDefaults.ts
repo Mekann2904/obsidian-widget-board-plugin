@@ -54,4 +54,6 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     /** AIリプライの最大遅延（ms） */
     aiReplyDelayMaxMs: 7000,
     baseFolder: '',
+    defaultTweetPeriod: 'all',
+    defaultTweetCustomDays: 1,
 };

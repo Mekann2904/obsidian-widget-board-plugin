@@ -138,6 +138,43 @@ export class TweetWidgetUI {
         filterSelect.onchange = () => {
             this.widget.setFilter(filterSelect.value as any);
         };
+        const periodSelect = filterBar.createEl('select', { cls: 'tweet-period-select' });
+        [
+            { value: 'all', label: '全期間' },
+            { value: '1d', label: '1日' },
+            { value: '3d', label: '3日' },
+            { value: '7d', label: '1週間' },
+            { value: '30d', label: '1ヶ月' },
+            { value: 'custom', label: 'カスタム' }
+        ].forEach(opt => {
+            periodSelect.createEl('option', { value: opt.value, text: opt.label });
+        });
+        periodSelect.value = this.widget.currentPeriod || 'all';
+        let customInput: HTMLInputElement | null = null;
+        if (this.widget.currentPeriod === 'custom') {
+            customInput = filterBar.createEl('input', { type: 'number', cls: 'tweet-period-custom-input', attr: { min: '1', style: 'width:60px;margin-left:8px;' } });
+            customInput.value = String(this.widget.customPeriodDays || 1);
+            customInput.onchange = () => {
+                this.widget.setCustomPeriodDays(Number(customInput!.value));
+            };
+        }
+        periodSelect.onchange = () => {
+            this.widget.setPeriod(periodSelect.value);
+            if (periodSelect.value === 'custom') {
+                if (!customInput) {
+                    customInput = filterBar.createEl('input', { type: 'number', cls: 'tweet-period-custom-input', attr: { min: '1', style: 'width:60px;margin-left:8px;' } });
+                    customInput.value = String(this.widget.customPeriodDays || 1);
+                    customInput.onchange = () => {
+                        this.widget.setCustomPeriodDays(Number(customInput!.value));
+                    };
+                }
+            } else {
+                if (customInput) {
+                    customInput.remove();
+                    customInput = null;
+                }
+            }
+        };
     }
 
     private renderPostInputArea(): void {
