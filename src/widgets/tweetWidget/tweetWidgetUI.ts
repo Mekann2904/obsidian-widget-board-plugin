@@ -150,11 +150,20 @@ export class TweetWidgetUI {
         avatarImg.onclick = (e) => this.showAvatarModal(e, avatarUrl);
 
         const inputArea = postBox.createDiv({ cls: 'tweet-input-area-main' });
-        
+
+        // 独自実装のトグルスイッチ
+        const toggleBar = inputArea.createDiv({ cls: 'tweet-input-toggle-bar' });
+        toggleBar.style.display = 'flex';
+        toggleBar.style.justifyContent = 'flex-end';
+        toggleBar.style.marginBottom = '2px';
+        const toggleBtn = toggleBar.createEl('button', { cls: 'tweet-toggle-switch', attr: { 'aria-label': 'プレビューモード', type: 'button' } });
+        let isPreview = false;
+        const previewArea = inputArea.createDiv({ cls: 'tweet-preview-area' });
+        previewArea.style.display = 'none';
+
         if (this.widget.replyingToParentId) {
             this.renderReplyInfo(inputArea);
         }
-        
         const input = inputArea.createEl('textarea', { 
             cls: 'tweet-textarea-main', 
             attr: { 
@@ -162,6 +171,30 @@ export class TweetWidgetUI {
                 placeholder: this.widget.replyingToParentId ? '返信をポスト' : 'いまどうしてる？' 
             }
         });
+        // 高さ自動調整
+        input.addEventListener('input', () => {
+            input.style.height = 'auto';
+            input.style.height = (input.scrollHeight) + 'px';
+        });
+        setTimeout(() => {
+            input.style.height = 'auto';
+            input.style.height = (input.scrollHeight) + 'px';
+        }, 0);
+
+        // トグルスイッチ挙動
+        toggleBtn.onclick = async () => {
+            isPreview = !isPreview;
+            toggleBtn.classList.toggle('on', isPreview);
+            if (isPreview) {
+                previewArea.style.display = '';
+                input.style.display = 'none';
+                previewArea.empty();
+                await MarkdownRenderer.render(this.app, input.value, previewArea, this.app.workspace.getActiveFile()?.path || '', this.widget.plugin);
+            } else {
+                previewArea.style.display = 'none';
+                input.style.display = '';
+            }
+        };
         
         const filePreviewArea = inputArea.createDiv({ cls: 'tweet-file-preview' });
         this.renderFilePreview(filePreviewArea);
