@@ -1827,3 +1827,131 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   left: 21px;
   background: #fff;
 }
+
+/* データビューア専用モーダル */
+.tweet-data-viewer-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1000px;
+  max-width: 98vw;
+  min-width: 600px;
+  height: 600px;
+  max-height: 90vh;
+  z-index: 9999;
+  background: var(--background-primary, #222);
+  border-radius: 12px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.tweet-data-viewer-modal .tweet-data-viewer-main {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 16px;
+  height: 100%;
+}
+.tweet-data-viewer-menubar {
+  display: flex;
+  align-items: center;
+  padding: 8px 0 4px 0;
+}
+.tweet-data-viewer-hamburger {
+  font-size: 1.4em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 8px;
+}
+.tweet-data-viewer-dropdown {
+  position: absolute;
+  background: var(--background-secondary, #333);
+  border: 1px solid var(--divider-color, #444);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  margin-top: 4px;
+  z-index: 10000;
+  min-width: 120px;
+  padding: 4px 0;
+}
+.tweet-data-viewer-dropdown-item {
+  padding: 4px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 1em;
+}
+.tweet-data-viewer-dropdown-item:hover {
+  background: var(--background-modifier-hover, #444);
+}
+
+/* データビューア テーブル最適化 */
+.tweet-data-viewer-main {
+  overflow-x: auto;
+  padding: 16px 0 0 0;
+}
+.tweet-data-viewer-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 1em;
+  background: transparent;
+  table-layout: auto;
+}
+.tweet-data-viewer-th, .tweet-data-viewer-td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--divider-color, #444);
+  white-space: nowrap;
+  text-align: left;
+}
+.tweet-data-viewer-th {
+  background: var(--background-secondary, #23272e);
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.tweet-data-viewer-td.text {
+  white-space: normal;
+  max-width: 420px;
+  word-break: break-all;
+}
+.tweet-data-viewer-td.tags {
+  white-space: normal;
+  max-width: 180px;
+  word-break: break-all;
+}
+.tweet-data-viewer-td.id { max-width: 120px; font-size: 0.93em; color: var(--text-faint); }
+.tweet-data-viewer-td.created { max-width: 110px; font-size: 0.97em; }
+.tweet-data-viewer-td.user { max-width: 120px; }
+.tweet-data-viewer-tr {
+  transition: background 0.13s;
+}
+.tweet-data-viewer-tr:hover {
+  background: var(--background-modifier-hover, #232b3a);
+}
+.tweet-data-viewer-hamburger {
+  font-size: 1.6em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 8px;
+  color: var(--text-normal);
+  padding: 2px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.tweet-data-viewer-hamburger:hover {
+  background: var(--background-modifier-hover, #444);
+  color: var(--text-accent, #A68AF9);
+}
+.tweet-data-viewer-dropdown {
+  min-width: 140px;
+  font-size: 1em;
+}
+.tweet-data-viewer-dropdown-item {
+  padding: 6px 16px;
+}

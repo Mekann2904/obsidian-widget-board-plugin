@@ -7,6 +7,7 @@ import { GeminiProvider } from 'src/llm/gemini/geminiApi';
 import { deobfuscate } from 'src/utils';
 import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';
 import { parseLinks, parseTags } from './tweetWidgetUtils';
+import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 
 export class TweetWidgetUI {
     private widget: TweetWidget;
@@ -176,6 +177,26 @@ export class TweetWidgetUI {
                 }
             }
         };
+        const dataViewerBtn = filterBar.createEl('button', { text: 'データビューア', cls: 'tweet-data-viewer-btn' });
+        dataViewerBtn.onclick = () => {
+            this.openDataViewerModal();
+        };
+    }
+
+    private openDataViewerModal(): void {
+        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
+        const closeModal = () => backdrop.remove();
+        backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
+        const modal = backdrop.createDiv('tweet-data-viewer-modal');
+        modal.style.zIndex = '9999';
+        // ヘッダー
+        const header = modal.createDiv('tweet-reply-modal-header');
+        header.createSpan({ text: 'つぶやきデータビューア' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = closeModal;
+        // ビューア本体
+        const viewerContainer = modal.createDiv('tweet-data-viewer-main');
+        new TweetWidgetDataViewer(Array.from(this.widget.postsById.values()), viewerContainer);
     }
 
     private renderPostInputArea(): void {
