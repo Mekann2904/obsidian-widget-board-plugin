@@ -121,6 +121,9 @@ export class ReflectionWidget implements WidgetImplementation {
     id = 'reflection-widget';
     private autoTimer: any = null;
     private chart: Chart | null = null;
+    private lastChartData: number[] | null = null;
+    private lastTodaySummary: string | null = null;
+    private lastWeekSummary: string | null = null;
 
     create(config: WidgetConfig, app: App, plugin: any): HTMLElement {
         const el = document.createElement('div');
@@ -195,9 +198,11 @@ export class ReflectionWidget implements WidgetImplementation {
         aiSummarySection.appendChild(weekSummary);
 
         // Markdownレンダリング用関数（Obsidian公式APIを利用）
-        const renderMarkdown = async (el: HTMLElement, text: string) => {
+        const renderMarkdown = async (el: HTMLElement, text: string, lastText: string | null, setLast: (v: string) => void) => {
+            if (lastText === text) return; // 内容が同じなら再レンダリングしない
             el.empty();
             await MarkdownRenderer.renderMarkdown(text, el, '', plugin);
+            setLast(text);
         };
 
         // まとめ生成関数
@@ -210,10 +215,8 @@ export class ReflectionWidget implements WidgetImplementation {
                 const cachedToday = await loadReflectionSummary('today', todayKey, app);
                 const cachedWeek = await loadReflectionSummary('week', weekKey, app);
                 // AIまとめ部分のみMarkdownレンダリング
-                if (cachedToday) await renderMarkdown(todaySummary, cachedToday || '本日の投稿がありません。');
-                else await renderMarkdown(todaySummary, '生成中...');
-                if (cachedWeek) await renderMarkdown(weekSummary, cachedWeek || '今週の投稿がありません。');
-                else await renderMarkdown(weekSummary, '生成中...');
+                await renderMarkdown(todaySummary, cachedToday || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v);
+                await renderMarkdown(weekSummary, cachedWeek || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v);
 
                 // グラフはキャッシュ有無に関係なく毎回描画
                 const dbPath = getTweetDbPath(plugin);
@@ -222,38 +225,44 @@ export class ReflectionWidget implements WidgetImplementation {
                 const posts: TweetWidgetPost[] = tweetSettings.posts || [];
                 const days = getLastNDays(7);
                 const counts = days.map(day => posts.filter(p => !p.deleted && getDateKey(new Date(p.created)) === day).length);
-                console.log('days', days, 'counts', counts, 'posts', posts);
-                const ctx = canvas.getContext('2d');
-                if (ctx) {
-                    if (this.chart) {
-                        try { this.chart.destroy(); } catch (e) { console.warn('Chart destroy error', e); }
-                        this.chart = null;
-                    }
-                    this.chart = new Chart(ctx, {
-                        type: 'line',
-                        data: {
-                            labels: days.map(d => d.slice(5)),
-                            datasets: [{
-                                label: '投稿数',
-                                data: counts,
-                                borderColor: '#4a90e2',
-                                backgroundColor: 'rgba(74,144,226,0.15)',
-                                fill: true,
-                                tension: 0.3,
-                                pointRadius: 3,
-                            }]
-                        },
-                        options: {
-                            responsive: false,
-                            plugins: {
-                                legend: { display: false },
-                            },
-                            scales: {
-                                x: { grid: { display: false } },
-                                y: { beginAtZero: true, grid: { color: '#eee' } }
-                            }
+                // グラフデータが前回と同じなら再描画しない
+                if (!this.lastChartData || this.lastChartData.some((v, i) => v !== counts[i])) {
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        if (this.chart) {
+                            // Chart.jsのupdateでデータだけ更新
+                            this.chart.data.labels = days.map(d => d.slice(5));
+                            this.chart.data.datasets[0].data = counts;
+                            this.chart.update();
+                        } else {
+                            this.chart = new Chart(ctx, {
+                                type: 'line',
+                                data: {
+                                    labels: days.map(d => d.slice(5)),
+                                    datasets: [{
+                                        label: '投稿数',
+                                        data: counts,
+                                        borderColor: '#4a90e2',
+                                        backgroundColor: 'rgba(74,144,226,0.15)',
+                                        fill: true,
+                                        tension: 0.3,
+                                        pointRadius: 3,
+                                    }]
+                                },
+                                options: {
+                                    responsive: false,
+                                    plugins: {
+                                        legend: { display: false },
+                                    },
+                                    scales: {
+                                        x: { grid: { display: false } },
+                                        y: { beginAtZero: true, grid: { color: '#eee' } }
+                                    }
+                                }
+                            });
                         }
-                    });
+                        this.lastChartData = [...counts];
+                    }
                 }
 
                 // 強制再生成でなければ、既にキャッシュがあれば要約生成部分だけスキップ
@@ -264,16 +273,14 @@ export class ReflectionWidget implements WidgetImplementation {
                 if (force || !cachedToday) {
                     const todayPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) === todayKey && p.userId === '@you');
                     const todayText = todayPosts.length > 0 ? await generateSummary(todayPosts, geminiSummaryPromptToday, plugin) : '';
-                    console.log('todayText', todayText);
-                    await renderMarkdown(todaySummary, todayText || '本日の投稿がありません。');
+                    await renderMarkdown(todaySummary, todayText || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v);
                     await saveReflectionSummary('today', todayKey, todayText, app);
                 }
                 // 今週
                 if (force || !cachedWeek) {
                     const weekPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) >= weekStart && getDateKeyLocal(new Date(p.created)) <= weekKey && p.userId === '@you');
                     const weekText = weekPosts.length > 0 ? await generateSummary(weekPosts, geminiSummaryPromptWeek, plugin) : '';
-                    console.log('weekText', weekText);
-                    await renderMarkdown(weekSummary, weekText || '今週の投稿がありません。');
+                    await renderMarkdown(weekSummary, weekText || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v);
                     await saveReflectionSummary('week', weekKey, weekText, app);
                 }
             } catch (e) {
