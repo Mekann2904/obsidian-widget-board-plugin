@@ -1,4 +1,4 @@
-import { App } from 'obsidian';
+import { App, MarkdownRenderer } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import { TweetRepository } from '../tweetWidget/TweetRepository';
 import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
@@ -8,6 +8,7 @@ import { LLMManager } from '../../llm/llmManager';
 import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from '../../llm/gemini/summaryPrompts';
 import { deobfuscate } from '../../utils';
+
 
 function getTweetDbPath(plugin: any): string {
     const { tweetDbLocation, tweetDbCustomPath } = plugin.settings;
@@ -20,6 +21,15 @@ function getTweetDbPath(plugin: any): string {
 
 function getDateKey(date: Date): string {
     return date.toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+// ローカルタイム基準でYYYY-MM-DDを返す
+function getDateKeyLocal(date: Date): string {
+    return [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, '0'),
+        String(date.getDate()).padStart(2, '0')
+    ].join('-');
 }
 
 function getLastNDays(n: number): string[] {
@@ -48,7 +58,11 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
     if (context.gemini && context.gemini.apiKey) {
         context.apiKey = deobfuscate(context.gemini.apiKey);
     }
-    const text = posts.map(p => p.text).join('\n');
+    // 各投稿に日付を付与してテキスト化
+    const text = posts.map(p => {
+        const dateStr = getDateKeyLocal(new Date(p.created));
+        return `[${dateStr}] ${p.text}`;
+    }).join('\n');
     const promptText = prompt.replace('{posts}', text);
     console.log('Gemini送信プロンプト:', promptText);
     console.log('Gemini送信context:', context);
@@ -137,16 +151,18 @@ export class ReflectionWidget implements WidgetImplementation {
         // グラフタイトル
         const graphTitle = document.createElement('div');
         graphTitle.style.fontWeight = 'bold';
-        graphTitle.style.marginBottom = '4px';
+        graphTitle.style.marginBottom = '12px';
         graphTitle.style.textAlign = 'center';
+        graphTitle.style.fontSize = '1.4em';
         graphTitle.innerText = '直近7日間の投稿数トレンド';
         content.appendChild(graphTitle);
 
         // グラフcanvas
         const canvas = document.createElement('canvas');
-        canvas.width = 320;
-        canvas.height = 120;
-        canvas.style.margin = '0 auto 0 auto';
+        canvas.width = 600;
+        canvas.height = 220;
+        canvas.style.margin = '0 auto 16px auto';
+        canvas.style.display = 'block';
         content.appendChild(canvas);
 
         // AIまとめセクション
@@ -178,73 +194,90 @@ export class ReflectionWidget implements WidgetImplementation {
         weekSummary.style.minHeight = '2em';
         aiSummarySection.appendChild(weekSummary);
 
+        // Markdownレンダリング用関数（Obsidian公式APIを利用）
+        const renderMarkdown = async (el: HTMLElement, text: string) => {
+            el.empty();
+            await MarkdownRenderer.renderMarkdown(text, el, '', plugin);
+        };
+
         // まとめ生成関数
-        const runSummary = async () => {
-            // まず保存済み要約があれば即表示
-            const todayKey = getDateKey(new Date());
-            const [weekStart, weekEnd] = getWeekRange();
-            const weekKey = getDateKey(new Date(weekEnd));
-            const cachedToday = await loadReflectionSummary('today', todayKey, app);
-            const cachedWeek = await loadReflectionSummary('week', weekKey, app);
-            if (cachedToday) todaySummary.innerText = cachedToday;
-            else todaySummary.innerText = '生成中...';
-            if (cachedWeek) weekSummary.innerText = cachedWeek;
-            else weekSummary.innerText = '生成中...';
+        const runSummary = async (force = false) => {
+            try {
+                // まず保存済み要約があれば即表示
+                const todayKey = getDateKeyLocal(new Date());
+                const [weekStart, weekEnd] = getWeekRange();
+                const weekKey = getDateKeyLocal(new Date(weekEnd));
+                const cachedToday = await loadReflectionSummary('today', todayKey, app);
+                const cachedWeek = await loadReflectionSummary('week', weekKey, app);
+                // AIまとめ部分のみMarkdownレンダリング
+                if (cachedToday) await renderMarkdown(todaySummary, cachedToday || '本日の投稿がありません。');
+                else await renderMarkdown(todaySummary, '生成中...');
+                if (cachedWeek) await renderMarkdown(weekSummary, cachedWeek || '今週の投稿がありません。');
+                else await renderMarkdown(weekSummary, '生成中...');
 
-            // グラフはキャッシュ有無に関係なく毎回描画
-            const dbPath = getTweetDbPath(plugin);
-            const repo = new TweetRepository(app, dbPath);
-            const tweetSettings: TweetWidgetSettings = await repo.load();
-            const posts: TweetWidgetPost[] = tweetSettings.posts || [];
-            const days = getLastNDays(7);
-            const counts = days.map(day => posts.filter(p => !p.deleted && getDateKey(new Date(p.created)) === day).length);
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                if (this.chart) {
-                    this.chart.destroy();
-                }
-                this.chart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: days.map(d => d.slice(5)),
-                        datasets: [{
-                            label: '投稿数',
-                            data: counts,
-                            borderColor: '#4a90e2',
-                            backgroundColor: 'rgba(74,144,226,0.15)',
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 3,
-                        }]
-                    },
-                    options: {
-                        responsive: false,
-                        plugins: {
-                            legend: { display: false },
-                        },
-                        scales: {
-                            x: { grid: { display: false } },
-                            y: { beginAtZero: true, grid: { color: '#eee' } }
-                        }
+                // グラフはキャッシュ有無に関係なく毎回描画
+                const dbPath = getTweetDbPath(plugin);
+                const repo = new TweetRepository(app, dbPath);
+                const tweetSettings: TweetWidgetSettings = await repo.load();
+                const posts: TweetWidgetPost[] = tweetSettings.posts || [];
+                const days = getLastNDays(7);
+                const counts = days.map(day => posts.filter(p => !p.deleted && getDateKey(new Date(p.created)) === day).length);
+                console.log('days', days, 'counts', counts, 'posts', posts);
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    if (this.chart) {
+                        try { this.chart.destroy(); } catch (e) { console.warn('Chart destroy error', e); }
+                        this.chart = null;
                     }
-                });
-            }
+                    this.chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: days.map(d => d.slice(5)),
+                            datasets: [{
+                                label: '投稿数',
+                                data: counts,
+                                borderColor: '#4a90e2',
+                                backgroundColor: 'rgba(74,144,226,0.15)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 3,
+                            }]
+                        },
+                        options: {
+                            responsive: false,
+                            plugins: {
+                                legend: { display: false },
+                            },
+                            scales: {
+                                x: { grid: { display: false } },
+                                y: { beginAtZero: true, grid: { color: '#eee' } }
+                            }
+                        }
+                    });
+                }
 
-            // 既にキャッシュがあれば要約生成部分だけスキップ
-            if (cachedToday && cachedWeek) return;
+                // 強制再生成でなければ、既にキャッシュがあれば要約生成部分だけスキップ
+                if (!force && cachedToday && cachedWeek) return;
 
-            // AIまとめ生成
-            // 今日
-            if (!cachedToday) {
-                const todayPosts = posts.filter(p => !p.deleted && getDateKey(new Date(p.created)) === todayKey);
-                todaySummary.innerText = todayPosts.length > 0 ? await generateSummary(todayPosts, geminiSummaryPromptToday, plugin) : '本日の投稿がありません。';
-                await saveReflectionSummary('today', todayKey, todaySummary.innerText, app);
-            }
-            // 今週
-            if (!cachedWeek) {
-                const weekPosts = posts.filter(p => !p.deleted && getDateKey(new Date(p.created)) >= weekStart && getDateKey(new Date(p.created)) <= weekKey);
-                weekSummary.innerText = weekPosts.length > 0 ? await generateSummary(weekPosts, geminiSummaryPromptWeek, plugin) : '今週の投稿がありません。';
-                await saveReflectionSummary('week', weekKey, weekSummary.innerText, app);
+                // AIまとめ生成
+                // 今日
+                if (force || !cachedToday) {
+                    const todayPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) === todayKey && p.userId === '@you');
+                    const todayText = todayPosts.length > 0 ? await generateSummary(todayPosts, geminiSummaryPromptToday, plugin) : '';
+                    console.log('todayText', todayText);
+                    await renderMarkdown(todaySummary, todayText || '本日の投稿がありません。');
+                    await saveReflectionSummary('today', todayKey, todayText, app);
+                }
+                // 今週
+                if (force || !cachedWeek) {
+                    const weekPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) >= weekStart && getDateKeyLocal(new Date(p.created)) <= weekKey && p.userId === '@you');
+                    const weekText = weekPosts.length > 0 ? await generateSummary(weekPosts, geminiSummaryPromptWeek, plugin) : '';
+                    console.log('weekText', weekText);
+                    await renderMarkdown(weekSummary, weekText || '今週の投稿がありません。');
+                    await saveReflectionSummary('week', weekKey, weekText, app);
+                }
+            } catch (e) {
+                console.error('runSummaryエラー:', e);
             }
         };
 
@@ -256,7 +289,7 @@ export class ReflectionWidget implements WidgetImplementation {
             btn.onclick = async () => {
                 btn.disabled = true;
                 btn.innerText = '生成中...';
-                await runSummary();
+                await runSummary(true); // 強制再生成
                 btn.disabled = false;
                 btn.innerText = 'まとめ生成';
             };
