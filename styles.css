@@ -2055,3 +2055,51 @@ body.wb-modal-open .workspace-leaf-resize-handle {
     max-width: 100%;
     box-sizing: border-box;
 }
+
+/* YouTubeサジェスト用ポップアップスタイル */
+.tweet-input-area-main, .tweet-reply-modal-input {
+  position: relative;
+}
+.tweet-youtube-suggest {
+  background: #222;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  margin-top: 4px;
+  font-size: 0.95em;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 350px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.15s;
+  display: none;
+}
+.tweet-youtube-suggest[style*="display: block"],
+.tweet-youtube-suggest[style*="display: "],
+.tweet-youtube-suggest[style*="display: "] {
+  display: block !important;
+}
+.tweet-youtube-suggest:hover {
+  background: #444;
+}
+
+/* サジェストが隠れないようにする */
+.tweet-post-box,
+.widget,
+.tweet-input-area-main,
+.tweet-reply-modal-input {
+  overflow: visible !important;
+}
+.tweet-youtube-suggest {
+  z-index: 99999 !important;
+}
+
+/* サジェスト中身が空のときは高さ0に */
+.tweet-youtube-suggest:empty {
+  height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}

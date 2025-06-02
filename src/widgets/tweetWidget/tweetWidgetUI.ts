@@ -6,7 +6,7 @@ import { geminiPrompt } from 'src/llm/gemini/prompts';
 import { GeminiProvider } from 'src/llm/gemini/geminiApi';
 import { deobfuscate } from 'src/utils';
 import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';
-import { parseLinks, parseTags } from './tweetWidgetUtils';
+import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 
 export class TweetWidgetUI {
@@ -240,6 +240,47 @@ export class TweetWidgetUI {
             input.style.height = (input.scrollHeight) + 'px';
         }, 0);
 
+        // --- YouTubeサジェストUI ---
+        const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
+        ytSuggest.style.display = 'none';
+        ytSuggest.textContent = '';
+        let lastYtUrl = '';
+        let lastYtTitle = '';
+        input.addEventListener('input', () => {
+            const val = input.value;
+            const url = extractYouTubeUrl(val);
+            if (!url) {
+                ytSuggest.style.display = 'none';
+                ytSuggest.textContent = '';
+                lastYtUrl = '';
+                lastYtTitle = '';
+                return;
+            }
+            ytSuggest.textContent = '動画タイトル取得中...';
+            ytSuggest.style.display = 'block';
+            lastYtUrl = url;
+            const currentInput = val;
+            fetchYouTubeTitle(url).then(title => {
+                if (input.value !== currentInput) return;
+                if (title) {
+                    lastYtTitle = title;
+                    ytSuggest.textContent = `「${title}」を挿入 → クリック`;
+                    ytSuggest.onclick = () => {
+                        const insertText = `![${title}](${url})`;
+                        // 元のYouTube URL（クエリ付きも含む）を正規表現で検出して置換
+                        const urlRegex = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}(?:[?&][^\s]*)?)/;
+                        input.value = input.value.replace(urlRegex, insertText);
+                        ytSuggest.style.display = 'none';
+                        ytSuggest.textContent = '';
+                        input.dispatchEvent(new Event('input'));
+                    };
+                } else {
+                    ytSuggest.textContent = '動画タイトル取得失敗';
+                    ytSuggest.onclick = null;
+                }
+            });
+        });
+        
         // トグルスイッチ挙動
         toggleBtn.onclick = async () => {
             isPreview = !isPreview;
@@ -677,6 +718,47 @@ export class TweetWidgetUI {
         const inputArea = modal.createDiv('tweet-reply-modal-input');
         const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: '返信をポスト' } });
         textarea.focus();
+
+        // --- YouTubeサジェストUI ---
+        const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
+        ytSuggest.style.display = 'none';
+        ytSuggest.textContent = '';
+        let lastYtUrl = '';
+        let lastYtTitle = '';
+        textarea.addEventListener('input', () => {
+            const val = textarea.value;
+            const url = extractYouTubeUrl(val);
+            if (!url) {
+                ytSuggest.style.display = 'none';
+                ytSuggest.textContent = '';
+                lastYtUrl = '';
+                lastYtTitle = '';
+                return;
+            }
+            ytSuggest.textContent = '動画タイトル取得中...';
+            ytSuggest.style.display = 'block';
+            lastYtUrl = url;
+            const currentInput = val;
+            fetchYouTubeTitle(url).then(title => {
+                if (textarea.value !== currentInput) return;
+                if (title) {
+                    lastYtTitle = title;
+                    ytSuggest.textContent = `「${title}」を挿入 → クリック`;
+                    ytSuggest.onclick = () => {
+                        const insertText = `![${title}](${url})`;
+                        // 元のYouTube URL（クエリ付きも含む）を正規表現で検出して置換
+                        const urlRegex = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}(?:[?&][^\s]*)?)/;
+                        textarea.value = textarea.value.replace(urlRegex, insertText);
+                        ytSuggest.style.display = 'none';
+                        ytSuggest.textContent = '';
+                        textarea.dispatchEvent(new Event('input'));
+                    };
+                } else {
+                    ytSuggest.textContent = '動画タイトル取得失敗';
+                    ytSuggest.onclick = null;
+                }
+            });
+        });
 
         const replyBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: '返信' });
         replyBtn.onclick = async () => {
