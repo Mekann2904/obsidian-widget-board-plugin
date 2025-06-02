@@ -325,7 +325,7 @@ export class TweetWidgetUI {
         // --- @サジェストリストUI ---
         const atSuggestList = inputArea.createDiv({ cls: 'tweet-suggest-list' });
         atSuggestList.style.display = 'none';
-        const atCandidates = ['@ai'];
+        const atCandidates = ['@ai','@ai2','@bi'];
         let atActiveIndex = -1;
         let atCurrentCandidates: string[] = [];
 
@@ -334,8 +334,15 @@ export class TweetWidgetUI {
             // @サジェスト表示判定
             const atMatch = /(^|\s)@(\w*)$/.exec(val.slice(0, input.selectionStart));
             if (atMatch) {
+                const query = atMatch[2] || '';
+                // 候補を絞り込み
+                atCurrentCandidates = atCandidates.filter(cand => cand.slice(1).toLowerCase().startsWith(query.toLowerCase()));
+                if (atCurrentCandidates.length === 0) {
+                    atSuggestList.style.display = 'none';
+                    atActiveIndex = -1;
+                    return;
+                }
                 atSuggestList.empty();
-                atCurrentCandidates = atCandidates; // 今後フィルタ拡張用
                 atActiveIndex = 0;
                 atCurrentCandidates.forEach((cand, idx) => {
                     const item = atSuggestList.createDiv({ cls: 'tweet-suggest-item', text: cand });

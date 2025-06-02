@@ -2126,3 +2126,8 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .tweet-suggest-item:hover, .tweet-suggest-item.active {
   background: #444;
 }
+.tweet-suggest-item.active {
+  background: #A68AF9 !important;
+  color: #fff !important;
+  font-weight: bold;
+}
