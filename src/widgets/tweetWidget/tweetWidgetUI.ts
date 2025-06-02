@@ -141,6 +141,7 @@ export class TweetWidgetUI {
         const periodSelect = filterBar.createEl('select', { cls: 'tweet-period-select' });
         [
             { value: 'all', label: '全期間' },
+            { value: 'today', label: '今日' },
             { value: '1d', label: '1日' },
             { value: '3d', label: '3日' },
             { value: '7d', label: '1週間' },

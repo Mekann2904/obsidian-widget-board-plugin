@@ -456,6 +456,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             .setDesc('つぶやきウィジェットを開いたときに最初に表示される期間を選択できます。')
             .addDropdown(dropdown => {
                 dropdown.addOption('all', '全期間');
+                dropdown.addOption('today', '今日');
                 dropdown.addOption('1d', '1日');
                 dropdown.addOption('3d', '3日');
                 dropdown.addOption('7d', '1週間');
