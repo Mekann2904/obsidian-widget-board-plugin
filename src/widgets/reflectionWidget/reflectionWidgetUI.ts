@@ -273,7 +273,7 @@ export class ReflectionWidgetUI {
                                     }]
                                 },
                                 options: {
-                                    responsive: false,
+                                    //responsive: false,
                                     animation: false, // アニメーション無効化
                                     plugins: { legend: { display: false } },
                                     scales: {
