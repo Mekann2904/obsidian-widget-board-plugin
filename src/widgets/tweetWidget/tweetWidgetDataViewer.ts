@@ -33,16 +33,17 @@ export class TweetWidgetDataViewer {
         this.container.empty();
         // --- カラム選択ハンバーガーメニュー ---
         const menuBar = this.container.createDiv({ cls: 'tweet-data-viewer-menubar' });
-        const menuBtn = menuBar.createEl('button', { cls: 'tweet-data-viewer-hamburger', text: '☰' });
-        const csvBtn = menuBar.createEl('button', { text: 'CSVコピー', cls: 'tweet-data-viewer-csv-btn' });
+        const menuGroup = menuBar.createDiv({ cls: 'tweet-data-viewer-menugroup' });
+        const menuBtn = menuGroup.createEl('button', { cls: 'tweet-data-viewer-hamburger', text: '☰' });
+        const csvBtn = menuGroup.createEl('button', { text: 'CSVコピー', cls: 'tweet-data-viewer-csv-btn' });
         csvBtn.onclick = () => {
             this.copyCsvToClipboard();
         };
-        const mdBtn = menuBar.createEl('button', { text: 'Markdownコピー', cls: 'tweet-data-viewer-md-btn' });
+        const mdBtn = menuGroup.createEl('button', { text: 'Markdownコピー', cls: 'tweet-data-viewer-md-btn' });
         mdBtn.onclick = () => {
             this.copyMarkdownToClipboard();
         };
-        const menuDropdown = menuBar.createDiv({ cls: 'tweet-data-viewer-dropdown' });
+        const menuDropdown = menuGroup.createDiv({ cls: 'tweet-data-viewer-dropdown' });
         menuDropdown.style.display = 'none';
         menuBtn.onclick = (e) => {
             menuDropdown.style.display = menuDropdown.style.display === 'none' ? '' : 'none';

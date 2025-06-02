@@ -1828,6 +1828,12 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   background: #fff;
 }
 
+/* データビュワー用ヘッダーの左右余白を狭く */
+.tweet-data-viewer-modal .tweet-reply-modal-header {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
 /* データビューア専用モーダル */
 .tweet-data-viewer-modal {
   position: fixed;
@@ -1851,13 +1857,57 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .tweet-data-viewer-modal .tweet-data-viewer-main {
   flex: 1 1 auto;
   overflow: auto;
-  padding: 16px;
+  padding: 8px;
   height: 100%;
 }
 .tweet-data-viewer-menubar {
   display: flex;
   align-items: center;
-  padding: 8px 0 4px 0;
+  gap: 12px;
+  background: var(--background-primary, #222);
+  border-bottom: 1px solid var(--divider-color, #444);
+  min-height: 44px;
+}
+.tweet-data-viewer-csv-btn,
+.tweet-data-viewer-md-btn {
+  margin-right: 6px;
+}
+.tweet-data-viewer-dropdown {
+  right: 8px;
+  left: auto;
+  top: 100%;
+  margin-top: 6px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  padding: 10px 0;
+  background: var(--background-secondary, #23272e);
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  border: 1.5px solid var(--divider-color, #444);
+  min-width: 140px;
+  z-index: 20000 !important;
+}
+.tweet-data-viewer-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 18px;
+  font-size: 1em;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  z-index: 1;
+}
+.tweet-data-viewer-dropdown-item input[type="checkbox"] {
+  accent-color: var(--text-accent, #A68AF9);
+  width: 1.1em;
+  height: 1.1em;
+}
+.tweet-data-viewer-dropdown-item:hover {
+  background: var(--background-modifier-hover, #444);
+}
+.tweet-data-viewer-main {
+  margin-top: 8px;
 }
 .tweet-data-viewer-hamburger {
   font-size: 1.4em;
@@ -1867,24 +1917,17 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   margin-right: 8px;
 }
 .tweet-data-viewer-dropdown {
-  position: absolute;
-  background: var(--background-secondary, #333);
-  border: 1px solid var(--divider-color, #444);
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  margin-top: 4px;
-  z-index: 10000;
-  min-width: 120px;
-  padding: 4px 0;
+  right: 8px;
+  left: auto;
+  top: 100%;
+  margin-top: 6px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  padding: 8px 0;
+  /* 既存のmax-width, max-height, overflow等はそのまま */
 }
 .tweet-data-viewer-dropdown-item {
-  padding: 4px 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  font-size: 1em;
-}
-.tweet-data-viewer-dropdown-item:hover {
-  background: var(--background-modifier-hover, #444);
+  padding: 6px 18px;
 }
 
 /* データビューア テーブル最適化 */
@@ -1954,4 +1997,52 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 }
 .tweet-data-viewer-dropdown-item {
   padding: 6px 16px;
+}
+
+/* TweetWidget フィルタバー・データビューアボタンの見た目統一 */
+.tweet-data-viewer-btn,
+.tweet-period-select,
+.tweet-filter-bar select,
+.tweet-filter-bar button {
+  height: 32px;
+  font-size: 1em;
+  border-radius: 6px;
+  background: var(--interactive-normal);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 0 14px;
+  margin-left: 8px;
+  margin-right: 0;
+  transition: background 0.15s, color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  outline: none;
+}
+.tweet-data-viewer-btn:hover,
+.tweet-period-select:hover,
+.tweet-filter-bar select:hover,
+.tweet-filter-bar button:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.tweet-filter-bar select,
+.tweet-period-select {
+  min-width: 90px;
+  padding-right: 24px;
+}
+
+.tweet-data-viewer-menugroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+.tweet-data-viewer-dropdown {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  right: auto;
+  margin-top: 6px;
+  margin-right: 0;
+  margin-bottom: 0;
+  /* 既存のmax-width, max-height, padding, shadow, border, background等はそのまま */
 }
