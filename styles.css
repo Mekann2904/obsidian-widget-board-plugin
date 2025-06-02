@@ -1730,7 +1730,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .tweet-reply-modal-tweet,
 .tweet-reply-modal-input {
   padding-left: 32px;
-  padding-right: 32px;
+  padding-right: 16px;
 }
 
 .tweet-reply-modal-input {
