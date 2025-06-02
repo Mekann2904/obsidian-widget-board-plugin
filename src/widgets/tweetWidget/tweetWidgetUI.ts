@@ -321,6 +321,74 @@ export class TweetWidgetUI {
         input.addEventListener('input', () => {
             this.updateCharCount(charCount, input.value.length);
         });
+
+        // --- @サジェストリストUI ---
+        const atSuggestList = inputArea.createDiv({ cls: 'tweet-suggest-list' });
+        atSuggestList.style.display = 'none';
+        const atCandidates = ['@ai'];
+        let atActiveIndex = -1;
+        let atCurrentCandidates: string[] = [];
+
+        input.addEventListener('input', () => {
+            const val = input.value;
+            // @サジェスト表示判定
+            const atMatch = /(^|\s)@(\w*)$/.exec(val.slice(0, input.selectionStart));
+            if (atMatch) {
+                atSuggestList.empty();
+                atCurrentCandidates = atCandidates; // 今後フィルタ拡張用
+                atActiveIndex = 0;
+                atCurrentCandidates.forEach((cand, idx) => {
+                    const item = atSuggestList.createDiv({ cls: 'tweet-suggest-item', text: cand });
+                    if (idx === atActiveIndex) item.addClass('active');
+                    item.onmouseenter = () => {
+                        atActiveIndex = idx;
+                        Array.from(atSuggestList.children).forEach((el, i) => {
+                            el.classList.toggle('active', i === atActiveIndex);
+                        });
+                    };
+                    item.onclick = () => {
+                        input.value = val.slice(0, atMatch.index + atMatch[1].length) + cand + val.slice(input.selectionStart);
+                        atSuggestList.style.display = 'none';
+                        input.focus();
+                    };
+                });
+                atSuggestList.style.display = 'block';
+            } else {
+                atSuggestList.style.display = 'none';
+                atActiveIndex = -1;
+            }
+        });
+        input.addEventListener('keydown', (e) => {
+            if (atSuggestList.style.display === 'block' && atCurrentCandidates.length > 0) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    atActiveIndex = (atActiveIndex + 1) % atCurrentCandidates.length;
+                    Array.from(atSuggestList.children).forEach((el, i) => {
+                        el.classList.toggle('active', i === atActiveIndex);
+                    });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    atActiveIndex = (atActiveIndex - 1 + atCurrentCandidates.length) % atCurrentCandidates.length;
+                    Array.from(atSuggestList.children).forEach((el, i) => {
+                        el.classList.toggle('active', i === atActiveIndex);
+                    });
+                } else if (e.key === 'Enter') {
+                    if (atActiveIndex >= 0 && atActiveIndex < atCurrentCandidates.length) {
+                        const val = input.value;
+                        const atMatch = /(^|\s)@(\w*)$/.exec(val.slice(0, input.selectionStart));
+                        if (atMatch) {
+                            input.value = val.slice(0, atMatch.index + atMatch[1].length) + atCurrentCandidates[atActiveIndex] + val.slice(input.selectionStart);
+                            atSuggestList.style.display = 'none';
+                            input.focus();
+                            e.preventDefault();
+                        }
+                    }
+                }
+            }
+        });
+        input.addEventListener('blur', () => {
+            setTimeout(() => atSuggestList.style.display = 'none', 100);
+        });
     }
 
     private renderReplyInfo(container: HTMLElement): void {

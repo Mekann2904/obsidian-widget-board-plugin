@@ -2103,3 +2103,26 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   border: none !important;
   box-shadow: none !important;
 }
+
+/* @サジェスト用リストUI */
+.tweet-suggest-list {
+  background: #222;
+  color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  margin-top: 4px;
+  font-size: 0.95em;
+  padding: 4px 0;
+  min-width: 120px;
+  max-width: 350px;
+  position: absolute;
+  z-index: 1000;
+}
+.tweet-suggest-item {
+  padding: 6px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tweet-suggest-item:hover, .tweet-suggest-item.active {
+  background: #444;
+}
