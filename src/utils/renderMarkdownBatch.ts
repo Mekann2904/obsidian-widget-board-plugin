@@ -10,7 +10,7 @@ import { MarkdownRenderer, TFile, Component } from "obsidian";
  * @param markdownText  ユーザーが入力した Markdown 文字列
  * @param container     最終的に描画先となる HTMLElement
  * @param sourcePath    レンダリングルールを適用するためのファイルパスまたはTFile
- * @param component     ObsidianのComponentインスタンス（new Component(app) で渡す）
+ * @param component     ObsidianのComponentインスタンス（new Component() で渡す）
  */
 export async function renderMarkdownBatch(
   markdownText: string,
@@ -26,7 +26,7 @@ export async function renderMarkdownBatch(
   offscreenDiv.style.height = "0px";
   document.body.appendChild(offscreenDiv);
 
-  // 2) MarkdownRenderer.render を使って、一時コンテナにだけ描画
+  // 2) MarkdownRenderer.renderMarkdown で描画
   await MarkdownRenderer.renderMarkdown(
     markdownText,
     offscreenDiv,
@@ -34,15 +34,17 @@ export async function renderMarkdownBatch(
     component
   );
 
-  // 3) 一時コンテナからすべての子ノードを DocumentFragment にまとめる
-  const frag = document.createDocumentFragment();
-  while (offscreenDiv.firstChild) {
-    frag.appendChild(offscreenDiv.firstChild);
-  }
-
-  // 4) document.body から offscreenDiv を削除
+  // 3) オフスクリーンdivをbodyから外す（ここでreflowが1回走るが、画面外なので影響最小）
   document.body.removeChild(offscreenDiv);
 
-  // 5) まとめたフラグメントを一度だけ container に差し込む
+  // 4) fragmentに全ノードをimportNodeでバッチ化
+  const frag = document.createDocumentFragment();
+  while (offscreenDiv.firstChild) {
+    const clone = document.importNode(offscreenDiv.firstChild, true);
+    frag.appendChild(clone);
+    offscreenDiv.removeChild(offscreenDiv.firstChild);
+  }
+
+  // 5) containerに一度だけappendChild（ここでreflowが1回だけ）
   container.appendChild(frag);
 } 

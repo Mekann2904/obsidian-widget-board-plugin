@@ -2138,3 +2138,10 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   color: #fff !important;
   font-weight: bold;
 }
+
+/* --- reflow最適化: CSS Containment --- */
+.widget-content,
+.memo-widget-container,
+.tweet-list-main {
+  contain: layout style paint;
+}
