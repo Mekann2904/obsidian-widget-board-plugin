@@ -529,7 +529,8 @@ export class TweetWidgetUI {
 
         const fragment = document.createDocumentFragment();
         rootItems.forEach(post => {
-            const wrapper = listEl.createDiv({ cls: 'tweet-thread-wrapper' });
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tweet-thread-wrapper';
             wrapper.setAttribute('data-tweet-id', post.id);
             wrapper.onclick = (e) => {
                 if ((e.target as HTMLElement).closest('.tweet-action-bar-main') || 
