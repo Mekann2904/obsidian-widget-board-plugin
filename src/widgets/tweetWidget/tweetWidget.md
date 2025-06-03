@@ -5,6 +5,8 @@ src/widgets/tweetWidget/
 ├── TweetRepository.ts
 ├── TweetStore.ts
 ├── tweetWidget.ts
+├── tweetWidgetAiDb.ts
+├── tweetWidgetDataViewer.ts
 ├── tweetWidgetUI.ts
 ├── tweetWidgetUtils.ts
 └── types.ts
@@ -12,92 +14,84 @@ src/widgets/tweetWidget/
 ```
 
 ```mermaid
+flowchart TD
+  %% クラス・主要データ
+  Widget["TweetWidget (main class)"]
+  UI["TweetWidgetUI"]
+  Store["TweetStore"]
+  Repo["TweetRepository"]
+  AiReply["aiReply (generateAiReply, shouldAutoReply, etc)"]
+  Utils["tweetWidgetUtils (parseTags, parseLinks, formatTimeAgo, readFileAsDataUrl, wrapSelection)"]
+  Types["types (TweetWidgetPost, TweetWidgetSettings, etc)"]
+  Constants["constants (MAX_TWEET_LENGTH, DEFAULT_TWEET_WIDGET_SETTINGS)"]
+  Gemini["GeminiProvider (LLM API)"]
+  Notice["Notice (Obsidian)"]
+  Plugin["WidgetBoardPlugin"]
+  App["App (Obsidian)"]
 
-graph TD
-  types["types.ts"]
-  constants["constants.ts"]
-  utils["tweetWidgetUtils.ts"]
-  store["TweetStore.ts"]
-  repo["TweetRepository.ts"]
-  aiReply["aiReply.ts"]
-  ui["tweetWidgetUI.ts"]
-  widget["tweetWidget.ts"]
+  %% 初期化
+  Widget -- create() --> Repo
+  Widget -- create() --> Store
+  Widget -- create() --> UI
+  Widget -- create() --> Plugin
+  Widget -- create() --> App
 
-  %% types
-  types --> TweetWidgetFile
-  types --> TweetWidgetPost
-  types --> AiGovernanceData
-  types --> TweetWidgetSettings
+  %% 投稿・編集・削除・リアクション
+  Widget -- submitPost/submitReply --> Store
+  Widget -- submitPost/submitReply --> Utils
+  Widget -- submitPost/submitReply --> triggerAiReply
+  Widget -- submitPost/submitReply --> UI
+  Widget -- submitPost/submitReply --> Notice
 
-  %% constants
-  constants --> DEFAULT_TWEET_WIDGET_SETTINGS
-  constants --> MAX_TWEET_LENGTH
-  constants --> types
+  Widget -- startEdit/startReply/cancelReply --> UI
+  Widget -- toggleLike/toggleRetweet/toggleBookmark --> Store
+  Widget -- toggleLike/toggleRetweet/toggleBookmark --> UI
+  Widget -- setPostDeleted/deletePost/deleteThread --> Store
+  Widget -- setPostDeleted/deletePost/deleteThread --> UI
 
-  %% utils
-  utils --> parseTags
-  utils --> parseLinks
-  utils --> formatTimeAgo
-  utils --> readFileAsDataUrl
-  utils --> wrapSelection
-  utils --> validatePost
-  utils --> types
+  %% AIリプライ
+  Widget -- triggerAiReply --> AiReply
+  AiReply -- generateAiReply --> Gemini
+  AiReply -- generateAiReply --> Utils
+  AiReply -- generateAiReply --> Store
+  AiReply -- generateAiReply --> Widget(saveReply)
+  AiReply -- shouldAutoReply --> Store
 
-  %% store
-  store --> TweetStore
-  store --> types
-  store --> utils
+  Widget -- generateGeminiReply --> Gemini
+  Widget -- generateGeminiReply --> Utils
+  Widget -- generateGeminiReply --> AiReply
+  Widget -- generateGeminiReply --> Store
+  Widget -- generateGeminiReply --> UI
 
-  %% repo
-  repo --> TweetRepository
-  repo --> validatePost
-  repo --> constants
-  repo --> types
-  repo --> utils
+  %% ファイル添付
+  Widget -- attachFiles --> Utils
 
-  %% aiReply
-  aiReply --> generateAiReply
-  aiReply --> shouldAutoReply
-  aiReply --> getFullThreadHistory
-  aiReply --> findLatestAiUserIdInThread
-  aiReply --> isExplicitAiTrigger
-  aiReply --> generateAiUserId
-  aiReply --> types
-  aiReply --> utils
+  %% フィルタ・タブ・期間
+  Widget -- setFilter/setPeriod/setCustomPeriodDays/switchTab --> UI
+  Widget -- getFilteredPosts --> Store
 
-  %% ui
-  ui --> TweetWidgetUI
-  ui --> parseTags
-  ui --> parseLinks
-  ui --> formatTimeAgo
-  ui --> types
-  ui --> utils
+  %% ContextNote
+  Widget -- openContextNote --> App
+  Widget -- openContextNote --> Store
+  Widget -- openContextNote --> Notice
 
-  %% widget
-  widget --> TweetWidget
-  widget --> TweetWidgetUI
-  widget --> TweetStore
-  widget --> TweetRepository
-  widget --> generateAiReply
-  widget --> shouldAutoReply
-  widget --> findLatestAiUserIdInThread
-  widget --> getFullThreadHistory
-  widget --> generateAiUserId
-  widget --> isExplicitAiTrigger
-  widget --> parseTags
-  widget --> parseLinks
-  widget --> formatTimeAgo
-  widget --> readFileAsDataUrl
-  widget --> wrapSelection
-  widget --> DEFAULT_TWEET_WIDGET_SETTINGS
-  widget --> MAX_TWEET_LENGTH
-  widget --> types
-  widget --> constants
-  widget --> utils
-  widget --> repo
-  widget --> store
-  widget --> aiReply
-  widget --> ui
+  %% データ保存
+  Widget -- saveDataDebounced --> Repo
+
+  %% UI連携
+  UI -- render/renderFilePreview/scheduleRender --> Widget
+  UI -- render --> Store
+  UI -- render --> Utils
+  UI -- render --> Types
+
+  %% 型・定数
+  Widget -- 型利用 --> Types
+  Widget -- 定数利用 --> Constants
+
+  %% 外部
+  Widget -- Notice --> Notice
+  Widget -- App --> App
+  Widget -- Plugin --> Plugin
 
 ```
 
@@ -148,17 +142,59 @@ graph TD
 ---
 
 ### 5. **tweetWidget.ts**
-**役割**: TweetWidget本体のクラス定義。ウィジェット全体のコントローラー。
+**役割**: TweetWidget本体のクラス定義。ウィジェット全体のコントローラーとして、UI・状態管理・データ永続化・AIリプライ・ファイル添付・各種ユーザー操作を統括。
 
-- **TweetWidgetクラス**: UI初期化、データ管理、ユーザー操作、AIリプライ呼び出し、ファイル添付、各種トグル・削除・編集などのメソッドを持つ。
-- **UI/ストア/リポジトリの連携**: UI層・ストア層・リポジトリ層を束ねる。
-- **ObsidianのWidgetImplementationを実装**。
+- **TweetWidgetクラス**: ObsidianのWidgetImplementationを実装し、以下の責務を持つ。
+  - UI初期化・再描画（TweetWidgetUIと連携）
+  - 投稿・設定データの状態管理（TweetStoreと連携）
+  - 投稿・設定データの永続化（TweetRepositoryと連携）
+  - 投稿・返信・編集・削除・リアクション（いいね/リツイート/ブックマーク）・スレッド削除・ContextNote作成・期間/フィルタ/タブ切替などのユーザー操作を管理
+  - AIリプライ（Gemini等）自動発火・明示発火・ガバナンス制御（aiReply.tsと連携）
+  - ファイル添付・DataURL変換
+  - 投稿の期間・フィルタ・タブ（home/notification）切替
+  - アバター画像の管理（AIユーザーIDごとに分散）
 
-**使われ方**: Obsidianのウィジェットとして登録され、ユーザーの操作やデータ管理の中心となる。
+- **主なメソッド・機能**:
+  - `create`: 初期化・UI描画・データロード
+  - `submitPost`/`submitReply`: 投稿・返信の追加、AIリプライのトリガー
+  - `startEdit`/`startReply`/`cancelReply`: 編集・返信モード切替
+  - `toggleLike`/`toggleRetweet`/`toggleBookmark`: リアクション操作
+  - `setPostDeleted`/`deletePost`/`deleteThread`: 投稿・スレッド削除
+  - `openContextNote`: 投稿からContextNote（mdファイル）を自動生成・オープン
+  - `generateGeminiReply`: Gemini APIを使ったAIリプライ生成（手動）
+  - `getFilteredPosts`: 期間・フィルタに応じた投稿リスト取得
+  - `getAvatarUrl`: 投稿・ユーザーごとのアバターURL取得
+  - `setPeriod`/`setCustomPeriodDays`: 期間絞り込みの設定
+  - `attachFiles`: ファイル添付・DataURL変換
+
+- **依存関係**:
+  - `TweetWidgetUI`（UI描画・イベント処理）
+  - `TweetStore`（状態管理）
+  - `TweetRepository`（データ永続化）
+  - `aiReply.ts`（AIリプライ生成・ガバナンス）
+  - `tweetWidgetUtils.ts`（タグ抽出・リンク抽出・日付整形・ファイル変換等）
+  - `types.ts`（型定義）
+  - `constants.ts`（定数）
+
+**使われ方**: Obsidianのウィジェットとして登録され、ユーザーの操作やデータ管理・AI連携・ファイル添付・ContextNote連携などTweetWidget全体の中核を担う。
 
 ---
 
-### 6. **tweetWidgetUI.ts**
+### 6. **tweetWidgetAiDb.ts**
+**役割**: AIデータベース関連の処理を集約。
+
+**使われ方**: AIリプライ生成やデータベース操作に関連する処理を行う。
+
+---
+
+### 7. **tweetWidgetDataViewer.ts**
+**役割**: データビューア関連の処理を集約。
+
+**使われ方**: データビューア関連の処理を行う。
+
+---
+
+### 8. **tweetWidgetUI.ts**
 **役割**: TweetWidgetのUI描画・イベント処理を集約。
 
 - **TweetWidgetUIクラス**: DOM操作、ボタンや入力欄の描画、ユーザー操作への反応、リプライモーダルや通知タブの描画など。
@@ -169,7 +205,7 @@ graph TD
 
 ---
 
-### 7. **tweetWidgetUtils.ts**
+### 9. **tweetWidgetUtils.ts**
 **役割**: TweetWidgetで使う汎用的なユーティリティ関数を集約。
 
 - **parseTags/parseLinks**: 投稿本文からタグやリンクを抽出。
@@ -182,7 +218,7 @@ graph TD
 
 ---
 
-### 8. **types.ts**
+### 10. **types.ts**
 **役割**: TweetWidgetで使う型定義（インターフェース）を集約。
 
 - **TweetWidgetPost**: 投稿データの型。
