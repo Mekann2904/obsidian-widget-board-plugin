@@ -149,7 +149,7 @@ export class ReflectionWidget implements WidgetImplementation {
 
     // 状態変化時にUIを再描画
     public refresh() {
-        this.ui?.render();
+        this.ui?.scheduleRender();
     }
 
     // データ取得や状態管理のメソッドはここに残す

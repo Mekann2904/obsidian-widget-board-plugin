@@ -36,6 +36,7 @@ export class MemoWidget implements WidgetImplementation {
     private cancelMemoButtonEl!: HTMLButtonElement;
     private isEditingMemo: boolean = false;
     private currentSettings!: MemoWidgetSettings; // このインスタンスの現在の作業用設定
+    private needsRender = false;
 
     private _memoEditAreaInputListener: (() => void) | null = null;
 
@@ -210,7 +211,7 @@ export class MemoWidget implements WidgetImplementation {
         } else {
             console.warn(`[${this.config.id}] enterMemoEditMode: memoEditAreaEl is null.`);
         }
-        this.updateMemoEditUI();
+        this.scheduleRender();
     }
 
     private async saveMemoChanges() {
@@ -362,7 +363,7 @@ export class MemoWidget implements WidgetImplementation {
         this.cancelMemoButtonEl.onClickEvent(() => this.cancelMemoEditMode());
 
         this.isEditingMemo = false;
-        this.updateMemoEditUI(); // 初期UI状態設定（これがrenderMemoとapplyContainerHeightStylesを呼ぶ）
+        this.scheduleRender(); // 初期UI状態設定（これがrenderMemoとapplyContainerHeightStylesを呼ぶ）
         
         return this.widgetEl;
     }
@@ -435,5 +436,14 @@ export class MemoWidget implements WidgetImplementation {
             }
         });
         this.widgetInstances.clear();
+    }
+
+    private scheduleRender() {
+        if (this.needsRender) return;
+        this.needsRender = true;
+        requestAnimationFrame(() => {
+            this.updateMemoEditUI();
+            this.needsRender = false;
+        });
     }
 }

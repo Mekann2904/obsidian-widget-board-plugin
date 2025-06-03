@@ -14,12 +14,22 @@ export class TweetWidgetUI {
     private container: HTMLElement;
     private app: App;
     private postsById: Map<string, TweetWidgetPost>;
+    private needsRender = false;
 
     constructor(widget: TweetWidget, container: HTMLElement) {
         this.widget = widget;
         this.container = container;
         this.app = widget.app;
         this.postsById = widget.postsById;
+    }
+
+    public scheduleRender(): void {
+        if (this.needsRender) return;
+        this.needsRender = true;
+        requestAnimationFrame(() => {
+            this.render();
+            this.needsRender = false;
+        });
     }
 
     public render(): void {

@@ -268,7 +268,7 @@ export class TweetWidget implements WidgetImplementation {
     public async setPostDeleted(postId: string, deleted: boolean) {
         this.store.updatePost(postId, { deleted });
         this.saveDataDebounced();
-        this.ui.render();
+        this.ui.scheduleRender();
     }
 
     public async deletePost(postId: string) {
@@ -289,7 +289,7 @@ export class TweetWidget implements WidgetImplementation {
         if(post && post[key] !== value) {
             this.store.updatePost(postId, { [key]: value });
             this.saveDataDebounced();
-            this.ui.render();
+            this.ui.scheduleRender();
         }
     }
 

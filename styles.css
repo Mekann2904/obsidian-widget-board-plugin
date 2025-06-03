@@ -15,9 +15,10 @@
     border-radius: 0 !important;
     margin: 0 0 0 auto;
     opacity: 0;
-    /* スプリング風アニメーション */
+    /* スプリング風アニメーション このままでいい*/
     transition: right 0.3s ease, left 0.3s ease, top 0.3s ease, opacity 0.2s, width 0.3s, transform 0.3s;
     z-index: 10 !important;
+    will-change: transform, opacity;
 }
 .widget-board-panel-custom > * {
     flex: 1 1 0 !important;
@@ -589,6 +590,8 @@
   margin-right: 10px;
   transition: transform 0.2s;
   font-size: 1.1em;
+  width: 1em;
+  height: 1em;
 }
 .wb-accordion-header.wb-accordion-open .wb-accordion-icon {
   transform: rotate(90deg);
@@ -779,6 +782,8 @@ button:hover, .wb-add-widget-btn:hover, .wb-panel-settings-toggle:hover {
 .wb-settings-accordion-icon {
   font-size: 1em;
   margin-right: 4px;
+  width: 1em;
+  height: 1em;
 }
 .wb-settings-accordion-body {
   padding: 8px 0 0 0;
@@ -1346,6 +1351,8 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   align-items: center;
 }
 .tweet-avatar-modal-content img {
+  width: 320px;
+  height: 320px;
   max-width: 320px;
   max-height: 320px;
   border-radius: 16px;
@@ -1790,10 +1797,10 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   background: #fff;
   border-radius: 50%;
   box-shadow: 0 1px 4px rgba(0,0,0,0.10);
-  transition: right 0.18s, background 0.18s;
+  transition: transform 0.18s, background 0.18s;
 }
 .tweet-input-toggle-btn.preview-mode::before {
-  right: 22px;
+  transform: translateX(10px);
   background: var(--text-accent, #A68AF9);
 }
 
@@ -1818,13 +1825,13 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   height: 16px;
   border-radius: 50%;
   background: #fff;
-  transition: left 0.2s, background 0.2s;
+  transition: transform 0.2s, background 0.2s;
 }
 .tweet-toggle-switch.on {
   background: var(--text-accent, #A68AF9);
 }
 .tweet-toggle-switch.on::before {
-  left: 21px;
+  transform: translateX(18px);
   background: #fff;
 }
 

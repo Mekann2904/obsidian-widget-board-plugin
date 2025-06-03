@@ -93,6 +93,7 @@ export class ReflectionWidgetUI {
     private weekSummaryEl: HTMLElement | null = null;
     private aiSummarySectionEl: HTMLElement | null = null;
     private manualBtnEl: HTMLButtonElement | null = null;
+    private needsRender = false;
 
     constructor(widget: ReflectionWidget, container: HTMLElement, config: WidgetConfig, app: App, plugin: any) {
         this.widget = widget;
@@ -356,5 +357,14 @@ export class ReflectionWidgetUI {
                 setTimeout(() => this.runSummary(), 0);
             }
         }
+    }
+
+    public scheduleRender(): void {
+        if (this.needsRender) return;
+        this.needsRender = true;
+        requestAnimationFrame(() => {
+            this.render();
+            this.needsRender = false;
+        });
     }
 } 
