@@ -134,12 +134,18 @@ export class MemoWidget implements WidgetImplementation {
         if (this._memoEditAreaInputListener) {
             this.memoEditAreaEl.removeEventListener('input', this._memoEditAreaInputListener);
         }
+        let scheduled = false;
         this._memoEditAreaInputListener = () => {
             if (!this.memoEditAreaEl) return;
-            this.memoEditAreaEl.style.height = 'auto';
-            // maxHeightを超えない範囲で自動拡大
-            const maxH = parseInt(this.memoEditAreaEl.style.maxHeight, 10) || 600;
-            this.memoEditAreaEl.style.height = Math.min(this.memoEditAreaEl.scrollHeight, maxH) + 'px';
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(() => {
+                if (!this.memoEditAreaEl) return;
+                this.memoEditAreaEl.style.height = 'auto';
+                const maxH = parseInt(this.memoEditAreaEl.style.maxHeight, 10) || 600;
+                this.memoEditAreaEl.style.height = Math.min(this.memoEditAreaEl.scrollHeight, maxH) + 'px';
+                scheduled = false;
+            });
         };
         this.memoEditAreaEl.addEventListener('input', this._memoEditAreaInputListener);
     }

@@ -241,15 +241,20 @@ export class TweetWidgetUI {
                 placeholder: this.widget.replyingToParentId ? '返信をポスト' : 'いまどうしてる？' 
             }
         });
-        // 高さ自動調整
+        let scheduled = false;
         input.addEventListener('input', () => {
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(() => {
+                input.style.height = 'auto';
+                input.style.height = (input.scrollHeight) + 'px';
+                scheduled = false;
+            });
+        });
+        requestAnimationFrame(() => {
             input.style.height = 'auto';
             input.style.height = (input.scrollHeight) + 'px';
         });
-        setTimeout(() => {
-            input.style.height = 'auto';
-            input.style.height = (input.scrollHeight) + 'px';
-        }, 0);
 
         // --- YouTubeサジェストUI ---
         const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
