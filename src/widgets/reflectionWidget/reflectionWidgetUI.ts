@@ -370,4 +370,24 @@ export class ReflectionWidgetUI {
             this.needsRender = false;
         });
     }
+
+    public onunload(): void {
+        // Chart.jsインスタンスの破棄
+        if (this.chart) {
+            this.chart.destroy();
+            this.chart = null;
+        }
+        // タイマーの解除
+        if (this.autoTimer) {
+            clearInterval(this.autoTimer);
+            this.autoTimer = null;
+        }
+        // DOM参照のクリア
+        this.contentEl = null;
+        this.canvasEl = null;
+        this.todaySummaryEl = null;
+        this.weekSummaryEl = null;
+        this.aiSummarySectionEl = null;
+        this.manualBtnEl = null;
+    }
 } 

@@ -36,6 +36,8 @@ export class TweetWidgetUI {
     private app: App;
     private postsById: Map<string, TweetWidgetPost>;
     private needsRender = false;
+    // showAvatarModalで使うためのハンドラ参照を保持
+    private _escHandlerForAvatarModal: ((ev: KeyboardEvent) => void) | null = null;
 
     constructor(widget: TweetWidget, container: HTMLElement) {
         this.widget = widget;
@@ -497,13 +499,14 @@ export class TweetWidgetUI {
         const closeBtn = modal.createEl('button', { text: '×' });
         closeBtn.onclick = () => backdrop.remove();
 
-        const escHandler = (ev: KeyboardEvent) => {
+        // ハンドラをプロパティに保存し、onunloadで解除できるように
+        this._escHandlerForAvatarModal = (ev: KeyboardEvent) => {
             if (ev.key === 'Escape') {
                 backdrop.remove();
-                window.removeEventListener('keydown', escHandler);
+                window.removeEventListener('keydown', this._escHandlerForAvatarModal!);
             }
         };
-        window.addEventListener('keydown', escHandler);
+        window.addEventListener('keydown', this._escHandlerForAvatarModal);
     }
 
     private renderPostList(listEl: HTMLElement): void {
@@ -933,5 +936,12 @@ export class TweetWidgetUI {
                 replyBtn.click();
             }
         });
+    }
+
+    public onunload(): void {
+        // モーダルで追加したグローバルイベントリスナーの解除
+        // 例: showAvatarModalでkeydownを追加している
+        window.removeEventListener('keydown', this._escHandlerForAvatarModal as any);
+        // 必要に応じて他のクリーンアップ処理をここに追加
     }
 }
