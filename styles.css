@@ -2145,3 +2145,10 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .tweet-list-main {
   contain: layout style paint;
 }
+
+/* --- reflow最適化: containment追加 --- */
+.tweet-data-viewer-table,
+.recent-notes-list,
+.recent-notes-virtual-wrapper {
+  contain: layout style paint;
+}
