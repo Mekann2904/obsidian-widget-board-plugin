@@ -1,4 +1,4 @@
-import { App, Notice, setIcon, MarkdownRenderer, Menu, TFile } from 'obsidian';
+import { App, Notice, setIcon, MarkdownRenderer, Menu, TFile, Component } from 'obsidian';
 import type { TweetWidget } from './tweetWidget';
 import type { TweetWidgetPost, TweetWidgetFile } from './types';
 import { getFullThreadHistory } from './aiReply';
@@ -8,6 +8,7 @@ import { deobfuscate } from 'src/utils';
 import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';
 import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
+import { renderMarkdownBatch } from '../../utils/renderMarkdownBatch';
 
 export class TweetWidgetUI {
     private widget: TweetWidget;
@@ -299,7 +300,7 @@ export class TweetWidgetUI {
                 previewArea.style.display = '';
                 input.style.display = 'none';
                 previewArea.empty();
-                await MarkdownRenderer.render(this.app, input.value, previewArea, this.app.workspace.getActiveFile()?.path || '', this.widget.plugin);
+                await renderMarkdownBatch(input.value, previewArea, this.app.workspace.getActiveFile()?.path || '', new Component());
             } else {
                 previewArea.style.display = 'none';
                 input.style.display = '';
@@ -579,7 +580,7 @@ export class TweetWidgetUI {
         };
     }
 
-    private renderSinglePost(post: TweetWidgetPost, container: HTMLElement, isDetail: boolean = false): void {
+    private async renderSinglePost(post: TweetWidgetPost, container: HTMLElement, isDetail: boolean = false): Promise<void> {
         container.empty();
         const item = container.createDiv({ cls: 'tweet-item-main' });
         
@@ -616,7 +617,7 @@ export class TweetWidgetUI {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
         } catch {}
-        MarkdownRenderer.render(this.app, displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', this.widget.plugin);
+        await renderMarkdownBatch(displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', new Component());
 
         if (post.files && post.files.length) {
             const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${post.files.length}` });

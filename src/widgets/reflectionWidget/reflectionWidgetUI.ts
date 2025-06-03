@@ -1,5 +1,5 @@
 import type { WidgetConfig } from '../../interfaces';
-import { App, MarkdownRenderer } from 'obsidian';
+import { App, MarkdownRenderer, Component } from 'obsidian';
 import type { ReflectionWidget } from './reflectionWidget';
 import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 import { TweetRepository } from '../tweetWidget/TweetRepository';
@@ -7,6 +7,7 @@ import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types'
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/gemini/summaryPrompts';
 import Chart from 'chart.js/auto';
 import { deobfuscate } from '../../utils';
+import { renderMarkdownBatch } from '../../utils/renderMarkdownBatch';
 
 function getDateKey(date: Date): string {
     return date.toISOString().slice(0, 10);
@@ -308,7 +309,7 @@ export class ReflectionWidgetUI {
     private async renderMarkdown(el: HTMLElement, text: string, lastText: string | null, setLast: (v: string) => void) {
         if (lastText === text) return;
         el.empty();
-        await (MarkdownRenderer as any).renderMarkdown(text, el, '', this.plugin);
+        await renderMarkdownBatch(text, el, '', new Component());
         setLast(text);
     }
 
