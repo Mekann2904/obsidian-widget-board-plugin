@@ -96,4 +96,7 @@ export interface PluginGlobalSettings {
     baseFolder?: string;
     defaultTweetPeriod?: string;
     defaultTweetCustomDays?: number;
+    userSummaryPromptToday?: string; // ユーザカスタムプロンプト（今日用）
+    userSummaryPromptWeek?: string;  // ユーザカスタムプロンプト（今週用）
+    userTweetPrompt?: string;        // ユーザカスタムプロンプト（つぶやき用）
 }

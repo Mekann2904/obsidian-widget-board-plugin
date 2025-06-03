@@ -234,15 +234,20 @@ export class ReflectionWidgetUI {
                     }
                     await Promise.all(renderMdTasks);
                     // --- ここからAI要約生成（強制再生成 or キャッシュなし時） ---
+                    // ユーザプロンプトがあればそれを優先
+                    const userPromptToday = this.plugin.settings.userSummaryPromptToday;
+                    const userPromptWeek = this.plugin.settings.userSummaryPromptWeek;
                     if (force || !cachedToday) {
                         const todayPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) === todayKey && p.userId === '@you');
-                        const todayText = todayPosts.length > 0 ? await generateSummary(todayPosts, geminiSummaryPromptToday, this.plugin) : '';
+                        const todayPrompt = userPromptToday && userPromptToday.trim() ? userPromptToday : geminiSummaryPromptToday;
+                        const todayText = todayPosts.length > 0 ? await generateSummary(todayPosts, todayPrompt, this.plugin) : '';
                         await this.renderMarkdown(this.todaySummaryEl!, todayText || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v);
                         await saveReflectionSummary('today', todayKey, todayText, this.app);
                     }
                     if (force || !cachedWeek) {
                         const weekPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) >= weekStart && getDateKeyLocal(new Date(p.created)) <= weekKey && p.userId === '@you');
-                        const weekText = weekPosts.length > 0 ? await generateSummary(weekPosts, geminiSummaryPromptWeek, this.plugin) : '';
+                        const weekPrompt = userPromptWeek && userPromptWeek.trim() ? userPromptWeek : geminiSummaryPromptWeek;
+                        const weekText = weekPosts.length > 0 ? await generateSummary(weekPosts, weekPrompt, this.plugin) : '';
                         await this.renderMarkdown(this.weekSummaryEl!, weekText || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v);
                         await saveReflectionSummary('week', weekKey, weekText, this.app);
                     }

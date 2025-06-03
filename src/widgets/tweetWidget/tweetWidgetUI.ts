@@ -2,7 +2,7 @@ import { App, Notice, setIcon, MarkdownRenderer, Menu, TFile, Component } from '
 import type { TweetWidget } from './tweetWidget';
 import type { TweetWidgetPost, TweetWidgetFile } from './types';
 import { getFullThreadHistory } from './aiReply';
-import { geminiPrompt } from 'src/llm/gemini/prompts';
+import { geminiPrompt } from 'src/llm/gemini/tweetReplyPrompt';
 import { GeminiProvider } from 'src/llm/gemini/geminiApi';
 import { deobfuscate } from 'src/utils';
 import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';

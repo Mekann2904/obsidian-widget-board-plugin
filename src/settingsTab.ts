@@ -321,6 +321,43 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
 
+        // --- ユーザプロンプト（今日用） ---
+        new Setting(llmAcc.body)
+            .setName('ユーザプロンプト（振り返りレポート 今日用）')
+            .setDesc('AI要約で使うカスタムプロンプト（今日のまとめ）。{posts}が投稿一覧に置換されます。空欄の場合はデフォルトプロンプトが使われます。')
+            .addTextArea(text => {
+                text.setPlaceholder('カスタムプロンプトを入力')
+                    .setValue(this.plugin.settings.userSummaryPromptToday || '')
+                    .onChange(async (v) => {
+                        this.plugin.settings.userSummaryPromptToday = v;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        // --- ユーザプロンプト（今週用） ---
+        new Setting(llmAcc.body)
+            .setName('ユーザプロンプト（振り返りレポート 今週用）')
+            .setDesc('AI要約で使うカスタムプロンプト（今週のまとめ）。{posts}が投稿一覧に置換されます。空欄の場合はデフォルトプロンプトが使われます。')
+            .addTextArea(text => {
+                text.setPlaceholder('カスタムプロンプトを入力')
+                    .setValue(this.plugin.settings.userSummaryPromptWeek || '')
+                    .onChange(async (v) => {
+                        this.plugin.settings.userSummaryPromptWeek = v;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        // --- ユーザプロンプト（つぶやき用） ---
+        new Setting(llmAcc.body)
+            .setName('ユーザプロンプト（つぶやき用）')
+            .setDesc('つぶやきウィジェットのAI返信で使うカスタムプロンプト。{tweet}や{postDate}が投稿内容・日時に置換されます。空欄の場合はデフォルトプロンプトが使われます。')
+            .addTextArea(text => {
+                text.setPlaceholder('カスタムプロンプトを入力')
+                    .setValue(this.plugin.settings.userTweetPrompt || '')
+                    .onChange(async (v) => {
+                        this.plugin.settings.userTweetPrompt = v;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
         // --- つぶやき（グローバル設定） ---
         const tweetGlobalAcc = createAccordion('つぶやき（グローバル設定）', false);
         // DB保存先

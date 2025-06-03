@@ -3,7 +3,7 @@ import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
-import { geminiPrompt } from 'src/llm/gemini/prompts';
+import { geminiPrompt } from 'src/llm/gemini/tweetReplyPrompt';
 
 // --- 分離したモジュールをインポート ---
 import type { TweetWidgetFile, TweetWidgetPost, TweetWidgetSettings } from './types';
@@ -347,7 +347,8 @@ export class TweetWidget implements WidgetImplementation {
             const timeZoneLabel = getTimeZoneLabel(date);
             const dateWithZone = `${dateStr}（この時間帯は「${timeZoneLabel}」です）`;
             // プロンプトに投稿日時＋時間帯を埋め込む
-            const promptText = geminiPrompt.replace('{postDate}', dateWithZone).replace('{tweet}', threadText);
+            const customPrompt = this.plugin.settings.userTweetPrompt && this.plugin.settings.userTweetPrompt.trim() ? this.plugin.settings.userTweetPrompt : geminiPrompt;
+            const promptText = customPrompt.replace('{postDate}', dateWithZone).replace('{tweet}', threadText);
 
             // ここでプロンプトをコンソール出力
             console.log('[Gemini Prompt]', promptText);

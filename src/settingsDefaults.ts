@@ -63,4 +63,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     baseFolder: '',
     defaultTweetPeriod: 'all',
     defaultTweetCustomDays: 1,
+    userSummaryPromptToday: '',
+    userSummaryPromptWeek: '',
+    userTweetPrompt: '',
 };

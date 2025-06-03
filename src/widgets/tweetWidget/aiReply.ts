@@ -1,4 +1,4 @@
-import { geminiPrompt } from 'src/llm/gemini/prompts';
+import { geminiPrompt } from 'src/llm/gemini/tweetReplyPrompt';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
 import type { TweetWidgetPost, AiGovernanceData } from './types'; // AiGovernanceData をインポート
@@ -168,7 +168,8 @@ export async function generateAiReply({
         const timeZoneLabel = getTimeZoneLabel(date);
         const dateWithZone = `${dateStr}（この時間帯は「${timeZoneLabel}」です）`;
         // プロンプトに投稿日時＋時間帯を埋め込む
-        const promptText = geminiPrompt.replace('{postDate}', dateWithZone).replace('{tweet}', threadText);
+        const customPrompt = settings.userTweetPrompt && settings.userTweetPrompt.trim() ? settings.userTweetPrompt : geminiPrompt;
+        const promptText = customPrompt.replace('{postDate}', dateWithZone).replace('{tweet}', threadText);
 
         let replyText = await GeminiProvider.generateReply(promptText, {
             apiKey: deobfuscate(llmGemini.apiKey || ''),

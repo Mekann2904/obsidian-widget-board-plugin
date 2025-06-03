@@ -1,6 +1,6 @@
 import { safeFetch } from '../../utils';
 import { LLMProvider } from '../llmManager';
-import { geminiPrompt } from './prompts';
+import { geminiPrompt } from './tweetReplyPrompt';
 
 export const GeminiProvider: LLMProvider = {
   id: 'gemini',
