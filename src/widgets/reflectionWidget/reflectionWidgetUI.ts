@@ -127,6 +127,8 @@ export class ReflectionWidgetUI {
             this.contentEl.style.alignItems = 'center';
             this.contentEl.style.justifyContent = 'center';
             this.contentEl.style.padding = '8px 0 0 0';
+            // CSS containmentを追加
+            this.contentEl.style.contain = 'layout style';
             this.container.appendChild(this.contentEl);
             // グラフタイトル
             const graphTitle = document.createElement('div');
@@ -275,7 +277,7 @@ export class ReflectionWidgetUI {
                                     }]
                                 },
                                 options: {
-                                    //responsive: false,
+                                    responsive: false, // 追加: レスポンシブ無効化
                                     animation: false, // アニメーション無効化
                                     plugins: { legend: { display: false } },
                                     scales: {

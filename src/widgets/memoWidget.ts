@@ -44,6 +44,26 @@ export class MemoWidget implements WidgetImplementation {
     // ウィジェットインスタンス管理のための静的マップ (前回から)
     private static widgetInstances: Map<string, MemoWidget> = new Map();
 
+    // MemoWidgetクラス内にstaticでバッチresize管理
+    private static pendingMemoResizeElements: HTMLTextAreaElement[] = [];
+    private static scheduledMemoResize = false;
+    private static scheduleBatchMemoResize(el: HTMLTextAreaElement) {
+        if (!MemoWidget.pendingMemoResizeElements.includes(el)) MemoWidget.pendingMemoResizeElements.push(el);
+        if (MemoWidget.scheduledMemoResize) return;
+        MemoWidget.scheduledMemoResize = true;
+        requestAnimationFrame(() => {
+            // 1. read
+            const heights = MemoWidget.pendingMemoResizeElements.map(el => el.scrollHeight);
+            // 2. write
+            MemoWidget.pendingMemoResizeElements.forEach((el, i) => {
+                el.style.height = 'auto';
+                el.style.height = heights[i] + 'px';
+            });
+            MemoWidget.pendingMemoResizeElements.length = 0;
+            MemoWidget.scheduledMemoResize = false;
+        });
+    }
+
     /**
      * インスタンス初期化
      */
@@ -134,18 +154,9 @@ export class MemoWidget implements WidgetImplementation {
         if (this._memoEditAreaInputListener) {
             this.memoEditAreaEl.removeEventListener('input', this._memoEditAreaInputListener);
         }
-        let scheduled = false;
         this._memoEditAreaInputListener = () => {
             if (!this.memoEditAreaEl) return;
-            if (scheduled) return;
-            scheduled = true;
-            requestAnimationFrame(() => {
-                if (!this.memoEditAreaEl) return;
-                this.memoEditAreaEl.style.height = 'auto';
-                const maxH = parseInt(this.memoEditAreaEl.style.maxHeight, 10) || 600;
-                this.memoEditAreaEl.style.height = Math.min(this.memoEditAreaEl.scrollHeight, maxH) + 'px';
-                scheduled = false;
-            });
+            MemoWidget.scheduleBatchMemoResize(this.memoEditAreaEl);
         };
         this.memoEditAreaEl.addEventListener('input', this._memoEditAreaInputListener);
     }

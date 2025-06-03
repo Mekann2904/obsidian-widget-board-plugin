@@ -106,6 +106,9 @@ export class WidgetBoardModal {
         this.modalEl.setAttribute('data-board-id', this.currentBoardId);
         this.contentEl = document.createElement('div');
         this.modalEl.appendChild(this.contentEl);
+
+        // CSS containmentを適用
+        this.modalEl.style.contain = 'layout style';
     }
 
     /**

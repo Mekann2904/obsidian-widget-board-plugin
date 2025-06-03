@@ -105,4 +105,48 @@
 
 ---
 
+## 9. Chart.js等の外部ライブラリ利用時のreflow対策
+
+- **背景**  
+  Chart.jsなどの外部グラフライブラリは、内部で大量のDOM操作やレイアウト計算を行うことがある。
+- **方針**  
+  - グラフコンテナに`contain: layout style;`を付与し、再レイアウトの波及範囲を限定する。
+  - Chart.jsの`responsive: false`や`animation: false`等のオプションを活用し、不要な再描画・reflowを抑制する。
+- **適用例**  
+  - `reflectionWidgetUI.ts`（2024/06最適化）
+
+---
+
+## 10. グローバルバッチresize方式の活用
+
+- **背景**  
+  複数のtextareaやinputで同時に自動リサイズが発生すると、個別にreflowが多発する。
+- **方針**  
+  - `requestAnimationFrame`で全要素の高さを一括read→writeするグローバルバッチresize関数を導入。
+  - クラスstaticメソッド等で管理し、全ウィジェットで共通化。
+- **適用例**  
+  - `memoWidget.ts`、`tweetWidgetUI.ts`（2024/06最適化）
+
+---
+
+## 11. 外部CSS・テーマとの干渉対策
+
+- **背景**  
+  ユーザーのカスタムCSSやサードパーティテーマがreflowコストを増大させる場合がある。
+- **方針**  
+  - 主要ウィジェットの親要素に`contain: layout style paint;`を必ず付与し、外部スタイルの波及を遮断。
+  - 必要に応じて`will-change`や`isolation`も検討。
+
+---
+
+## 12. パフォーマンス計測・自動テストの推奨
+
+- **背景**  
+  コード変更時にreflowコストが増大していないかを継続的に監視する必要がある。
+- **方針**  
+  - CIや開発時にChrome DevToolsのPerformanceタブやLighthouseで定期的に計測。
+  - 主要ウィジェットの描画・リサイズ時のreflow回数・時間を自動テストで検証する仕組みを検討。
+
+---
+
 本資料は、今後の開発・リファクタ・レビュー時の指針としてご活用ください。 

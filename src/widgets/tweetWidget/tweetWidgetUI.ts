@@ -10,6 +10,26 @@ import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './t
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 
+// グローバルで再計算が必要な要素を管理
+const pendingTweetResizeElements: HTMLTextAreaElement[] = [];
+let scheduledTweetResize = false;
+function scheduleBatchTweetResize(el: HTMLTextAreaElement) {
+  if (!pendingTweetResizeElements.includes(el)) pendingTweetResizeElements.push(el);
+  if (scheduledTweetResize) return;
+  scheduledTweetResize = true;
+  requestAnimationFrame(() => {
+    // 1. read
+    const heights = pendingTweetResizeElements.map(el => el.scrollHeight);
+    // 2. write
+    pendingTweetResizeElements.forEach((el, i) => {
+      el.style.height = 'auto';
+      el.style.height = heights[i] + 'px';
+    });
+    pendingTweetResizeElements.length = 0;
+    scheduledTweetResize = false;
+  });
+}
+
 export class TweetWidgetUI {
     private widget: TweetWidget;
     private container: HTMLElement;
@@ -243,17 +263,10 @@ export class TweetWidgetUI {
         });
         let scheduled = false;
         input.addEventListener('input', () => {
-            if (scheduled) return;
-            scheduled = true;
-            requestAnimationFrame(() => {
-                input.style.height = 'auto';
-                input.style.height = (input.scrollHeight) + 'px';
-                scheduled = false;
-            });
+            scheduleBatchTweetResize(input);
         });
         requestAnimationFrame(() => {
-            input.style.height = 'auto';
-            input.style.height = (input.scrollHeight) + 'px';
+            scheduleBatchTweetResize(input);
         });
 
         // --- YouTubeサジェストUI ---
