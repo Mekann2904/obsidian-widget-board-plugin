@@ -505,6 +505,7 @@ export class TweetWidgetUI {
             .filter(t => !t.threadId || !this.postsById.has(t.threadId))
             .sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
 
+        const fragment = document.createDocumentFragment();
         rootItems.forEach(post => {
             const wrapper = listEl.createDiv({ cls: 'tweet-thread-wrapper' });
             wrapper.setAttribute('data-tweet-id', post.id);
@@ -516,7 +517,9 @@ export class TweetWidgetUI {
                 this.widget.navigateToDetail(post.id);
             };
             this.renderSinglePost(post, wrapper);
+            fragment.appendChild(wrapper);
         });
+        listEl.appendChild(fragment);
     }
 
     private renderDetailView(container: HTMLElement, postId: string): void {

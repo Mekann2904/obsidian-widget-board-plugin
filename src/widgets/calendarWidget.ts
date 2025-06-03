@@ -88,11 +88,12 @@ export class CalendarWidget implements WidgetImplementation {
         const weekdays = ['日', '月', '火', '水', '木', '金', '土']; // 日本語曜日
         const thead = table.createEl('thead');
         const trHead = thead.createEl('tr');
-        // forEach→mapでth要素配列生成→append
-        const ths = weekdays.map(day => {
-            return createEl('th', { text: day });
+        const thFragment = document.createDocumentFragment();
+        weekdays.forEach(day => {
+            const th = createEl('th', { text: day });
+            thFragment.appendChild(th);
         });
-        ths.forEach(th => trHead.appendChild(th));
+        trHead.appendChild(thFragment);
 
         const tbody = table.createEl('tbody');
         const firstDayOfMonth = new Date(year, month, 1);
@@ -106,6 +107,7 @@ export class CalendarWidget implements WidgetImplementation {
 
         for (let i = 0; i < 6; i++) { // 最大6週間表示
             const tr = tbody.createEl('tr');
+            const tdFragment = document.createDocumentFragment();
             for (let j = 0; j < 7; j++) {
                 const td = tr.createEl('td', { text: String(startDate.getDate()) });
                 if (startDate.getMonth() !== month) {
@@ -117,7 +119,9 @@ export class CalendarWidget implements WidgetImplementation {
                     td.addClass('calendar-today');
                 }
                 startDate.setDate(startDate.getDate() + 1);
+                tdFragment.appendChild(td);
             }
+            tr.appendChild(tdFragment);
             // 表示月と異なり、かつ日付が7より大きく(つまり翌月に入って1週間以上経過)、3行目以降ならループを抜ける
             // (カレンダー表示が不必要に6週間になるのを防ぐため)
             if (startDate.getMonth() !== month && startDate.getDate() > 7 && i >= 3) {

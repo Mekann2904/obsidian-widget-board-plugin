@@ -160,16 +160,19 @@ export class TweetWidgetDataViewer {
         const table = this.container.createEl('table', { cls: 'tweet-data-viewer-table' });
         const thead = table.createTHead();
         const headerRow = thead.insertRow();
+        const thFragment = document.createDocumentFragment();
         ALL_COLUMNS.forEach(col => {
             if (!this.visibleColumns.has(col.key)) return;
             const th = document.createElement('th');
             th.className = `tweet-data-viewer-th ${col.key}`;
             th.textContent = col.label;
-            headerRow.appendChild(th);
+            thFragment.appendChild(th);
         });
+        headerRow.appendChild(thFragment);
         const tbody = table.createTBody();
         this.filtered.forEach(p => {
             const row = tbody.insertRow();
+            const tdFragment = document.createDocumentFragment();
             ALL_COLUMNS.forEach(col => {
                 if (!this.visibleColumns.has(col.key)) return;
                 let cellValue = '';
@@ -188,8 +191,9 @@ export class TweetWidgetDataViewer {
                 const td = document.createElement('td');
                 td.className = `tweet-data-viewer-td ${col.key}`;
                 td.textContent = cellValue;
-                row.appendChild(td);
+                tdFragment.appendChild(td);
             });
+            row.appendChild(tdFragment);
         });
     }
 
