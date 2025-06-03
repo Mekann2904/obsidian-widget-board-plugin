@@ -88,6 +88,8 @@ export class PomodoroWidget implements WidgetImplementation {
 
     private lastResetClickTime: number | null = null;
 
+    private needsRender = false;
+
     /**
      * インスタンス初期化
      */
@@ -782,7 +784,7 @@ export class PomodoroWidget implements WidgetImplementation {
         } else {
             // タイマー関連設定は変更なし、かつメモのみの変更でもない場合（例：背景だけ、通知音だけ変更）
             // (この分岐は otherNonTimerSettingsChanged が true の場合に該当する)
-            this.updateDisplay(); // 表示を更新 (サイクル数や残り時間には影響しないはず)
+            this.scheduleRender(); // 表示を更新 (サイクル数や残り時間には影響しないはず)
         }
 
         // メモ編集モードでない場合は、メモ表示を最新の状態に更新する
@@ -924,5 +926,14 @@ export class PomodoroWidget implements WidgetImplementation {
             new Notice('ログのエクスポートに失敗しました');
             console.error("Error exporting session logs:", e);
         }
+    }
+
+    private scheduleRender() {
+        if (this.needsRender) return;
+        this.needsRender = true;
+        requestAnimationFrame(() => {
+            this.updateDisplay();
+            this.needsRender = false;
+        });
     }
 }

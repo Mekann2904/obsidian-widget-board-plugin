@@ -1,4 +1,4 @@
-import { App, Notice, setIcon, MarkdownRenderer, Menu, TFile } from 'obsidian';
+import { App, Notice, setIcon, MarkdownRenderer, Menu, TFile, Component } from 'obsidian';
 import type { TweetWidget } from './tweetWidget';
 import type { TweetWidgetPost, TweetWidgetFile } from './types';
 import { getFullThreadHistory } from './aiReply';
@@ -6,13 +6,38 @@ import { geminiPrompt } from 'src/llm/gemini/prompts';
 import { GeminiProvider } from 'src/llm/gemini/geminiApi';
 import { deobfuscate } from 'src/utils';
 import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';
-import { parseLinks, parseTags } from './tweetWidgetUtils';
+import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
+import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
+import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
+
+// グローバルで再計算が必要な要素を管理
+const pendingTweetResizeElements: HTMLTextAreaElement[] = [];
+let scheduledTweetResize = false;
+function scheduleBatchTweetResize(el: HTMLTextAreaElement) {
+  if (!pendingTweetResizeElements.includes(el)) pendingTweetResizeElements.push(el);
+  if (scheduledTweetResize) return;
+  scheduledTweetResize = true;
+  requestAnimationFrame(() => {
+    // 1. read
+    const heights = pendingTweetResizeElements.map(el => el.scrollHeight);
+    // 2. write
+    pendingTweetResizeElements.forEach((el, i) => {
+      el.style.height = 'auto';
+      el.style.height = heights[i] + 'px';
+    });
+    pendingTweetResizeElements.length = 0;
+    scheduledTweetResize = false;
+  });
+}
 
 export class TweetWidgetUI {
     private widget: TweetWidget;
     private container: HTMLElement;
     private app: App;
     private postsById: Map<string, TweetWidgetPost>;
+    private needsRender = false;
+    // showAvatarModalで使うためのハンドラ参照を保持
+    private _escHandlerForAvatarModal: ((ev: KeyboardEvent) => void) | null = null;
 
     constructor(widget: TweetWidget, container: HTMLElement) {
         this.widget = widget;
@@ -21,9 +46,26 @@ export class TweetWidgetUI {
         this.postsById = widget.postsById;
     }
 
+    public scheduleRender(): void {
+        if (this.needsRender) return;
+        this.needsRender = true;
+        requestAnimationFrame(() => {
+            this.render();
+            this.needsRender = false;
+        });
+    }
+
     public render(): void {
         this.container.empty();
         this.postsById = this.widget.postsById;
+
+        if (this.widget.editingPostId) {
+            const post = this.postsById.get(this.widget.editingPostId);
+            if (post) {
+                this.renderEditModal(post);
+                return;
+            }
+        }
 
         const tabBar = this.container.createDiv({ cls: 'tweet-tab-bar' });
         this.renderTabBar(tabBar);
@@ -130,6 +172,64 @@ export class TweetWidgetUI {
         filterSelect.onchange = () => {
             this.widget.setFilter(filterSelect.value as any);
         };
+        const periodSelect = filterBar.createEl('select', { cls: 'tweet-period-select' });
+        [
+            { value: 'all', label: '全期間' },
+            { value: 'today', label: '今日' },
+            { value: '1d', label: '1日' },
+            { value: '3d', label: '3日' },
+            { value: '7d', label: '1週間' },
+            { value: '30d', label: '1ヶ月' },
+            { value: 'custom', label: 'カスタム' }
+        ].forEach(opt => {
+            periodSelect.createEl('option', { value: opt.value, text: opt.label });
+        });
+        periodSelect.value = this.widget.currentPeriod || 'all';
+        let customInput: HTMLInputElement | null = null;
+        if (this.widget.currentPeriod === 'custom') {
+            customInput = filterBar.createEl('input', { type: 'number', cls: 'tweet-period-custom-input', attr: { min: '1', style: 'width:60px;margin-left:8px;' } });
+            customInput.value = String(this.widget.customPeriodDays || 1);
+            customInput.onchange = () => {
+                this.widget.setCustomPeriodDays(Number(customInput!.value));
+            };
+        }
+        periodSelect.onchange = () => {
+            this.widget.setPeriod(periodSelect.value);
+            if (periodSelect.value === 'custom') {
+                if (!customInput) {
+                    customInput = filterBar.createEl('input', { type: 'number', cls: 'tweet-period-custom-input', attr: { min: '1', style: 'width:60px;margin-left:8px;' } });
+                    customInput.value = String(this.widget.customPeriodDays || 1);
+                    customInput.onchange = () => {
+                        this.widget.setCustomPeriodDays(Number(customInput!.value));
+                    };
+                }
+            } else {
+                if (customInput) {
+                    customInput.remove();
+                    customInput = null;
+                }
+            }
+        };
+        const dataViewerBtn = filterBar.createEl('button', { text: 'データビューア', cls: 'tweet-data-viewer-btn' });
+        dataViewerBtn.onclick = () => {
+            this.openDataViewerModal();
+        };
+    }
+
+    private openDataViewerModal(): void {
+        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
+        const closeModal = () => backdrop.remove();
+        backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
+        const modal = backdrop.createDiv('tweet-data-viewer-modal');
+        modal.style.zIndex = '9999';
+        // ヘッダー
+        const header = modal.createDiv('tweet-reply-modal-header');
+        header.createSpan({ text: 'つぶやきデータビューア' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = closeModal;
+        // ビューア本体
+        const viewerContainer = modal.createDiv('tweet-data-viewer-main');
+        new TweetWidgetDataViewer(Array.from(this.widget.postsById.values()), viewerContainer);
     }
 
     private renderPostInputArea(): void {
@@ -142,11 +242,20 @@ export class TweetWidgetUI {
         avatarImg.onclick = (e) => this.showAvatarModal(e, avatarUrl);
 
         const inputArea = postBox.createDiv({ cls: 'tweet-input-area-main' });
-        
+
+        // 独自実装のトグルスイッチ
+        const toggleBar = inputArea.createDiv({ cls: 'tweet-input-toggle-bar' });
+        toggleBar.style.display = 'flex';
+        toggleBar.style.justifyContent = 'flex-end';
+        toggleBar.style.marginBottom = '2px';
+        const toggleBtn = toggleBar.createEl('button', { cls: 'tweet-toggle-switch', attr: { 'aria-label': 'プレビューモード', type: 'button' } });
+        let isPreview = false;
+        const previewArea = inputArea.createDiv({ cls: 'tweet-preview-area' });
+        previewArea.style.display = 'none';
+
         if (this.widget.replyingToParentId) {
             this.renderReplyInfo(inputArea);
         }
-        
         const input = inputArea.createEl('textarea', { 
             cls: 'tweet-textarea-main', 
             attr: { 
@@ -154,6 +263,69 @@ export class TweetWidgetUI {
                 placeholder: this.widget.replyingToParentId ? '返信をポスト' : 'いまどうしてる？' 
             }
         });
+        let scheduled = false;
+        input.addEventListener('input', () => {
+            scheduleBatchTweetResize(input);
+        });
+        requestAnimationFrame(() => {
+            scheduleBatchTweetResize(input);
+        });
+
+        // --- YouTubeサジェストUI ---
+        const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
+        ytSuggest.style.display = 'none';
+        ytSuggest.textContent = '';
+        let lastYtUrl = '';
+        let lastYtTitle = '';
+        input.addEventListener('input', () => {
+            const val = input.value;
+            const url = extractYouTubeUrl(val);
+            if (!url) {
+                ytSuggest.style.display = 'none';
+                ytSuggest.textContent = '';
+                lastYtUrl = '';
+                lastYtTitle = '';
+                return;
+            }
+            ytSuggest.textContent = '動画タイトル取得中...';
+            ytSuggest.style.display = 'block';
+            lastYtUrl = url;
+            const currentInput = val;
+            fetchYouTubeTitle(url).then(title => {
+                if (input.value !== currentInput) return;
+                if (title) {
+                    lastYtTitle = title;
+                    ytSuggest.textContent = `「${title}」を挿入 → クリック`;
+                    ytSuggest.onclick = () => {
+                        const insertText = `![${title}](${url})`;
+                        // 元のYouTube URL（クエリ付きも含む）を正規表現で検出して置換
+                        const urlRegex = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}(?:[?&][^\s]*)?)/;
+                        input.value = input.value.replace(urlRegex, insertText);
+                        ytSuggest.style.display = 'none';
+                        ytSuggest.textContent = '';
+                        input.dispatchEvent(new Event('input'));
+                    };
+                } else {
+                    ytSuggest.textContent = '動画タイトル取得失敗';
+                    ytSuggest.onclick = null;
+                }
+            });
+        });
+        
+        // トグルスイッチ挙動
+        toggleBtn.onclick = async () => {
+            isPreview = !isPreview;
+            toggleBtn.classList.toggle('on', isPreview);
+            if (isPreview) {
+                previewArea.style.display = '';
+                input.style.display = 'none';
+                previewArea.empty();
+                await renderMarkdownBatchWithCache(input.value, previewArea, this.app.workspace.getActiveFile()?.path || '', new Component());
+            } else {
+                previewArea.style.display = 'none';
+                input.style.display = '';
+            }
+        };
         
         const filePreviewArea = inputArea.createDiv({ cls: 'tweet-file-preview' });
         this.renderFilePreview(filePreviewArea);
@@ -179,6 +351,81 @@ export class TweetWidgetUI {
 
         input.addEventListener('input', () => {
             this.updateCharCount(charCount, input.value.length);
+        });
+
+        // --- @サジェストリストUI ---
+        const atSuggestList = inputArea.createDiv({ cls: 'tweet-suggest-list' });
+        atSuggestList.style.display = 'none';
+        const atCandidates = ['@ai','@ai2','@bi'];
+        let atActiveIndex = -1;
+        let atCurrentCandidates: string[] = [];
+
+        input.addEventListener('input', () => {
+            const val = input.value;
+            // @サジェスト表示判定
+            const atMatch = /(^|\s)@(\w*)$/.exec(val.slice(0, input.selectionStart));
+            if (atMatch) {
+                const query = atMatch[2] || '';
+                // 候補を絞り込み
+                atCurrentCandidates = atCandidates.filter(cand => cand.slice(1).toLowerCase().startsWith(query.toLowerCase()));
+                if (atCurrentCandidates.length === 0) {
+                    atSuggestList.style.display = 'none';
+                    atActiveIndex = -1;
+                    return;
+                }
+                atSuggestList.empty();
+                atActiveIndex = 0;
+                atCurrentCandidates.forEach((cand, idx) => {
+                    const item = atSuggestList.createDiv({ cls: 'tweet-suggest-item', text: cand });
+                    if (idx === atActiveIndex) item.addClass('active');
+                    item.onmouseenter = () => {
+                        atActiveIndex = idx;
+                        Array.from(atSuggestList.children).forEach((el, i) => {
+                            el.classList.toggle('active', i === atActiveIndex);
+                        });
+                    };
+                    item.onclick = () => {
+                        input.value = val.slice(0, atMatch.index + atMatch[1].length) + cand + val.slice(input.selectionStart);
+                        atSuggestList.style.display = 'none';
+                        input.focus();
+                    };
+                });
+                atSuggestList.style.display = 'block';
+            } else {
+                atSuggestList.style.display = 'none';
+                atActiveIndex = -1;
+            }
+        });
+        input.addEventListener('keydown', (e) => {
+            if (atSuggestList.style.display === 'block' && atCurrentCandidates.length > 0) {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    atActiveIndex = (atActiveIndex + 1) % atCurrentCandidates.length;
+                    Array.from(atSuggestList.children).forEach((el, i) => {
+                        el.classList.toggle('active', i === atActiveIndex);
+                    });
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    atActiveIndex = (atActiveIndex - 1 + atCurrentCandidates.length) % atCurrentCandidates.length;
+                    Array.from(atSuggestList.children).forEach((el, i) => {
+                        el.classList.toggle('active', i === atActiveIndex);
+                    });
+                } else if (e.key === 'Enter') {
+                    if (atActiveIndex >= 0 && atActiveIndex < atCurrentCandidates.length) {
+                        const val = input.value;
+                        const atMatch = /(^|\s)@(\w*)$/.exec(val.slice(0, input.selectionStart));
+                        if (atMatch) {
+                            input.value = val.slice(0, atMatch.index + atMatch[1].length) + atCurrentCandidates[atActiveIndex] + val.slice(input.selectionStart);
+                            atSuggestList.style.display = 'none';
+                            input.focus();
+                            e.preventDefault();
+                        }
+                    }
+                }
+            }
+        });
+        input.addEventListener('blur', () => {
+            setTimeout(() => atSuggestList.style.display = 'none', 100);
         });
     }
 
@@ -252,13 +499,14 @@ export class TweetWidgetUI {
         const closeBtn = modal.createEl('button', { text: '×' });
         closeBtn.onclick = () => backdrop.remove();
 
-        const escHandler = (ev: KeyboardEvent) => {
+        // ハンドラをプロパティに保存し、onunloadで解除できるように
+        this._escHandlerForAvatarModal = (ev: KeyboardEvent) => {
             if (ev.key === 'Escape') {
                 backdrop.remove();
-                window.removeEventListener('keydown', escHandler);
+                window.removeEventListener('keydown', this._escHandlerForAvatarModal!);
             }
         };
-        window.addEventListener('keydown', escHandler);
+        window.addEventListener('keydown', this._escHandlerForAvatarModal);
     }
 
     private renderPostList(listEl: HTMLElement): void {
@@ -279,8 +527,10 @@ export class TweetWidgetUI {
             .filter(t => !t.threadId || !this.postsById.has(t.threadId))
             .sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
 
+        const fragment = document.createDocumentFragment();
         rootItems.forEach(post => {
-            const wrapper = listEl.createDiv({ cls: 'tweet-thread-wrapper' });
+            const wrapper = document.createElement('div');
+            wrapper.className = 'tweet-thread-wrapper';
             wrapper.setAttribute('data-tweet-id', post.id);
             wrapper.onclick = (e) => {
                 if ((e.target as HTMLElement).closest('.tweet-action-bar-main') || 
@@ -290,7 +540,9 @@ export class TweetWidgetUI {
                 this.widget.navigateToDetail(post.id);
             };
             this.renderSinglePost(post, wrapper);
+            fragment.appendChild(wrapper);
         });
+        listEl.appendChild(fragment);
     }
 
     private renderDetailView(container: HTMLElement, postId: string): void {
@@ -350,7 +602,7 @@ export class TweetWidgetUI {
         };
     }
 
-    private renderSinglePost(post: TweetWidgetPost, container: HTMLElement, isDetail: boolean = false): void {
+    private async renderSinglePost(post: TweetWidgetPost, container: HTMLElement, isDetail: boolean = false): Promise<void> {
         container.empty();
         const item = container.createDiv({ cls: 'tweet-item-main' });
         
@@ -387,7 +639,7 @@ export class TweetWidgetUI {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
         } catch {}
-        MarkdownRenderer.render(this.app, displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', this.widget.plugin);
+        await renderMarkdownBatchWithCache(displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', new Component());
 
         if (post.files && post.files.length) {
             const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${post.files.length}` });
@@ -578,6 +830,47 @@ export class TweetWidgetUI {
         const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: '返信をポスト' } });
         textarea.focus();
 
+        // --- YouTubeサジェストUI ---
+        const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
+        ytSuggest.style.display = 'none';
+        ytSuggest.textContent = '';
+        let lastYtUrl = '';
+        let lastYtTitle = '';
+        textarea.addEventListener('input', () => {
+            const val = textarea.value;
+            const url = extractYouTubeUrl(val);
+            if (!url) {
+                ytSuggest.style.display = 'none';
+                ytSuggest.textContent = '';
+                lastYtUrl = '';
+                lastYtTitle = '';
+                return;
+            }
+            ytSuggest.textContent = '動画タイトル取得中...';
+            ytSuggest.style.display = 'block';
+            lastYtUrl = url;
+            const currentInput = val;
+            fetchYouTubeTitle(url).then(title => {
+                if (textarea.value !== currentInput) return;
+                if (title) {
+                    lastYtTitle = title;
+                    ytSuggest.textContent = `「${title}」を挿入 → クリック`;
+                    ytSuggest.onclick = () => {
+                        const insertText = `![${title}](${url})`;
+                        // 元のYouTube URL（クエリ付きも含む）を正規表現で検出して置換
+                        const urlRegex = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}(?:[?&][^\s]*)?)/;
+                        textarea.value = textarea.value.replace(urlRegex, insertText);
+                        ytSuggest.style.display = 'none';
+                        ytSuggest.textContent = '';
+                        textarea.dispatchEvent(new Event('input'));
+                    };
+                } else {
+                    ytSuggest.textContent = '動画タイトル取得失敗';
+                    ytSuggest.onclick = null;
+                }
+            });
+        });
+
         const replyBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: '返信' });
         replyBtn.onclick = async () => {
             const text = textarea.value.trim();
@@ -595,5 +888,61 @@ export class TweetWidgetUI {
                 replyBtn.click();
             }
         });
+    }
+
+    private renderEditModal(post: TweetWidgetPost): void {
+        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
+        const closeModal = () => {
+            this.widget.editingPostId = null;
+            backdrop.remove();
+            this.render();
+        };
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) closeModal();
+        };
+        const modal = backdrop.createDiv('tweet-reply-modal');
+        const widgetRect = this.container.getBoundingClientRect();
+        modal.style.position = 'fixed';
+        modal.style.top = `${widgetRect.top + 50}px`;
+        const modalWidth = Math.min(widgetRect.width - 40, 600);
+        modal.style.width = `${modalWidth}px`;
+        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+
+        const header = modal.createDiv('tweet-reply-modal-header');
+        header.createSpan({ text: 'つぶやきを編集' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = closeModal;
+
+        const postBox = modal.createDiv('tweet-reply-modal-post');
+        this.renderSinglePost(post, postBox, true);
+
+        const inputArea = modal.createDiv('tweet-reply-modal-input');
+        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: 'つぶやきを編集', rows: 3 } });
+        textarea.value = post.text;
+        textarea.focus();
+
+        const replyBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: '編集完了' });
+        replyBtn.onclick = async () => {
+            const text = textarea.value.trim();
+            if (!text) return;
+            await this.widget.submitPost(text);
+            closeModal();
+        };
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                closeModal();
+            }
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                replyBtn.click();
+            }
+        });
+    }
+
+    public onunload(): void {
+        // モーダルで追加したグローバルイベントリスナーの解除
+        // 例: showAvatarModalでkeydownを追加している
+        window.removeEventListener('keydown', this._escHandlerForAvatarModal as any);
+        // 必要に応じて他のクリーンアップ処理をここに追加
     }
 }

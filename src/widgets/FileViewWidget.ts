@@ -1,6 +1,7 @@
-import { App, TFile, Notice, FuzzySuggestModal, MarkdownRenderer } from 'obsidian';
+import { App, TFile, Notice, FuzzySuggestModal, MarkdownRenderer, Component } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main';
+import { renderMarkdownBatchWithCache } from '../utils/renderMarkdownBatch';
 
 // ファイルサジェスト用モーダル
 class FileSuggestModal extends FuzzySuggestModal<TFile> {
@@ -71,13 +72,13 @@ export class FileViewWidget implements WidgetImplementation {
     this.fileNameInput.type = 'text';
     this.fileNameInput.placeholder = 'ファイルパス';
     this.fileNameInput.value = this.config.settings?.fileName || '';
-    this.fileNameInput.style.display = 'none';
+    this.fileNameInput.style.display = '';
     controlsEl.appendChild(this.fileNameInput);
 
     this.selectButton = document.createElement('button');
     this.selectButton.textContent = 'ファイル選択';
     this.selectButton.onclick = () => this.openFileSuggest();
-    this.selectButton.style.display = 'none';
+    this.selectButton.style.display = '';
     controlsEl.appendChild(this.selectButton);
 
     // Obsidianで開くボタン（常時表示）
@@ -98,48 +99,7 @@ export class FileViewWidget implements WidgetImplementation {
     // 初期表示
     this.loadFile();
 
-    // 祖先要素にis-editingクラスが付与されたら編集UIを表示
-    const setupEditModeObserver = () => {
-      const getAncestors = (el: HTMLElement | null): HTMLElement[] => {
-        const ancestors: HTMLElement[] = [];
-        let current = el?.parentElement;
-        while (current) {
-          ancestors.push(current);
-          current = current.parentElement;
-        }
-        return ancestors;
-      };
-      const ancestors = getAncestors(this.widgetEl);
-      if (ancestors.length === 0) {
-        setTimeout(setupEditModeObserver, 100); // まだ親が付与されていない場合は遅延
-        return;
-      }
-      // すべての祖先要素にMutationObserverをセット
-      ancestors.forEach(parent => {
-        const observer = new MutationObserver(() => this.updateEditModeUI());
-        observer.observe(parent, { attributes: true, attributeFilter: ['class'] });
-      });
-      this.updateEditModeUI();
-    };
-    setupEditModeObserver();
-
     return this.widgetEl;
-  }
-
-  // 編集モードUIの表示/非表示切り替え
-  private updateEditModeUI() {
-    // 祖先要素すべてにis-editingクラスがあるか判定
-    let el: HTMLElement | null = this.widgetEl;
-    let isEditing = false;
-    while (el) {
-      if (el.classList.contains('is-editing')) {
-        isEditing = true;
-        break;
-      }
-      el = el.parentElement;
-    }
-    this.fileNameInput.style.display = isEditing ? '' : 'none';
-    this.selectButton.style.display = isEditing ? '' : 'none';
   }
 
   private openFileSuggest() {
@@ -178,7 +138,7 @@ export class FileViewWidget implements WidgetImplementation {
       this.currentFile = file;
       const content = await this.app.vault.read(file);
       this.fileContentEl.empty();
-      await MarkdownRenderer.render(this.app, content, this.fileContentEl, file.path, this.plugin);
+      await renderMarkdownBatchWithCache(content, this.fileContentEl, file.path, new Component());
       // 追加: レンダリング後のリンクにクリックイベントを付与
       this.fileContentEl.querySelectorAll('a').forEach((a: HTMLAnchorElement) => {
         const href = a.getAttribute('data-href') || a.getAttribute('href');

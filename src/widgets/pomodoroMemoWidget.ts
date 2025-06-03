@@ -1,4 +1,5 @@
 import { App, MarkdownRenderer, Notice, setIcon, Component } from 'obsidian';
+import { renderMarkdownBatch } from '../utils/renderMarkdownBatch';
 
 export interface PomodoroMemoSettings {
     memoContent?: string;
@@ -70,7 +71,7 @@ export class PomodoroMemoWidget {
         const trimmedContent = markdownContent?.trim();
         if (trimmedContent && !this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'block';
-            await MarkdownRenderer.render(this.app, trimmedContent, this.memoDisplayEl, '', new Component());
+            await renderMarkdownBatch(trimmedContent, this.memoDisplayEl, '', new Component());
         } else if (!this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'none';
         }

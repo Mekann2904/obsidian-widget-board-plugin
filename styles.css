@@ -15,9 +15,11 @@
     border-radius: 0 !important;
     margin: 0 0 0 auto;
     opacity: 0;
-    /* スプリング風アニメーション */
-    transition: right 0.3s ease, left 0.3s ease, top 0.3s ease, opacity 0.2s, width 0.3s, transform 0.3s;
-    z-index: 10 !important;
+    transition:
+      transform 0.35s cubic-bezier(.4,0,.2,1),
+      opacity 0.2s cubic-bezier(.4,0,.2,1);
+    z-index: 10;
+    will-change: transform, opacity;
 }
 .widget-board-panel-custom > * {
     flex: 1 1 0 !important;
@@ -28,134 +30,126 @@
 }
 .widget-board-panel-custom.mode-right-third {
     width: 33.33vw !important;
-    right: -33.33vw !important;
+    right: 0 !important;
+    transform: translateX(100%);
+    opacity: 0;
 }
 .widget-board-panel-custom.mode-right-third.is-open {
-    right: 0 !important;
-    opacity: 1 !important;
+    transform: translateX(0);
+    opacity: 1;
 }
 .widget-board-panel-custom.mode-right-half {
     width: 50vw !important;
-    right: -50vw !important;
+    right: 0 !important;
+    transform: translateX(100%);
+    opacity: 0;
 }
 .widget-board-panel-custom.mode-right-half.is-open {
-    right: 0 !important;
-    opacity: 1 !important;
+    transform: translateX(0);
+    opacity: 1;
 }
-
-/* 左2/3表示モード */
-.widget-board-panel-custom.mode-left-two-third {
+.widget-board-panel-custom.mode-right-two-third {
     width: 66.66vw !important;
-    left: -66.66vw !important;
-    right: auto !important;
+    right: 0 !important;
+    transform: translateX(100%);
+    opacity: 0;
 }
-.widget-board-panel-custom.mode-left-two-third.is-open {
-    left: 0 !important;
-    opacity: 1 !important;
+.widget-board-panel-custom.mode-right-two-third.is-open {
+    transform: translateX(0);
+    opacity: 1;
 }
 
-/* 左1/2表示モード */
+/* 左からスライドイン */
+.widget-board-panel-custom.mode-left-third {
+    width: 33.33vw !important;
+    left: 0 !important;
+    transform: translateX(-100%);
+    opacity: 0;
+}
+.widget-board-panel-custom.mode-left-third.is-open {
+    transform: translateX(0);
+    opacity: 1;
+}
 .widget-board-panel-custom.mode-left-half {
     width: 50vw !important;
-    left: -50vw !important;
-    right: auto !important;
+    left: 0 !important;
+    transform: translateX(-100%);
+    opacity: 0;
 }
 .widget-board-panel-custom.mode-left-half.is-open {
+    transform: translateX(0);
+    opacity: 1;
+}
+.widget-board-panel-custom.mode-left-two-third {
+    width: 66.66vw !important;
     left: 0 !important;
-    opacity: 1 !important;
+    transform: translateX(-100%);
+    opacity: 0;
+}
+.widget-board-panel-custom.mode-left-two-third.is-open {
+    transform: translateX(0);
+    opacity: 1;
 }
 
-/* 中央1/2表示モード */
+/* 中央から下にスライドイン */
 .widget-board-panel-custom.mode-center-half {
     width: 50vw !important;
     left: 50% !important;
-    right: auto !important;
-    top: 100vh !important;
-    transform: translateX(-50%) !important;
+    top: 0 !important;
+    transform: translate(-50%, 100%);
+    opacity: 0;
 }
 .widget-board-panel-custom.mode-center-half.is-open {
-    top: 0 !important;
-    left: 50% !important;
-    transform: translateX(-50%);
-    opacity: 1 !important;
+    transform: translate(-50%, 0);
+    opacity: 1;
 }
-
-/* 左33.33%表示モード */
-.widget-board-panel-custom.mode-left-third {
-    width: 33.33vw !important;
-    left: -33.33vw !important;
-    right: auto !important;
-}
-.widget-board-panel-custom.mode-left-third.is-open {
-    left: 0 !important;
-    opacity: 1 !important;
-}
-
-/* 右66.66%表示モード */
-.widget-board-panel-custom.mode-right-two-third {
-    width: 66.66vw !important;
-    right: -66.66vw !important;
-}
-.widget-board-panel-custom.mode-right-two-third.is-open {
-    right: 0 !important;
-    opacity: 1 !important;
-}
-
-/* 中央1/3表示モード */
 .widget-board-panel-custom.mode-center-third {
     width: 33.33vw !important;
     left: 50% !important;
-    right: auto !important;
-    top: 100vh !important;
-    transform: translateX(-50%) !important;
+    top: 0 !important;
+    transform: translate(-50%, 100%);
+    opacity: 0;
 }
 .widget-board-panel-custom.mode-center-third.is-open {
-    top: 0 !important;
-    left: 50% !important;
-    transform: translateX(-50%);
-    opacity: 1 !important;
+    transform: translate(-50%, 0);
+    opacity: 1;
 }
 
 /* カスタム幅モード（右基準） */
 .widget-board-panel-custom.custom-width-right {
-    right: calc(-1 * var(--custom-width, 40vw)) !important;
-    left: auto !important;
+    right: 0 !important;
     top: 0 !important;
+    width: var(--custom-width, 40vw);
+    transform: translateX(100%);
     opacity: 0;
 }
 .widget-board-panel-custom.custom-width-right.is-open {
-    right: 0 !important;
-    left: auto !important;
-    top: 0 !important;
-    opacity: 1 !important;
+    transform: translateX(0);
+    opacity: 1;
 }
 /* カスタム幅モード（左基準） */
 .widget-board-panel-custom.custom-width-left {
-    left: calc(-1 * var(--custom-width, 40vw)) !important;
-    right: auto !important;
+    left: 0 !important;
     top: 0 !important;
+    width: var(--custom-width, 40vw);
+    transform: translateX(-100%);
     opacity: 0;
 }
 .widget-board-panel-custom.custom-width-left.is-open {
-    left: 0 !important;
-    right: auto !important;
-    top: 0 !important;
-    opacity: 1 !important;
+    transform: translateX(0);
+    opacity: 1;
 }
 /* カスタム幅モード（中央基準） */
 .widget-board-panel-custom.custom-width-center {
     left: 50% !important;
-    right: auto !important;
-    top: 100vh !important;
-    transform: translateX(-50%) !important;
+    top: 0 !important;
+    width: var(--custom-width, 40vw);
+    transform: translate(-50%, 100%);
     opacity: 0;
 }
 .widget-board-panel-custom.custom-width-center.is-open {
-    left: 50% !important;
-    right: auto !important;
-    top: 0 !important;
-    transform: translateX(-50%) !important;
-    opacity: 1 !important;
+    transform: translate(-50%, 0);
+    opacity: 1;
 }
 
 /* Panel Header and Controls */
@@ -589,6 +583,8 @@
   margin-right: 10px;
   transition: transform 0.2s;
   font-size: 1.1em;
+  width: 1em;
+  height: 1em;
 }
 .wb-accordion-header.wb-accordion-open .wb-accordion-icon {
   transform: rotate(90deg);
@@ -729,7 +725,7 @@
 button, .wb-add-widget-btn, .wb-panel-settings-toggle {
   border-radius: 8px;
   padding: 0 14px;
-  min-height: 32px;
+  min-height: 21px;
   font-size: 15px;
   background: var(--interactive-normal);
   color: var(--text-on-accent);
@@ -779,6 +775,8 @@ button:hover, .wb-add-widget-btn:hover, .wb-panel-settings-toggle:hover {
 .wb-settings-accordion-icon {
   font-size: 1em;
   margin-right: 4px;
+  width: 1em;
+  height: 1em;
 }
 .wb-settings-accordion-body {
   padding: 8px 0 0 0;
@@ -945,10 +943,9 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   object-fit: cover;
 }
 .tweet-input-area-main {
-  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  width: 100%;
 }
 .tweet-textarea-main {
   width: 100%;
@@ -1347,6 +1344,8 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   align-items: center;
 }
 .tweet-avatar-modal-content img {
+  width: 320px;
+  height: 320px;
   max-width: 320px;
   max-height: 320px;
   border-radius: 16px;
@@ -1731,7 +1730,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .tweet-reply-modal-tweet,
 .tweet-reply-modal-input {
   padding-left: 32px;
-  padding-right: 32px;
+  padding-right: 16px;
 }
 
 .tweet-reply-modal-input {
@@ -1741,4 +1740,408 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .tweet-action-btn-main.active {
   color: #8a5cf5;
   background: var(--background-modifier-hover);
+}
+
+.tweet-input-toggle-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 2px;
+}
+.tweet-input-toggle-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  background: var(--background-secondary-alt, #232323);
+  border: none;
+  border-radius: 999px;
+  padding: 4px 32px 4px 12px;
+  font-size: 1em;
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  min-width: 64px;
+  outline: none;
+}
+.tweet-input-toggle-btn::after {
+  content: '';
+  display: block;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 16px;
+  background: var(--background-modifier-border, #444);
+  border-radius: 8px;
+  transition: background 0.18s;
+}
+.tweet-input-toggle-btn.preview-mode::after {
+  background: var(--text-accent, #A68AF9);
+}
+.tweet-input-toggle-btn::before {
+  content: '';
+  display: block;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
+  transition: transform 0.18s, background 0.18s;
+}
+.tweet-input-toggle-btn.preview-mode::before {
+  transform: translateX(10px);
+  background: var(--text-accent, #A68AF9);
+}
+
+.tweet-toggle-switch {
+  width: 40px;
+  height: 22px;
+  border: none;
+  border-radius: 11px;
+  background: #888;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+  outline: none;
+  padding: 0;
+}
+.tweet-toggle-switch::before {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s, background 0.2s;
+}
+.tweet-toggle-switch.on {
+  background: var(--text-accent, #A68AF9);
+}
+.tweet-toggle-switch.on::before {
+  transform: translateX(18px);
+  background: #fff;
+}
+
+/* データビュワー用ヘッダーの左右余白を狭く */
+.tweet-data-viewer-modal .tweet-reply-modal-header {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* データビューア専用モーダル */
+.tweet-data-viewer-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 1000px;
+  max-width: 98vw;
+  min-width: 600px;
+  height: 600px;
+  max-height: 90vh;
+  z-index: 9999;
+  background: var(--background-primary, #222);
+  border-radius: 12px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.tweet-data-viewer-modal .tweet-data-viewer-main {
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 8px;
+  height: 100%;
+}
+.tweet-data-viewer-menubar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--background-primary, #222);
+  border-bottom: 1px solid var(--divider-color, #444);
+  min-height: 44px;
+}
+.tweet-data-viewer-csv-btn,
+.tweet-data-viewer-md-btn {
+  margin-right: 6px;
+}
+.tweet-data-viewer-dropdown {
+  right: 8px;
+  left: auto;
+  top: 100%;
+  margin-top: 6px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  padding: 10px 0;
+  background: var(--background-secondary, #23272e);
+  border-radius: 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+  border: 1.5px solid var(--divider-color, #444);
+  min-width: 140px;
+  z-index: 20000 !important;
+}
+.tweet-data-viewer-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 18px;
+  font-size: 1em;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  z-index: 1;
+}
+.tweet-data-viewer-dropdown-item input[type="checkbox"] {
+  accent-color: var(--text-accent, #A68AF9);
+  width: 1.1em;
+  height: 1.1em;
+}
+.tweet-data-viewer-dropdown-item:hover {
+  background: var(--background-modifier-hover, #444);
+}
+.tweet-data-viewer-main {
+  margin-top: 8px;
+}
+.tweet-data-viewer-hamburger {
+  font-size: 1.4em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 8px;
+}
+.tweet-data-viewer-dropdown {
+  right: 8px;
+  left: auto;
+  top: 100%;
+  margin-top: 6px;
+  margin-right: 8px;
+  margin-bottom: 8px;
+  padding: 8px 0;
+  /* 既存のmax-width, max-height, overflow等はそのまま */
+}
+.tweet-data-viewer-dropdown-item {
+  padding: 6px 18px;
+}
+
+/* データビューア テーブル最適化 */
+.tweet-data-viewer-main {
+  overflow-x: auto;
+  padding: 16px 0 0 0;
+}
+.tweet-data-viewer-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 1em;
+  background: transparent;
+  table-layout: auto;
+}
+.tweet-data-viewer-th, .tweet-data-viewer-td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--divider-color, #444);
+  white-space: nowrap;
+  text-align: left;
+}
+.tweet-data-viewer-th {
+  background: var(--background-secondary, #23272e);
+  font-weight: bold;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.tweet-data-viewer-td.text {
+  white-space: normal;
+  max-width: 420px;
+  word-break: break-all;
+}
+.tweet-data-viewer-td.tags {
+  white-space: normal;
+  max-width: 180px;
+  word-break: break-all;
+}
+.tweet-data-viewer-td.id { max-width: 120px; font-size: 0.93em; color: var(--text-faint); }
+.tweet-data-viewer-td.created { max-width: 110px; font-size: 0.97em; }
+.tweet-data-viewer-td.user { max-width: 120px; }
+.tweet-data-viewer-tr {
+  transition: background 0.13s;
+}
+.tweet-data-viewer-tr:hover {
+  background: var(--background-modifier-hover, #232b3a);
+}
+.tweet-data-viewer-hamburger {
+  font-size: 1.6em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 8px;
+  color: var(--text-normal);
+  padding: 2px 8px;
+  border-radius: 6px;
+  transition: background 0.15s, color 0.15s;
+}
+.tweet-data-viewer-hamburger:hover {
+  background: var(--background-modifier-hover, #444);
+  color: var(--text-accent, #A68AF9);
+}
+.tweet-data-viewer-dropdown {
+  min-width: 140px;
+  font-size: 1em;
+}
+.tweet-data-viewer-dropdown-item {
+  padding: 6px 16px;
+}
+
+/* TweetWidget フィルタバー・データビューアボタンの見た目統一 */
+.tweet-data-viewer-btn,
+.tweet-period-select,
+.tweet-filter-bar select,
+.tweet-filter-bar button {
+  height: 32px;
+  font-size: 1em;
+  border-radius: 6px;
+  background: var(--interactive-normal);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 0 14px;
+  margin-left: 8px;
+  margin-right: 0;
+  transition: background 0.15s, color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  outline: none;
+}
+.tweet-data-viewer-btn:hover,
+.tweet-period-select:hover,
+.tweet-filter-bar select:hover,
+.tweet-filter-bar button:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+.tweet-filter-bar select,
+.tweet-period-select {
+  min-width: 90px;
+  padding-right: 24px;
+}
+
+.tweet-data-viewer-menugroup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+.tweet-data-viewer-dropdown {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  right: auto;
+  margin-top: 6px;
+  margin-right: 0;
+  margin-bottom: 0;
+  /* 既存のmax-width, max-height, padding, shadow, border, background等はそのまま */
+}
+
+:not(.tweet-widget) iframe[src*="youtu"] {
+    display: block;
+    width: 100%;
+    height: 400px;
+    border-radius: 10px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* YouTubeサジェスト用ポップアップスタイル */
+.tweet-input-area-main, .tweet-reply-modal-input {
+  position: relative;
+}
+.tweet-youtube-suggest {
+  background: #222;
+  color: #fff;
+  padding: 6px 14px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  margin-top: 4px;
+  font-size: 0.95em;
+  cursor: pointer;
+  white-space: nowrap;
+  max-width: 350px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.15s;
+  display: none;
+}
+.tweet-youtube-suggest[style*="display: block"],
+.tweet-youtube-suggest[style*="display: "],
+.tweet-youtube-suggest[style*="display: "] {
+  display: block !important;
+}
+.tweet-youtube-suggest:hover {
+  background: #444;
+}
+
+/* サジェストが隠れないようにする */
+.tweet-post-box,
+.widget,
+.tweet-input-area-main,
+.tweet-reply-modal-input {
+  overflow: visible !important;
+}
+.tweet-youtube-suggest {
+  z-index: 99999 !important;
+}
+
+/* サジェスト中身が空のときは高さ0に */
+.tweet-youtube-suggest:empty {
+  height: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* @サジェスト用リストUI */
+.tweet-suggest-list {
+  background: #222;
+  color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  margin-top: 4px;
+  font-size: 0.95em;
+  padding: 4px 0;
+  min-width: 120px;
+  max-width: 350px;
+  position: absolute;
+  z-index: 1000;
+}
+.tweet-suggest-item {
+  padding: 6px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.tweet-suggest-item:hover, .tweet-suggest-item.active {
+  background: #444;
+}
+.tweet-suggest-item.active {
+  background: #A68AF9 !important;
+  color: #fff !important;
+  font-weight: bold;
+}
+
+/* --- reflow最適化: CSS Containment --- */
+.widget-content,
+.memo-widget-container,
+.tweet-list-main {
+  contain: layout style paint;
+}
+
+/* --- reflow最適化: containment追加 --- */
+.tweet-data-viewer-table,
+.recent-notes-list,
+.recent-notes-virtual-wrapper {
+  contain: layout style paint;
 }

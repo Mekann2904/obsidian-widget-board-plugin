@@ -76,16 +76,26 @@ export class RecentNotesWidget implements WidgetImplementation {
         if (files.length < VIRTUAL_THRESHOLD) {
             // 従来通り全件描画
             const listEl = container.createEl('ul', { cls: 'recent-notes-list' });
+            const fragment = document.createDocumentFragment();
             files.forEach(file => {
-                const itemEl = listEl.createEl('li', { cls: 'recent-note-item' });
-                const linkEl = itemEl.createEl('a', { text: file.basename, href: '#' });
+                const itemEl = document.createElement('li');
+                itemEl.className = 'recent-note-item';
+                const linkEl = document.createElement('a');
+                linkEl.textContent = file.basename;
+                linkEl.href = '#';
                 linkEl.onclick = (e) => {
                     e.preventDefault();
                     this.app.workspace.openLinkText(file.path, '', false);
                 };
+                itemEl.appendChild(linkEl);
                 const dateStr = moment(file.stat.mtime).format('YYYY/MM/DD HH:mm');
-                itemEl.createSpan({ text: ` (${dateStr})`, cls: 'recent-note-date' });
+                const dateSpan = document.createElement('span');
+                dateSpan.textContent = ` (${dateStr})`;
+                dateSpan.className = 'recent-note-date';
+                itemEl.appendChild(dateSpan);
+                fragment.appendChild(itemEl);
             });
+            listEl.appendChild(fragment);
             return;
         }
         // --- 仮想リスト描画 ---
@@ -109,18 +119,28 @@ export class RecentNotesWidget implements WidgetImplementation {
             endIdx = Math.min(files.length, startIdx + visibleCount + 5);
             listEl.empty();
             listEl.style.transform = `translateY(${startIdx * ROW_HEIGHT}px)`;
+            const fragment = document.createDocumentFragment();
             for (let i = startIdx; i < endIdx; i++) {
                 const file = files[i];
-                const itemEl = listEl.createEl('li', { cls: 'recent-note-item' });
+                const itemEl = document.createElement('li');
+                itemEl.className = 'recent-note-item';
                 itemEl.style.height = `${ROW_HEIGHT}px`;
-                const linkEl = itemEl.createEl('a', { text: file.basename, href: '#' });
+                const linkEl = document.createElement('a');
+                linkEl.textContent = file.basename;
+                linkEl.href = '#';
                 linkEl.onclick = (e) => {
                     e.preventDefault();
                     this.app.workspace.openLinkText(file.path, '', false);
                 };
+                itemEl.appendChild(linkEl);
                 const dateStr = moment(file.stat.mtime).format('YYYY/MM/DD HH:mm');
-                itemEl.createSpan({ text: ` (${dateStr})`, cls: 'recent-note-date' });
+                const dateSpan = document.createElement('span');
+                dateSpan.textContent = ` (${dateStr})`;
+                dateSpan.className = 'recent-note-date';
+                itemEl.appendChild(dateSpan);
+                fragment.appendChild(itemEl);
             }
+            listEl.appendChild(fragment);
         };
         // 初回描画
         renderVirtualRows(0);

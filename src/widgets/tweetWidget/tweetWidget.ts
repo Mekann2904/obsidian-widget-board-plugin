@@ -32,6 +32,8 @@ export class TweetWidget implements WidgetImplementation {
     detailPostId: string | null = null;
     replyModalPost: TweetWidgetPost | null = null;
     currentTab: 'home' | 'notification' = 'home';
+    currentPeriod: string = 'all';
+    customPeriodDays: number = 1;
     
     // --- Core Modules ---
     private widgetEl!: HTMLElement;
@@ -53,6 +55,10 @@ export class TweetWidget implements WidgetImplementation {
         this.widgetEl = document.createElement('div');
         this.widgetEl.classList.add('widget', 'tweet-widget');
         this.widgetEl.setAttribute('data-widget-id', config.id);
+
+        // デフォルト期間をsettingsから反映
+        this.currentPeriod = this.plugin.settings.defaultTweetPeriod || 'all';
+        this.customPeriodDays = this.plugin.settings.defaultTweetCustomDays || 1;
 
         const dbPath = this.getTweetDbPath();
         this.repository = new TweetRepository(this.app, dbPath);
@@ -262,7 +268,7 @@ export class TweetWidget implements WidgetImplementation {
     public async setPostDeleted(postId: string, deleted: boolean) {
         this.store.updatePost(postId, { deleted });
         this.saveDataDebounced();
-        this.ui.render();
+        this.ui.scheduleRender();
     }
 
     public async deletePost(postId: string) {
@@ -283,7 +289,7 @@ export class TweetWidget implements WidgetImplementation {
         if(post && post[key] !== value) {
             this.store.updatePost(postId, { [key]: value });
             this.saveDataDebounced();
-            this.ui.render();
+            this.ui.scheduleRender();
         }
     }
 
@@ -383,15 +389,46 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     public getFilteredPosts(): TweetWidgetPost[] {
-        const posts = this.store.settings.posts;
+        let posts = this.store.settings.posts;
         switch (this.currentFilter) {
-            case 'all': return posts;
-            case 'deleted': return posts.filter(t => t.deleted);
-            case 'bookmark': return posts.filter(t => t.bookmark);
+            case 'all': break;
+            case 'deleted': posts = posts.filter(t => t.deleted); break;
+            case 'bookmark': posts = posts.filter(t => t.bookmark); break;
             case 'active':
             default:
-                return posts.filter(t => !t.deleted);
+                posts = posts.filter(t => !t.deleted);
         }
+        if (this.currentPeriod && this.currentPeriod !== 'all') {
+            const now = Date.now();
+            let ms = 0;
+            if (this.currentPeriod === 'today') {
+                // ローカルタイムで今日の日付
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                const todayStr = `${yyyy}-${mm}-${dd}`;
+                posts = posts.filter(p => {
+                    const d = new Date(p.created);
+                    const yyyy2 = d.getFullYear();
+                    const mm2 = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd2 = String(d.getDate()).padStart(2, '0');
+                    const dateStr = `${yyyy2}-${mm2}-${dd2}`;
+                    return dateStr === todayStr;
+                });
+            } else if (this.currentPeriod === 'custom') {
+                ms = (this.customPeriodDays || 1) * 86400000;
+            } else {
+                ms = {
+                    '1d': 86400000,
+                    '3d': 3 * 86400000,
+                    '7d': 7 * 86400000,
+                    '30d': 30 * 86400000
+                }[this.currentPeriod] || 0;
+            }
+            if (ms > 0 && this.currentPeriod !== 'today') posts = posts.filter(p => now - p.created < ms);
+        }
+        return posts;
     }
     
     public getAvatarUrl(post?: TweetWidgetPost): string {
@@ -431,5 +468,15 @@ export class TweetWidget implements WidgetImplementation {
             hash = userId.charCodeAt(i) + ((hash << 5) - hash);
         }
         return Math.abs(hash) % len;
+    }
+
+    public setPeriod(period: string) {
+        this.currentPeriod = period;
+        this.ui.render();
+    }
+
+    public setCustomPeriodDays(days: number) {
+        this.customPeriodDays = days;
+        this.ui.render();
     }
 }

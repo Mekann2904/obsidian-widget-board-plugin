@@ -1,4 +1,5 @@
 import type { TweetWidgetPost } from './types';
+import { safeFetch } from '../../utils';
 
 export function parseTags(text: string): string[] {
     const regex = /#([\w-]+)/g;
@@ -70,4 +71,29 @@ export function validatePost(raw: any): TweetWidgetPost {
         userName: typeof raw.userName === 'string' ? raw.userName : 'あなた',
         verified: !!raw.verified
     };
+}
+
+// テキストからYouTube動画IDを抽出し、クリーンなURLを返す
+export function extractYouTubeUrl(text: string): string | null {
+    // youtu.be/ID または youtube.com/watch?v=ID のID部分だけ抽出
+    const regex = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/;
+    const match = text.match(regex);
+    if (match && match[1]) {
+        // クリーンな youtu.be 形式で返す
+        return `https://youtu.be/${match[1]}`;
+    }
+    return null;
+}
+
+// YouTubeの動画タイトルを取得する関数（safeFetch使用）
+export async function fetchYouTubeTitle(url: string): Promise<string | null> {
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    try {
+        const res = await safeFetch(oembedUrl, { method: 'GET' });
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.title as string;
+    } catch {
+        return null;
+    }
 } 

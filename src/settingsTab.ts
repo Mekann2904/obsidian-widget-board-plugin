@@ -10,6 +10,7 @@ import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/cal
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from 'src/widgets/tweetWidget/constants';
+import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 import { obfuscate, deobfuscate } from './utils';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
 
@@ -23,6 +24,7 @@ const WIDGET_TYPE_DISPLAY_NAMES: { [key: string]: string } = {
     'theme-switcher': 'テーマ切り替え',
     'file-view': 'ファイルビューア',
     'tweet-widget': 'つぶやき',
+    'reflection-widget': '振り返りレポート',
 };
 
 /**
@@ -448,6 +450,37 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+        // --- つぶやきウィジェットのデフォルト表示期間 ---
+        new Setting(tweetGlobalAcc.body)
+            .setName('つぶやきウィジェットのデフォルト表示期間')
+            .setDesc('つぶやきウィジェットを開いたときに最初に表示される期間を選択できます。')
+            .addDropdown(dropdown => {
+                dropdown.addOption('all', '全期間');
+                dropdown.addOption('today', '今日');
+                dropdown.addOption('1d', '1日');
+                dropdown.addOption('3d', '3日');
+                dropdown.addOption('7d', '1週間');
+                dropdown.addOption('30d', '1ヶ月');
+                dropdown.addOption('custom', 'カスタム');
+                dropdown.setValue(this.plugin.settings.defaultTweetPeriod || 'all')
+                    .onChange(async (value) => {
+                        this.plugin.settings.defaultTweetPeriod = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        new Setting(tweetGlobalAcc.body)
+            .setName('つぶやきウィジェットのカスタム期間（日数）')
+            .setDesc('デフォルト期間が「カスタム」の場合に使われます。')
+            .addText(text => {
+                text.setPlaceholder('1')
+                    .setValue(String(this.plugin.settings.defaultTweetCustomDays ?? 1))
+                    .onChange(async (v) => {
+                        let n = parseInt(v, 10);
+                        if (isNaN(n) || n < 1) n = 1;
+                        this.plugin.settings.defaultTweetCustomDays = n;
+                        await this.plugin.saveSettings();
+                    });
+            });
 
         // --- ボード管理セクション ---
         const boardManagementAcc = createAccordion('ボード管理', false); // デフォルトで閉じる
@@ -720,6 +753,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS });
         createAddButtonToBoard("ファイルビューア追加", "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 });
         createAddButtonToBoard("つぶやき追加", "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS);
+        createAddButtonToBoard("振り返りレポート", "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS);
 
         this.renderWidgetListForBoard(widgetListEl, board);
     }
@@ -998,6 +1032,50 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .setName('通知音（全体設定が適用されます）')
                     .setDesc('このウィジェットの通知音・音量は「タイマー／ストップウォッチ通知音（全体設定）」が使われます。')
                     .setDisabled(true);
+            } else if (widget.type === 'reflection-widget') {
+                widget.settings = { ...REFLECTION_WIDGET_DEFAULT_SETTINGS, ...(widget.settings || {}) };
+                const currentSettings = widget.settings;
+                const { body: reflectionDetailBody } = createWidgetAccordion(settingsEl, 'AIまとめ詳細設定');
+
+                new Setting(reflectionDetailBody)
+                    .setName('AIまとめ自動発火を有効にする')
+                    .setDesc('ONにすると、指定した間隔で自動的にAIまとめを生成します。')
+                    .addToggle(toggle => {
+                        toggle.setValue(currentSettings.aiSummaryAutoEnabled ?? false)
+                            .onChange(async (value) => {
+                                currentSettings.aiSummaryAutoEnabled = value;
+                                await this.plugin.saveSettings(board.id);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            });
+                    });
+                new Setting(reflectionDetailBody)
+                    .setName('自動発火の間隔（時間）')
+                    .setDesc('-1で自動発火しません。1以上で何時間ごとに自動生成するか指定。')
+                    .addText(text => {
+                        text.setPlaceholder('-1')
+                            .setValue(String(currentSettings.aiSummaryAutoIntervalHours ?? -1))
+                            .onChange(async (v) => {
+                                // 入力途中は何もしない
+                            });
+                        text.inputEl.addEventListener('blur', async () => {
+                            let n = parseInt(text.inputEl.value, 10);
+                            if (isNaN(n)) n = -1;
+                            currentSettings.aiSummaryAutoIntervalHours = n;
+                            await this.plugin.saveSettings(board.id);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                        });
+                    });
+                new Setting(reflectionDetailBody)
+                    .setName('手動発火ボタンを表示')
+                    .setDesc('ONにすると、ウィジェット内に「まとめ生成」ボタンが表示されます。')
+                    .addToggle(toggle => {
+                        toggle.setValue(currentSettings.aiSummaryManualEnabled ?? true)
+                            .onChange(async (value) => {
+                                currentSettings.aiSummaryManualEnabled = value;
+                                await this.plugin.saveSettings(board.id);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            });
+                    });
             }
         });
     }

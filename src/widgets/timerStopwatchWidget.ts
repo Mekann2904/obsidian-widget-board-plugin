@@ -76,6 +76,16 @@ export class TimerStopwatchWidget implements WidgetImplementation {
     private static widgetInstances: Map<string, TimerStopwatchWidget> = new Map();
     private static globalIntervalId: number | null = null; // グローバルtick用
 
+    private needsRender = false;
+    private scheduleRender() {
+        if (this.needsRender) return;
+        this.needsRender = true;
+        requestAnimationFrame(() => {
+            this.updateDisplay();
+            this.needsRender = false;
+        });
+    }
+
     /**
      * インスタンス初期化
      */

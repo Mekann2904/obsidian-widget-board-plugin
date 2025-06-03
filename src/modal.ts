@@ -106,6 +106,9 @@ export class WidgetBoardModal {
         this.modalEl.setAttribute('data-board-id', this.currentBoardId);
         this.contentEl = document.createElement('div');
         this.modalEl.appendChild(this.contentEl);
+
+        // CSS containmentを適用
+        this.modalEl.style.contain = 'layout style';
     }
 
     /**
@@ -188,11 +191,22 @@ export class WidgetBoardModal {
             modalEl.classList.add('no-transition');
             e.preventDefault();
         });
+        let scheduledResizeRight = false;
+        let pendingWidthRight: number | null = null;
         document.addEventListener('mousemove', (e) => {
             if (!isResizingRight) return;
             const dx = e.clientX - startXRight;
             const newWidth = Math.max(200, startWidthRight + dx);
-            modalEl.style.width = newWidth + 'px';
+            pendingWidthRight = newWidth;
+            if (!scheduledResizeRight) {
+                scheduledResizeRight = true;
+                requestAnimationFrame(() => {
+                    if (pendingWidthRight !== null) {
+                        modalEl.style.width = pendingWidthRight + 'px';
+                    }
+                    scheduledResizeRight = false;
+                });
+            }
         });
         document.addEventListener('mouseup', async (e) => {
             if (!isResizingRight) return;
@@ -225,11 +239,22 @@ export class WidgetBoardModal {
             modalEl.classList.add('no-transition');
             e.preventDefault();
         });
+        let scheduledResizeLeft = false;
+        let pendingWidthLeft: number | null = null;
         document.addEventListener('mousemove', (e) => {
             if (!isResizingLeft) return;
             const dx = e.clientX - startXLeft;
-            const newWidth = Math.max(200, startWidthLeft - dx); // 右とは逆方向
-            modalEl.style.width = newWidth + 'px';
+            const newWidth = Math.max(200, startWidthLeft - dx);
+            pendingWidthLeft = newWidth;
+            if (!scheduledResizeLeft) {
+                scheduledResizeLeft = true;
+                requestAnimationFrame(() => {
+                    if (pendingWidthLeft !== null) {
+                        modalEl.style.width = pendingWidthLeft + 'px';
+                    }
+                    scheduledResizeLeft = false;
+                });
+            }
         });
         document.addEventListener('mouseup', async (e) => {
             if (!isResizingLeft) return;

@@ -9,6 +9,8 @@ import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoroWidget';
 import { DEFAULT_MEMO_SETTINGS } from './widgets/memoWidget';
 import { DEFAULT_CALENDAR_SETTINGS } from './widgets/calendarWidget';
 import cloneDeep from 'lodash.clonedeep';
+import { LLMManager } from './llm/llmManager';
+import { GeminiProvider } from './llm/gemini/geminiApi';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -21,6 +23,7 @@ export default class WidgetBoardPlugin extends Plugin {
     widgetBoardModals: Map<string, WidgetBoardModal> = new Map();
     private isSaving: boolean = false;
     private registeredGroupCommandIds: string[] = [];
+    llmManager: LLMManager;
 
     /**
      * プラグインの初期化処理
@@ -28,6 +31,8 @@ export default class WidgetBoardPlugin extends Plugin {
      */
     async onload(): Promise<void> {
         console.log('Widget Board Plugin: Loading...');
+        this.llmManager = new LLMManager();
+        this.llmManager.register(GeminiProvider);
         await this.loadSettings();
         this.registerAllBoardCommands();
         this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());

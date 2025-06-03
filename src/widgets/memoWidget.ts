@@ -1,7 +1,8 @@
 // src/widgets/memoWidget.ts
-import { App, MarkdownRenderer, setIcon, Notice } from 'obsidian';
+import { App, MarkdownRenderer, setIcon, Notice, Component } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main'; // main.ts の WidgetBoardPlugin クラスをインポート
+import { renderMarkdownBatchWithCache } from '../utils/renderMarkdownBatch';
 
 // --- メモウィジェット設定インターフェース ---
 export interface MemoWidgetSettings {
@@ -36,11 +37,32 @@ export class MemoWidget implements WidgetImplementation {
     private cancelMemoButtonEl!: HTMLButtonElement;
     private isEditingMemo: boolean = false;
     private currentSettings!: MemoWidgetSettings; // このインスタンスの現在の作業用設定
+    private needsRender = false;
 
     private _memoEditAreaInputListener: (() => void) | null = null;
 
     // ウィジェットインスタンス管理のための静的マップ (前回から)
     private static widgetInstances: Map<string, MemoWidget> = new Map();
+
+    // MemoWidgetクラス内にstaticでバッチresize管理
+    private static pendingMemoResizeElements: HTMLTextAreaElement[] = [];
+    private static scheduledMemoResize = false;
+    private static scheduleBatchMemoResize(el: HTMLTextAreaElement) {
+        if (!MemoWidget.pendingMemoResizeElements.includes(el)) MemoWidget.pendingMemoResizeElements.push(el);
+        if (MemoWidget.scheduledMemoResize) return;
+        MemoWidget.scheduledMemoResize = true;
+        requestAnimationFrame(() => {
+            // 1. read
+            const heights = MemoWidget.pendingMemoResizeElements.map(el => el.scrollHeight);
+            // 2. write
+            MemoWidget.pendingMemoResizeElements.forEach((el, i) => {
+                el.style.height = 'auto';
+                el.style.height = heights[i] + 'px';
+            });
+            MemoWidget.pendingMemoResizeElements.length = 0;
+            MemoWidget.scheduledMemoResize = false;
+        });
+    }
 
     /**
      * インスタンス初期化
@@ -59,7 +81,7 @@ export class MemoWidget implements WidgetImplementation {
 
         if (trimmedContent && !this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'block';
-            await MarkdownRenderer.render(this.app, trimmedContent, this.memoDisplayEl, this.config.id, this.plugin);
+            await renderMarkdownBatchWithCache(trimmedContent, this.memoDisplayEl, this.config.id, new Component());
         } else if (!this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'none';
         }
@@ -134,10 +156,7 @@ export class MemoWidget implements WidgetImplementation {
         }
         this._memoEditAreaInputListener = () => {
             if (!this.memoEditAreaEl) return;
-            this.memoEditAreaEl.style.height = 'auto';
-            // maxHeightを超えない範囲で自動拡大
-            const maxH = parseInt(this.memoEditAreaEl.style.maxHeight, 10) || 600;
-            this.memoEditAreaEl.style.height = Math.min(this.memoEditAreaEl.scrollHeight, maxH) + 'px';
+            MemoWidget.scheduleBatchMemoResize(this.memoEditAreaEl);
         };
         this.memoEditAreaEl.addEventListener('input', this._memoEditAreaInputListener);
     }
@@ -210,7 +229,7 @@ export class MemoWidget implements WidgetImplementation {
         } else {
             console.warn(`[${this.config.id}] enterMemoEditMode: memoEditAreaEl is null.`);
         }
-        this.updateMemoEditUI();
+        this.scheduleRender();
     }
 
     private async saveMemoChanges() {
@@ -362,7 +381,7 @@ export class MemoWidget implements WidgetImplementation {
         this.cancelMemoButtonEl.onClickEvent(() => this.cancelMemoEditMode());
 
         this.isEditingMemo = false;
-        this.updateMemoEditUI(); // 初期UI状態設定（これがrenderMemoとapplyContainerHeightStylesを呼ぶ）
+        this.scheduleRender(); // 初期UI状態設定（これがrenderMemoとapplyContainerHeightStylesを呼ぶ）
         
         return this.widgetEl;
     }
@@ -435,5 +454,14 @@ export class MemoWidget implements WidgetImplementation {
             }
         });
         this.widgetInstances.clear();
+    }
+
+    private scheduleRender() {
+        if (this.needsRender) return;
+        this.needsRender = true;
+        requestAnimationFrame(() => {
+            this.updateMemoEditUI();
+            this.needsRender = false;
+        });
     }
 }

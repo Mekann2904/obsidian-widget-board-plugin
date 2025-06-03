@@ -1,6 +1,7 @@
 // src/settingsDefaults.ts
 import type { PluginGlobalSettings, BoardConfiguration } from './interfaces';
 import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoroWidget';
+import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 // 他のウィジェットのデフォルト設定もインポートする場合はここに追加
 // import { DEFAULT_MEMO_SETTINGS } from './widgets/memoWidget';
 
@@ -15,6 +16,12 @@ export const DEFAULT_BOARD_CONFIGURATION: BoardConfiguration = {
             type: 'pomodoro',
             title: 'ポモドーロタイマー',
             settings: { ...DEFAULT_POMODORO_SETTINGS }
+        },
+        {
+            id: 'default-reflection-' + Date.now(),
+            type: 'reflection-widget',
+            title: '振り返りレポート',
+            settings: { ...REFLECTION_WIDGET_DEFAULT_SETTINGS }
         }
     ]
 };
@@ -54,4 +61,6 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     /** AIリプライの最大遅延（ms） */
     aiReplyDelayMaxMs: 7000,
     baseFolder: '',
+    defaultTweetPeriod: 'all',
+    defaultTweetCustomDays: 1,
 };
