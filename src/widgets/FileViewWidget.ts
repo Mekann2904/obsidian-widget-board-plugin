@@ -1,7 +1,7 @@
 import { App, TFile, Notice, FuzzySuggestModal, MarkdownRenderer, Component } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main';
-import { renderMarkdownBatch } from '../utils/renderMarkdownBatch';
+import { renderMarkdownBatchWithCache } from '../utils/renderMarkdownBatch';
 
 // ファイルサジェスト用モーダル
 class FileSuggestModal extends FuzzySuggestModal<TFile> {
@@ -179,7 +179,7 @@ export class FileViewWidget implements WidgetImplementation {
       this.currentFile = file;
       const content = await this.app.vault.read(file);
       this.fileContentEl.empty();
-      await renderMarkdownBatch(content, this.fileContentEl, file.path, new Component());
+      await renderMarkdownBatchWithCache(content, this.fileContentEl, file.path, new Component());
       // 追加: レンダリング後のリンクにクリックイベントを付与
       this.fileContentEl.querySelectorAll('a').forEach((a: HTMLAnchorElement) => {
         const href = a.getAttribute('data-href') || a.getAttribute('href');

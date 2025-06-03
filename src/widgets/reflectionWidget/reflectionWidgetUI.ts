@@ -7,7 +7,7 @@ import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types'
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/gemini/summaryPrompts';
 import Chart from 'chart.js/auto';
 import { deobfuscate } from '../../utils';
-import { renderMarkdownBatch } from '../../utils/renderMarkdownBatch';
+import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 
 function getDateKey(date: Date): string {
     return date.toISOString().slice(0, 10);
@@ -309,7 +309,7 @@ export class ReflectionWidgetUI {
     private async renderMarkdown(el: HTMLElement, text: string, lastText: string | null, setLast: (v: string) => void) {
         if (lastText === text) return;
         el.empty();
-        await renderMarkdownBatch(text, el, '', new Component());
+        await renderMarkdownBatchWithCache(text, el, '', new Component());
         setLast(text);
     }
 

@@ -8,7 +8,7 @@ import { deobfuscate } from 'src/utils';
 import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';
 import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
-import { renderMarkdownBatch } from '../../utils/renderMarkdownBatch';
+import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 
 export class TweetWidgetUI {
     private widget: TweetWidget;
@@ -305,7 +305,7 @@ export class TweetWidgetUI {
                 previewArea.style.display = '';
                 input.style.display = 'none';
                 previewArea.empty();
-                await renderMarkdownBatch(input.value, previewArea, this.app.workspace.getActiveFile()?.path || '', new Component());
+                await renderMarkdownBatchWithCache(input.value, previewArea, this.app.workspace.getActiveFile()?.path || '', new Component());
             } else {
                 previewArea.style.display = 'none';
                 input.style.display = '';
@@ -622,7 +622,7 @@ export class TweetWidgetUI {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
         } catch {}
-        await renderMarkdownBatch(displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', new Component());
+        await renderMarkdownBatchWithCache(displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', new Component());
 
         if (post.files && post.files.length) {
             const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${post.files.length}` });

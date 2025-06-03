@@ -2,7 +2,7 @@
 import { App, MarkdownRenderer, setIcon, Notice, Component } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main'; // main.ts の WidgetBoardPlugin クラスをインポート
-import { renderMarkdownBatch } from '../utils/renderMarkdownBatch';
+import { renderMarkdownBatchWithCache } from '../utils/renderMarkdownBatch';
 
 // --- メモウィジェット設定インターフェース ---
 export interface MemoWidgetSettings {
@@ -61,7 +61,7 @@ export class MemoWidget implements WidgetImplementation {
 
         if (trimmedContent && !this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'block';
-            await renderMarkdownBatch(trimmedContent, this.memoDisplayEl, this.config.id, new Component());
+            await renderMarkdownBatchWithCache(trimmedContent, this.memoDisplayEl, this.config.id, new Component());
         } else if (!this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'none';
         }
