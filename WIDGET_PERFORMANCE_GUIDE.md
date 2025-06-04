@@ -523,7 +523,7 @@ class GlobalResizer {
 
 #### 1. MarkdownレンダリングのLRUキャッシュ導入
 - `renderMarkdownBatchWithCache`でMarkdown→HTML変換結果（DocumentFragment）をLRU方式でキャッシュ。
-- キャッシュ上限（例：100件、1000件など）を設け、古いものから自動削除。
+ - キャッシュ上限は1000件とし、古いものから自動削除。
 - すべてのウィジェット（TweetWidget, MemoWidget, ReflectionWidget, FileViewWidget等）で共通のキャッシュを利用。
 
 #### 2. プリウォーム（事前キャッシュ生成）の実装
