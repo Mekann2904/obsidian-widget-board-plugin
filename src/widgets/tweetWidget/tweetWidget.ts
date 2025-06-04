@@ -4,6 +4,7 @@ import type WidgetBoardPlugin from '../../main';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
 import { geminiPrompt } from 'src/llm/gemini/tweetReplyPrompt';
+import { debugLog } from '../../utils/logger';
 
 // --- 分離したモジュールをインポート ---
 import type { TweetWidgetFile, TweetWidgetPost, TweetWidgetSettings } from './types';
@@ -356,7 +357,7 @@ export class TweetWidget implements WidgetImplementation {
             const promptText = customPrompt.replace('{postDate}', dateWithZone).replace('{tweet}', threadText);
 
             // ここでプロンプトをコンソール出力
-            console.log('[Gemini Prompt]', promptText);
+            debugLog(this.plugin, '[Gemini Prompt]', promptText);
             
             let replyText = await GeminiProvider.generateReply(promptText, {
                 apiKey: deobfuscate(this.plugin.settings.llm!.gemini!.apiKey),

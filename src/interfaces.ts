@@ -103,6 +103,8 @@ export interface PluginGlobalSettings {
      * カレンダーウィジェットのデイリーノートファイル名フォーマット（グローバル設定）
      */
     calendarDailyNoteFormat?: string;
+    /** デバッグログ出力を有効にする */
+    debugLogging?: boolean;
 }
 
 // 共通型があればここに記載

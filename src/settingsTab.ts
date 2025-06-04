@@ -116,6 +116,17 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             customPathSettingEl.style.display = (this.plugin.settings.tweetDbLocation || 'vault') !== 'custom' ? 'none' : '';
         }
 
+        new Setting(containerEl)
+            .setName('デバッグログを有効にする')
+            .setDesc('コンソールに開発用のデバッグ情報を出力します。')
+            .addToggle(toggle => {
+                toggle.setValue(this.plugin.settings.debugLogging ?? false)
+                    .onChange(async (value) => {
+                        this.plugin.settings.debugLogging = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
         // --- アコーディオン生成ヘルパー (トップレベル用) ---
         const createAccordion = (title: string, defaultOpen: boolean = false) => {
             const acc = containerEl.createDiv({ cls: 'wb-accordion' + (defaultOpen ? ' wb-accordion-open' : '') });

@@ -3,6 +3,7 @@ import { App, MarkdownRenderer, Notice, setIcon, TFolder } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main'; // main.ts の WidgetBoardPlugin クラスをインポート
 import { PomodoroMemoWidget, PomodoroMemoSettings } from './pomodoroMemoWidget';
+import { debugLog } from '../utils/logger';
 
 // --- 通知音の種類の型定義 ---
 export type PomodoroSoundType = 'off' | 'default_beep' | 'bell' | 'chime';
@@ -178,7 +179,7 @@ export class PomodoroWidget implements WidgetImplementation {
         if (state.remainingTime <= 0) {
             const inst = this.widgetInstances.get(configId);
             if (inst) {
-                console.log('tick: calling handleSessionEnd', inst);
+                debugLog(inst.plugin, 'tick: calling handleSessionEnd', inst);
                 void inst.handleSessionEnd();
             } else {
                 this.handleSessionEndGlobal(configId);
@@ -558,7 +559,7 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private async handleSessionEnd() {
-        console.log('handleSessionEnd called', this);
+        debugLog(this.plugin, 'handleSessionEnd called', this);
         if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
         this.isRunning = false;
         this.currentSessionEndTime = new Date();
@@ -669,11 +670,11 @@ export class PomodoroWidget implements WidgetImplementation {
                 memo: this.memoWidget?.getMemoContent() || '',
                 sessionType: this.currentPomodoroSet,
             });
-            console.log('skipToNextSessionConfirm: sessionLogs after push', this.sessionLogs);
+            debugLog(this.plugin, 'skipToNextSessionConfirm: sessionLogs after push', this.sessionLogs);
             new Notice('作業が開始されていませんが、0秒の作業ログを記録してスキップします。', 5000);
             const exportFormat = this.plugin.settings.pomodoroExportFormat || 'none';
             if (exportFormat !== 'none') {
-                console.log('skipToNextSessionConfirm: calling exportSessionLogs', this.sessionLogs);
+                debugLog(this.plugin, 'skipToNextSessionConfirm: calling exportSessionLogs', this.sessionLogs);
                 this.exportSessionLogs(exportFormat);
             }
             // 通常のスキップ処理も実行
@@ -695,10 +696,10 @@ export class PomodoroWidget implements WidgetImplementation {
                 memo: this.memoWidget?.getMemoContent() || '',
                 sessionType: this.currentPomodoroSet,
             });
-            console.log('skipToNextSessionConfirm: normal skip, sessionLogs after push', this.sessionLogs);
+            debugLog(this.plugin, 'skipToNextSessionConfirm: normal skip, sessionLogs after push', this.sessionLogs);
             const exportFormat = this.plugin.settings.pomodoroExportFormat || 'none';
             if (exportFormat !== 'none') {
-                console.log('skipToNextSessionConfirm: calling exportSessionLogs (normal skip)', this.sessionLogs);
+                debugLog(this.plugin, 'skipToNextSessionConfirm: calling exportSessionLogs (normal skip)', this.sessionLogs);
                 this.exportSessionLogs(exportFormat);
             }
         }
@@ -834,7 +835,7 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private async exportSessionLogs(format: PomodoroExportFormat) {
-        console.log('exportSessionLogs called', this.sessionLogs);
+        debugLog(this.plugin, 'exportSessionLogs called', this.sessionLogs);
         if (this.sessionLogs.length === 0) {
             new Notice("エクスポートするログがありません。");
             return;

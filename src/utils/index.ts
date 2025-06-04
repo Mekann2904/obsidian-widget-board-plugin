@@ -1,1 +1,1 @@
-export * from './safeFetch'; 
+export * from './safeFetch'; export * from './logger';

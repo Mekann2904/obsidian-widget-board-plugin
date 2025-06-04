@@ -3,6 +3,7 @@ import { App, MarkdownRenderer, setIcon, Notice, Component } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main'; // main.ts の WidgetBoardPlugin クラスをインポート
 import { renderMarkdownBatchWithCache } from '../utils/renderMarkdownBatch';
+import { debugLog } from '../utils/logger';
 
 // --- メモウィジェット設定インターフェース ---
 export interface MemoWidgetSettings {
@@ -257,7 +258,7 @@ export class MemoWidget implements WidgetImplementation {
         this.isEditingMemo = false; // UIを編集中でなくす
 
         if (newMemo !== (this.currentSettings.memoContent || '')) {
-            console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Content WILL change. Old: "${this.currentSettings.memoContent}", New: "${newMemo}"`);
+            debugLog(this.plugin, `${widgetIdLog} SAVE_MEMO_CHANGES: Content WILL change. Old: "${this.currentSettings.memoContent}", New: "${newMemo}"`);
             this.currentSettings.memoContent = newMemo; // 1. インスタンスの作業用設定を更新
 
             // 2. ★★★ プラグインの永続化データ内の該当ウィジェット設定を「直接」更新 ★★★
@@ -281,7 +282,7 @@ export class MemoWidget implements WidgetImplementation {
                 return;
             }
 
-            console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Targeting board ID '${currentModalBoardId}' in global plugin settings.`);
+            debugLog(this.plugin, `${widgetIdLog} SAVE_MEMO_CHANGES: Targeting board ID '${currentModalBoardId}' in global plugin settings.`);
             const boardInGlobalSettings = this.plugin.settings.boards.find(b => b.id === currentModalBoardId);
 
             if (boardInGlobalSettings) {
@@ -307,7 +308,7 @@ export class MemoWidget implements WidgetImplementation {
             }
 
             if (settingsUpdatedInGlobalStore) {
-                console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Calling this.plugin.saveSettings(currentModalBoardId) to persist all changes.`);
+                debugLog(this.plugin, `${widgetIdLog} SAVE_MEMO_CHANGES: Calling this.plugin.saveSettings(currentModalBoardId) to persist all changes.`);
                 // this.plugin.saveSettings() は this.plugin.settings 全体を保存する
                 await this.plugin.saveSettings(currentModalBoardId); 
                 // new Notice(`メモ「${this.config.title || '無題'}」を保存しました。`); // 保存成功通知

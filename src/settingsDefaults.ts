@@ -66,6 +66,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     userSummaryPromptToday: '',
     userSummaryPromptWeek: '',
     userTweetPrompt: '',
+    debugLogging: false,
 };
 
 // カレンダーウィジェットのデフォルト設定

@@ -15,6 +15,7 @@ import { GeminiProvider } from './llm/gemini/geminiApi';
 import yaml from 'js-yaml';
 import { TweetRepository } from './widgets/tweetWidget/TweetRepository';
 import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
+import { debugLog } from './utils/logger';
 import { Component, TFile } from 'obsidian';
 
 /**
@@ -35,7 +36,7 @@ export default class WidgetBoardPlugin extends Plugin {
      * @override
      */
     async onload(): Promise<void> {
-        console.log('Widget Board Plugin: Loading...');
+        debugLog(this, 'Widget Board Plugin: Loading...');
         this.llmManager = new LLMManager();
         this.llmManager.register(GeminiProvider);
         await this.loadSettings();
@@ -113,7 +114,7 @@ export default class WidgetBoardPlugin extends Plugin {
         );
         // プリウォーム処理を追加
         this.prewarmAllWidgetMarkdownCache();
-        console.log('Widget Board Plugin: Loaded.');
+        debugLog(this, 'Widget Board Plugin: Loaded.');
     }
 
     /**
@@ -125,7 +126,7 @@ export default class WidgetBoardPlugin extends Plugin {
             if (modal.isOpen) modal.close();
         });
         this.widgetBoardModals.clear();
-        console.log('Widget Board Plugin: Unloaded.');
+        debugLog(this, 'Widget Board Plugin: Unloaded.');
     }
 
     /**

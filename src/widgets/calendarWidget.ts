@@ -3,6 +3,7 @@ import { App, setIcon, TFile, Modal, moment } from 'obsidian';
 import { DEFAULT_CALENDAR_SETTINGS } from '../settingsDefaults';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main';
+import { debugLog } from '../utils/logger';
 
 // --- カレンダーウィジェット設定インターフェース ---
 export interface CalendarWidgetSettings {
@@ -198,7 +199,7 @@ export class CalendarWidget implements WidgetImplementation {
         // --- デイリーノートのファイル名をグローバル設定で生成 ---
         const globalFormat = this.plugin?.settings?.calendarDailyNoteFormat || 'YYYY-MM-DD';
         const format = globalFormat;
-        console.log('format:', format, 'dateStr:', dateStr); // デバッグ
+        debugLog(this.plugin, 'calendar format:', format, 'dateStr:', dateStr);
         const [y, m, d] = dateStr.split('-');
         const MM = m.padStart(2, '0');
         const DD = d.padStart(2, '0');
@@ -206,7 +207,7 @@ export class CalendarWidget implements WidgetImplementation {
             .replace(/YYYY/g, y)
             .replace(/MM/g, MM)
             .replace(/DD/g, DD);
-        console.log('置換後 dailyNoteName:', dailyNoteName); // デバッグ
+        debugLog(this.plugin, '置換後 dailyNoteName:', dailyNoteName);
         if (!/\.md$/i.test(dailyNoteName)) dailyNoteName += '.md';
         const dailyNoteBase = dailyNoteName.replace(/\.md$/, '');
 
@@ -219,9 +220,9 @@ export class CalendarWidget implements WidgetImplementation {
             };
         } else {
             // デバッグ用: 一致しなかった場合、全ファイルのbasenameとnameを出力
-            console.log('デイリーノート候補が見つかりません:', { dailyNoteBase, dailyNoteName });
+            debugLog(this.plugin, 'デイリーノート候補が見つかりません:', { dailyNoteBase, dailyNoteName });
             this.app.vault.getFiles().forEach(f => {
-                console.log('ファイル:', { basename: f.basename, name: f.name, extension: f.extension });
+                debugLog(this.plugin, 'ファイル:', { basename: f.basename, name: f.name, extension: f.extension });
             });
             this.selectedDateInfoEl.createEl('div', { text: 'デイリーノートは存在しません。' });
         }

@@ -50,4 +50,5 @@ export interface PluginGlobalSettings {
     userSummaryPromptToday?: string;
     userSummaryPromptWeek?: string;
     userTweetPrompt?: string;
-} 
+    debugLogging?: boolean;
+}

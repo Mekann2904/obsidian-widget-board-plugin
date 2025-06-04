@@ -8,6 +8,7 @@ import { LLMManager } from '../../llm/llmManager';
 import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from '../../llm/gemini/summaryPrompts';
 import { deobfuscate } from '../../utils';
+import { debugLog } from '../../utils/logger';
 import { ReflectionWidgetUI } from './reflectionWidgetUI';
 
 
@@ -65,8 +66,8 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
         return `[${dateStr}] ${p.text}`;
     }).join('\n');
     const promptText = prompt.replace('{posts}', text);
-    console.log('Gemini送信プロンプト:', promptText);
-    console.log('Gemini送信context:', context);
+    debugLog(plugin, 'Gemini送信プロンプト:', promptText);
+    debugLog(plugin, 'Gemini送信context:', context);
     try {
         const result = await plugin.llmManager.generateReplyWithDefault(promptText, context);
         return result;
