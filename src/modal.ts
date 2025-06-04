@@ -741,10 +741,14 @@ export class WidgetBoardModal {
         setTimeout(() => {
             this.onClose();
             const selector = `.widget-board-panel-custom[data-board-id='${this.currentBoardId}']`;
-            document.querySelectorAll(selector).forEach(el => {
-                if (el.parentElement === document.body) {
-                    document.body.removeChild(el);
-                }
+            requestAnimationFrame(() => {
+                const fragment = document.createDocumentFragment();
+                document.querySelectorAll(selector).forEach(el => {
+                    if (el.parentElement === document.body) {
+                        fragment.appendChild(el);
+                    }
+                });
+                // dropping the fragment removes the nodes in batch
             });
         }, 300);
         document.body.classList.remove('wb-modal-open');
