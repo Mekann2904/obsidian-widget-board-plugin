@@ -547,14 +547,16 @@ export class WidgetBoardModal {
                 }
             });
         }, { root: container, rootMargin: '200px' });
+        const fragment = document.createDocumentFragment();
         widgetsToLoad.forEach(widgetConfig => {
             // プレースホルダー生成
             let wrapper: HTMLElement;
             if (this.isEditMode) {
-                wrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
+                wrapper = document.createElement('div');
+                wrapper.addClass('wb-widget-edit-wrapper');
                 wrapper.setAttribute('draggable', 'true');
                 wrapper.dataset.widgetId = widgetConfig.id;
-                // まず削除ボタンを追加
+                // 削除ボタン
                 const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
                 deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-trash"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
                 deleteBtn.onclick = async () => {
@@ -562,19 +564,19 @@ export class WidgetBoardModal {
                         await this.deleteWidget(widgetConfig.id);
                     }
                 };
-                // プレースホルダーを追加
                 const placeholder = wrapper.createDiv({ cls: 'wb-widget-placeholder' });
                 placeholder.setText('Loading...');
-                // ドラッグハンドルを追加
                 const dragHandle = wrapper.createDiv({ cls: 'wb-widget-drag-handle' });
                 dragHandle.innerHTML = `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"svg-icon lucide-grip-vertical\"><circle cx=\"9\" cy=\"12\" r=\"1\"></circle><circle cx=\"9\" cy=\"5\" r=\"1\"></circle><circle cx=\"9\" cy=\"19\" r=\"1\"></circle><circle cx=\"15\" cy=\"12\" r=\"1\"></circle><circle cx=\"15\" cy=\"5\" r=\"1\"></circle><circle cx=\"15\" cy=\"19\" r=\"1\"></circle></svg>`;
             } else {
-                wrapper = container.createDiv();
+                wrapper = document.createElement('div');
                 wrapper.dataset.widgetId = widgetConfig.id;
                 wrapper.innerHTML = '<div class="wb-widget-placeholder">Loading...</div>';
             }
+            fragment.appendChild(wrapper);
             observer.observe(wrapper);
         });
+        container.appendChild(fragment);
         if (this.isEditMode) {
             this.addDragDropListeners(container);
         }
