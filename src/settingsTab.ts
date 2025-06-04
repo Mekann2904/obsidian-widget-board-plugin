@@ -6,7 +6,8 @@ import { DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
 import { WidgetBoardModal } from './modal';
 import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings, PomodoroSoundType } from './widgets/pomodoroWidget';
 import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget';
-import { DEFAULT_CALENDAR_SETTINGS, CalendarWidgetSettings } from './widgets/calendarWidget';
+import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';
+import type { CalendarWidgetSettings } from './widgets/calendarWidget';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from 'src/widgets/tweetWidget/constants';
@@ -519,6 +520,24 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
 
+        // --- カレンダー（グローバル設定） ---
+        const calendarAcc = createAccordion('カレンダー（グローバル設定）', false);
+        new Setting(calendarAcc.body)
+            .setName('デイリーノートファイル名フォーマット（全体）')
+            .setDesc('例: YYYY-MM-DD, YYYY-MM-DD.md など。YYYY, MM, DDが日付に置換されます。カレンダーウィジェットのデフォルト値になります。Moment.jsのフォーマットリファレンス（https://momentjs.com/docs/#/displaying/format/）に準拠。')
+            .addText(text => {
+                text.setPlaceholder('YYYY-MM-DD')
+                    .setValue(this.plugin.settings.calendarDailyNoteFormat || 'YYYY-MM-DD')
+                    .onChange(async (v) => {
+                        // 入力途中は何もしない
+                    });
+                text.inputEl.addEventListener('blur', async () => {
+                    const v = text.inputEl.value.trim();
+                    this.plugin.settings.calendarDailyNoteFormat = v || 'YYYY-MM-DD';
+                    await this.plugin.saveSettings();
+                });
+            });
+
         // --- ボード管理セクション ---
         const boardManagementAcc = createAccordion('ボード管理', false); // デフォルトで閉じる
         this.renderBoardManagementUI(boardManagementAcc.body);
@@ -535,6 +554,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         const boardGroupAcc = createAccordion('ボードグループ管理', false);
         this.boardGroupBodyEl = boardGroupAcc.body;
         this.renderBoardGroupManagementUI(this.boardGroupBodyEl);
+
+
     }
 
     /**
@@ -1053,13 +1074,23 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 }
             } else if (widget.type === 'calendar') {
                 widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings || {}) } as CalendarWidgetSettings;
-                if (Object.keys(widget.settings).length > 0) {
-                    const { body: calendarDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
-                     new Setting(calendarDetailBody)
-                        .setName('（設定項目なし）')
-                        .setDesc('現在、カレンダーウィジェットに個別の設定項目はありません。')
-                        .setDisabled(true);
-                }
+                const { body: calendarDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+                new Setting(calendarDetailBody)
+                    .setName('デイリーノートファイル名フォーマット')
+                    .setDesc('例: YYYY-MM-DD, YYYY-MM-DD.md など。YYYY, MM, DDが日付に置換されます。Moment.jsのフォーマットリファレンス（https://momentjs.com/docs/#/displaying/format/）に準拠。')
+                    .addText(text => {
+                        text.setPlaceholder('YYYY-MM-DD')
+                            .setValue(widget.settings.dailyNoteFormat || 'YYYY-MM-DD')
+                            .onChange(async (v) => {
+                                // 入力途中は何もしない
+                            });
+                        text.inputEl.addEventListener('blur', async () => {
+                            const v = text.inputEl.value.trim();
+                            widget.settings.dailyNoteFormat = v || 'YYYY-MM-DD';
+                            await this.plugin.saveSettings(board.id);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
+                        });
+                    });
 
             } else if (widget.type === 'timer-stopwatch') {
                 widget.settings = { ...DEFAULT_TIMER_STOPWATCH_SETTINGS, ...(widget.settings || {}) };

@@ -56,6 +56,11 @@ export class TweetWidget implements WidgetImplementation {
         this.widgetEl.classList.add('widget', 'tweet-widget');
         this.widgetEl.setAttribute('data-widget-id', config.id);
 
+        // 追加: YAMLで大きさ指定があれば反映
+        const settings = (config.settings || {}) as any;
+        if (settings.width) this.widgetEl.style.width = settings.width;
+        if (settings.height) this.widgetEl.style.height = settings.height;
+
         // デフォルト期間をsettingsから反映
         this.currentPeriod = this.plugin.settings.defaultTweetPeriod || 'all';
         this.customPeriodDays = this.plugin.settings.defaultTweetCustomDays || 1;

@@ -1,4 +1,4 @@
-import { safeFetch } from '../../utils';
+import { safeFetch } from '../../utils/safeFetch';
 import { LLMProvider } from '../llmManager';
 import { geminiPrompt } from './tweetReplyPrompt';
 

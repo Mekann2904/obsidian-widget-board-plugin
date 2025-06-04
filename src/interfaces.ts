@@ -99,4 +99,10 @@ export interface PluginGlobalSettings {
     userSummaryPromptToday?: string; // ユーザカスタムプロンプト（今日用）
     userSummaryPromptWeek?: string;  // ユーザカスタムプロンプト（今週用）
     userTweetPrompt?: string;        // ユーザカスタムプロンプト（つぶやき用）
+    /**
+     * カレンダーウィジェットのデイリーノートファイル名フォーマット（グローバル設定）
+     */
+    calendarDailyNoteFormat?: string;
 }
+
+// 共通型があればここに記載

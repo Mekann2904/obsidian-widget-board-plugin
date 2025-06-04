@@ -4,6 +4,8 @@ import type WidgetBoardPlugin from '../main';
 
 export interface RecentNotesWidgetSettings {
     maxNotes?: number;
+    width?: string;
+    height?: string;
 }
 
 export const DEFAULT_RECENT_NOTES_SETTINGS: RecentNotesWidgetSettings = {
@@ -51,6 +53,11 @@ export class RecentNotesWidget implements WidgetImplementation {
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
         this.renderNotesList(contentEl);
+
+        // 追加: YAMLで大きさ指定があれば反映
+        const settings = (config.settings || {}) as any;
+        if (settings.width) this.widgetEl.style.width = settings.width;
+        if (settings.height) this.widgetEl.style.height = settings.height;
 
         return this.widgetEl;
     }

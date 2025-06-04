@@ -325,7 +325,7 @@ export class MemoWidget implements WidgetImplementation {
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         (this.constructor as typeof MemoWidget).widgetInstances.set(config.id, this);
 
-        this.config = config; // このconfigはモーダルから渡される「コピー」である可能性に注意
+        this.config = config;
         this.app = app;
         this.plugin = plugin;
         
@@ -383,6 +383,11 @@ export class MemoWidget implements WidgetImplementation {
         this.isEditingMemo = false;
         this.scheduleRender(); // 初期UI状態設定（これがrenderMemoとapplyContainerHeightStylesを呼ぶ）
         
+        // 追加: YAMLで大きさ指定があれば反映
+        const settings = (config.settings || {}) as any;
+        if (settings.width) this.widgetEl.style.width = settings.width;
+        if (settings.height) this.widgetEl.style.height = settings.height;
+
         return this.widgetEl;
     }
 

@@ -357,6 +357,9 @@ DOM操作やUI設計全般において、パフォーマンス劣化を防ぐた
 - ループ内でのDOM操作は最小限にし、可能な限りバッチ化・差分更新を徹底する。
 - 新規ウィジェットや大規模リスト追加時は、containment・仮想リスト・バッチ化の適用を必ず検討する。
 - パフォーマンス計測（Chrome DevToolsのPerformanceタブ等）でreflowコストを定期的に確認する。
+- **YAMLでの大きさ指定（width/height）もバッチ化・差分更新の対象**
+  各ウィジェットの`create`で`settings.width`/`settings.height`を直接styleに反映する場合も、
+  ループ内でのDOM操作やreflow波及に注意し、必要に応じてDocumentFragmentやcontain等を併用してください。
 
 #### 注意点
 - 既存ルールを逸脱する場合は必ず理由とパフォーマンス検証を行う。
