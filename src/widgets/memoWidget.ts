@@ -81,6 +81,7 @@ export class MemoWidget implements WidgetImplementation {
 
         if (trimmedContent && !this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'block';
+            // キャッシュがなければここで生成（renderMarkdownBatchWithCacheは内部でキャッシュ判定）
             await renderMarkdownBatchWithCache(trimmedContent, this.memoDisplayEl, this.config.id, new Component());
         } else if (!this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'none';
