@@ -191,12 +191,22 @@ export class MemoWidget implements WidgetImplementation {
         }
         // メモ内容の差分描画
         if (!this.isEditingMemo && prev.memoContent !== this.currentSettings.memoContent) {
-            this.renderMemo(this.currentSettings.memoContent).then(() => {
-                this.applyContainerHeightStyles();
-            }).catch(error => {
-                console.error(`[${this.config.id}] Error rendering memo in updateMemoEditUI:`, error);
-                this.applyContainerHeightStyles();
-            });
+            // container.empty()の代わりに親ごとreplace
+            const parent = this.memoDisplayEl.parentElement;
+            if (parent) {
+                const newDisplayEl = this.memoDisplayEl.cloneNode(false) as HTMLElement;
+                parent.replaceChild(newDisplayEl, this.memoDisplayEl);
+                this.memoDisplayEl = newDisplayEl;
+            }
+            // Markdown描画をsetTimeoutで遅延
+            setTimeout(() => {
+                this.renderMemo(this.currentSettings.memoContent).then(() => {
+                    this.applyContainerHeightStyles();
+                }).catch(error => {
+                    console.error(`[${this.config.id}] Error rendering memo in updateMemoEditUI:`, error);
+                    this.applyContainerHeightStyles();
+                });
+            }, 0);
             prev.memoContent = this.currentSettings.memoContent;
         }
         // 編集モード時のテキストエリア内容

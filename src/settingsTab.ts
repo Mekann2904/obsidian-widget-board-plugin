@@ -630,6 +630,12 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
      * @param containerEl 描画先要素
      */
     private renderSelectedBoardSettingsUI(containerEl: HTMLElement) {
+        const parent = containerEl.parentElement;
+        if (parent) {
+            const newContainer = containerEl.cloneNode(false) as HTMLElement;
+            parent.replaceChild(newContainer, containerEl);
+            containerEl = newContainer;
+        }
         containerEl.empty();
         if (!this.selectedBoardId) {
             const msg = this.plugin.settings.boards.length === 0 ? '利用可能なボードがありません。「ボード管理」から新しいボードを追加してください。' : '設定するボードを「ボード管理」から選択してください。';

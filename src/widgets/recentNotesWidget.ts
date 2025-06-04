@@ -66,7 +66,12 @@ export class RecentNotesWidget implements WidgetImplementation {
      * ノートリストを描画（仮想リスト対応）
      */
     private renderNotesList(container: HTMLElement) {
-        container.empty();
+        const parent = container.parentElement;
+        if (parent) {
+            const newContainer = container.cloneNode(false) as HTMLElement;
+            parent.replaceChild(newContainer, container);
+            container = newContainer;
+        }
         const files = this.app.vault.getFiles()
             .filter(f => f.extension === 'md')
             .sort((a, b) => b.stat.mtime - a.stat.mtime)

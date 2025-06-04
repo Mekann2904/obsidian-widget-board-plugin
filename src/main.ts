@@ -160,7 +160,7 @@ export default class WidgetBoardPlugin extends Plugin {
                 // isOpen=false だがMapに残っている場合は削除
                 this.widgetBoardModals.delete(boardId);
                 if (modal.modalEl && modal.modalEl.parentElement === document.body) {
-                    document.body.removeChild(modal.modalEl);
+                    modal.modalEl.parentElement.removeChild(modal.modalEl);
                 }
             }
         }

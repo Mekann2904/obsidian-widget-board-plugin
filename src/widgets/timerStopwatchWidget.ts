@@ -168,9 +168,18 @@ export class TimerStopwatchWidget implements WidgetImplementation {
     private static ensureGlobalInterval() {
         if (this.globalIntervalId == null) {
             this.globalIntervalId = window.setInterval(() => {
+                let anyRunning = false;
                 this.widgetStates.forEach((state, id) => {
-                    if (state.running) this.tick(id);
+                    if (state.running) {
+                        anyRunning = true;
+                        this.tick(id);
+                    }
                 });
+                // すべて停止中ならintervalを解除
+                if (!anyRunning && this.globalIntervalId != null) {
+                    clearInterval(this.globalIntervalId);
+                    this.globalIntervalId = null;
+                }
             }, 250);
         }
     }
@@ -420,8 +429,16 @@ export class TimerStopwatchWidget implements WidgetImplementation {
     private handleToggleStartPause() {
         const state = this.getInternalState();
         if (!state) return;
-        if (state.running) TimerStopwatchWidget.stopGlobalTimer(this.config.id);
-        else TimerStopwatchWidget.startGlobalTimer(this.config.id);
+        if (state.running) {
+            TimerStopwatchWidget.stopGlobalTimer(this.config.id);
+        } else {
+            // タイマー終了後（0秒）なら初期値にリセットしてからスタート
+            if (state.mode === 'timer' && state.remainingSeconds === 0) {
+                state.remainingSeconds = state.initialTimerSeconds;
+                TimerStopwatchWidget.widgetStates.set(this.config.id, state);
+            }
+            TimerStopwatchWidget.startGlobalTimer(this.config.id);
+        }
     }
 
     private handleReset() { TimerStopwatchWidget.resetGlobalTimer(this.config.id); }
