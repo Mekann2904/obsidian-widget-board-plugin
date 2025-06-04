@@ -1,15 +1,14 @@
 // src/widgets/calendarWidget.ts
-import { App, setIcon } from 'obsidian';
+import { App, setIcon, TFile, Modal, moment } from 'obsidian';
+import { DEFAULT_CALENDAR_SETTINGS } from '../settingsDefaults';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main';
 
 // --- カレンダーウィジェット設定インターフェース ---
 export interface CalendarWidgetSettings {
+    dailyNoteFormat?: string; 
     // 将来的に開始曜日などを追加可能
 }
-
-// --- カレンダーウィジェットデフォルト設定 ---
-export const DEFAULT_CALENDAR_SETTINGS: CalendarWidgetSettings = {};
 
 /**
  * カレンダーウィジェット
@@ -24,12 +23,13 @@ export class CalendarWidget implements WidgetImplementation {
     private currentSettings!: CalendarWidgetSettings;
     private currentDate: Date = new Date();
     private calendarContentEl!: HTMLElement;
+    private selectedDateInfoEl: HTMLElement | null = null;
 
     /**
      * インスタンス初期化
      */
     constructor() {
-        // ... 既存コード ...
+        
     }
 
     /**
@@ -72,6 +72,7 @@ export class CalendarWidget implements WidgetImplementation {
     private renderCalendar() {
         if (!this.calendarContentEl) return;
         this.calendarContentEl.empty();
+        this.selectedDateInfoEl = null;
 
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
@@ -110,19 +111,40 @@ export class CalendarWidget implements WidgetImplementation {
         const today = new Date();
         today.setHours(0,0,0,0); // 時間情報をリセットして日付のみで比較
 
+        // --- 追加: 選択日情報表示エリア ---
+        this.selectedDateInfoEl = this.calendarContentEl.createDiv({ cls: 'calendar-selected-date-info' });
+
         for (let i = 0; i < 6; i++) { // 最大6週間表示
             const tr = tbody.createEl('tr');
             const tdFragment = document.createDocumentFragment();
             for (let j = 0; j < 7; j++) {
-                const td = tr.createEl('td', { text: String(startDate.getDate()) });
-                if (startDate.getMonth() !== month) {
+                const cellDate = new Date(startDate);
+                const td = tr.createEl('td', { text: String(cellDate.getDate()) });
+                // data-date属性を付与
+                const y = cellDate.getFullYear();
+                const m = cellDate.getMonth() + 1;
+                const d = cellDate.getDate();
+                const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                td.setAttr('data-date', dateStr);
+                if (cellDate.getMonth() !== month) {
                     td.addClass('calendar-other-month');
                 }
-                if (startDate.getFullYear() === today.getFullYear() &&
-                    startDate.getMonth() === today.getMonth() &&
-                    startDate.getDate() === today.getDate()) {
+                if (cellDate.getFullYear() === today.getFullYear() &&
+                    cellDate.getMonth() === today.getMonth() &&
+                    cellDate.getDate() === today.getDate()) {
                     td.addClass('calendar-today');
                 }
+                // --- クリックイベント追加 ---
+                td.addEventListener('click', () => {
+                    if (cellDate.getMonth() !== month) {
+                        // 他の月なら、その月にジャンプして再描画し、該当日を選択
+                        this.currentDate = new Date(cellDate);
+                        this.renderCalendar();
+                        setTimeout(() => this.showNotesForDate(dateStr), 0);
+                    } else {
+                        this.showNotesForDate(dateStr);
+                    }
+                });
                 startDate.setDate(startDate.getDate() + 1);
                 tdFragment.appendChild(td);
             }
@@ -163,6 +185,69 @@ export class CalendarWidget implements WidgetImplementation {
         }
         // カレンダーの表示内容に影響する設定が追加されたら、ここで再描画
         this.renderCalendar();
+    }
+
+    /**
+     * 指定日付のデイリーノートとノート一覧を表示
+     */
+    private showNotesForDate(dateStr: string) {
+        if (!this.selectedDateInfoEl) return;
+        this.selectedDateInfoEl.empty();
+        this.selectedDateInfoEl.createEl('h5', { text: `${dateStr} のノート一覧` });
+
+        // --- デイリーノートのファイル名をグローバル設定で生成 ---
+        const globalFormat = this.plugin?.settings?.calendarDailyNoteFormat || 'YYYY-MM-DD';
+        const format = globalFormat;
+        console.log('format:', format, 'dateStr:', dateStr); // デバッグ
+        const [y, m, d] = dateStr.split('-');
+        const MM = m.padStart(2, '0');
+        const DD = d.padStart(2, '0');
+        let dailyNoteName = format.toUpperCase()
+            .replace(/YYYY/g, y)
+            .replace(/MM/g, MM)
+            .replace(/DD/g, DD);
+        console.log('置換後 dailyNoteName:', dailyNoteName); // デバッグ
+        if (!/\.md$/i.test(dailyNoteName)) dailyNoteName += '.md';
+        const dailyNoteBase = dailyNoteName.replace(/\.md$/, '');
+
+        // デイリーノートを探す
+        const dailyNote = this.app.vault.getFiles().find(f => f.extension === 'md' && (f.basename === dailyNoteBase || f.name === dailyNoteName));
+        if (dailyNote) {
+            const dailyBtn = this.selectedDateInfoEl.createEl('button', { text: 'デイリーノートを開く' });
+            dailyBtn.onclick = () => {
+                this.app.workspace.openLinkText(dailyNote.path, '', false);
+            };
+        } else {
+            // デバッグ用: 一致しなかった場合、全ファイルのbasenameとnameを出力
+            console.log('デイリーノート候補が見つかりません:', { dailyNoteBase, dailyNoteName });
+            this.app.vault.getFiles().forEach(f => {
+                console.log('ファイル:', { basename: f.basename, name: f.name, extension: f.extension });
+            });
+            this.selectedDateInfoEl.createEl('div', { text: 'デイリーノートは存在しません。' });
+        }
+
+        // その日付で作成・編集されたノート一覧
+        const files = this.app.vault.getFiles().filter(f => {
+            if (f.extension !== 'md') return false;
+            const c = moment(f.stat.ctime).format('YYYY-MM-DD');
+            const m = moment(f.stat.mtime).format('YYYY-MM-DD');
+            return c === dateStr || m === dateStr;
+        });
+        if (files.length > 0) {
+            const list = this.selectedDateInfoEl.createEl('ul');
+            files.forEach(f => {
+                const li = list.createEl('li');
+                const a = li.createEl('a', { text: f.basename });
+                a.href = '#';
+                a.onclick = (e) => {
+                    e.preventDefault();
+                    this.app.workspace.openLinkText(f.path, '', false);
+                };
+                li.createSpan({ text: ` (${moment(f.stat.mtime).format('YYYY/MM/DD HH:mm')})` });
+            });
+        } else {
+            this.selectedDateInfoEl.createEl('div', { text: 'この日に作成・編集されたノートはありません。' });
+        }
     }
 
     /**

@@ -67,3 +67,8 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     userSummaryPromptWeek: '',
     userTweetPrompt: '',
 };
+
+// カレンダーウィジェットのデフォルト設定
+export const DEFAULT_CALENDAR_SETTINGS = {
+    dailyNoteFormat: 'YYYY-MM-DD',
+};

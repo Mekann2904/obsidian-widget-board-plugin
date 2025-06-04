@@ -7,7 +7,7 @@ import { WidgetBoardSettingTab } from './settingsTab';
 import { registeredWidgetImplementations } from './widgetRegistry';
 import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoroWidget';
 import { DEFAULT_MEMO_SETTINGS } from './widgets/memoWidget';
-import { DEFAULT_CALENDAR_SETTINGS } from './widgets/calendarWidget';
+import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
 import cloneDeep from 'lodash.clonedeep';
 import { LLMManager } from './llm/llmManager';
