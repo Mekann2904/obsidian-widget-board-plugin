@@ -1,5 +1,5 @@
 // src/modal.ts
-import { App, FuzzySuggestModal, Notice } from 'obsidian';
+import { App, FuzzySuggestModal, Notice, setIcon } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import { registeredWidgetImplementations } from './widgetRegistry';
 import type { WidgetImplementation, BoardConfiguration, WidgetConfig } from './interfaces';
@@ -186,11 +186,11 @@ export class WidgetBoardModal {
         actionsWrapper.style.alignItems = 'center';
 
         const settingsBtn = actionsWrapper.createEl('button', { cls: 'wb-panel-settings-toggle' });
-        settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2l-.15.08a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1 0-2l.15-.08a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        setIcon(settingsBtn, 'settings');
         settingsBtn.setAttribute('aria-label', '設定を開く');
 
         const closeBtn = actionsWrapper.createEl('button', { cls: 'wb-panel-close-btn' });
-        closeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+        setIcon(closeBtn, 'x');
         closeBtn.setAttribute('aria-label', 'ボードを閉じる');
         closeBtn.onclick = () => this.close();
 
@@ -514,10 +514,10 @@ export class WidgetBoardModal {
                                 const widgetInstance = new WidgetClass();
                                 const widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
                                 if (this.isEditMode) {
-                                    wrapper.innerHTML = '';
+                                    wrapper.empty();
                                     // ここで削除ボタンを再度追加
                                     const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
-                                    deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-trash"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+                                    setIcon(deleteBtn, 'trash');
                                     deleteBtn.onclick = async () => {
                                         if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
                                             await this.deleteWidget(widgetConfig.id);
@@ -531,7 +531,11 @@ export class WidgetBoardModal {
                                 wrapper.dataset.loaded = '1';
                                 obs.unobserve(wrapper);
                             } catch (e: any) {
-                                wrapper.innerHTML = `<div class="widget widget-error"><h4>${widgetConfig.title || '(名称未設定)'} (ロードエラー)</h4><p>このウィジェットの読み込み中にエラーが発生しました。</p><p>${e.message || ''}</p></div>`;
+                                wrapper.empty();
+                                const errDiv = wrapper.createDiv({ cls: 'widget widget-error' });
+                                errDiv.createEl('h4', { text: `${widgetConfig.title || '(名称未設定)'} (ロードエラー)` });
+                                errDiv.createEl('p', { text: 'このウィジェットの読み込み中にエラーが発生しました。' });
+                                errDiv.createEl('p', { text: e.message || '' });
                                 obs.unobserve(wrapper);
                             }
                         };
@@ -541,7 +545,10 @@ export class WidgetBoardModal {
                             createWidget();
                         }
                     } else {
-                        wrapper.innerHTML = `<div class="widget widget-unknown"><h4>${widgetConfig.title || '(名称未設定)'} (不明な種類)</h4><p>ウィジェットの種類 '${widgetConfig.type}' は登録されていません。</p></div>`;
+                        wrapper.empty();
+                        const unknownDiv = wrapper.createDiv({ cls: 'widget widget-unknown' });
+                        unknownDiv.createEl('h4', { text: `${widgetConfig.title || '(名称未設定)'} (不明な種類)` });
+                        unknownDiv.createEl('p', { text: `ウィジェットの種類 '${widgetConfig.type}' は登録されていません。` });
                         obs.unobserve(wrapper);
                     }
                 }
@@ -556,7 +563,7 @@ export class WidgetBoardModal {
                 wrapper.dataset.widgetId = widgetConfig.id;
                 // まず削除ボタンを追加
                 const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
-                deleteBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svg-icon lucide-trash"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>`;
+                setIcon(deleteBtn, 'trash');
                 deleteBtn.onclick = async () => {
                     if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
                         await this.deleteWidget(widgetConfig.id);
@@ -567,11 +574,12 @@ export class WidgetBoardModal {
                 placeholder.setText('Loading...');
                 // ドラッグハンドルを追加
                 const dragHandle = wrapper.createDiv({ cls: 'wb-widget-drag-handle' });
-                dragHandle.innerHTML = `<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"svg-icon lucide-grip-vertical\"><circle cx=\"9\" cy=\"12\" r=\"1\"></circle><circle cx=\"9\" cy=\"5\" r=\"1\"></circle><circle cx=\"9\" cy=\"19\" r=\"1\"></circle><circle cx=\"15\" cy=\"12\" r=\"1\"></circle><circle cx=\"15\" cy=\"5\" r=\"1\"></circle><circle cx=\"15\" cy=\"19\" r=\"1\"></circle></svg>`;
+                setIcon(dragHandle, 'grip-vertical');
             } else {
                 wrapper = container.createDiv();
                 wrapper.dataset.widgetId = widgetConfig.id;
-                wrapper.innerHTML = '<div class="wb-widget-placeholder">Loading...</div>';
+                wrapper.empty();
+                wrapper.createDiv({ cls: 'wb-widget-placeholder', text: 'Loading...' });
             }
             observer.observe(wrapper);
         });

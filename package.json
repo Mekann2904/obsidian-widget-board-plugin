@@ -1,7 +1,7 @@
 {
 	"name": "obsidian-widget-board-plugin",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+        "description": "Create customizable widget boards inside Obsidian.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
@@ -9,7 +9,7 @@
 		"version": "node version-bump.mjs && git add manifest.json versions.json"
 	},
 	"keywords": [],
-	"author": "",
+        "author": "Mekann",
 	"license": "MIT",
 	"devDependencies": {
 		"@types/lodash": "^4.17.17",
