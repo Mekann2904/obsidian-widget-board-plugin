@@ -49,6 +49,38 @@ export async function renderMarkdownBatch(
   container.appendChild(frag);
 }
 
+// LRUCacheクラスの実装
+class LRUCache<K, V> {
+  private maxSize: number;
+  private map: Map<K, V>;
+
+  constructor(maxSize: number) {
+    this.maxSize = maxSize;
+    this.map = new Map();
+  }
+
+  get(key: K): V | undefined {
+    if (!this.map.has(key)) return undefined;
+    const value = this.map.get(key)!;
+    this.map.delete(key);
+    this.map.set(key, value);
+    return value;
+  }
+
+  set(key: K, value: V) {
+    if (this.map.has(key)) {
+      this.map.delete(key);
+    } else if (this.map.size >= this.maxSize) {
+      const oldestKey = this.map.keys().next().value;
+      this.map.delete(oldestKey);
+    }
+    this.map.set(key, value);
+  }
+}
+
+// 最大100件までキャッシュ
+const markdownCache = new LRUCache<string, DocumentFragment>(1000);
+
 /**
  * renderMarkdownBatchWithCache
  *
@@ -60,17 +92,16 @@ export async function renderMarkdownBatch(
  * @param sourcePath    レンダリングルールを適用するためのファイルパスまたはTFile
  * @param component     ObsidianのComponentインスタンス（new Component() で渡す）
  */
-const markdownCache = new Map<string, DocumentFragment>();
-
 export async function renderMarkdownBatchWithCache(
   markdownText: string,
   container: HTMLElement,
   sourcePath: string | TFile,
   component: Component
 ) {
-  if (markdownCache.has(markdownText)) {
-    const cached = markdownCache.get(markdownText)!.cloneNode(true) as DocumentFragment;
-    container.appendChild(cached);
+  const cached = markdownCache.get(markdownText);
+  if (cached) {
+    const clone = cached.cloneNode(true) as DocumentFragment;
+    container.appendChild(clone);
     return;
   }
   // 通常のバッチ描画

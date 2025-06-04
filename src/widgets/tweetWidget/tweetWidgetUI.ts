@@ -510,23 +510,24 @@ export class TweetWidgetUI {
     }
 
     private renderPostList(listEl: HTMLElement): void {
-        listEl.empty();
-        
+        const parent = listEl.parentElement;
+        if (parent) {
+            const newListEl = listEl.cloneNode(false) as HTMLElement;
+            parent.replaceChild(newListEl, listEl);
+            listEl = newListEl;
+        }
         if (this.widget.detailPostId) {
             this.renderDetailView(listEl, this.widget.detailPostId);
             return;
         }
-
         const filteredPosts = this.widget.getFilteredPosts();
         if (filteredPosts.length === 0) {
             listEl.createEl('div', { cls: 'tweet-empty-notice', text: 'まだつぶやきがありません。' });
             return;
         }
-
         const rootItems = filteredPosts
             .filter(t => !t.threadId || !this.postsById.has(t.threadId))
             .sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
-
         const fragment = document.createDocumentFragment();
         rootItems.forEach(post => {
             const wrapper = document.createElement('div');

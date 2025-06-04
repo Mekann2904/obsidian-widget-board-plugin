@@ -13,6 +13,9 @@ import cloneDeep from 'lodash.clonedeep';
 import { LLMManager } from './llm/llmManager';
 import { GeminiProvider } from './llm/gemini/geminiApi';
 import yaml from 'js-yaml';
+import { TweetRepository } from './widgets/tweetWidget/TweetRepository';
+import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
+import { Component, TFile } from 'obsidian';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -108,6 +111,8 @@ export default class WidgetBoardPlugin extends Plugin {
                 }
             }
         );
+        // プリウォーム処理を追加
+        this.prewarmAllWidgetMarkdownCache();
         console.log('Widget Board Plugin: Loaded.');
     }
 
@@ -155,7 +160,7 @@ export default class WidgetBoardPlugin extends Plugin {
                 // isOpen=false だがMapに残っている場合は削除
                 this.widgetBoardModals.delete(boardId);
                 if (modal.modalEl && modal.modalEl.parentElement === document.body) {
-                    document.body.removeChild(modal.modalEl);
+                    modal.modalEl.parentElement.removeChild(modal.modalEl);
                 }
             }
         }
@@ -342,6 +347,102 @@ export default class WidgetBoardPlugin extends Plugin {
         this.widgetBoardModals.forEach(modal => {
             if (modal.isOpen) modal.close();
         });
+    }
+
+    /**
+     * すべてのウィジェットのMarkdownをプリウォームしてキャッシュを作成
+     */
+    private async prewarmAllWidgetMarkdownCache() {
+        try {
+            new Notice('キャッシュ中…');
+            // --- TweetWidget ---
+            const dbPath = this.settings.tweetDbLocation === 'custom' && this.settings.tweetDbCustomPath
+                ? this.settings.tweetDbCustomPath : 'tweets.json';
+            const repo = new TweetRepository(this.app, dbPath);
+            const tweetSettings = await repo.load();
+            const tweetPosts = tweetSettings.posts || [];
+
+            // --- MemoWidget, FileViewWidget ---
+            const memoContents: string[] = [];
+            const fileViewFiles: string[] = [];
+            for (const board of this.settings.boards) {
+                for (const widget of board.widgets) {
+                    if (widget.type === 'memo' && widget.settings?.memoContent) {
+                        // 今後ファイルや外部データ参照があればここで取得してpushする
+                        memoContents.push(widget.settings.memoContent);
+                    }
+                    if (widget.type === 'file-view-widget' && widget.settings?.fileName) {
+                        fileViewFiles.push(widget.settings.fileName);
+                    }
+                }
+            }
+
+            // --- ReflectionWidget: AI要約（今日・今週） ---
+            async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: any): Promise<string | null> {
+                const path = 'data.json';
+                try {
+                    const raw = await app.vault.adapter.read(path);
+                    const data = JSON.parse(raw);
+                    if (data.reflectionSummaries && data.reflectionSummaries[type]?.date === dateKey) {
+                        return data.reflectionSummaries[type].summary;
+                    }
+                } catch {}
+                return null;
+            }
+            const todayKey = (new Date()).toISOString().slice(0, 10);
+            const now = new Date();
+            const day = now.getDay();
+            const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - day));
+            const weekKey = weekEnd.toISOString().slice(0, 10);
+            const todaySummary = await loadReflectionSummary('today', todayKey, this.app);
+            const weekSummary = await loadReflectionSummary('week', weekKey, this.app);
+
+            // プリウォーム対象をまとめてバッチ処理
+            let tweetIndex = 0, memoIndex = 0, fileIndex = 0;
+            let reflectionIndex = 0;
+            const reflectionSummaries = [todaySummary, weekSummary].filter(Boolean) as string[];
+            const batchSize = 10;
+            const processBatch = async () => {
+                // TweetWidget
+                const tweetEnd = Math.min(tweetIndex + batchSize, tweetPosts.length);
+                for (; tweetIndex < tweetEnd; tweetIndex++) {
+                    const post = tweetPosts[tweetIndex];
+                    await renderMarkdownBatchWithCache(post.text, document.createElement('div'), '', new Component());
+                }
+                // MemoWidget
+                const memoEnd = Math.min(memoIndex + batchSize, memoContents.length);
+                for (; memoIndex < memoEnd; memoIndex++) {
+                    await renderMarkdownBatchWithCache(memoContents[memoIndex], document.createElement('div'), '', new Component());
+                }
+                // FileViewWidget
+                const fileEnd = Math.min(fileIndex + batchSize, fileViewFiles.length);
+                for (; fileIndex < fileEnd; fileIndex++) {
+                    const file = this.app.vault.getAbstractFileByPath(fileViewFiles[fileIndex]);
+                    if (file && file instanceof TFile) {
+                        const content = await this.app.vault.read(file);
+                        await renderMarkdownBatchWithCache(content, document.createElement('div'), file.path, new Component());
+                    }
+                }
+                // ReflectionWidget AI要約
+                const reflectionEnd = Math.min(reflectionIndex + batchSize, reflectionSummaries.length);
+                for (; reflectionIndex < reflectionEnd; reflectionIndex++) {
+                    await renderMarkdownBatchWithCache(reflectionSummaries[reflectionIndex], document.createElement('div'), '', new Component());
+                }
+                if (
+                    tweetIndex < tweetPosts.length ||
+                    memoIndex < memoContents.length ||
+                    fileIndex < fileViewFiles.length ||
+                    reflectionIndex < reflectionSummaries.length
+                ) {
+                    setTimeout(processBatch, 0);
+                } else {
+                    new Notice('キャッシュ完了');
+                }
+            };
+            processBatch();
+        } catch (e) {
+            console.error('プリウォーム中にエラー:', e);
+        }
     }
 }
 

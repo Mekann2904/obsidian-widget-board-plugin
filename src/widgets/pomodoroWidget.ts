@@ -146,9 +146,18 @@ export class PomodoroWidget implements WidgetImplementation {
     private static ensureGlobalInterval() {
         if (this.globalIntervalId == null) {
             this.globalIntervalId = window.setInterval(() => {
+                let anyRunning = false;
                 this.widgetStates.forEach((state, id) => {
-                    if (state && state.isRunning) this.tick(id);
+                    if (state && state.isRunning) {
+                        anyRunning = true;
+                        this.tick(id);
+                    }
                 });
+                // すべて停止中ならintervalを解除
+                if (!anyRunning && this.globalIntervalId != null) {
+                    clearInterval(this.globalIntervalId);
+                    this.globalIntervalId = null;
+                }
             }, 1000);
         }
     }

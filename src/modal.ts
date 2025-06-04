@@ -145,6 +145,12 @@ export class WidgetBoardModal {
         if (this.isOpen) return;
         document.body.appendChild(this.modalEl);
         this.onOpen();
+        // アニメーションクラスの付与だけをrAFで行う
+        this.modalEl.classList.remove('is-open');
+        void this.modalEl.offsetWidth;
+        requestAnimationFrame(() => {
+            this.modalEl.classList.add('is-open');
+        });
     }
 
     /**
@@ -195,17 +201,9 @@ export class WidgetBoardModal {
         let isResizingRight = false;
         let startXRight = 0;
         let startWidthRight = 0;
-        resizeHandleRight.addEventListener('mousedown', (e) => {
-            isResizingRight = true;
-            startXRight = e.clientX;
-            startWidthRight = modalEl.offsetWidth;
-            document.body.style.cursor = 'ew-resize';
-            modalEl.classList.add('no-transition');
-            e.preventDefault();
-        });
         let scheduledResizeRight = false;
         let pendingWidthRight: number | null = null;
-        document.addEventListener('mousemove', (e) => {
+        const onMouseMoveRight = (e: MouseEvent) => {
             if (!isResizingRight) return;
             const dx = e.clientX - startXRight;
             const newWidth = Math.max(200, startWidthRight + dx);
@@ -219,21 +217,33 @@ export class WidgetBoardModal {
                     scheduledResizeRight = false;
                 });
             }
-        });
-        document.addEventListener('mouseup', async (e) => {
+        };
+        const onMouseUpRight = async (e: MouseEvent) => {
             if (!isResizingRight) return;
             isResizingRight = false;
             document.body.style.cursor = '';
             modalEl.classList.remove('no-transition');
             const finalWidthPx = modalEl.offsetWidth;
-            const vw = (finalWidthPx / window.innerWidth) * 100;
+            const vw = finalWidthPx / window.innerWidth * 100;
             this.currentCustomWidth = vw;
             this.currentBoardConfig.customWidth = vw;
-            const boardToUpdate = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
+            const boardToUpdate = this.plugin.settings.boards.find((b) => b.id === this.currentBoardId);
             if (boardToUpdate) {
                 boardToUpdate.customWidth = vw;
                 await this.plugin.saveSettings(this.currentBoardId);
             }
+            document.removeEventListener('mousemove', onMouseMoveRight);
+            document.removeEventListener('mouseup', onMouseUpRight);
+        };
+        resizeHandleRight.addEventListener('mousedown', (e: MouseEvent) => {
+            isResizingRight = true;
+            startXRight = e.clientX;
+            startWidthRight = modalEl.offsetWidth;
+            document.body.style.cursor = 'ew-resize';
+            modalEl.classList.add('no-transition');
+            document.addEventListener('mousemove', onMouseMoveRight);
+            document.addEventListener('mouseup', onMouseUpRight);
+            e.preventDefault();
         });
 
         // --- リサイズハンドル（左端） ---
@@ -243,17 +253,9 @@ export class WidgetBoardModal {
         let isResizingLeft = false;
         let startXLeft = 0;
         let startWidthLeft = 0;
-        resizeHandleLeft.addEventListener('mousedown', (e) => {
-            isResizingLeft = true;
-            startXLeft = e.clientX;
-            startWidthLeft = modalEl.offsetWidth;
-            document.body.style.cursor = 'ew-resize';
-            modalEl.classList.add('no-transition');
-            e.preventDefault();
-        });
         let scheduledResizeLeft = false;
         let pendingWidthLeft: number | null = null;
-        document.addEventListener('mousemove', (e) => {
+        const onMouseMoveLeft = (e: MouseEvent) => {
             if (!isResizingLeft) return;
             const dx = e.clientX - startXLeft;
             const newWidth = Math.max(200, startWidthLeft - dx);
@@ -267,8 +269,8 @@ export class WidgetBoardModal {
                     scheduledResizeLeft = false;
                 });
             }
-        });
-        document.addEventListener('mouseup', async (e) => {
+        };
+        const onMouseUpLeft = async (e: MouseEvent) => {
             if (!isResizingLeft) return;
             isResizingLeft = false;
             document.body.style.cursor = '';
@@ -282,6 +284,18 @@ export class WidgetBoardModal {
                 boardToUpdate.customWidth = vw;
                 await this.plugin.saveSettings(this.currentBoardId);
             }
+            document.removeEventListener('mousemove', onMouseMoveLeft);
+            document.removeEventListener('mouseup', onMouseUpLeft);
+        };
+        resizeHandleLeft.addEventListener('mousedown', (e) => {
+            isResizingLeft = true;
+            startXLeft = e.clientX;
+            startWidthLeft = modalEl.offsetWidth;
+            document.body.style.cursor = 'ew-resize';
+            modalEl.classList.add('no-transition');
+            e.preventDefault();
+            document.addEventListener('mousemove', onMouseMoveLeft);
+            document.addEventListener('mouseup', onMouseUpLeft);
         });
 
         // --- 統合された設定パネル (初期状態は非表示) ---
@@ -425,7 +439,7 @@ export class WidgetBoardModal {
         const widgetContainerEl = contentEl.createDiv({ cls: 'wb-widget-container' });
         this.loadWidgets(widgetContainerEl);
 
-        this.uiWidgetReferences.forEach(widgetInstance => {
+        this.uiWidgetReferences.forEach((widgetInstance) => {
             if (typeof (widgetInstance as any).handleShow === 'function') {
                 (widgetInstance as any).handleShow();
             }
@@ -712,8 +726,9 @@ export class WidgetBoardModal {
      * モーダルを閉じる
      */
     close() {
-        const { modalEl } = this;
+        if (this.isClosing || !this.isOpen) return; // 多重実行防止
         this.isClosing = true;
+        const { modalEl } = this;
         if (this.plugin.widgetBoardModals && this.plugin.widgetBoardModals.has(this.currentBoardId)) {
             this.plugin.widgetBoardModals.delete(this.currentBoardId);
         }
@@ -742,7 +757,7 @@ export class WidgetBoardModal {
         this.isOpen = false;
         this.isClosing = false;
         this.uiWidgetReferences.forEach(widgetInstance => {
-            if (typeof (widgetInstance as any).handleHide === 'function') {
+            if (typeof (widgetInstance as any).handleHide === "function") {
                 (widgetInstance as any).handleHide();
             }
         });

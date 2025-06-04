@@ -107,7 +107,12 @@ export class ReflectionWidgetUI {
     public render() {
         // 初回のみ主要DOM生成
         if (!this.contentEl) {
-            this.container.empty();
+            const parent = this.container.parentElement;
+            if (parent) {
+                const newContainer = this.container.cloneNode(false) as HTMLElement;
+                parent.replaceChild(newContainer, this.container);
+                this.container = newContainer;
+            }
             // Chart.jsのインスタンスがあれば破棄
             if (this.chart) {
                 this.chart.destroy();
@@ -286,7 +291,12 @@ export class ReflectionWidgetUI {
                                     animation: false, // アニメーション無効化
                                     plugins: { legend: { display: false } },
                                     scales: {
-                                        x: { grid: { display: false } },
+                                        x: {
+                                            grid: { display: false },
+                                            ticks: {
+                                                maxTicksLimit: 5 // ★ラベル数を最大5件に制限
+                                            }
+                                        },
                                         y: { beginAtZero: true, grid: { color: '#eee' } }
                                     }
                                 }
