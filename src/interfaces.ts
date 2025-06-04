@@ -100,3 +100,5 @@ export interface PluginGlobalSettings {
     userSummaryPromptWeek?: string;  // ユーザカスタムプロンプト（今週用）
     userTweetPrompt?: string;        // ユーザカスタムプロンプト（つぶやき用）
 }
+
+// 共通型があればここに記載

@@ -99,6 +99,11 @@ export class FileViewWidget implements WidgetImplementation {
     // 初期表示
     this.loadFile();
 
+    // 追加: YAMLで大きさ指定があれば反映
+    const settings = (config.settings || {}) as any;
+    if (settings.width) this.widgetEl.style.width = settings.width;
+    if (settings.height) this.widgetEl.style.height = settings.height;
+
     return this.widgetEl;
   }
 

@@ -60,4 +60,8 @@ export interface TweetWidgetSettings {
     verified?: boolean;
     /** AIリプライのガバナンス情報 */
     aiGovernance?: AiGovernanceData;
+    /** ウィジェットの幅（例: '400px', '80vw', '60vh' など） */
+    width?: string;
+    /** ウィジェットの高さ（例: '400px', '80vw', '60vh' など） */
+    height?: string;
 }

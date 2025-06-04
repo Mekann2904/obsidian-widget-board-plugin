@@ -4,7 +4,7 @@ import type { TweetWidgetPost, TweetWidgetFile } from './types';
 import { getFullThreadHistory } from './aiReply';
 import { geminiPrompt } from 'src/llm/gemini/tweetReplyPrompt';
 import { GeminiProvider } from 'src/llm/gemini/geminiApi';
-import { deobfuscate } from 'src/utils';
+import { deobfuscate } from '../../utils';
 import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';
 import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';

@@ -116,6 +116,10 @@ Obsidian Widget Board Pluginは、Obsidian上で多様なウィジェットを�
 #### 参考リンク
 - [Obsidian Plugin開発ガイド](https://marcus.se.net/obsidian-plugin-docs/)
 
+### - **YAML埋め込み時の大きさ指定（width/height）対応**
+  すべてのウィジェットで、Markdownコードブロック（```widget-board）のYAML設定で`width`や`height`（例: "320px", "60vh"など）を指定可能です。
+  各WidgetImplementationの`create`メソッド内で、`settings.width`/`settings.height`が指定されていれば`widgetEl.style.width/height`に反映してください。
+
 ---
 
 ## 3. ウィジェット登録・管理の仕組み（理論・実装例・FAQ・パフォーマンス観点）
@@ -230,6 +234,18 @@ export class MyWidget implements WidgetImplementation {
 #### 参考リンク
 - [TypeScript: Interface](https://www.typescriptlang.org/docs/handbook/interfaces.html)
 - [WIDGET_PERFORMANCE_GUIDE.md（本リポジトリ内）]
+
+### - **YAMLでの大きさ指定対応**
+  `create(config, ...)`内で`config.settings.width`や`config.settings.height`が指定されていれば、
+  `this.widgetEl.style.width = settings.width;`
+  `this.widgetEl.style.height = settings.height;`
+  のように反映してください。
+  例:
+  ```ts
+  const settings = (config.settings || {}) as any;
+  if (settings.width) this.widgetEl.style.width = settings.width;
+  if (settings.height) this.widgetEl.style.height = settings.height;
+  ```
 
 ---
 
@@ -386,6 +402,17 @@ private static widgetStates: Map<string, any> = new Map();
 
 ---
 
+### - **YAMLで大きさ指定が可能なサンプル**
+  ```ts
+  // ...既存コード...
+  // 追加: YAMLで大きさ指定があれば反映
+  const settings = (config.settings || {}) as any;
+  if (settings.width) this.widgetEl.style.width = settings.width;
+  if (settings.height) this.widgetEl.style.height = settings.height;
+  ```
+
+---
+
 ## 8. ベストプラクティス・FAQ（パフォーマンス観点含む実践知・セルフチェック）
 
 ### ベストプラクティス（パフォーマンス観点を重視）
@@ -412,6 +439,15 @@ private static widgetStates: Map<string, any> = new Map();
   - A. プロジェクトルートのWIDGET_PERFORMANCE_GUIDE.mdを参照してください。
 - **Q. パフォーマンス劣化の兆候は？**
   - A. DevToolsのPerformanceタブでreflow・paint・scriptingコストが高い場合や、UIの遅延・カクつきが発生した場合は要注意です。
+- **Q. YAMLでウィジェットの大きさ（width/height）を指定できますか？**
+  A. すべてのウィジェットで`settings.width`や`settings.height`をYAMLで指定できます。
+  例:
+  ```widget-board
+  type: memo
+  settings:
+    width: "320px"
+    height: "200px"
+  ```
 
 ### セルフチェック例（開発・レビュー時に必ず確認）
 - [ ] ループ内でのappendChildやstyle変更が多発していないか？

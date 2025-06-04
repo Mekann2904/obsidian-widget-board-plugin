@@ -8,9 +8,11 @@ import { registeredWidgetImplementations } from './widgetRegistry';
 import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoroWidget';
 import { DEFAULT_MEMO_SETTINGS } from './widgets/memoWidget';
 import { DEFAULT_CALENDAR_SETTINGS } from './widgets/calendarWidget';
+import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
 import cloneDeep from 'lodash.clonedeep';
 import { LLMManager } from './llm/llmManager';
 import { GeminiProvider } from './llm/gemini/geminiApi';
+import yaml from 'js-yaml';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -43,6 +45,69 @@ export default class WidgetBoardPlugin extends Plugin {
             name: 'すべてのウィジェットボードを非表示',
             callback: () => this.hideAllBoards()
         });
+        // widget-boardコードブロックプロセッサ登録
+        this.registerMarkdownCodeBlockProcessor(
+            'widget-board',
+            async (source, element, context) => {
+                let config: any;
+                try {
+                    config = yaml.load(source);
+                } catch (e) {
+                    element.createEl('pre', { text: `YAMLパースエラー: ${String(e)}` });
+                    return;
+                }
+                if (!config || typeof config !== 'object' || !config.type) {
+                    element.createEl('pre', { text: 'ウィジェット設定が不正です。typeフィールドが必要です。' });
+                    return;
+                }
+                // id, titleがなければ自動生成
+                if (!config.id) config.id = `md-widget-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+                if (!config.title) config.title = config.type;
+                // settingsがなければグローバル設定から補完
+                if (!config.settings) {
+                    config.settings = {};
+                    // typeごとにグローバル設定値を補完
+                    if (config.type === 'pomodoro') {
+                        config.settings = {
+                            ...DEFAULT_POMODORO_SETTINGS,
+                            pomodoroNotificationSound: this.settings.pomodoroNotificationSound,
+                            pomodoroNotificationVolume: this.settings.pomodoroNotificationVolume,
+                            pomodoroExportFormat: this.settings.pomodoroExportFormat,
+                            ...config.settings
+                        };
+                    } else if (config.type === 'timer-stopwatch') {
+                        config.settings = {
+                            ...DEFAULT_TIMER_STOPWATCH_SETTINGS,
+                            timerStopwatchNotificationSound: this.settings.timerStopwatchNotificationSound,
+                            timerStopwatchNotificationVolume: this.settings.timerStopwatchNotificationVolume,
+                            ...config.settings
+                        };
+                    } else if (config.type === 'tweet-widget') {
+                        config.settings = {
+                            ...this.settings.tweetWidgetAvatarUrl ? { avatarUrl: this.settings.tweetWidgetAvatarUrl } : {},
+                            ...config.settings
+                        };
+                    } else if (config.type === 'reflection-widget') {
+                        config.settings = {
+                            ...config.settings
+                        };
+                    }
+                }
+                // typeに対応するWidgetImplementationを呼び出し
+                const WidgetClass = registeredWidgetImplementations.get(config.type);
+                if (!WidgetClass) {
+                    element.createEl('pre', { text: `未対応のウィジェットタイプ: ${config.type}` });
+                    return;
+                }
+                try {
+                    const widgetInstance = new WidgetClass();
+                    const widgetEl = widgetInstance.create(config, this.app, this);
+                    element.appendChild(widgetEl);
+                } catch (e) {
+                    element.createEl('pre', { text: `ウィジェット描画エラー: ${String(e)}` });
+                }
+            }
+        );
         console.log('Widget Board Plugin: Loaded.');
     }
 
