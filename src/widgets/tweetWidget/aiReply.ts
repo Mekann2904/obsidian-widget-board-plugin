@@ -1,4 +1,4 @@
-import { geminiPrompt } from 'src/llm/gemini/tweetReplyPrompt';
+import { geminiPrompt } from '../../llm/gemini/tweetReplyPrompt';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
 import type { TweetWidgetPost, AiGovernanceData } from './types'; // AiGovernanceData をインポート
