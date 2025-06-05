@@ -1,9 +1,9 @@
 // src/widgets/calendarWidget.ts
 import { App, setIcon, TFile, Modal } from 'obsidian';
-import { DEFAULT_CALENDAR_SETTINGS } from '../settingsDefaults';
-import type { WidgetConfig, WidgetImplementation } from '../interfaces';
-import type WidgetBoardPlugin from '../main';
-import { debugLog } from '../utils/logger';
+import { DEFAULT_CALENDAR_SETTINGS } from '../../settingsDefaults';
+import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
+import type WidgetBoardPlugin from '../../main';
+import { debugLog } from '../../utils/logger';
 import moment from 'moment';
 
 // --- カレンダーウィジェット設定インターフェース ---

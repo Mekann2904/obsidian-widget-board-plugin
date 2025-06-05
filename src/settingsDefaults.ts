@@ -1,6 +1,6 @@
 // src/settingsDefaults.ts
 import type { PluginGlobalSettings, BoardConfiguration } from './interfaces';
-import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoroWidget';
+import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoro';
 import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 // 他のウィジェットのデフォルト設定もインポートする場合はここに追加
 // import { DEFAULT_MEMO_SETTINGS } from './widgets/memoWidget';

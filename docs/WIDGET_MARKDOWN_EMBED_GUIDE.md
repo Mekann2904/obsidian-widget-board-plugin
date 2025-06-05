@@ -222,13 +222,13 @@ settings:
 
 ## YAML設定keyを拡張したい場合
 
-各ウィジェットtypeごとのYAML設定keyを拡張したい場合は、**該当ウィジェットのTypeScriptファイル**（例: `src/widgets/pomodoroWidget.ts` など）で、以下の箇所を修正してください。
+各ウィジェットtypeごとのYAML設定keyを拡張したい場合は、**該当ウィジェットのTypeScriptファイル**（例: `src/widgets/pomodoro/index.ts` など）で、以下の箇所を修正してください。
 
 ### 1. 型定義の拡張
 - `PomodoroSettings`や`MemoWidgetSettings`など、各ウィジェットの設定型に新しいkeyを追加します。
 
 ```ts
-// 例: src/widgets/pomodoroWidget.ts
+// 例: src/widgets/pomodoro/index.ts
 export interface PomodoroSettings {
     workMinutes: number;
     shortBreakMinutes: number;

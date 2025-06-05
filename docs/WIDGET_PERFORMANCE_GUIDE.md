@@ -34,9 +34,9 @@ parent.appendChild(fragment); // ここで1回だけreflow
 
 #### 適用例
 - `tweetWidgetDataViewer.ts`（DataView相当）
-- `recentNotesWidget.ts`（全件描画時）
+- `recent-notes/index.ts`（全件描画時）
 - `tweetWidgetUI.ts`（スレッドリスト描画）
-- `calendarWidget.ts` など
+- `calendar/index.ts` など
 
 #### 注意点・アンチパターン
 - fragmentにappendしたノードは、fragment自体をappendChildした時点で「親DOM」に移動される（コピーではない）点に注意。
@@ -162,7 +162,7 @@ function queueResize(textarea) {
 ```
 
 #### 適用例
-- `memoWidget.ts`
+- `memo/index.ts`
 - `tweetWidgetUI.ts`
 
 #### 注意点・アンチパターン
@@ -208,7 +208,7 @@ for (let i = visibleStart; i < visibleEnd; i++) {
 ```
 
 #### 適用例
-- `recentNotesWidget.ts`
+- `recent-notes/index.ts`
 
 #### 注意点・アンチパターン
 - スクロール時に「全DOMを作り直す」のではなく、既存ノードの再利用・差分更新を徹底する。
@@ -448,7 +448,7 @@ class GlobalResizer {
 ```
 
 #### 適用例
-- `memoWidget.ts`、`tweetWidgetUI.ts`（2024/06最適化）
+- `memo/index.ts`、`tweetWidgetUI.ts`（2024/06最適化）
 
 #### 注意点・アンチパターン
 - 個別resizeとグローバルバッチresizeが混在しないよう統一する。

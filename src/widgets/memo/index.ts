@@ -1,9 +1,9 @@
 // src/widgets/memoWidget.ts
 import { App, MarkdownRenderer, setIcon, Notice, Component } from 'obsidian';
-import type { WidgetConfig, WidgetImplementation } from '../interfaces';
-import type WidgetBoardPlugin from '../main'; // main.ts の WidgetBoardPlugin クラスをインポート
-import { renderMarkdownBatchWithCache } from '../utils/renderMarkdownBatch';
-import { debugLog } from '../utils/logger';
+import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
+import type WidgetBoardPlugin from '../../main'; // main.ts の WidgetBoardPlugin クラスをインポート
+import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
+import { debugLog } from '../../utils/logger';
 
 // --- メモウィジェット設定インターフェース ---
 export interface MemoWidgetSettings {

@@ -54,20 +54,20 @@ obsidian-widget-board-plugin/
 │   │   ├── safeFetch.ts
 │   │   └── schemaForm.ts
 │   ├── widgets/
-│   │   ├── FileViewWidget.ts
-│   │   ├── calendarWidget.ts
-│   │   ├── memoWidget.ts
+│   │   ├── file-view/index.ts
+│   │   ├── calendar/index.ts
+│   │   ├── memo/index.ts
 │   │   ├── pomodoroMemoWidget.ts
-│   │   ├── pomodoroWidget.ts
-│   │   ├── recentNotesWidget.ts
+│   │   ├── pomodoro/index.ts
+│   │   ├── recent-notes/index.ts
 │   │   ├── reflectionWidget/
 │   │   │   ├── constants.ts
 │   │   │   ├── index.ts
 │   │   │   ├── reflectionWidget.ts
 │   │   │   ├── reflectionWidgetTypes.ts
 │   │   │   └── reflectionWidgetUI.ts
-│   │   ├── themeSwitcherWidget.ts
-│   │   ├── timerStopwatchWidget.ts
+│   │   ├── theme-switcher/index.ts
+│   │   ├── timer-stopwatch/index.ts
 │   │   ├── tweetWidget/
 │   │   │   ├── TweetRepository.ts
 │   │   │   ├── TweetStore.ts
@@ -86,7 +86,7 @@ obsidian-widget-board-plugin/
 │   ├── settingsDefaults.ts
 │   ├── settingsTab.ts
 │   └── widgetRegistry.ts
-├── sample.md
+├── examples/sample.md
 ├── styles.css
 ├── manifest.json
 ├── package.json
@@ -97,14 +97,14 @@ obsidian-widget-board-plugin/
 └── esbuild.config.mjs
 ```
 
-`src/widgets` ディレクトリには `pomodoroWidget.ts` や `memoWidget.ts`、`tweetWidget/` など各ウィジェットのファイル・サブディレクトリが含まれています。`WIDGET_DEV_GUIDE.md` や `WIDGET_PERFORMANCE_GUIDE.md` などのドキュメントはリポジトリのルートに置かれています。
+`src/widgets` ディレクトリには `pomodoro/index.ts` や `memo/index.ts`、`tweetWidget/` など各ウィジェットのファイル・サブディレクトリが含まれています。`WIDGET_DEV_GUIDE.md` や `WIDGET_PERFORMANCE_GUIDE.md` などのドキュメントは `docs/` フォルダーにまとめられています。
 
 ## 推奨事項
 
 1. **ドキュメントの集約** – ガイド類は `docs/` フォルダーにまとめ、ルートを整理する。
    - `docs/WIDGET_DEV_GUIDE.md`
    - `docs/WIDGET_PERFORMANCE_GUIDE.md`
-2. **例の配置** – `sample.md` のようなサンプルは `examples/` フォルダーを作ってそこへ移動する。
+2. **例の配置** – `examples/sample.md` のようなサンプルは `examples/` フォルダーを作ってそこへ移動する。
 3. **ウィジェットフォルダーの統一** – 各ウィジェットを専用フォルダーにまとめ、`widgets/pomodoro/index.ts` や `widgets/memo/index.ts` のように配置する。
 4. **src/ に README を追加** – `src/` 内に簡潔な README を置き、サブフォルダーの目的や新ウィジェットの追加方法を説明する。
 5. **index ファイルの活用** – 各ウィジェットフォルダーで `index.ts` からクラスをエクスポートし、インポートを簡潔に保つ。
@@ -169,20 +169,20 @@ obsidian-widget-board-plugin/
 │   │   ├── safeFetch.ts
 │   │   └── schemaForm.ts
 │   ├── widgets/
-│   │   ├── FileViewWidget.ts
-│   │   ├── calendarWidget.ts
-│   │   ├── memoWidget.ts
+│   │   ├── file-view/index.ts
+│   │   ├── calendar/index.ts
+│   │   ├── memo/index.ts
 │   │   ├── pomodoroMemoWidget.ts
-│   │   ├── pomodoroWidget.ts
-│   │   ├── recentNotesWidget.ts
+│   │   ├── pomodoro/index.ts
+│   │   ├── recent-notes/index.ts
 │   │   ├── reflectionWidget/
 │   │   │   ├── constants.ts
 │   │   │   ├── index.ts
 │   │   │   ├── reflectionWidget.ts
 │   │   │   ├── reflectionWidgetTypes.ts
 │   │   │   └── reflectionWidgetUI.ts
-│   │   ├── themeSwitcherWidget.ts
-│   │   ├── timerStopwatchWidget.ts
+│   │   ├── theme-switcher/index.ts
+│   │   ├── timer-stopwatch/index.ts
 │   │   ├── tweetWidget/
 │   │   │   ├── TweetRepository.ts
 │   │   │   ├── TweetStore.ts
@@ -201,7 +201,7 @@ obsidian-widget-board-plugin/
 │   ├── settingsDefaults.ts
 │   ├── settingsTab.ts
 │   └── widgetRegistry.ts
-├── sample.md
+├── examples/sample.md
 ├── styles.css
 ├── manifest.json
 ├── package.json
@@ -212,14 +212,14 @@ obsidian-widget-board-plugin/
 └── esbuild.config.mjs
 ```
 
-The `src/widgets` directory contains files and subdirectories for each widget (e.g., `pomodoroWidget.ts`, `memoWidget.ts`, `tweetWidget/`). Documentation files such as `WIDGET_DEV_GUIDE.md` and `WIDGET_PERFORMANCE_GUIDE.md` reside in the repository root.
+The `src/widgets` directory contains files and subdirectories for each widget (e.g., `pomodoro/index.ts`, `memo/index.ts`, `tweetWidget/`). Documentation files such as `WIDGET_DEV_GUIDE.md` and `WIDGET_PERFORMANCE_GUIDE.md` reside in the `docs/` directory.
 
 ## Recommendations
 
 1. **Group documentation** – Collect all guides under a dedicated `docs/` folder to keep the root tidy. For example:
    - `docs/WIDGET_DEV_GUIDE.md`
    - `docs/WIDGET_PERFORMANCE_GUIDE.md`
-2. **Move examples** – Place example markdown like `sample.md` in a new `examples/` directory.
+2. **Move examples** – Place example markdown like `examples/sample.md` in a new `examples/` directory.
 3. **Consistent widget folders** – Consider placing each widget inside its own folder for better isolation, e.g. `widgets/pomodoro/index.ts`, `widgets/memo/index.ts`.
 4. **Add README to src/** – A short README inside `src/` could explain the purpose of each subfolder and how to add new widgets.
 5. **Use index files** – Export widget classes via `index.ts` files inside each widget folder. This keeps imports shorter and easier to maintain.

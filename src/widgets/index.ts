@@ -1,9 +1,9 @@
 export * from './types';
-export * from './pomodoroWidget';
-export * from './memoWidget';
-export * from './calendarWidget';
-export * from './recentNotesWidget';
-export * from './themeSwitcherWidget';
-export * from './timerStopwatchWidget';
-export * from './FileViewWidget';
-// 必要に応じて他のウィジェットも追加 
+export * from './pomodoro';
+export * from './memo';
+export * from './calendar';
+export * from './recent-notes';
+export * from './theme-switcher';
+export * from './timer-stopwatch';
+export * from './file-view';
+// add additional widgets below

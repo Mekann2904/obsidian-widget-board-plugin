@@ -476,8 +476,8 @@ private static widgetStates: Map<string, any> = new Map();
 - `src/widgetRegistry.ts`：ウィジェット登録・Map管理、パフォーマンス要件を満たすウィジェットのみ登録
 - `src/modal.ts`：ウィジェット追加UI、リスト描画・UI更新時のバッチ化・仮想リスト・contain等の実装例
 - `src/settingsTab.ts`：設定タブUI、差分更新・バッチ化・contain等の実装例
-- `src/widgets/pomodoroWidget.ts`：static Mapによるインスタンス・状態管理、onunload, updateDisplay等、パフォーマンス最適化例
-- `src/widgets/memoWidget.ts`：同上
+- `src/widgets/pomodoro/index.ts`：static Mapによるインスタンス・状態管理、onunload, updateDisplay等、パフォーマンス最適化例
+- `src/widgets/memo/index.ts`：同上
 - `src/main.ts`：全体設定・永続化、グローバル状態管理の実装例
 - `WIDGET_PERFORMANCE_GUIDE.md`：パフォーマンス最適化設計指針（全章必読、各章の実装例・設計例も参照）
 
