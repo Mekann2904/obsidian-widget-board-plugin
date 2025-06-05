@@ -142,7 +142,7 @@ export class CalendarWidget implements WidgetImplementation {
                         // 他の月なら、その月にジャンプして再描画し、該当日を選択
                         this.currentDate = new Date(cellDate);
                         this.renderCalendar();
-                        setTimeout(() => this.showNotesForDate(dateStr), 0);
+                        requestAnimationFrame(() => this.showNotesForDate(dateStr));
                     } else {
                         this.showNotesForDate(dateStr);
                     }

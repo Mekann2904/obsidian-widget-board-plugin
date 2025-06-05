@@ -42,7 +42,7 @@ export class MemoWidget implements WidgetImplementation {
 
     private _memoEditAreaInputListener: (() => void) | null = null;
     private taskObserver: MutationObserver | null = null;
-    private observerThrottle: number | null = null;
+    private observerScheduled = false;
 
     // ウィジェットインスタンス管理のための静的マップ (前回から)
     private static widgetInstances: Map<string, MemoWidget> = new Map();
@@ -153,9 +153,9 @@ export class MemoWidget implements WidgetImplementation {
                 // this.memoEditAreaEl.style.maxHeight = '600px'; 
                 // this.memoEditAreaEl.style.resize = 'vertical'; 
                 this.addMemoEditAreaAutoResizeListener();
-                setTimeout(() => {
+                requestAnimationFrame(() => {
                     if (this.memoEditAreaEl && this.isEditingMemo) this.memoEditAreaEl.dispatchEvent(new Event('input'));
-                }, 0);
+                });
             }
         }
     }
@@ -204,13 +204,14 @@ export class MemoWidget implements WidgetImplementation {
 
         if (!this.taskObserver) {
             this.taskObserver = new MutationObserver(() => {
-                if (this.observerThrottle != null) return;
-                this.observerThrottle = window.setTimeout(() => {
-                    this.observerThrottle = null;
+                if (this.observerScheduled) return;
+                this.observerScheduled = true;
+                requestAnimationFrame(() => {
+                    this.observerScheduled = false;
                     if (!this.isEditingMemo) {
                         this.setupTaskEventListeners();
                     }
-                }, 50);
+                });
             });
         }
 
@@ -274,15 +275,15 @@ export class MemoWidget implements WidgetImplementation {
                 parent.replaceChild(newDisplayEl, this.memoDisplayEl);
                 this.memoDisplayEl = newDisplayEl;
             }
-            // Markdown描画をsetTimeoutで遅延
-            setTimeout(() => {
+            // Markdown描画は次のフレームで実行
+            requestAnimationFrame(() => {
                 this.renderMemo(this.currentSettings.memoContent).then(() => {
                     this.applyContainerHeightStyles();
                 }).catch(error => {
                     console.error(`[${this.config.id}] Error rendering memo in updateMemoEditUI:`, error);
                     this.applyContainerHeightStyles();
                 });
-            }, 0);
+            });
             prev.memoContent = this.currentSettings.memoContent;
         }
         // 編集モード時のテキストエリア内容
@@ -299,9 +300,9 @@ export class MemoWidget implements WidgetImplementation {
         if (this.isEditingMemo && this.memoEditAreaEl && document.activeElement !== this.memoEditAreaEl) {
             this.memoEditAreaEl.focus();
             // this.memoEditAreaEl.style.minHeight = '160px'; 
-            setTimeout(() => {
+            requestAnimationFrame(() => {
                 if (this.memoEditAreaEl) this.memoEditAreaEl.dispatchEvent(new Event('input'));
-            }, 0);
+            });
         }
     }
 
@@ -313,9 +314,9 @@ export class MemoWidget implements WidgetImplementation {
         if(this.memoEditAreaEl) {
             this.memoEditAreaEl.value = this.currentSettings.memoContent || '';
             // this.memoEditAreaEl.style.minHeight = '160px';
-            setTimeout(() => {
+            requestAnimationFrame(() => {
                 if (this.memoEditAreaEl) this.memoEditAreaEl.dispatchEvent(new Event('input'));
-            }, 0);
+            });
         } else {
             console.warn(`[${this.config.id}] enterMemoEditMode: memoEditAreaEl is null.`);
         }

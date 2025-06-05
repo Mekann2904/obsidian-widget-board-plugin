@@ -223,7 +223,7 @@ export class TweetWidget implements WidgetImplementation {
         this.attachedFiles = post.files ? [...post.files] : [];
         this.ui.render();
         
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             const input = this.widgetEl.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
             if (input) {
                 input.value = post.text;
@@ -231,7 +231,7 @@ export class TweetWidget implements WidgetImplementation {
                 input.selectionStart = input.selectionEnd = input.value.length;
                 this.ui.renderFilePreview(this.widgetEl.querySelector('.tweet-file-preview')!);
             }
-        }, 50);
+        });
     }
     
     public startReply(post: TweetWidgetPost) {
