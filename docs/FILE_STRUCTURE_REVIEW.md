@@ -111,6 +111,17 @@ obsidian-widget-board-plugin/
 
 これらの変更により保守性が向上し、新しい貢献者もプロジェクトを理解しやすくなります。
 
+## さらなる考察
+
+このプラグインは、複数のサブモジュールを緊密に連携させることで機能全体を構築しています。特に `src/widgets/` 以下の各ウィジェットは、`widgetRegistry.ts` を介してプラグイン本体に登録されるプラグイン・アーキテクチャを採用しています。`src/llm/` ディレクトリはLLM（Large Language Model）機能の基盤となっており、共通インターフェースを介して他モジュールから利用されます。設定ファイルである `manifest.json` と `package.json` は依存関係を規定し、`esbuild.config.mjs` と `tsconfig.json` はビルドやトランスパイル工程を担います。
+
+さらに `__tests__/` フォルダーでは Jest を用いたユニットテストが用意され、ウィジェットのデータ管理ロジックを中心に品質を保証しています。開発基盤を整備することで、プラグイン全体の拡張性と信頼性を高水準に保つ設計となっています。
+
+### 今後の拡張に向けた方策
+
+ドメイン駆動設計(DDD)や依存関係逆転の原則(DIP)を意識した抽象化レイヤーを導入すると、さらなる保守性向上が期待できます。例えば LLM モジュールのインターフェースを明示的に定義し、ウィジェット側を具象実装に依存させないことで、モデルの差し替えやテスト容易化が可能になります。
+
+
 ---
 
 # File Structure Review
@@ -225,3 +236,14 @@ The `src/widgets` directory contains files and subdirectories for each widget (e
 5. **Use index files** – Export widget classes via `index.ts` files inside each widget folder. This keeps imports shorter and easier to maintain.
 
 These changes can improve maintainability and make it easier for new contributors to navigate the project.
+
+## Additional Discussion
+
+The plugin follows a modular architecture in which widgets under `src/widgets/` are registered via `widgetRegistry.ts`. The folder `src/llm/` centralizes Large Language Model capabilities behind common interfaces. Configuration files (`manifest.json`, `package.json`) specify dependencies, while `esbuild.config.mjs` and `tsconfig.json` control the build pipeline.
+
+The `__tests__/` directory hosts Jest-based unit tests that validate widget data logic, ensuring reliability as the project grows.
+
+### Directions for Future Extension
+
+Applying domain-driven design principles and the dependency inversion principle can further enhance maintainability. By defining explicit interfaces for the LLM layer and decoupling widget implementations from concrete models, we can facilitate model replacement and testing.
+
