@@ -300,7 +300,8 @@ export class ReflectionWidgetUI {
                                         x: {
                                             grid: { display: false },
                                             ticks: {
-                                                maxTicksLimit: 5 // ★ラベル数を最大5件に制限
+                                                maxTicksLimit: 5, // ★ラベル数を最大5件に制限
+                                                sampleSize: 5
                                             }
                                         },
                                         y: { beginAtZero: true, grid: { color: '#eee' } }
