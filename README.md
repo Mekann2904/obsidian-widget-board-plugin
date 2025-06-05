@@ -1,7 +1,19 @@
+
 # Obsidian Widget Board Plugin
 
-[note記事 Obsidianプラグイン「obsidian-widget-board-plugin」リリースしました](https://note.com/mekann/n/ne05f32922b9e?sub_rt=share_sb)
+[note記事 Obsidianプラグイン「obsidian-widget-board-plugin」リリースしました](https://note.com/mekann/n/ne05f32922b9e?sub_rt=share_sb)  
 [obsidian-widget-board-plugin 導入方法を簡単にまとめる](https://note.com/mekann/n/n7c593c276d5b)
+
+## 目次
+
+1. [概要](#概要)
+2. [クイックスタート](#クイックスタート)
+3. [主な機能](#主な機能)
+4. [使い方](#使い方)
+5. [ユーザプロンプト機能](#ユーザプロンプト機能ai要約aiリプライのカスタマイズ)
+6. [開発者向け](#開発者向けパフォーマンス最適化)
+7. [インストール](#インストール)
+8. [ライセンス](#ライセンス)
 
 ## 概要
 
@@ -9,6 +21,31 @@ Obsidian Widget Board Pluginは、Obsidian上で「ウィジェットボード�
 
 > **ウィジェットの自作・拡張方法については [WIDGET_DEV_GUIDE.md](docs/WIDGET_DEV_GUIDE.md) およびパフォーマンス設計指針 [WIDGET_PERFORMANCE_GUIDE.md](docs/WIDGET_PERFORMANCE_GUIDE.md) も必ずご参照ください。**
 > **ポモドーロ作業ログのファイル形式については [logs/README.md](logs/README.md) もご参照ください。**
+
+---
+
+## クイックスタート
+
+1. Obsidian の **設定 → コミュニティプラグイン** から本プラグインを有効化します。
+2. サイドバーの「ウィジェットボード」アイコンをクリックして初期ボードを開きます。
+3. 設定画面の **ボード管理** からウィジェットを追加・並べ替えて自分好みにカスタマイズします。
+4. つぶやきウィジェットなどを利用する場合は、保存先フォルダなど初期設定を行ってください。
+
+## 前提条件
+
+このリポジトリをクローンしてビルドする場合は以下が必要です。
+
+- Node.js 16 以上
+- npm (推奨: 最新版)
+
+ビルド手順は次の通りです。
+
+```bash
+npm install
+npm run build
+```
+
+生成されたファイルを `<Vault>/.obsidian/plugins/obsidian-widget-board-plugin/` に配置してください。
 
 ---
 
