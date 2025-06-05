@@ -5,14 +5,16 @@ jest.mock('obsidian', () => {
       renderMarkdown: jest.fn((md: string, el: HTMLElement) => {
         el.innerHTML = `<p>${md}</p>`;
         return Promise.resolve();
-      })
+      }),
     },
     Component: class {},
-    TFile: class {}
+    TFile: class {},
   };
 }, { virtual: true });
 
-import { MarkdownRenderer, Component } from 'obsidian';
+import { Component } from 'obsidian';
+
+let MarkdownRenderer: { renderMarkdown: jest.Mock };
 
 describe('renderMarkdownBatchWithCache', () => {
   let renderMarkdownBatchWithCache: typeof import('../src/utils/renderMarkdownBatch').renderMarkdownBatchWithCache;
@@ -20,6 +22,7 @@ describe('renderMarkdownBatchWithCache', () => {
   beforeEach(async () => {
     jest.resetModules();
     ({ renderMarkdownBatchWithCache } = await import('../src/utils/renderMarkdownBatch'));
+    MarkdownRenderer = (await import('obsidian')).MarkdownRenderer as any;
     jest.clearAllMocks();
     document.body.innerHTML = '';
   });
