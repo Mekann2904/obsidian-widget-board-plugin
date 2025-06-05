@@ -3,14 +3,14 @@
 
 ---
 
-### 1. DocumentFragmentによるDOMバッチ追加
+### 1. DocumentFragmentによるDOMバッチ追加です
 
 #### 背景・理論
-DOM操作（特にappendChildやimportNode）は、都度reflow・再描画が発生しやすく、ループ内で大量に実行するとパフォーマンスが大きく低下します。DocumentFragmentは「軽量な仮想DOMコンテナ」として機能し、複数ノードを一時的にまとめてから一括でDOMに追加することで、reflow・repaintの回数を最小限に抑えられます。
+DOM操作（特にappendChildやimportNode）は、都度reflow・再描画が発生しやすく、ループ内で大量に実行するとパフォーマンスが大きく低下します。DocumentFragmentは「軽量な仮想DOMコンテナ」として機能し、複数ノードを一時的にまとめてから一括でDOMに追加することで、reflow・repaintの回数を最小限に抑えることができます。
 
 #### 実装例
 
-**NG例：ループ内で直接appendChild**
+**NG例：ループ内で直接appendChildです**
 ```js
 const parent = document.getElementById('list');
 for (const item of items) {
@@ -20,14 +20,14 @@ for (const item of items) {
 }
 ```
 
-**OK例：DocumentFragmentでバッチ追加**
+**OK例：DocumentFragmentでバッチ追加です**
 ```js
 const parent = document.getElementById('list');
 const fragment = document.createDocumentFragment();
 for (const item of items) {
   const li = document.createElement('li');
   li.textContent = item;
-  fragment.appendChild(li); // reflow発生しない
+  fragment.appendChild(li); // reflow発生しません
 }
 parent.appendChild(fragment); // ここで1回だけreflow
 ```
@@ -39,13 +39,13 @@ parent.appendChild(fragment); // ここで1回だけreflow
 - `calendar/index.ts` など
 
 #### 注意点・アンチパターン
-- fragmentにappendしたノードは、fragment自体をappendChildした時点で「親DOM」に移動される（コピーではない）点に注意。
-- fragmentを複数回appendChildしても2回目以降は空になる（使い捨て）。
-- fragment内でイベントリスナーを付与する場合、親DOMに追加後も有効。
+- fragmentにappendしたノードは、fragment自体をappendChildした時点で「親DOM」に移動されます（コピーではありません）のでご注意ください。
+- fragmentを複数回appendChildしても2回目以降は空になります（使い捨てです）。
+- fragment内でイベントリスナーを付与した場合、親DOMに追加後も有効です。
 
 #### パフォーマンス計測例
-- Chrome DevToolsのPerformanceタブで「Scripting」「Rendering」コストを比較。
-- ループ内appendChildとDocumentFragment利用時で、Timeline上のreflow回数・時間を計測。
+- Chrome DevToolsのPerformanceタブで「Scripting」「Rendering」コストを比較します。
+- ループ内appendChildとDocumentFragment利用時で、Timeline上のreflow回数・時間を計測します。
 
 #### 参考リンク
 - [MDN: DocumentFragment](https://developer.mozilla.org/ja/docs/Web/API/DocumentFragment)
@@ -53,14 +53,14 @@ parent.appendChild(fragment); // ここで1回だけreflow
 
 ---
 
-### 2. Markdownレンダリングのバッチ化・キャッシュ
+### 2. Markdownレンダリングのバッチ化・キャッシュです
 
 #### 背景・理論
 Obsidianの`MarkdownRenderer.render`は、内部でパース・HTML生成・DOM挿入・プラグインフックなど多くの処理を行うため、1回ごとのコストが高く、ループや大量描画時にパフォーマンス低下の主因となります。また、同一内容のMarkdownを複数回描画する場合、毎回パース・描画するのは非効率です。
 
 #### 実装例
 
-**NG例：ループ内で毎回render**
+**NG例：ループ内で毎回renderです**
 ```js
 for (const md of markdownList) {
   const el = document.createElement('div');
@@ -69,7 +69,7 @@ for (const md of markdownList) {
 }
 ```
 
-**OK例1：バッチ化（オフスクリーンでまとめて描画→DocumentFragmentで一括追加）**
+**OK例1：バッチ化（オフスクリーンでまとめて描画→DocumentFragmentで一括追加）です**
 ```js
 const fragment = document.createDocumentFragment();
 for (const md of markdownList) {
@@ -80,7 +80,7 @@ for (const md of markdownList) {
 parent.appendChild(fragment);
 ```
 
-**OK例2：キャッシュ活用（同一Markdownは複製で高速描画）**
+**OK例2：キャッシュ活用（同一Markdownは複製で高速描画）です**
 ```js
 const cache = new Map();
 for (const md of markdownList) {
@@ -100,13 +100,13 @@ for (const md of markdownList) {
 - 全ウィジェットのMarkdown描画箇所
 
 #### 注意点・アンチパターン
-- キャッシュは「Markdown文字列」単位で管理し、動的要素（チェックボックス等）がある場合は注意。
-- 複製（cloneNode）時、イベントリスナーや一部の内部状態は引き継がれない場合がある。
-- キャッシュのメモリ消費に注意し、必要に応じて上限やLRU方式を検討。
+- キャッシュは「Markdown文字列」単位で管理し、動的要素（チェックボックス等）がある場合は注意です。
+- 複製（cloneNode）時、イベントリスナーや一部の内部状態は引き継がれない場合があるです。
+- キャッシュのメモリ消費に注意し、必要に応じて上限やLRU方式を検討です。
 
 #### パフォーマンス計測例
-- DevToolsのPerformanceタブで「Scripting」コストを比較。
-- 100件以上のMarkdown描画時、キャッシュ有無で描画時間を計測。
+- DevToolsのPerformanceタブで「Scripting」コストを比較です。
+- 100件以上のMarkdown描画時、キャッシュ有無で描画時間を計測です。
 
 #### 参考リンク
 - [Obsidian API: MarkdownRenderer](https://publish.obsidian.md/api/MarkdownRenderer)
@@ -114,14 +114,14 @@ for (const md of markdownList) {
 
 ---
 
-### 3. textarea等の自動リサイズreflow最適化
+### 3. textarea等の自動リサイズreflow最適化です
 
 #### 背景・理論
 textareaの自動リサイズは、`scrollHeight`取得（read）と`style.height`変更（write）を頻繁に行うと、都度reflowが発生し、特に複数要素で同時に発生するとパフォーマンスが大きく低下します。`requestAnimationFrame`でバッチ化し、1フレーム内でまとめて処理することでreflow回数を削減できます。
 
 #### 実装例
 
-**NG例：inputイベントごとに即時リサイズ**
+**NG例：inputイベントごとに即時リサイズです**
 ```js
 textarea.addEventListener('input', () => {
   textarea.style.height = 'auto';
@@ -129,7 +129,7 @@ textarea.addEventListener('input', () => {
 });
 ```
 
-**OK例：requestAnimationFrameでバッチ化**
+**OK例：requestAnimationFrameでバッチ化です**
 ```js
 let resizeQueued = false;
 textarea.addEventListener('input', () => {
@@ -144,7 +144,7 @@ textarea.addEventListener('input', () => {
 });
 ```
 
-**複数要素対応（グローバルバッチresize）**
+**複数要素対応（グローバルバッチresize）です**
 ```js
 const resizeTargets = new Set();
 function queueResize(textarea) {
@@ -166,26 +166,26 @@ function queueResize(textarea) {
 - `tweetWidgetUI.ts`
 
 #### 注意点・アンチパターン
-- inputイベントごとに即時reflowを発生させない。
-- 高頻度なresizeが必要な場合はthrottleやdebounceも検討。
+- inputイベントごとに即時reflowを発生させないです。
+- 高頻度なresizeが必要な場合はthrottleやdebounceも検討です。
 
 #### パフォーマンス計測例
-- DevToolsのPerformanceタブで「Recalculate Style」「Layout」イベントの回数を比較。
-- textareaを連打した際のフレーム落ち有無を確認。
+- DevToolsのPerformanceタブで「Recalculate Style」「Layout」イベントの回数を比較です。
+- textareaを連打した際のフレーム落ち有無を確認です。
 
 #### 参考リンク
 - [MDN: requestAnimationFrame](https://developer.mozilla.org/ja/docs/Web/API/window/requestAnimationFrame)
 
 ---
 
-### 4. 仮想リスト（Virtual List）による大規模リスト最適化
+### 4. 仮想リスト（Virtual List）による大規模リスト最適化です
 
 #### 背景・理論
 大量のリスト（例：100件以上）を全てDOM化すると、reflowやメモリ消費が大きくなり、描画・スクロール性能が著しく低下します。仮想リスト（Virtual List）は「表示範囲＋バッファ分」だけDOMを生成し、スクロール時に再利用・差分更新することで、常に最小限のDOMツリーを維持します。
 
 #### 実装例
 
-**NG例：全件をそのままDOM化**
+**NG例：全件をそのままDOM化です**
 ```js
 for (const item of items) {
   const li = document.createElement('li');
@@ -194,7 +194,7 @@ for (const item of items) {
 }
 ```
 
-**OK例：仮想リスト（可視範囲＋α件のみDOM化）**
+**OK例：仮想リスト（可視範囲＋α件のみDOM化）です**
 ```js
 // 可視範囲のインデックスを計算し、その範囲だけDOMを生成
 const visibleStart = ...; // スクロール位置から算出
@@ -211,13 +211,13 @@ for (let i = visibleStart; i < visibleEnd; i++) {
 - `recent-notes/index.ts`
 
 #### 注意点・アンチパターン
-- スクロール時に「全DOMを作り直す」のではなく、既存ノードの再利用・差分更新を徹底する。
-- 高さ可変リストの場合は、各アイテムの高さ計測・キャッシュが必要。
-- スクロールジャンプ時のちらつきや遅延描画に注意。
+- スクロール時に「全DOMを作り直す」のではなく、既存ノードの再利用・差分更新を徹底するです。
+- 高さ可変リストの場合は、各アイテムの高さ計測・キャッシュが必要です。
+- スクロールジャンプ時のちらつきや遅延描画に注意です。
 
 #### パフォーマンス計測例
-- DevToolsでリスト描画時の「Elements」ツリーのノード数を比較。
-- スクロール時の「Scripting」「Rendering」コストを計測。
+- DevToolsでリスト描画時の「Elements」ツリーのノード数を比較です。
+- スクロール時の「Scripting」「Rendering」コストを計測です。
 
 #### 参考リンク
 - [MDN: Virtual Scrolling](https://developer.mozilla.org/ja/docs/Web/Performance/Virtual_scrolling)
@@ -225,21 +225,21 @@ for (let i = visibleStart; i < visibleEnd; i++) {
 
 ---
 
-### 5. resize/ドラッグ時のreflow最適化
+### 5. resize/ドラッグ時のreflow最適化です
 
 #### 背景・理論
 パネルやウィジェットのリサイズ・ドラッグ時、mousemoveごとにstyle.widthやstyle.heightを即時変更すると、1ピクセルごとにreflowが発生し、動作が重くなります。`requestAnimationFrame`でバッチ化し、1フレーム1回だけDOM変更することで、滑らかな操作感とreflow削減を両立します。
 
 #### 実装例
 
-**NG例：mousemoveごとに即時style変更**
+**NG例：mousemoveごとに即時style変更です**
 ```js
 element.addEventListener('mousemove', (e) => {
   element.style.width = e.clientX + 'px'; // 毎回reflow
 });
 ```
 
-**OK例：requestAnimationFrameでバッチ化**
+**OK例：requestAnimationFrameでバッチ化です**
 ```js
 let resizeQueued = false;
 let latestX = 0;
@@ -259,27 +259,27 @@ element.addEventListener('mousemove', (e) => {
 - `modal.ts`
 
 #### 注意点・アンチパターン
-- mousemoveイベントのたびにDOM変更しない。
-- resize終了時に最終値を確実に反映する。
-- 連続resize中の他UIへのreflow波及に注意。
+- mousemoveイベントのたびにDOM変更しないです。
+- resize終了時に最終値を確実に反映するです。
+- 連続resize中の他UIへのreflow波及に注意です。
 
 #### パフォーマンス計測例
-- DevToolsでリサイズ時の「Layout」イベント回数を比較。
-- 連続ドラッグ時のフレーム落ち有無を確認。
+- DevToolsでリサイズ時の「Layout」イベント回数を比較です。
+- 連続ドラッグ時のフレーム落ち有無を確認です。
 
 #### 参考リンク
 - [MDN: requestAnimationFrame](https://developer.mozilla.org/ja/docs/Web/API/window/requestAnimationFrame)
 
 ---
 
-### 6. CSS Containmentの活用
+### 6. CSS Containmentの活用です
 
 #### 背景・理論
 大規模リストやDataViewなどの再描画・reflowが、他のDOM要素に波及するのを防ぐため、CSSの`contain`プロパティを活用します。`contain: layout style paint;`を親要素に付与することで、レイアウト・スタイル・ペイントの影響範囲を限定し、パフォーマンスを向上させます。
 
 #### 実装例
 
-**OK例：主要リスト・ウィジェット親要素にcontainを付与**
+**OK例：主要リスト・ウィジェット親要素にcontainを付与です**
 ```css
 .widget-content,
 .tweet-data-viewer-table,
@@ -292,12 +292,12 @@ element.addEventListener('mousemove', (e) => {
 - `styles.css`にて主要リスト・ウィジェット親要素へ適用済み。
 
 #### 注意点・アンチパターン
-- containを付与すると、外部CSSや親要素のスタイル継承が制限される場合がある。
-- レイアウトやスタイルの依存関係が強い場合は適用範囲に注意。
+- containを付与すると、外部CSSや親要素のスタイル継承が制限される場合があるです。
+- レイアウトやスタイルの依存関係が強い場合は適用範囲に注意です。
 
 #### パフォーマンス計測例
-- DevToolsの「Performance」タブで、contain有無によるreflow波及範囲を比較。
-- 大規模リスト描画時の他要素への影響を観察。
+- DevToolsの「Performance」タブで、contain有無によるreflow波及範囲を比較です。
+- 大規模リスト描画時の他要素への影響を観察です。
 
 #### 参考リンク
 - [MDN: contain - CSS: カスケーディングスタイルシート | MDN](https://developer.mozilla.org/ja/docs/Web/CSS/contain)
@@ -305,14 +305,14 @@ element.addEventListener('mousemove', (e) => {
 
 ---
 
-### 7. read→write分離（レイアウト値取得とDOM変更の分離）
+### 7. read→write分離（レイアウト値取得とDOM変更の分離）です
 
 #### 背景・理論
 ループ内で「レイアウト値取得（例：getBoundingClientRect, scrollHeight）」と「style変更（DOM書き換え）」が混在すると、都度reflowが発生しパフォーマンスが大きく低下します。read→write分離（Layout Thrashing防止）は、まず全要素のレイアウト値を一括取得し、その後まとめてDOM変更することで、reflow回数を最小限に抑える手法です。
 
 #### 実装例
 
-**NG例：ループ内でread→writeが交互に発生**
+**NG例：ループ内でread→writeが交互に発生です**
 ```js
 for (const el of elements) {
   const rect = el.getBoundingClientRect(); // read
@@ -320,7 +320,7 @@ for (const el of elements) {
 }
 ```
 
-**OK例：read→write分離**
+**OK例：read→write分離です**
 ```js
 const widths = [];
 for (const el of elements) {
@@ -335,12 +335,12 @@ for (let i = 0; i < elements.length; i++) {
 - 全ウィジェット（現状混在なし、今後も設計時に徹底）
 
 #### 注意点・アンチパターン
-- ループ内でread→writeが交互に発生しないよう、必ず分離する。
-- 大規模リストや複雑なUI追加時は特に注意。
+- ループ内でread→writeが交互に発生しないよう、必ず分離するです。
+- 大規模リストや複雑なUI追加時は特に注意です。
 
 #### パフォーマンス計測例
-- DevToolsで「Forced reflow」警告の有無を確認。
-- read→write分離有無でreflow回数・描画時間を比較。
+- DevToolsで「Forced reflow」警告の有無を確認です。
+- read→write分離有無でreflow回数・描画時間を比較です。
 
 #### 参考リンク
 - [Google Developers: Avoiding layout thrashing](https://web.dev/avoid-large-complex-layouts-and-layout-thrashing/)
@@ -348,40 +348,40 @@ for (let i = 0; i < elements.length; i++) {
 
 ---
 
-### 8. その他の設計・実装ルール
+### 8. その他の設計・実装ルールです
 
 #### 背景・理論
 DOM操作やUI設計全般において、パフォーマンス劣化を防ぐための基本的なルールを徹底します。特にループ内DOM操作の最小化、バッチ化、差分更新、containmentや仮想リストの活用が重要です。
 
 #### 実装例・設計ルール
-- ループ内でのDOM操作は最小限にし、可能な限りバッチ化・差分更新を徹底する。
-- 新規ウィジェットや大規模リスト追加時は、containment・仮想リスト・バッチ化の適用を必ず検討する。
-- パフォーマンス計測（Chrome DevToolsのPerformanceタブ等）でreflowコストを定期的に確認する。
+- ループ内でのDOM操作は最小限にし、可能な限りバッチ化・差分更新を徹底するです。
+- 新規ウィジェットや大規模リスト追加時は、containment・仮想リスト・バッチ化の適用を必ず検討するです。
+- パフォーマンス計測（Chrome DevToolsのPerformanceタブ等）でreflowコストを定期的に確認するです。
 - **YAMLでの大きさ指定（width/height）もバッチ化・差分更新の対象**
   各ウィジェットの`create`で`settings.width`/`settings.height`を直接styleに反映する場合も、
-  ループ内でのDOM操作やreflow波及に注意し、必要に応じてDocumentFragmentやcontain等を併用してください。
+  ループ内でのDOM操作やreflow波及に注意し、必要に応じてDocumentFragmentやcontain等を併用してくださいです。
 
 #### 注意点
-- 既存ルールを逸脱する場合は必ず理由とパフォーマンス検証を行う。
-- 差分更新（DOM diff）を意識し、全再描画を避ける。
+- 既存ルールを逸脱する場合は必ず理由とパフォーマンス検証を行うです。
+- 差分更新（DOM diff）を意識し、全再描画を避けるです。
 
 #### パフォーマンス計測例
-- 定期的にDevToolsでreflow・paintコストを確認。
-- 大規模UI追加時は必ず事前・事後で計測。
+- 定期的にDevToolsでreflow・paintコストを確認です。
+- 大規模UI追加時は必ず事前・事後で計測です。
 
 #### 参考リンク
 - [Google Developers: DOM performance](https://web.dev/dom-optimization/)
 
 ---
 
-### 9. Chart.js等の外部ライブラリ利用時のreflow対策
+### 9. Chart.js等の外部ライブラリ利用時のreflow対策です
 
 #### 背景・理論
 Chart.jsなどの外部グラフライブラリは、内部で大量のDOM操作やレイアウト計算を行うことがあり、reflowコストが高くなりがちです。containプロパティやライブラリのオプション設定で、不要な再描画・reflowを抑制します。
 
 #### 実装例
 
-**OK例：containとオプションの活用**
+**OK例：containとオプションの活用です**
 ```css
 .chart-container {
   contain: layout style;
@@ -403,12 +403,12 @@ const chart = new Chart(ctx, {
 - `reflectionWidgetUI.ts`（2024/06最適化）
 
 #### 注意点・アンチパターン
-- responsive: trueやanimation: trueはreflow・再描画コスト増大の原因となる。
-- グラフサイズ変更時は明示的に再描画を制御する。
+- responsive: trueやanimation: trueはreflow・再描画コスト増大の原因となるです。
+- グラフサイズ変更時は明示的に再描画を制御するです。
 
 #### パフォーマンス計測例
-- DevToolsでグラフ描画時の「Scripting」「Rendering」コストを比較。
-- オプション有無で描画時間・reflow回数を計測。
+- DevToolsでグラフ描画時の「Scripting」「Rendering」コストを比較です。
+- オプション有無で描画時間・reflow回数を計測です。
 
 #### 参考リンク
 - [Chart.js: Performance](https://www.chartjs.org/docs/latest/general/performance.html)

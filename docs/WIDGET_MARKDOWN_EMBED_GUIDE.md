@@ -6,10 +6,10 @@
 
 ## 機能概要
 
-- Markdownのコードブロック（```widget-board）でウィジェットを埋め込めます
-- コードブロック内はYAML形式で設定
-- typeごとに既存のウィジェット（例: pomodoro, memo, tweet-widget など）を呼び出せます
-- Obsidianの設定画面（settingsTab）で設定したグローバル値も自動で反映されます
+- Markdownのコードブロック（```widget-board）でウィジェットを埋め込むことができます。
+- コードブロック内はYAML形式で設定します。
+- typeごとに既存のウィジェット（例: pomodoro, memo, tweet-widget など）を呼び出すことができます。
+- Obsidianの設定画面（settingsTab）で設定したグローバル値も自動で反映されます。
 
 
 ---
