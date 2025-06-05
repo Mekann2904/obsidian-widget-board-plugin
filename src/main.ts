@@ -5,10 +5,10 @@ import { DEFAULT_PLUGIN_SETTINGS, DEFAULT_BOARD_CONFIGURATION } from './settings
 import { WidgetBoardModal } from './modal';
 import { WidgetBoardSettingTab } from './settingsTab';
 import { registeredWidgetImplementations } from './widgetRegistry';
-import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoroWidget';
-import { DEFAULT_MEMO_SETTINGS } from './widgets/memoWidget';
+import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoro';
+import { DEFAULT_MEMO_SETTINGS } from './widgets/memo';
 import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';
-import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
+import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timer-stopwatch';
 import cloneDeep from 'lodash.clonedeep';
 import { LLMManager } from './llm/llmManager';
 import { GeminiProvider } from './llm/gemini/geminiApi';

@@ -55,11 +55,11 @@ export interface PluginGlobalSettings {
     boards: BoardConfiguration[];
     lastOpenedBoardId?: string;
     defaultBoardIdForQuickOpen?: string;
-    pomodoroNotificationSound?: import("./widgets/pomodoroWidget").PomodoroSoundType;
+    pomodoroNotificationSound?: import("./widgets/pomodoro").PomodoroSoundType;
     pomodoroNotificationVolume?: number;
-    timerStopwatchNotificationSound?: import("./widgets/timerStopwatchWidget").TimerSoundType;
+    timerStopwatchNotificationSound?: import("./widgets/timer-stopwatch").TimerSoundType;
     timerStopwatchNotificationVolume?: number;
-    pomodoroExportFormat?: import("./widgets/pomodoroWidget").PomodoroExportFormat;
+    pomodoroExportFormat?: import("./widgets/pomodoro").PomodoroExportFormat;
     boardGroups?: BoardGroup[];
     openBoardOnPomodoroEnd?: boolean;
     autoStartNextPomodoroSession?: boolean;

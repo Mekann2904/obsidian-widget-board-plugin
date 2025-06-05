@@ -4,12 +4,12 @@ import type WidgetBoardPlugin from './main';
 import type { BoardConfiguration, WidgetConfig } from './interfaces';
 import { DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
 import { WidgetBoardModal } from './modal';
-import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings, PomodoroSoundType } from './widgets/pomodoroWidget';
-import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memoWidget';
+import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings, PomodoroSoundType } from './widgets/pomodoro';
+import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memo';
 import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';
-import type { CalendarWidgetSettings } from './widgets/calendarWidget';
-import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recentNotesWidget';
-import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timerStopwatchWidget';
+import type { CalendarWidgetSettings } from './widgets/calendar';
+import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recent-notes';
+import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timer-stopwatch';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from 'src/widgets/tweetWidget/constants';
 import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 import { obfuscate, deobfuscate } from './utils';
@@ -243,7 +243,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 dropdown.addOption('chime', 'チャイム');
                 dropdown.setValue(this.plugin.settings.timerStopwatchNotificationSound || 'default_beep')
                     .onChange(async (value) => {
-                        this.plugin.settings.timerStopwatchNotificationSound = value as import("./widgets/timerStopwatchWidget").TimerSoundType;
+                        this.plugin.settings.timerStopwatchNotificationSound = value as import("./widgets/timer-stopwatch").TimerSoundType;
                         await this.plugin.saveSettings();
                     });
             })

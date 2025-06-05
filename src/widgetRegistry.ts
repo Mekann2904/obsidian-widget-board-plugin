@@ -1,12 +1,12 @@
 // src/widgetRegistry.ts
 import type { WidgetImplementation } from './interfaces';
-import { PomodoroWidget } from './widgets/pomodoroWidget';
-import { MemoWidget } from './widgets/memoWidget';
-import { CalendarWidget } from './widgets/calendarWidget';
-import { RecentNotesWidget } from './widgets/recentNotesWidget';
-import { ThemeSwitcherWidget } from './widgets/themeSwitcherWidget';
-import { TimerStopwatchWidget } from './widgets/timerStopwatchWidget';
-import { FileViewWidget } from './widgets/FileViewWidget';
+import { PomodoroWidget } from './widgets/pomodoro';
+import { MemoWidget } from './widgets/memo';
+import { CalendarWidget } from './widgets/calendar';
+import { RecentNotesWidget } from './widgets/recent-notes';
+import { ThemeSwitcherWidget } from './widgets/theme-switcher';
+import { TimerStopwatchWidget } from './widgets/timer-stopwatch';
+import { FileViewWidget } from './widgets/file-view';
 import { TweetWidget } from './widgets/tweetWidget/tweetWidget';
 import { ReflectionWidget } from './widgets/reflectionWidget/reflectionWidget';
 

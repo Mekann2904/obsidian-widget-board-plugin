@@ -7,7 +7,7 @@
 
 Obsidian Widget Board Pluginは、Obsidian上で「ウィジェットボード」を作成し、複数の便利なウィジェット（ポモドーロタイマー、メモ、カレンダー、タイマー/ストップウォッチ、最近編集したノート、テーマ切り替え等）を自由に配置・管理できるプラグインです。
 
-> **ウィジェットの自作・拡張方法については [WIDGET_DEV_GUIDE.md](WIDGET_DEV_GUIDE.md) およびパフォーマンス設計指針 [WIDGET_PERFORMANCE_GUIDE.md](WIDGET_PERFORMANCE_GUIDE.md) も必ずご参照ください。**
+> **ウィジェットの自作・拡張方法については [WIDGET_DEV_GUIDE.md](docs/WIDGET_DEV_GUIDE.md) およびパフォーマンス設計指針 [WIDGET_PERFORMANCE_GUIDE.md](docs/WIDGET_PERFORMANCE_GUIDE.md) も必ずご参照ください。**
 > **ポモドーロ作業ログのファイル形式については [logs/README.md](logs/README.md) もご参照ください。**
 
 ---
@@ -29,7 +29,7 @@ Obsidian Widget Board Pluginは、Obsidian上で「ウィジェットボード�
 - **通知音や音量などの全体設定・個別設定**
 - **ホットキー（トグルのみ）で各ボードを素早く開閉**
 - **ポモドーロ作業ログの自動エクスポート（CSV/JSON/Markdown）**
-- **独自ウィジェットの追加・開発も可能です。詳しくは [WIDGET_DEV_GUIDE.md](WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](WIDGET_PERFORMANCE_GUIDE.md) を必ずご参照ください。**
+- **独自ウィジェットの追加・開発も可能です。詳しくは [WIDGET_DEV_GUIDE.md](docs/WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](docs/WIDGET_PERFORMANCE_GUIDE.md) を必ずご参照ください。**
 
 ---
 
@@ -45,7 +45,7 @@ Obsidian Widget Board Pluginは、Obsidian上で「ウィジェットボード�
 - 追加したウィジェットはタイトル変更・並べ替え・削除が可能です。
 - 各ウィジェットの詳細設定（例：ポモドーロの作業時間や通知音、メモ内容、カレンダーの表示など）も個別に編集できます。
 - **追加できるウィジェットの種類は、プラグイン内で登録されたもの（`src/widgetRegistry.ts`参照）に限られます。新しいウィジェットを追加したい場合は、`widgetRegistry.ts`での登録とプラグインの再読み込みが必要です。**
-- **独自ウィジェットの追加・開発方法については [WIDGET_DEV_GUIDE.md](WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](WIDGET_PERFORMANCE_GUIDE.md) をご覧ください。パフォーマンス設計指針も必ずご確認ください。**
+- **独自ウィジェットの追加・開発方法については [WIDGET_DEV_GUIDE.md](docs/WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](docs/WIDGET_PERFORMANCE_GUIDE.md) をご覧ください。パフォーマンス設計指針も必ずご確認ください。**
 
 ### 3. ホットキー
 - 各ボードには「トグル」ホットキーのみ設定できます（Obsidianのホットキー設定画面から割り当て）。
@@ -127,7 +127,7 @@ Obsidian Widget Board Pluginは、Obsidian上で「ウィジェットボード�
 - AI要約はVault内`data.json`にキャッシュ保存、再利用・手動再生成も可能
 - レスポンシブ対応・アクセシビリティ配慮
 
-> **独自ウィジェットの追加・開発も可能です。詳しくは [WIDGET_DEV_GUIDE.md](WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](WIDGET_PERFORMANCE_GUIDE.md) を参照してください。**
+> **独自ウィジェットの追加・開発も可能です。詳しくは [WIDGET_DEV_GUIDE.md](docs/WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](docs/WIDGET_PERFORMANCE_GUIDE.md) を参照してください。**
 
 ---
 
@@ -206,7 +206,7 @@ LLM（AI）を使った要約やAIリプライのプロンプト（指示文）�
 
 ## 開発者向け・パフォーマンス最適化
 
-- **独自ウィジェットの開発・拡張を行う場合は、必ず [WIDGET_DEV_GUIDE.md](WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](WIDGET_PERFORMANCE_GUIDE.md) をご参照ください。**
+- **独自ウィジェットの開発・拡張を行う場合は、必ず [WIDGET_DEV_GUIDE.md](docs/WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](docs/WIDGET_PERFORMANCE_GUIDE.md) をご参照ください。**
 - 開発フロー、WidgetImplementation実装例、パフォーマンス設計チェックリスト、FAQなどを網羅しています。
 - パフォーマンス最適化（バッチ化・仮想リスト・contain・read→write分離等）は全ウィジェットで必須です。
 - 開発・レビュー時はパフォーマンスガイドのチェックリストを必ず確認し、DevTools等でreflow・描画コストも計測してください。
