@@ -4,6 +4,7 @@ import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main'; // main.ts の WidgetBoardPlugin クラスをインポート
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { debugLog } from '../../utils/logger';
+import { applyWidgetSize, createWidgetContainer } from '../../utils';
 
 // --- メモウィジェット設定インターフェース ---
 export interface MemoWidgetSettings {
@@ -428,14 +429,11 @@ export class MemoWidget implements WidgetImplementation {
         // ただし、このthis.config.settingsへの変更がグローバル設定に直接反映されるわけではない。
         config.settings = this.currentSettings;
 
-        this.widgetEl = document.createElement('div');
-        this.widgetEl.classList.add('widget', 'memo-widget');
-        this.widgetEl.setAttribute('data-widget-id', config.id);
+        const { widgetEl, titleEl } = createWidgetContainer(config, 'memo-widget');
+        this.widgetEl = widgetEl;
         this.widgetEl.style.display = 'flex';
         this.widgetEl.style.flexDirection = 'column';
         this.widgetEl.style.minHeight = '0'; // flexコンテナ内のアイテムとして縮小できるように
-
-        const titleEl = this.widgetEl.createEl('h4');
         titleEl.textContent = (this.config.title && this.config.title.trim() !== "") ? this.config.title : "";
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
@@ -476,9 +474,7 @@ export class MemoWidget implements WidgetImplementation {
         this.scheduleRender(); // 初期UI状態設定（これがrenderMemoとapplyContainerHeightStylesを呼ぶ）
         
         // 追加: YAMLで大きさ指定があれば反映
-        const settings = (config.settings || {}) as any;
-        if (settings.width) this.widgetEl.style.width = settings.width;
-        if (settings.height) this.widgetEl.style.height = settings.height;
+        applyWidgetSize(this.widgetEl, config.settings);
 
         return this.widgetEl;
     }

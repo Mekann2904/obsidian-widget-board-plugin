@@ -4,6 +4,7 @@ import { DEFAULT_CALENDAR_SETTINGS } from '../../settingsDefaults';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { debugLog } from '../../utils/logger';
+import { applyWidgetSize, createWidgetContainer } from '../../utils';
 import moment from 'moment';
 
 // --- カレンダーウィジェット設定インターフェース ---
@@ -48,11 +49,8 @@ export class CalendarWidget implements WidgetImplementation {
         this.currentSettings = { ...DEFAULT_CALENDAR_SETTINGS, ...(config.settings || {}) };
         config.settings = this.currentSettings; // Ensure config object is updated
 
-        this.widgetEl = document.createElement('div');
-        this.widgetEl.classList.add('widget', 'calendar-widget');
-        this.widgetEl.setAttribute('data-widget-id', config.id);
-
-        const titleEl = this.widgetEl.createEl('h4');
+        const { widgetEl, titleEl } = createWidgetContainer(config, 'calendar-widget');
+        this.widgetEl = widgetEl;
         titleEl.textContent = this.config.title;
 
         this.calendarContentEl = this.widgetEl.createDiv({ cls: 'widget-content calendar-flex-content' });
@@ -61,9 +59,7 @@ export class CalendarWidget implements WidgetImplementation {
         this.renderCalendar();
 
         // 追加: YAMLで大きさ指定があれば反映
-        const settings = (config.settings || {}) as any;
-        if (settings.width) this.widgetEl.style.width = settings.width;
-        if (settings.height) this.widgetEl.style.height = settings.height;
+        applyWidgetSize(this.widgetEl, config.settings);
 
         return this.widgetEl;
     }
