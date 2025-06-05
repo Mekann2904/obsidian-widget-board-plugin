@@ -4,6 +4,7 @@ import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main'; // main.ts の WidgetBoardPlugin クラスをインポート
 import { PomodoroMemoWidget, PomodoroMemoSettings } from '../pomodoroMemoWidget';
 import { debugLog } from '../../utils/logger';
+import { applyWidgetSize, createWidgetContainer } from '../../utils';
 
 // --- 通知音の種類の型定義 ---
 export type PomodoroSoundType = 'off' | 'default_beep' | 'bell' | 'chime';
@@ -291,13 +292,9 @@ export class PomodoroWidget implements WidgetImplementation {
         }
         config.settings = this.currentSettings;
 
-        this.widgetEl = document.createElement('div');
-        this.widgetEl.classList.add('widget', 'pomodoro-timer-widget');
-        this.widgetEl.setAttribute('data-widget-id', config.id);
-
+        const { widgetEl, titleEl } = createWidgetContainer(config, 'pomodoro-timer-widget');
+        this.widgetEl = widgetEl;
         this.applyBackground(this.currentSettings.backgroundImageUrl);
-
-        const titleEl = this.widgetEl.createEl('h4');
         titleEl.textContent = this.config.title || "ポモドーロタイマー";
         if (!this.config.title || this.config.title.trim() === "") {
             titleEl.style.display = 'none';
@@ -365,9 +362,7 @@ export class PomodoroWidget implements WidgetImplementation {
         this.lastConfiguredId = newConfigId;
 
         // 追加: YAMLで大きさ指定があれば反映
-        const settings = (config.settings || {}) as any;
-        if (settings.width) this.widgetEl.style.width = settings.width;
-        if (settings.height) this.widgetEl.style.height = settings.height;
+        applyWidgetSize(this.widgetEl, config.settings);
 
         return this.widgetEl;
     }

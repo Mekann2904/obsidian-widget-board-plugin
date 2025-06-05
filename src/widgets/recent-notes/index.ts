@@ -2,6 +2,7 @@ import { App, TFile, setIcon } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import moment from 'moment';
+import { applyWidgetSize, createWidgetContainer } from '../../utils';
 
 export interface RecentNotesWidgetSettings {
     maxNotes?: number;
@@ -45,20 +46,15 @@ export class RecentNotesWidget implements WidgetImplementation {
         this.currentSettings = { ...DEFAULT_RECENT_NOTES_SETTINGS, ...(config.settings || {}) };
         config.settings = this.currentSettings;
 
-        this.widgetEl = document.createElement('div');
-        this.widgetEl.classList.add('widget', 'recent-notes-widget');
-        this.widgetEl.setAttribute('data-widget-id', config.id);
-
-        const titleEl = this.widgetEl.createEl('h4');
+        const { widgetEl, titleEl } = createWidgetContainer(config, 'recent-notes-widget');
+        this.widgetEl = widgetEl;
         titleEl.textContent = this.config.title?.trim() || '最近編集したノート';
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
         this.renderNotesList(contentEl);
 
         // 追加: YAMLで大きさ指定があれば反映
-        const settings = (config.settings || {}) as any;
-        if (settings.width) this.widgetEl.style.width = settings.width;
-        if (settings.height) this.widgetEl.style.height = settings.height;
+        applyWidgetSize(this.widgetEl, config.settings);
 
         return this.widgetEl;
     }

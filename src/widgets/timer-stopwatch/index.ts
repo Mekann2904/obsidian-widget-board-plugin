@@ -1,6 +1,7 @@
 import { App, Notice, setIcon } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
+import { createWidgetContainer } from '../../utils';
 
 // --- 通知音の種類の型定義 ---
 export type TimerSoundType = 'off' | 'default_beep' | 'bell' | 'chime'; // chime を追加する場合
@@ -245,14 +246,11 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         // グローバルintervalを必ず維持
         TimerStopwatchWidget.ensureGlobalInterval();
 
-        this.widgetEl = document.createElement('div');
-        this.widgetEl.classList.add('widget', 'timer-stopwatch-widget');
-        this.widgetEl.setAttribute('data-widget-id', config.id);
+        const { widgetEl, titleEl } = createWidgetContainer(config, 'timer-stopwatch-widget');
+        this.widgetEl = widgetEl;
         this.widgetEl.setAttribute('data-widget-type', this.id);
-
-        const titleEl = this.widgetEl.createEl('h4');
-        titleEl.textContent = this.config.title?.trim() || 'タイマー / ストップウォッチ';
-        titleEl.classList.add('widget-title');
+        titleEl!.textContent = this.config.title?.trim() || 'タイマー / ストップウォッチ';
+        titleEl!.classList.add('widget-title');
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
         this.buildUI(contentEl);

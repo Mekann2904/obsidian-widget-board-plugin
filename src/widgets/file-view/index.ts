@@ -2,6 +2,7 @@ import { App, TFile, Notice, FuzzySuggestModal, MarkdownRenderer, Component } fr
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
+import { applyWidgetSize, createWidgetContainer } from '../../utils';
 
 // ファイルサジェスト用モーダル
 class FileSuggestModal extends FuzzySuggestModal<TFile> {
@@ -49,12 +50,9 @@ export class FileViewWidget implements WidgetImplementation {
     this.fixedHeightPx = typeof this.config.settings?.fixedHeightPx === 'number' ? this.config.settings.fixedHeightPx : 200;
 
     // --- カード型ウィジェット本体 ---
-    this.widgetEl = document.createElement('div');
-    this.widgetEl.classList.add('widget', 'file-view-widget');
-    this.widgetEl.setAttribute('data-widget-id', config.id);
-
-    // --- タイトル ---
-    this.titleEl = this.widgetEl.createEl('h4');
+    const { widgetEl, titleEl } = createWidgetContainer(config, 'file-view-widget');
+    this.widgetEl = widgetEl;
+    this.titleEl = titleEl;
     this.updateTitle();
 
     // --- カード内コンテンツ ---
@@ -100,9 +98,7 @@ export class FileViewWidget implements WidgetImplementation {
     this.loadFile();
 
     // 追加: YAMLで大きさ指定があれば反映
-    const settings = (config.settings || {}) as any;
-    if (settings.width) this.widgetEl.style.width = settings.width;
-    if (settings.height) this.widgetEl.style.height = settings.height;
+    applyWidgetSize(this.widgetEl, config.settings);
 
     return this.widgetEl;
   }
