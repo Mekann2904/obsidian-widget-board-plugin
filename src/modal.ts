@@ -107,8 +107,10 @@ export class WidgetBoardModal {
         this.contentEl = document.createElement('div');
         this.modalEl.appendChild(this.contentEl);
 
-        // CSS containmentを適用
-        this.modalEl.style.contain = 'layout style';
+        // CSS containmentを適用してレイアウト計算の影響範囲を限定
+        this.modalEl.style.contain = 'layout style paint';
+        // Style recalculation対策として不可視要素はスキップ
+        this.modalEl.style.contentVisibility = 'auto';
     }
 
     /**
@@ -554,39 +556,46 @@ export class WidgetBoardModal {
                 }
             });
         }, { root: container, rootMargin: '200px' });
-        widgetsToLoad.forEach(widgetConfig => {
-            // プレースホルダー生成
-            let wrapper: HTMLElement;
-            if (this.isEditMode) {
-                wrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
-                wrapper.setAttribute('draggable', 'true');
-                wrapper.dataset.widgetId = widgetConfig.id;
-                // まず削除ボタンを追加
-                const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
-                setIcon(deleteBtn, 'trash');
-                deleteBtn.onclick = async () => {
-                    if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
-                        await this.deleteWidget(widgetConfig.id);
-                    }
-                };
-                // プレースホルダーを追加
-                const placeholder = wrapper.createDiv({ cls: 'wb-widget-placeholder' });
-                placeholder.setText('Loading...');
-                // ドラッグハンドルを追加
-                const dragHandle = wrapper.createDiv({ cls: 'wb-widget-drag-handle' });
-                setIcon(dragHandle, 'grip-vertical');
-            } else {
-                wrapper = container.createDiv();
-                wrapper.dataset.widgetId = widgetConfig.id;
-                wrapper.empty();
+        let index = 0;
+        const batchSize = 5;
+        const processBatch = () => {
+            const end = Math.min(index + batchSize, widgetsToLoad.length);
+            for (; index < end; index++) {
+                const widgetConfig = widgetsToLoad[index];
+                let wrapper: HTMLElement;
+                if (this.isEditMode) {
+                    wrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
+                    wrapper.setAttribute('draggable', 'true');
+                    wrapper.dataset.widgetId = widgetConfig.id;
+                    const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
+                    setIcon(deleteBtn, 'trash');
+                    deleteBtn.onclick = async () => {
+                        if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
+                            await this.deleteWidget(widgetConfig.id);
+                        }
+                    };
+                    const placeholder = wrapper.createDiv({ cls: 'wb-widget-placeholder' });
+                    placeholder.setText('Loading...');
+                    const dragHandle = wrapper.createDiv({ cls: 'wb-widget-drag-handle' });
+                    setIcon(dragHandle, 'grip-vertical');
+                } else {
+                    wrapper = container.createDiv();
+                    wrapper.dataset.widgetId = widgetConfig.id;
+                    wrapper.empty();
                 wrapper.createDiv({ cls: 'wb-widget-placeholder', text: 'Loading...' });
+                }
+                observer.observe(wrapper);
             }
-            observer.observe(wrapper);
-        });
-        if (this.isEditMode) {
-            this.addDragDropListeners(container);
-        }
-        this.lastWidgetOrder = [...newOrder];
+            if (index < widgetsToLoad.length) {
+                requestAnimationFrame(processBatch);
+            } else {
+                if (this.isEditMode) {
+                    this.addDragDropListeners(container);
+                }
+                this.lastWidgetOrder = [...newOrder];
+            }
+        };
+        processBatch();
     }
 
     /**
@@ -749,10 +758,14 @@ export class WidgetBoardModal {
         setTimeout(() => {
             this.onClose();
             const selector = `.widget-board-panel-custom[data-board-id='${this.currentBoardId}']`;
-            document.querySelectorAll(selector).forEach(el => {
-                if (el.parentElement === document.body) {
-                    document.body.removeChild(el);
-                }
+            requestAnimationFrame(() => {
+                const fragment = document.createDocumentFragment();
+                document.querySelectorAll(selector).forEach(el => {
+                    if (el.parentElement === document.body) {
+                        fragment.appendChild(el);
+                    }
+                });
+                // dropping the fragment removes the nodes in batch
             });
         }, 300);
         document.body.classList.remove('wb-modal-open');

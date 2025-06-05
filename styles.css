@@ -2135,7 +2135,8 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 /* --- reflow最適化: CSS Containment --- */
 .widget-content,
 .memo-widget-container,
-.tweet-list-main {
+.tweet-list-main,
+.wb-widget-container {
   contain: layout style paint;
 }
 
