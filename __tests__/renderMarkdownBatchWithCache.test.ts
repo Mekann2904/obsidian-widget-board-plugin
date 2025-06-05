@@ -15,14 +15,11 @@ jest.mock('obsidian', () => {
 import { Component } from 'obsidian';
 
 let MarkdownRenderer: { renderMarkdown: jest.Mock };
+const { renderMarkdownBatchWithCache } = require('../src/utils/renderMarkdownBatch.ts');
 
 describe('renderMarkdownBatchWithCache', () => {
-  let renderMarkdownBatchWithCache: typeof import('../src/utils/renderMarkdownBatch').renderMarkdownBatchWithCache;
-
-  beforeEach(async () => {
-    jest.resetModules();
-    ({ renderMarkdownBatchWithCache } = await import('../src/utils/renderMarkdownBatch.js'));
-    MarkdownRenderer = (await import('obsidian')).MarkdownRenderer as any;
+  beforeEach(() => {
+    MarkdownRenderer = require('obsidian').MarkdownRenderer as any;
     jest.clearAllMocks();
     document.body.innerHTML = '';
   });
