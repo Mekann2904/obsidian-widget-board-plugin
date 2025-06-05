@@ -3,7 +3,6 @@ import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import { TweetRepository } from '../tweetWidget/TweetRepository';
 import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../tweetWidget/constants';
-import Chart from 'chart.js/auto';
 import { LLMManager } from '../../llm/llmManager';
 import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from '../../llm/gemini/summaryPrompts';
@@ -11,6 +10,7 @@ import { deobfuscate } from '../../utils';
 import { debugLog } from '../../utils/logger';
 import { ReflectionWidgetUI } from './reflectionWidgetUI';
 
+let Chart: any;
 
 function getTweetDbPath(plugin: any): string {
     const { tweetDbLocation, tweetDbCustomPath } = plugin.settings;
@@ -122,7 +122,7 @@ async function clearOldReflectionSummaries(app: App) {
 export class ReflectionWidget implements WidgetImplementation {
     id = 'reflection-widget';
     private autoTimer: any = null;
-    private chart: Chart | null = null;
+    private chart: any | null = null;
     private lastChartData: number[] | null = null;
     private lastTodaySummary: string | null = null;
     private lastWeekSummary: string | null = null;

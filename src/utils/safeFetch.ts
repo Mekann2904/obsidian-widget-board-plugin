@@ -1,3 +1,5 @@
+import { requestUrl } from "obsidian";
+
 // Obsidianプラグイン環境用 CORS回避fetchラッパー
 export async function safeFetch(url: string, options: RequestInit = {}): Promise<Response> {
   // ヘッダー初期化

@@ -1,6 +1,7 @@
-import { App, TFile, setIcon, moment } from 'obsidian';
+import { App, TFile, setIcon } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../interfaces';
 import type WidgetBoardPlugin from '../main';
+import moment from 'moment';
 
 export interface RecentNotesWidgetSettings {
     maxNotes?: number;

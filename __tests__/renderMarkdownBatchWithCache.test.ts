@@ -21,7 +21,7 @@ describe('renderMarkdownBatchWithCache', () => {
 
   beforeEach(async () => {
     jest.resetModules();
-    ({ renderMarkdownBatchWithCache } = await import('../src/utils/renderMarkdownBatch'));
+    ({ renderMarkdownBatchWithCache } = await import('../src/utils/renderMarkdownBatch.js'));
     MarkdownRenderer = (await import('obsidian')).MarkdownRenderer as any;
     jest.clearAllMocks();
     document.body.innerHTML = '';

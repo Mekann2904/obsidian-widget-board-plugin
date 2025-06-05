@@ -5,9 +5,10 @@ import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 import { TweetRepository } from '../tweetWidget/TweetRepository';
 import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/gemini/summaryPrompts';
-import Chart from 'chart.js/auto';
 import { deobfuscate } from '../../utils';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
+
+let Chart: any;
 
 function getDateKey(date: Date): string {
     return date.toISOString().slice(0, 10);
@@ -83,7 +84,7 @@ export class ReflectionWidgetUI {
     private app: App;
     private plugin: any;
     private autoTimer: any = null;
-    private chart: Chart | null = null;
+    private chart: any | null = null;
     private lastChartData: number[] | null = null;
     private lastTodaySummary: string | null = null;
     private lastWeekSummary: string | null = null;
