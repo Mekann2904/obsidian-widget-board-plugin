@@ -78,15 +78,29 @@ export class TweetRepository {
         try {
             const lastSlash = this.dbPath.lastIndexOf('/');
             const folder = lastSlash !== -1 ? this.dbPath.substring(0, lastSlash) : '';
-            // 'tweets.json' at the vault root requires no directory creation
-            if (folder && !await this.app.vault.adapter.exists(folder)) {
-                await this.app.vault.adapter.mkdir(folder);
+            if (folder) {
+                await this.ensureFolderExists(folder);
             }
             const dataToSave = JSON.stringify(settings, null, 2);
             await this.app.vault.adapter.write(this.dbPath, dataToSave);
         } catch (e) {
             console.error("Error saving tweet data:", e);
             new Notice("つぶやきデータの保存中にエラーが発生しました。詳細はコンソールを確認してください。");
+        }
+    }
+
+    /**
+     * 指定したフォルダが存在しない場合、親フォルダも含めて再帰的に作成する。
+     * @param folder 作成するフォルダパス
+     */
+    private async ensureFolderExists(folder: string): Promise<void> {
+        const parts = folder.split('/');
+        let current = '';
+        for (const part of parts) {
+            current = current ? `${current}/${part}` : part;
+            if (!await this.app.vault.adapter.exists(current)) {
+                await this.app.vault.adapter.mkdir(current);
+            }
         }
     }
 

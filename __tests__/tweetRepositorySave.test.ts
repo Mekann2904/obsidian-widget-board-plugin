@@ -35,4 +35,21 @@ describe('TweetRepository.save', () => {
     expect(mkdir).toHaveBeenCalledWith('folder');
     expect(write).toHaveBeenCalledWith('folder/tweets.json', JSON.stringify(sampleSettings, null, 2));
   });
+
+  test('creates nested folders when missing', async () => {
+    const exists = jest
+      .fn()
+      .mockResolvedValueOnce(false) // 'nested'
+      .mockResolvedValueOnce(false); // 'nested/folder'
+    const mkdir = jest.fn();
+    const write = jest.fn();
+    const app: any = { vault: { adapter: { exists, mkdir, write } } };
+    const repo = new TweetRepository(app, 'nested/folder/tweets.json');
+    await repo.save(sampleSettings);
+    expect(exists).toHaveBeenCalledWith('nested');
+    expect(exists).toHaveBeenCalledWith('nested/folder');
+    expect(mkdir).toHaveBeenCalledWith('nested');
+    expect(mkdir).toHaveBeenCalledWith('nested/folder');
+    expect(write).toHaveBeenCalledWith('nested/folder/tweets.json', JSON.stringify(sampleSettings, null, 2));
+  });
 });
