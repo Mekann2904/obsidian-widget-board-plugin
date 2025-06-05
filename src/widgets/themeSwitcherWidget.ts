@@ -78,8 +78,10 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
         // --- デフォルトテーマを1つにまとめる ---
         const defaultTheme = { id: '', name: 'デフォルト（Obsidian）' };
         const customThemes = themes.filter(t => t !== '' && t !== 'moonstone');
-        const listEl = container.createEl('ul', { cls: 'theme-switcher-list' });
         const allThemes = [defaultTheme, ...customThemes.map(t => ({ id: t, name: t }))];
+
+        const listEl = container.createEl('ul', { cls: 'theme-switcher-list' });
+        const liElements: HTMLElement[] = [];
 
         allThemes.forEach(theme => {
             const itemEl = listEl.createEl('li', { cls: 'theme-switcher-item' });
@@ -89,15 +91,18 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
                 itemEl.classList.add('active');
             }
             itemEl.onclick = () => {
-                if ((theme.id === '' && (currentTheme === '' || currentTheme === undefined)) ||
-                    (theme.id !== '' && currentTheme === theme.id)) {
+                if ((theme.id === '' && (customCss.theme === '' || customCss.theme === undefined)) ||
+                    (theme.id !== '' && customCss.theme === theme.id)) {
                     new Notice('すでにこのテーマが適用されています。');
                     return;
                 }
                 customCss.setTheme(theme.id);
                 new Notice(`テーマ「${theme.name}」を適用しました。`);
-                this.renderThemeSelector(container);
+                // ここでactiveクラスだけ付け替える
+                liElements.forEach(li => li.classList.remove('active'));
+                itemEl.classList.add('active');
             };
+            liElements.push(itemEl);
         });
     }
 } 
