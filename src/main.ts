@@ -402,7 +402,7 @@ export default class WidgetBoardPlugin extends Plugin {
             let tweetIndex = 0, memoIndex = 0, fileIndex = 0;
             let reflectionIndex = 0;
             const reflectionSummaries = [todaySummary, weekSummary].filter(Boolean) as string[];
-            const batchSize = 1;
+            const batchSize = 15;
             const schedule = (cb: () => void) => {
                 if (typeof (window as any).requestIdleCallback === 'function') {
                     (window as any).requestIdleCallback(cb);
