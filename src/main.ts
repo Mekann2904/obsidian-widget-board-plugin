@@ -402,7 +402,14 @@ export default class WidgetBoardPlugin extends Plugin {
             let tweetIndex = 0, memoIndex = 0, fileIndex = 0;
             let reflectionIndex = 0;
             const reflectionSummaries = [todaySummary, weekSummary].filter(Boolean) as string[];
-            const batchSize = 10;
+            const batchSize = 1;
+            const schedule = (cb: () => void) => {
+                if (typeof (window as any).requestIdleCallback === 'function') {
+                    (window as any).requestIdleCallback(cb);
+                } else {
+                    setTimeout(cb, 0);
+                }
+            };
             const processBatch = async () => {
                 // TweetWidget
                 const tweetEnd = Math.min(tweetIndex + batchSize, tweetPosts.length);
@@ -435,12 +442,12 @@ export default class WidgetBoardPlugin extends Plugin {
                     fileIndex < fileViewFiles.length ||
                     reflectionIndex < reflectionSummaries.length
                 ) {
-                    setTimeout(processBatch, 0);
+                    schedule(processBatch);
                 } else {
                     new Notice('キャッシュ完了');
                 }
             };
-            processBatch();
+            schedule(processBatch);
         } catch (e) {
             console.error('プリウォーム中にエラー:', e);
         }
