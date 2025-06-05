@@ -350,13 +350,12 @@ export class ReflectionWidgetUI {
             this.manualBtnEl.onclick = async () => {
                 this.manualBtnEl!.disabled = true;
                 this.manualBtnEl!.innerText = '生成中...';
+                const trigger = () => this.runSummary(true);
                 if ('requestIdleCallback' in window) {
-                    (window as any).requestIdleCallback(() => this.runSummary(true));
+                    (window as any).requestIdleCallback(trigger);
                 } else {
-                    setTimeout(() => this.runSummary(true), 0);
+                    setTimeout(trigger, 0);
                 }
-                this.manualBtnEl!.disabled = false;
-                this.manualBtnEl!.innerText = 'まとめ生成';
             };
             this.aiSummarySectionEl.appendChild(this.manualBtnEl);
         }
