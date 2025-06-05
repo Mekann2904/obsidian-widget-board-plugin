@@ -1,6 +1,18 @@
-import { MarkdownRenderer, Component } from 'obsidian';
+// Provide a virtual mock for the Obsidian API used in the utils
+jest.mock('obsidian', () => {
+  return {
+    MarkdownRenderer: {
+      renderMarkdown: jest.fn((md: string, el: HTMLElement) => {
+        el.innerHTML = `<p>${md}</p>`;
+        return Promise.resolve();
+      })
+    },
+    Component: class {},
+    TFile: class {}
+  };
+}, { virtual: true });
 
-jest.mock('obsidian');
+import { MarkdownRenderer, Component } from 'obsidian';
 
 describe('renderMarkdownBatchWithCache', () => {
   let renderMarkdownBatchWithCache: typeof import('../src/utils/renderMarkdownBatch').renderMarkdownBatchWithCache;
