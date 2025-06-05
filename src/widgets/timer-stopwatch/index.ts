@@ -1,6 +1,6 @@
 import { App, Notice, setIcon } from 'obsidian';
-import type { WidgetConfig, WidgetImplementation } from '../interfaces';
-import type WidgetBoardPlugin from '../main';
+import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
+import type WidgetBoardPlugin from '../../main';
 
 // --- 通知音の種類の型定義 ---
 export type TimerSoundType = 'off' | 'default_beep' | 'bell' | 'chime'; // chime を追加する場合

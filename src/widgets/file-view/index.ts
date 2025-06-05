@@ -1,7 +1,7 @@
 import { App, TFile, Notice, FuzzySuggestModal, MarkdownRenderer, Component } from 'obsidian';
-import type { WidgetConfig, WidgetImplementation } from '../interfaces';
-import type WidgetBoardPlugin from '../main';
-import { renderMarkdownBatchWithCache } from '../utils/renderMarkdownBatch';
+import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
+import type WidgetBoardPlugin from '../../main';
+import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 
 // ファイルサジェスト用モーダル
 class FileSuggestModal extends FuzzySuggestModal<TFile> {

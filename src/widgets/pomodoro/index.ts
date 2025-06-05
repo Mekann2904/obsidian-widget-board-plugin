@@ -1,9 +1,9 @@
 // src/widgets/pomodoroWidget.ts
 import { App, MarkdownRenderer, Notice, setIcon, TFolder } from 'obsidian';
-import type { WidgetConfig, WidgetImplementation } from '../interfaces';
-import type WidgetBoardPlugin from '../main'; // main.ts の WidgetBoardPlugin クラスをインポート
-import { PomodoroMemoWidget, PomodoroMemoSettings } from './pomodoroMemoWidget';
-import { debugLog } from '../utils/logger';
+import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
+import type WidgetBoardPlugin from '../../main'; // main.ts の WidgetBoardPlugin クラスをインポート
+import { PomodoroMemoWidget, PomodoroMemoSettings } from '../pomodoroMemoWidget';
+import { debugLog } from '../../utils/logger';
 
 // --- 通知音の種類の型定義 ---
 export type PomodoroSoundType = 'off' | 'default_beep' | 'bell' | 'chime';

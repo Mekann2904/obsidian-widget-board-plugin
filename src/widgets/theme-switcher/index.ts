@@ -1,6 +1,6 @@
 import { App, setIcon, Notice } from 'obsidian';
-import type { WidgetConfig, WidgetImplementation } from '../interfaces';
-import type WidgetBoardPlugin from '../main';
+import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
+import type WidgetBoardPlugin from '../../main';
 
 export interface ThemeSwitcherWidgetSettings {
     // 今後拡張用
