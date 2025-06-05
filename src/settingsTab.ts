@@ -383,7 +383,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .onChange(async (value) => {
                         this.plugin.settings.tweetDbLocation = value as 'vault' | 'custom';
                         await this.plugin.saveSettings();
-                        // もしcustomPathSettingElがHTMLElementなら表示切り替え
                         if (customPathSettingEl) {
                             customPathSettingEl.style.display = (value === 'custom') ? '' : 'none';
                         }

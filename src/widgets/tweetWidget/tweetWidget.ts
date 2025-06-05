@@ -464,9 +464,16 @@ export class TweetWidget implements WidgetImplementation {
     private getTweetDbPath(): string {
         const { tweetDbLocation, tweetDbCustomPath } = this.plugin.settings;
         if (tweetDbLocation === 'custom' && tweetDbCustomPath) {
-            return tweetDbCustomPath;
+            // パスの末尾を必ず tweets.json にする
+            let path = tweetDbCustomPath;
+            if (!path.endsWith('/tweets.json')) {
+                // フォルダ指定や他ファイル名の場合も tweets.json に強制
+                path = path.replace(/\/[^/]*$/, '') + '/tweets.json';
+            }
+            return path;
         }
-        return `${this.plugin.manifest.dir || '.obsidian/plugins/widget-board'}/data/posts.json`;
+        // デフォルト: Vault直下
+        return 'tweets.json';
     }
 
     private getAiAvatarIndex(userId: string, len: number): number {

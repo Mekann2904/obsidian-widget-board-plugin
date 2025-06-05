@@ -15,7 +15,11 @@ let Chart: any;
 function getTweetDbPath(plugin: any): string {
     const { tweetDbLocation, tweetDbCustomPath } = plugin.settings;
     if (tweetDbLocation === 'custom' && tweetDbCustomPath) {
-        return tweetDbCustomPath;
+        let path = tweetDbCustomPath;
+        if (!path.endsWith('/tweets.json')) {
+            path = path.replace(/\/[^/]*$/, '') + '/tweets.json';
+        }
+        return path;
     }
     // デフォルト: Vault直下
     return 'tweets.json';
