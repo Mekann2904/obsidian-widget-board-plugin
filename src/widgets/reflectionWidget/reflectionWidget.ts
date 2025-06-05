@@ -17,7 +17,13 @@ function getTweetDbPath(plugin: any): string {
     if (tweetDbLocation === 'custom' && tweetDbCustomPath) {
         let path = tweetDbCustomPath;
         if (!path.endsWith('/tweets.json')) {
-            path = path.replace(/\/[^/]*$/, '') + '/tweets.json';
+            if (path.endsWith('/')) {
+                path += 'tweets.json';
+            } else if (path.endsWith('.json')) {
+                path = path.replace(/[^/]*$/, 'tweets.json');
+            } else {
+                path += '/tweets.json';
+            }
         }
         return path;
     }

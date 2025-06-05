@@ -467,8 +467,13 @@ export class TweetWidget implements WidgetImplementation {
             // パスの末尾を必ず tweets.json にする
             let path = tweetDbCustomPath;
             if (!path.endsWith('/tweets.json')) {
-                // フォルダ指定や他ファイル名の場合も tweets.json に強制
-                path = path.replace(/\/[^/]*$/, '') + '/tweets.json';
+                if (path.endsWith('/')) {
+                    path += 'tweets.json';
+                } else if (path.endsWith('.json')) {
+                    path = path.replace(/[^/]*$/, 'tweets.json');
+                } else {
+                    path += '/tweets.json';
+                }
             }
             return path;
         }
