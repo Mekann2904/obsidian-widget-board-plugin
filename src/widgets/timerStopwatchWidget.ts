@@ -383,10 +383,19 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         // 残り時間表示など自分自身のみ再描画
         this.updateDisplay();
 
-        if (this.config && this.plugin.saveSettings) {
-            // 保存する設定は currentSettings を参照する
-            this.config.settings = { ...this.currentSettings }; // 音量設定なども含める
-            this.plugin.saveSettings();
+        if (this.config && this.plugin.saveData) {
+            this.config.settings = { ...this.currentSettings };
+            // グローバル設定の該当ウィジェット設定も更新
+            const boards = (this.plugin.settings as any).boards;
+            const board = boards?.find((b: any) => b.widgets?.some((w: any) => w.id === this.config.id));
+            if (board) {
+                const widget = board.widgets.find((w: any) => w.id === this.config.id);
+                if (widget) {
+                    widget.settings = { ...this.currentSettings };
+                }
+            }
+            // 設定の永続化のみ（UI再描画はしない）
+            this.plugin.saveData(this.plugin.settings);
         }
         // 他インスタンスへのnotifyInstancesToUpdateDisplay等は呼ばない
     }
