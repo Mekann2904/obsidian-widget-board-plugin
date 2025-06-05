@@ -72,6 +72,8 @@ export class WidgetBoardModal {
     private draggedElement: HTMLElement | null = null;
     private lastWidgetOrder: string[] = [];
     private dragDropListeners: Array<{ type: string, handler: EventListenerOrEventListenerObject }> = [];
+    private dragOverScheduled = false;
+    private pendingDragOverEvent: { container: HTMLElement; overElement: HTMLElement; clientY: number } | null = null;
 
     static readonly MODES = {
         RIGHT_HALF: 'mode-right-half',
@@ -449,7 +451,7 @@ export class WidgetBoardModal {
 
         this.updateModeButtonsActiveState();
 
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             const searchInput = this.contentEl.querySelector('.wb-page-search-bar-input') as HTMLInputElement | null;
             if (searchInput) {
                 searchInput.addEventListener('focus', (e) => {
@@ -459,7 +461,7 @@ export class WidgetBoardModal {
                     }
                 });
             }
-        }, 0);
+        });
 
         requestAnimationFrame(() => {
             modalEl.classList.add('is-open');
@@ -509,7 +511,7 @@ export class WidgetBoardModal {
                     if (wrapper.dataset.loaded === '1') return;
                     const WidgetClass = registeredWidgetImplementations.get(widgetConfig.type) as (new () => WidgetImplementation) | undefined;
                     if (WidgetClass) {
-                        // 重いウィジェットはsetTimeoutで遅延描画
+                        // 重いウィジェットは次フレームに遅延描画
                         const isHeavy = ['pomodoro', 'calendar', 'recent-notes'].includes(widgetConfig.type);
                         const createWidget = () => {
                             try {
@@ -542,7 +544,7 @@ export class WidgetBoardModal {
                             }
                         };
                         if (isHeavy) {
-                            setTimeout(createWidget, 0);
+                            requestAnimationFrame(createWidget);
                         } else {
                             createWidget();
                         }
@@ -646,7 +648,7 @@ export class WidgetBoardModal {
             this.draggedElement = target;
             e.dataTransfer.effectAllowed = 'move';
             e.dataTransfer.setData('text/plain', target.dataset.widgetId || '');
-            setTimeout(() => target.classList.add('is-dragging'), 0);
+            requestAnimationFrame(() => target.classList.add('is-dragging'));
         }
     }
 
@@ -657,14 +659,25 @@ export class WidgetBoardModal {
         const container = e.currentTarget as HTMLElement;
         const overElement = (e.target as HTMLElement).closest('.wb-widget-edit-wrapper');
 
-        if (overElement && overElement !== this.draggedElement) {
-            const rect = overElement.getBoundingClientRect();
-            const isAfter = e.clientY > rect.top + rect.height / 2;
-            if (isAfter) {
-                container.insertBefore(this.draggedElement, overElement.nextSibling);
-            } else {
-                container.insertBefore(this.draggedElement, overElement);
-            }
+        if (!overElement || overElement === this.draggedElement) return;
+
+        this.pendingDragOverEvent = { container, overElement, clientY: e.clientY };
+
+        if (!this.dragOverScheduled) {
+            this.dragOverScheduled = true;
+            requestAnimationFrame(() => {
+                if (this.pendingDragOverEvent && this.draggedElement) {
+                    const { container, overElement, clientY } = this.pendingDragOverEvent;
+                    const rect = overElement.getBoundingClientRect();
+                    const isAfter = clientY > rect.top + rect.height / 2;
+                    if (isAfter) {
+                        container.insertBefore(this.draggedElement!, overElement.nextSibling);
+                    } else {
+                        container.insertBefore(this.draggedElement!, overElement);
+                    }
+                }
+                this.dragOverScheduled = false;
+            });
         }
     }
 

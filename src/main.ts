@@ -408,7 +408,7 @@ export default class WidgetBoardPlugin extends Plugin {
                 if (typeof (window as any).requestIdleCallback === 'function') {
                     (window as any).requestIdleCallback(cb);
                 } else {
-                    setTimeout(cb, 0);
+                    requestAnimationFrame(cb);
                 }
             };
             const processBatch = async () => {

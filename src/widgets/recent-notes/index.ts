@@ -157,9 +157,15 @@ export class RecentNotesWidget implements WidgetImplementation {
         };
         // 初回描画
         renderVirtualRows(0);
-        // スクロールイベント
-        listWrapper.onscroll = (e) => {
-            renderVirtualRows(listWrapper.scrollTop);
+        // スクロールイベントは1フレームに1回だけ処理
+        let scheduled = false;
+        listWrapper.onscroll = () => {
+            if (scheduled) return;
+            scheduled = true;
+            requestAnimationFrame(() => {
+                renderVirtualRows(listWrapper.scrollTop);
+                scheduled = false;
+            });
         };
     }
 
