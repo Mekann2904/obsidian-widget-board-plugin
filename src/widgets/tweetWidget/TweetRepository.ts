@@ -69,8 +69,10 @@ export class TweetRepository {
      */
     async save(settings: TweetWidgetSettings): Promise<void> {
         try {
-            const folder = this.dbPath.substring(0, this.dbPath.lastIndexOf('/'));
-            if (!await this.app.vault.adapter.exists(folder)) {
+            const lastSlash = this.dbPath.lastIndexOf('/');
+            const folder = lastSlash !== -1 ? this.dbPath.substring(0, lastSlash) : '';
+            // 'tweets.json' at the vault root requires no directory creation
+            if (folder && !await this.app.vault.adapter.exists(folder)) {
                 await this.app.vault.adapter.mkdir(folder);
             }
             const dataToSave = JSON.stringify(settings, null, 2);
