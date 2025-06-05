@@ -13,19 +13,10 @@ import { ReflectionWidgetUI } from './reflectionWidgetUI';
 let Chart: any;
 
 function getTweetDbPath(plugin: any): string {
-    const { tweetDbLocation, tweetDbCustomPath } = plugin.settings;
-    if (tweetDbLocation === 'custom' && tweetDbCustomPath) {
-        let path = tweetDbCustomPath;
-        if (!path.endsWith('/tweets.json')) {
-            if (path.endsWith('/')) {
-                path += 'tweets.json';
-            } else if (path.endsWith('.json')) {
-                path = path.replace(/[^/]*$/, 'tweets.json');
-            } else {
-                path += '/tweets.json';
-            }
-        }
-        return path;
+    const { baseFolder } = plugin.settings;
+    if (baseFolder) {
+        const folder = baseFolder.endsWith('/') ? baseFolder.slice(0, -1) : baseFolder;
+        return `${folder}/tweets.json`;
     }
     // デフォルト: Vault直下
     return 'tweets.json';

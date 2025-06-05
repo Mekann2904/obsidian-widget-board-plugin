@@ -357,8 +357,9 @@ export default class WidgetBoardPlugin extends Plugin {
         try {
             new Notice('キャッシュ中…');
             // --- TweetWidget ---
-            const dbPath = this.settings.tweetDbLocation === 'custom' && this.settings.tweetDbCustomPath
-                ? this.settings.tweetDbCustomPath : 'tweets.json';
+            const dbPath = this.settings.baseFolder
+                ? `${this.settings.baseFolder.replace(/\/$/, '')}/tweets.json`
+                : 'tweets.json';
             const repo = new TweetRepository(this.app, dbPath);
             const tweetSettings = await repo.load();
             const tweetPosts = tweetSettings.posts || [];

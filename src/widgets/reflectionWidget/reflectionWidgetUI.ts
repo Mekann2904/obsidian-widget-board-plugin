@@ -221,8 +221,9 @@ export class ReflectionWidgetUI {
                         loadReflectionSummary('week', weekKey, this.app)
                     ]);
                     // 投稿データ取得（グラフ描画と共通化）
-                    const dbPath = this.plugin.settings.tweetDbLocation === 'custom' && this.plugin.settings.tweetDbCustomPath
-                        ? this.plugin.settings.tweetDbCustomPath : 'tweets.json';
+                    const dbPath = this.plugin.settings.baseFolder
+                        ? `${this.plugin.settings.baseFolder.replace(/\/$/, '')}/tweets.json`
+                        : 'tweets.json';
                     const repo = new TweetRepository(this.app, dbPath);
                     const tweetSettings: TweetWidgetSettings = await repo.load();
                     const posts: TweetWidgetPost[] = tweetSettings.posts || [];

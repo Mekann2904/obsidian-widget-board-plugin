@@ -464,22 +464,7 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     private getTweetDbPath(): string {
-        const { tweetDbLocation, tweetDbCustomPath, baseFolder } = this.plugin.settings;
-        if (tweetDbLocation === 'custom' && tweetDbCustomPath) {
-            // パスの末尾を必ず tweets.json にする
-            let path = tweetDbCustomPath;
-            if (!path.endsWith('/tweets.json')) {
-                if (path.endsWith('/')) {
-                    path += 'tweets.json';
-                } else if (path.endsWith('.json')) {
-                    path = path.replace(/[^/]*$/, 'tweets.json');
-                } else {
-                    path += '/tweets.json';
-                }
-            }
-            return path;
-        }
-        // ベースフォルダが指定されていればその下に保存
+        const { baseFolder } = this.plugin.settings;
         if (baseFolder) {
             const folder = baseFolder.endsWith('/') ? baseFolder.slice(0, -1) : baseFolder;
             return `${folder}/tweets.json`;

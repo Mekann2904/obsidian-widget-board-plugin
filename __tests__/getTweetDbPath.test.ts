@@ -3,34 +3,24 @@ jest.mock('obsidian', () => ({ Notice: jest.fn(), App: class {}, TFile: class {}
 const { TweetWidget } = require('../src/widgets/tweetWidget/tweetWidget.ts');
 
 describe('TweetWidget.getTweetDbPath', () => {
-  const createWidget = (location: 'vault' | 'custom', customPath: string, baseFolder = '') => {
+  const createWidget = (baseFolder = '') => {
     const widget = new TweetWidget();
-    widget.plugin = { settings: { tweetDbLocation: location, tweetDbCustomPath: customPath, baseFolder } } as any;
+    widget.plugin = { settings: { baseFolder } } as any;
     return widget as any;
   };
 
-  test('returns default path when location is vault', () => {
-    const widget = createWidget('vault', '');
+  test('returns default path when no base folder', () => {
+    const widget = createWidget();
     expect(widget.getTweetDbPath()).toBe('tweets.json');
   });
 
-  test('appends tweets.json to folder path', () => {
-    const widget = createWidget('custom', 'data/tweets');
-    expect(widget.getTweetDbPath()).toBe('data/tweets/tweets.json');
-  });
-
   test('handles trailing slash', () => {
-    const widget = createWidget('custom', 'data/tweets/');
+    const widget = createWidget('data/tweets/');
     expect(widget.getTweetDbPath()).toBe('data/tweets/tweets.json');
-  });
-
-  test('replaces filename with tweets.json', () => {
-    const widget = createWidget('custom', 'data/other.json');
-    expect(widget.getTweetDbPath()).toBe('data/tweets.json');
   });
 
   test('uses base folder when set', () => {
-    const widget = createWidget('vault', '', 'myfolder');
+    const widget = createWidget('myfolder');
     expect(widget.getTweetDbPath()).toBe('myfolder/tweets.json');
   });
 });
