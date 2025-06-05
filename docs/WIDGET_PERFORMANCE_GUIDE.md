@@ -554,6 +554,30 @@ class GlobalResizer {
 - MemoWidgetで外部ファイルやデータ参照が増えた場合も、プリウォームで対応できるよう設計。
 - 必要に応じてウィジェットごとの個別キャッシュや、仮想リスト・差分描画のさらなる導入も検討可能。
 
+### 14. ブラウザレンダリングパイプラインの理論的背景
+
+#### 背景・理論
+ブラウザはDOMツリーとCSSOMを構築した後、レンダーツリーを生成し、これをもとにレイアウト計算とペイントを行います。レイアウト（reflow）はツリー全体への波及コストを伴うため、DOM更新のタイミングや回数を制御することが極めて重要です。DocumentFragmentやVirtual Listは、このレイアウトパスの発生を遅延・最小化する典型的手法と位置付けられます。また、`contain`プロパティはサブツリーのレイアウト境界を明示的に切り分け、パイプラインの影響範囲を限定します。
+
+#### 実装例
+- Virtual DOMや差分アルゴリズムを自前で実装する場合でも、最終的なDOM挿入はDocumentFragmentを介して一括で行う。
+- 高頻度でサイズが変化する要素には`contain: layout style`を付与し、再帰的なレイアウト波及を防ぐ。
+
+#### 参考文献
+- [Blink Rendering Architecture](https://www.chromium.org/developers/design-documents/blink-rendering/)
+- [CSS Containment Module Level 3](https://drafts.csswg.org/css-contain-3/)
+### 15. JavaScriptイベントループとマイクロタスク最適化
+
+#### 背景・理論
+ブラウザのイベントループは、タスクキューとマイクロタスクキューによって処理順序が決定されます。大量のDOM操作やPromiseチェーンを組み合わせる際、マイクロタスクが溜まり過ぎるとフレームレートが低下することがあります。`requestAnimationFrame`を用いたバッチ処理は、イベントループのタスクフェーズで実行されるため、マイクロタスクによるブロッキングを回避できます。
+
+#### 実装例
+- 複雑な非同期処理の合間に`await`を多用する場合でも、UI更新は`requestAnimationFrame`でまとめ、マイクロタスクの連鎖を防ぐ。
+- マイクロタスクが大量発生するケースでは`queueMicrotask`の使用を最小限に留め、必要に応じて`setTimeout`や`requestIdleCallback`で分散させる。
+
+#### 参考文献
+- [WHATWG HTML Standard: 8.1 The event loop](https://html.spec.whatwg.org/multipage/webappapis.html#event-loops)
+- [Jake Archibald: In The Loop](https://developers.google.com/web/updates/2018/09/inside-browser-part2)
 ---
 
 本資料は、今後の開発・リファクタ・レビュー時の指針としてご活用ください。 
