@@ -13,16 +13,26 @@ import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 // グローバルで再計算が必要な要素を管理
 const pendingTweetResizeElements: HTMLTextAreaElement[] = [];
 let scheduledTweetResize = false;
+
+/**
+ * Batch resize for tweet textareas to avoid layout thrashing.
+ * This first resets height to 'auto' for all queued elements so the
+ * subsequent scrollHeight reads occur only once, then applies the final
+ * pixel heights in a separate loop.
+ */
 function scheduleBatchTweetResize(el: HTMLTextAreaElement) {
   if (!pendingTweetResizeElements.includes(el)) pendingTweetResizeElements.push(el);
   if (scheduledTweetResize) return;
   scheduledTweetResize = true;
   requestAnimationFrame(() => {
-    // 1. read
-    const heights = pendingTweetResizeElements.map(el => el.scrollHeight);
-    // 2. write
-    pendingTweetResizeElements.forEach((el, i) => {
+    // 1. write: reset height so scrollHeight reflects content size
+    pendingTweetResizeElements.forEach(el => {
       el.style.height = 'auto';
+    });
+    // 2. read all heights in one reflow
+    const heights = pendingTweetResizeElements.map(el => el.scrollHeight);
+    // 3. write final heights
+    pendingTweetResizeElements.forEach((el, i) => {
       el.style.height = heights[i] + 'px';
     });
     pendingTweetResizeElements.length = 0;
