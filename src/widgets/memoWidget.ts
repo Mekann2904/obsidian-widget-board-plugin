@@ -41,6 +41,8 @@ export class MemoWidget implements WidgetImplementation {
     private needsRender = false;
 
     private _memoEditAreaInputListener: (() => void) | null = null;
+    private taskObserver: MutationObserver | null = null;
+    private observerThrottle: number | null = null;
 
     // ウィジェットインスタンス管理のための静的マップ (前回から)
     private static widgetInstances: Map<string, MemoWidget> = new Map();
@@ -90,6 +92,7 @@ export class MemoWidget implements WidgetImplementation {
             this.memoDisplayEl.style.display = 'block';
             // キャッシュがなければここで生成（renderMarkdownBatchWithCacheは内部でキャッシュ判定）
             await renderMarkdownBatchWithCache(trimmedContent, this.memoDisplayEl, this.config.id, new Component());
+            this.setupTaskEventListeners();
         } else if (!this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'none';
         }
@@ -176,6 +179,72 @@ export class MemoWidget implements WidgetImplementation {
         }
     }
 
+    // --- 以下追加: 表示モードでのタスク操作を検知して保存 ---
+    private setupTaskEventListeners() {
+        if (!this.memoDisplayEl) return;
+
+        const lines = (this.currentSettings.memoContent || '').split(/\r?\n/);
+        const checkboxes = Array.from(this.memoDisplayEl.querySelectorAll('input[type="checkbox"]')) as HTMLInputElement[];
+        let lineIdx = 0;
+        checkboxes.forEach(cb => {
+            for (; lineIdx < lines.length; lineIdx++) {
+                if (/^\s*[-*]\s+\[[ xX]\]/.test(lines[lineIdx])) {
+                    (cb as any).dataset.lineIndex = String(lineIdx);
+                    lineIdx++;
+                    break;
+                }
+            }
+            cb.addEventListener('change', () => {
+                const idx = parseInt((cb as any).dataset.lineIndex || '-1', 10);
+                if (idx < 0) return;
+                lines[idx] = lines[idx].replace(/\[[ xX]\]/, cb.checked ? '[x]' : '[ ]');
+                this.persistMemoContent(lines.join('\n'));
+            });
+        });
+
+        if (!this.taskObserver) {
+            this.taskObserver = new MutationObserver(() => {
+                if (this.observerThrottle != null) return;
+                this.observerThrottle = window.setTimeout(() => {
+                    this.observerThrottle = null;
+                    if (!this.isEditingMemo) {
+                        this.setupTaskEventListeners();
+                    }
+                }, 50);
+            });
+        }
+
+        this.taskObserver.disconnect();
+        this.taskObserver.observe(this.memoDisplayEl, { childList: true, subtree: true });
+    }
+
+    private async persistMemoContent(newContent: string) {
+        if (newContent === this.currentSettings.memoContent) return;
+        this.currentSettings.memoContent = newContent;
+        if (this.config && this.config.settings) {
+            (this.config.settings as MemoWidgetSettings).memoContent = newContent;
+        }
+
+        let currentModalBoardId: string | undefined = undefined;
+        if (this.plugin.widgetBoardModals) {
+            for (const [boardId, modal] of this.plugin.widgetBoardModals.entries()) {
+                if (modal.isOpen) {
+                    currentModalBoardId = boardId;
+                    break;
+                }
+            }
+        }
+        if (!currentModalBoardId) return;
+        const boardInGlobalSettings = this.plugin.settings.boards.find(b => b.id === currentModalBoardId);
+        if (!boardInGlobalSettings) return;
+        const widgetInGlobalSettings = boardInGlobalSettings.widgets.find(w => w.id === this.config.id);
+        if (!widgetInGlobalSettings) return;
+        if (!widgetInGlobalSettings.settings) widgetInGlobalSettings.settings = { ...DEFAULT_MEMO_SETTINGS };
+        widgetInGlobalSettings.settings.memoContent = newContent;
+        await this.plugin.saveSettings(currentModalBoardId);
+        this.updateMemoEditUI();
+    }
+
     /**
      * メモ編集UIを差分更新（値が変化した場合のみDOMを更新）
      */
@@ -237,10 +306,13 @@ export class MemoWidget implements WidgetImplementation {
     }
 
     private enterMemoEditMode() {
+        if (this.taskObserver) {
+            this.taskObserver.disconnect();
+        }
         this.isEditingMemo = true;
         if(this.memoEditAreaEl) {
             this.memoEditAreaEl.value = this.currentSettings.memoContent || '';
-            // this.memoEditAreaEl.style.minHeight = '160px'; 
+            // this.memoEditAreaEl.style.minHeight = '160px';
             setTimeout(() => {
                 if (this.memoEditAreaEl) this.memoEditAreaEl.dispatchEvent(new Event('input'));
             }, 0);
@@ -326,12 +398,14 @@ export class MemoWidget implements WidgetImplementation {
             // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Memo content did not change. No save action taken.`);
         }
         this.updateMemoEditUI(); // UIを（表示モードに）更新
+        this.setupTaskEventListeners();
     }
 
     private cancelMemoEditMode() {
         this.isEditingMemo = false;
         // テキストエリアの内容は破棄され、currentSettings.memoContent (保存済みの値) で再表示される
         this.updateMemoEditUI();
+        this.setupTaskEventListeners();
     }
 
     /**
@@ -434,6 +508,7 @@ export class MemoWidget implements WidgetImplementation {
         // console.log(`${widgetIdLog} UPDATE_EXTERNAL_SETTINGS: Merged currentSettings AFTER merge:`, JSON.parse(JSON.stringify(this.currentSettings)));
 
         this.updateMemoEditUI(); // UIに新しい設定を反映
+        this.setupTaskEventListeners();
 
         // ★重要: updateExternalSettings は、通常 plugin.saveSettings() が呼び出された結果としてモーダル更新のために呼び出される。
         // ここで再度 plugin.saveSettings() を呼ぶと無限ループや予期せぬ動作の原因になる。
@@ -447,6 +522,10 @@ export class MemoWidget implements WidgetImplementation {
         const widgetIdLog = `[${this.config?.id || 'MemoWidget'}]`;
         // console.log(`${widgetIdLog} onunload: Removing instance from static map.`);
         this.removeMemoEditAreaAutoResizeListener();
+        if (this.taskObserver) {
+            this.taskObserver.disconnect();
+            this.taskObserver = null;
+        }
         // 追加: メモ編集エリアのinputリスナーを確実に解除
         if (this.memoEditAreaEl && this._memoEditAreaInputListener) {
             this.memoEditAreaEl.removeEventListener('input', this._memoEditAreaInputListener);
