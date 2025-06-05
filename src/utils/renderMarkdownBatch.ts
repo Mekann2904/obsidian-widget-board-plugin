@@ -123,11 +123,9 @@ export async function renderMarkdownBatchWithCache(
 
   const frag = document.createDocumentFragment();
   while (offscreenDiv.firstChild) {
-    const clone = document.importNode(offscreenDiv.firstChild, true);
-    frag.appendChild(clone);
-    offscreenDiv.removeChild(offscreenDiv.firstChild);
+    frag.appendChild(offscreenDiv.firstChild);
   }
   // キャッシュに保存
   markdownCache.set(markdownText, frag.cloneNode(true) as DocumentFragment);
   container.appendChild(frag);
-} 
+}
