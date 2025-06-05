@@ -90,6 +90,7 @@ export class MemoWidget implements WidgetImplementation {
             this.memoDisplayEl.style.display = 'block';
             // キャッシュがなければここで生成（renderMarkdownBatchWithCacheは内部でキャッシュ判定）
             await renderMarkdownBatchWithCache(trimmedContent, this.memoDisplayEl, this.config.id, new Component());
+            this.setupTaskEventListeners();
         } else if (!this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'none';
         }
@@ -174,6 +175,56 @@ export class MemoWidget implements WidgetImplementation {
             this.memoEditAreaEl.removeEventListener('input', this._memoEditAreaInputListener);
             this._memoEditAreaInputListener = null;
         }
+    }
+
+    // --- 以下追加: 表示モードでのタスク操作を検知して保存 ---
+    private setupTaskEventListeners() {
+        if (!this.memoDisplayEl) return;
+        const lines = (this.currentSettings.memoContent || '').split(/\r?\n/);
+        const checkboxes = Array.from(this.memoDisplayEl.querySelectorAll('input[type="checkbox"]')) as HTMLInputElement[];
+        let lineIdx = 0;
+        checkboxes.forEach(cb => {
+            for (; lineIdx < lines.length; lineIdx++) {
+                if (/^\s*[-*]\s+\[[ xX]\]/.test(lines[lineIdx])) {
+                    (cb as any).dataset.lineIndex = String(lineIdx);
+                    lineIdx++;
+                    break;
+                }
+            }
+            cb.addEventListener('change', () => {
+                const idx = parseInt((cb as any).dataset.lineIndex || '-1', 10);
+                if (idx < 0) return;
+                lines[idx] = lines[idx].replace(/\[[ xX]\]/, cb.checked ? '[x]' : '[ ]');
+                this.persistMemoContent(lines.join('\n'));
+            });
+        });
+    }
+
+    private async persistMemoContent(newContent: string) {
+        if (newContent === this.currentSettings.memoContent) return;
+        this.currentSettings.memoContent = newContent;
+        if (this.config && this.config.settings) {
+            (this.config.settings as MemoWidgetSettings).memoContent = newContent;
+        }
+
+        let currentModalBoardId: string | undefined = undefined;
+        if (this.plugin.widgetBoardModals) {
+            for (const [boardId, modal] of this.plugin.widgetBoardModals.entries()) {
+                if (modal.isOpen) {
+                    currentModalBoardId = boardId;
+                    break;
+                }
+            }
+        }
+        if (!currentModalBoardId) return;
+        const boardInGlobalSettings = this.plugin.settings.boards.find(b => b.id === currentModalBoardId);
+        if (!boardInGlobalSettings) return;
+        const widgetInGlobalSettings = boardInGlobalSettings.widgets.find(w => w.id === this.config.id);
+        if (!widgetInGlobalSettings) return;
+        if (!widgetInGlobalSettings.settings) widgetInGlobalSettings.settings = { ...DEFAULT_MEMO_SETTINGS };
+        widgetInGlobalSettings.settings.memoContent = newContent;
+        await this.plugin.saveSettings(currentModalBoardId);
+        this.updateMemoEditUI();
     }
 
     /**
