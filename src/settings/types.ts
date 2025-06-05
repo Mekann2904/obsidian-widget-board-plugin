@@ -1,4 +1,4 @@
-import type { WidgetConfig } from '../widgets/types';
+import type { WidgetConfig } from '../interfaces';
 import type { LLMSettings } from '../llm/types';
 
 // --- 個別のボード設定用インターフェース ---

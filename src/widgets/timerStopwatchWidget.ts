@@ -1,25 +1,6 @@
 import { App, Notice, setIcon } from 'obsidian';
-
-interface WidgetConfig {
-    id: string;
-    title?: string;
-    settings?: any;
-}
-
-interface WidgetImplementation {
-    id: string;
-    create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement;
-    onunload?(): void;
-}
-
-interface WidgetBoardPlugin {
-    manifest: { id: string; [key: string]: any }; // プラグインIDを含むマニフェスト
-    saveSettings: (boardId?: string) => Promise<void>;
-    widgetBoardModals?: Map<string, { isOpen: boolean }>;
-    settings: { lastOpenedBoardId?: string };
-    openWidgetBoardById: (id: string) => void;
-    openBoardPicker: () => void;
-}
+import type { WidgetConfig, WidgetImplementation } from '../interfaces';
+import type WidgetBoardPlugin from '../main';
 
 // --- 通知音の種類の型定義 ---
 export type TimerSoundType = 'off' | 'default_beep' | 'bell' | 'chime'; // chime を追加する場合
