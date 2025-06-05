@@ -537,7 +537,7 @@ export class TweetWidgetUI {
         }
         const rootItems = filteredPosts
             .filter(t => !t.threadId || !this.postsById.has(t.threadId))
-            .sort((a, b) => (b.updated || b.created) - (a.updated || a.created));
+            .sort((a, b) => b.created - a.created);
         const fragment = document.createDocumentFragment();
         rootItems.forEach(post => {
             const wrapper = document.createElement('div');
@@ -545,6 +545,7 @@ export class TweetWidgetUI {
             wrapper.setAttribute('data-tweet-id', post.id);
             wrapper.onclick = (e) => {
                 if ((e.target as HTMLElement).closest('.tweet-action-bar-main') || 
+                    (e.target as HTMLElement).closest('.tweet-action-btn-main') ||
                     (e.target as HTMLElement).closest('a.internal-link') ||
                     (e.target as HTMLElement).closest('a.external-link') ||
                     (e.target as HTMLElement).closest('.tweet-item-avatar-main')) return;
