@@ -756,16 +756,11 @@ export class WidgetBoardModal {
         }
         modalEl.classList.remove('is-open');
         setTimeout(() => {
-            this.onClose();
-            const selector = `.widget-board-panel-custom[data-board-id='${this.currentBoardId}']`;
             requestAnimationFrame(() => {
-                const fragment = document.createDocumentFragment();
-                document.querySelectorAll(selector).forEach(el => {
-                    if (el.parentElement === document.body) {
-                        fragment.appendChild(el);
-                    }
-                });
-                // dropping the fragment removes the nodes in batch
+                this.onClose();
+                if (modalEl.parentElement === document.body) {
+                    document.body.removeChild(modalEl);
+                }
             });
         }, 300);
         document.body.classList.remove('wb-modal-open');
