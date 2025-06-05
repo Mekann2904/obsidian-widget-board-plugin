@@ -105,7 +105,12 @@ export class ReflectionWidgetUI {
         this.plugin = plugin;
     }
 
-    public render() {
+    public async render() {
+        // Chart.jsの動的import（初回のみ）
+        if (!Chart) {
+            const chartModule = await import('chart.js/auto');
+            Chart = chartModule.default;
+        }
         // 初回のみ主要DOM生成
         if (!this.contentEl) {
             const parent = this.container.parentElement;
