@@ -32,8 +32,6 @@ export interface PluginGlobalSettings {
     boardGroups?: BoardGroup[];
     openBoardOnPomodoroEnd?: boolean;
     autoStartNextPomodoroSession?: boolean;
-    tweetDbLocation?: 'vault' | 'plugin' | 'custom';
-    tweetDbCustomPath?: string;
     tweetWidgetAvatarUrl?: string;
     geminiApiKey?: string;
     llm?: LLMSettings;

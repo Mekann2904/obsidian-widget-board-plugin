@@ -38,8 +38,6 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     boardGroups: [],
     openBoardOnPomodoroEnd: false,
     autoStartNextPomodoroSession: false,
-    tweetDbLocation: 'vault',
-    tweetDbCustomPath: '',
     tweetWidgetAvatarUrl: '',
     geminiApiKey: '',
     llm: {

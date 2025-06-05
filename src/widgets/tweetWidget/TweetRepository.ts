@@ -13,6 +13,13 @@ export class TweetRepository {
     }
 
     /**
+     * Update the database path at runtime.
+     */
+    setPath(path: string): void {
+        this.dbPath = path;
+    }
+
+    /**
      * データファイルから設定と投稿データを読み込む。
      * ファイルが存在しない、空、または破損している場合は、デフォルト設定を返す。
      * @returns 読み込んだ設定オブジェクト (Promise<TweetWidgetSettings>)
@@ -69,8 +76,10 @@ export class TweetRepository {
      */
     async save(settings: TweetWidgetSettings): Promise<void> {
         try {
-            const folder = this.dbPath.substring(0, this.dbPath.lastIndexOf('/'));
-            if (!await this.app.vault.adapter.exists(folder)) {
+            const lastSlash = this.dbPath.lastIndexOf('/');
+            const folder = lastSlash !== -1 ? this.dbPath.substring(0, lastSlash) : '';
+            // 'tweets.json' at the vault root requires no directory creation
+            if (folder && !await this.app.vault.adapter.exists(folder)) {
                 await this.app.vault.adapter.mkdir(folder);
             }
             const dataToSave = JSON.stringify(settings, null, 2);

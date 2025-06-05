@@ -1,4 +1,6 @@
 module.exports = {
-  preset: 'ts-jest',
   testEnvironment: 'jsdom',
+  transform: {
+    '^.+\\.tsx?$': '<rootDir>/jest.transform.js',
+  },
 };

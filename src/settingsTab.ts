@@ -59,7 +59,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         containerEl.empty();
         containerEl.createEl('h2', { text: 'ウィジェットボード設定' });
         // --- ベースフォルダ入力欄 ---
-        let customPathSettingEl: HTMLElement | null = null;
         const baseFolderSetting = new Setting(containerEl)
             .setName('ベースフォルダ（グローバル）')
             .setDesc('全ウィジェット共通のデータ保存先となるVault内のフォルダを指定します（例: myfolder）。\nこのフォルダ配下に各ウィジェットのデータやノートが保存されます。');
@@ -111,10 +110,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         });
 
-        customPathSettingEl = baseFolderSetting.settingEl as HTMLElement;
-        if (customPathSettingEl) {
-            customPathSettingEl.style.display = (this.plugin.settings.tweetDbLocation || 'vault') !== 'custom' ? 'none' : '';
-        }
 
         new Setting(containerEl)
             .setName('デバッグログを有効にする')
@@ -372,22 +367,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
 
         // --- つぶやき（グローバル設定） ---
         const tweetGlobalAcc = createAccordion('つぶやき（グローバル設定）', false);
-        // DB保存先
-        new Setting(tweetGlobalAcc.body)
-            .setName('保存先')
-            .setDesc('つぶやきデータ（tweets.json）の保存場所を選択できます。')
-            .addDropdown(dropdown => {
-                dropdown.addOption('vault', 'Vaultルート（デフォルト）');
-                dropdown.addOption('custom', 'カスタムパス（Vault内のフォルダ）');
-                dropdown.setValue(this.plugin.settings.tweetDbLocation || 'vault')
-                    .onChange(async (value) => {
-                        this.plugin.settings.tweetDbLocation = value as 'vault' | 'custom';
-                        await this.plugin.saveSettings();
-                        if (customPathSettingEl) {
-                            customPathSettingEl.style.display = (value === 'custom') ? '' : 'none';
-                        }
-                    });
-            });
+        // ベースフォルダは上部で指定
         // --- AIリプライ発火上限設定 ---
         new Setting(tweetGlobalAcc.body)
             .setName('AIリプライをトリガーワードなしでも自動発火させる')
