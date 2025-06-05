@@ -366,19 +366,19 @@ export class ReflectionWidgetUI {
                 if ('requestIdleCallback' in window) {
                     (window as any).requestIdleCallback(() => this.runSummary());
                 } else {
-                    setTimeout(() => this.runSummary(), 0);
+                    requestAnimationFrame(() => this.runSummary());
                 }
             }, autoInterval * 60 * 60 * 1000);
             if ('requestIdleCallback' in window) {
                 (window as any).requestIdleCallback(() => this.runSummary());
             } else {
-                setTimeout(() => this.runSummary(), 0);
+                requestAnimationFrame(() => this.runSummary());
             }
         } else {
             if ('requestIdleCallback' in window) {
                 (window as any).requestIdleCallback(() => this.runSummary());
             } else {
-                setTimeout(() => this.runSummary(), 0);
+                requestAnimationFrame(() => this.runSummary());
             }
         }
     }

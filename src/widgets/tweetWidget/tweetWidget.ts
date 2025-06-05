@@ -5,6 +5,7 @@ import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
 import { geminiPrompt } from '../../llm/gemini/tweetReplyPrompt';
 import { debugLog } from '../../utils/logger';
+import { applyWidgetSize, createWidgetContainer } from '../../utils';
 
 // --- 分離したモジュールをインポート ---
 import type { TweetWidgetFile, TweetWidgetPost, TweetWidgetSettings } from './types';
@@ -53,14 +54,11 @@ export class TweetWidget implements WidgetImplementation {
         this.config = config;
         this.app = app;
         this.plugin = plugin;
-        this.widgetEl = document.createElement('div');
-        this.widgetEl.classList.add('widget', 'tweet-widget');
-        this.widgetEl.setAttribute('data-widget-id', config.id);
+        const { widgetEl } = createWidgetContainer(config, 'tweet-widget', false);
+        this.widgetEl = widgetEl;
 
         // 追加: YAMLで大きさ指定があれば反映
-        const settings = (config.settings || {}) as any;
-        if (settings.width) this.widgetEl.style.width = settings.width;
-        if (settings.height) this.widgetEl.style.height = settings.height;
+        applyWidgetSize(this.widgetEl, config.settings);
 
         // デフォルト期間をsettingsから反映
         this.currentPeriod = this.plugin.settings.defaultTweetPeriod || 'all';
@@ -223,7 +221,7 @@ export class TweetWidget implements WidgetImplementation {
         this.attachedFiles = post.files ? [...post.files] : [];
         this.ui.render();
         
-        setTimeout(() => {
+        requestAnimationFrame(() => {
             const input = this.widgetEl.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
             if (input) {
                 input.value = post.text;
@@ -231,7 +229,7 @@ export class TweetWidget implements WidgetImplementation {
                 input.selectionStart = input.selectionEnd = input.value.length;
                 this.ui.renderFilePreview(this.widgetEl.querySelector('.tweet-file-preview')!);
             }
-        }, 50);
+        });
     }
     
     public startReply(post: TweetWidgetPost) {
