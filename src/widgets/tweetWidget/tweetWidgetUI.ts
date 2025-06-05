@@ -718,7 +718,7 @@ export class TweetWidgetUI {
             geminiBtn.onclick = async (e) => {
                 e.stopPropagation();
                 geminiBtn.setAttribute('disabled', 'true');
-                geminiBtn.innerHTML = '...';
+                geminiBtn.setText('...');
                 await this.widget.generateGeminiReply(post);
             };
         }
