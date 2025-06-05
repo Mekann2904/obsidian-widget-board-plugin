@@ -13,6 +13,13 @@ export class TweetRepository {
     }
 
     /**
+     * Update the database path at runtime.
+     */
+    setPath(path: string): void {
+        this.dbPath = path;
+    }
+
+    /**
      * データファイルから設定と投稿データを読み込む。
      * ファイルが存在しない、空、または破損している場合は、デフォルト設定を返す。
      * @returns 読み込んだ設定オブジェクト (Promise<TweetWidgetSettings>)

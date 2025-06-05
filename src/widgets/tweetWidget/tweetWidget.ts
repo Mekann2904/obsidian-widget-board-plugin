@@ -84,6 +84,8 @@ export class TweetWidget implements WidgetImplementation {
     private saveDataDebounced() {
         if (this.saveTimeout) clearTimeout(this.saveTimeout);
         this.saveTimeout = window.setTimeout(async () => {
+            // update path in case settings changed while widget is open
+            this.repository.setPath(this.getTweetDbPath());
             await this.repository.save(this.store.settings);
             this.saveTimeout = null;
         }, 500);
@@ -462,7 +464,7 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     private getTweetDbPath(): string {
-        const { tweetDbLocation, tweetDbCustomPath } = this.plugin.settings;
+        const { tweetDbLocation, tweetDbCustomPath, baseFolder } = this.plugin.settings;
         if (tweetDbLocation === 'custom' && tweetDbCustomPath) {
             // パスの末尾を必ず tweets.json にする
             let path = tweetDbCustomPath;
@@ -476,6 +478,11 @@ export class TweetWidget implements WidgetImplementation {
                 }
             }
             return path;
+        }
+        // ベースフォルダが指定されていればその下に保存
+        if (baseFolder) {
+            const folder = baseFolder.endsWith('/') ? baseFolder.slice(0, -1) : baseFolder;
+            return `${folder}/tweets.json`;
         }
         // デフォルト: Vault直下
         return 'tweets.json';
