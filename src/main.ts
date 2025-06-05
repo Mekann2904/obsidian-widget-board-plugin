@@ -18,35 +18,6 @@ import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
 import { debugLog } from './utils/logger';
 import { Component, TFile } from 'obsidian';
 
-/**
- * Patch CanvasRenderingContext2D font setter to avoid redundant assignments
- * which can trigger style recalculations in some browsers.
- */
-let fontPatchApplied = false;
-function patchCanvasFont(): void {
-    if (fontPatchApplied || typeof CanvasRenderingContext2D === 'undefined') {
-        return;
-    }
-    const desc = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'font');
-    if (!desc || !desc.get || !desc.set) {
-        return;
-    }
-    const { get, set, enumerable, configurable } = desc;
-    const cache = new WeakMap<CanvasRenderingContext2D, string>();
-    Object.defineProperty(CanvasRenderingContext2D.prototype, 'font', {
-        configurable,
-        enumerable,
-        get() {
-            return get.call(this);
-        },
-        set(value: string) {
-            if (cache.get(this) === value) return;
-            cache.set(this, value);
-            set.call(this, value);
-        }
-    });
-    fontPatchApplied = true;
-}
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -67,7 +38,6 @@ export default class WidgetBoardPlugin extends Plugin {
      */
     async onload(): Promise<void> {
         debugLog(this, 'Widget Board Plugin: Loading...');
-        patchCanvasFont();
         this.llmManager = new LLMManager();
         this.llmManager.register(GeminiProvider);
         await this.loadSettings();
