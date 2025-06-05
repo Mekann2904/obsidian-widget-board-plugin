@@ -141,9 +141,7 @@ Obsidian Widget Board Pluginは、Obsidian上で「ウィジェットボード�
 ### つぶやきウィジェットの主な設定
 - グローバル設定でDB保存先・カスタムパス・ユーザーアイコンURLを一括管理
 - カスタムパスはVault内のフォルダのみサジェスト・選択可能
-- デフォルトではVault直下の`tweets.json`に保存されますが、設定で
-  `.obsidian/plugins/obsidian-widget-board-plugin/data/tweets.json` など
-  任意のVault内フォルダを指定することもできます
+- デフォルトではVault直下の`tweets.json`に保存されますが、設定で任意のVault内フォルダを指定することもできます
 - 投稿欄・リスト両方でアバター画像のグローバル設定が反映
 - サジェストやバリデーションでユーザーの誤操作を防止
 - 投稿データは`deleted: true`で非表示フラグ管理。完全削除（物理削除）も可能
