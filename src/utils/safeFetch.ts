@@ -15,12 +15,13 @@ export async function safeFetch(url: string, options: RequestInit = {}): Promise
 
   // ObsidianのrequestUrl APIを利用
   // @ts-ignore
+  const method = options.method?.toUpperCase() || "GET";
   const response = await requestUrl({
     url,
     contentType: "application/json",
     headers: headers as Record<string, string>,
-    method: options.method?.toUpperCase() || "POST",
-    ...( ["POST", "PUT", "PATCH"].includes(options.method?.toUpperCase() || "POST") && { body: options.body?.toString() }),
+    method,
+    ...( ["POST", "PUT", "PATCH"].includes(method) && { body: options.body?.toString() }),
     throw: false,
   });
 

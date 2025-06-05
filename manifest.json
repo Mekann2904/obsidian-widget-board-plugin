@@ -1,13 +1,12 @@
 {
 	"id": "obsidian-widget-board-plugin",
-	"name": "widget-board",
+        "name": "Widget Board",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": true,
+        "description": "Create customizable widget boards with timers, memos, calendars and more.",
+        "author": "Mekann",
+        "authorUrl": "https://github.com/Mekann2904",
+        "isDesktopOnly": false,
 	"main": "main.js"
   }
   

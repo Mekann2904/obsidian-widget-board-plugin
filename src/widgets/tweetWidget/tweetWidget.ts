@@ -3,7 +3,7 @@ import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate } from '../../utils';
-import { geminiPrompt } from 'src/llm/gemini/tweetReplyPrompt';
+import { geminiPrompt } from '../../llm/gemini/tweetReplyPrompt';
 import { debugLog } from '../../utils/logger';
 
 // --- 分離したモジュールをインポート ---

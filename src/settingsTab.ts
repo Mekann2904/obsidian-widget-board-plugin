@@ -1319,7 +1319,7 @@ class BoardGroupEditModal extends Modal {
                 btn.style.fontWeight = isSelected ? 'bold' : '';
                 btn.style.background = isSelected ? 'var(--interactive-accent)' : 'var(--background-modifier-box)';
                 btn.style.color = isSelected ? 'var(--text-on-accent)' : 'var(--text-normal)';
-                btn.innerHTML = b.name;
+                btn.setText(b.name);
                 btn.onclick = () => {
                     if (isSelected) {
                         boardIds = boardIds.filter(x => x !== b.id);

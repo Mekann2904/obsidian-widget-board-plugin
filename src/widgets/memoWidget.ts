@@ -48,16 +48,22 @@ export class MemoWidget implements WidgetImplementation {
     // MemoWidgetクラス内にstaticでバッチresize管理
     private static pendingMemoResizeElements: HTMLTextAreaElement[] = [];
     private static scheduledMemoResize = false;
+    /**
+     * Batch resize memo textareas using read/write separation to minimise reflows.
+     */
     private static scheduleBatchMemoResize(el: HTMLTextAreaElement) {
         if (!MemoWidget.pendingMemoResizeElements.includes(el)) MemoWidget.pendingMemoResizeElements.push(el);
         if (MemoWidget.scheduledMemoResize) return;
         MemoWidget.scheduledMemoResize = true;
         requestAnimationFrame(() => {
-            // 1. read
-            const heights = MemoWidget.pendingMemoResizeElements.map(el => el.scrollHeight);
-            // 2. write
-            MemoWidget.pendingMemoResizeElements.forEach((el, i) => {
+            // 1. write: reset heights
+            MemoWidget.pendingMemoResizeElements.forEach(el => {
                 el.style.height = 'auto';
+            });
+            // 2. read all heights together
+            const heights = MemoWidget.pendingMemoResizeElements.map(el => el.scrollHeight);
+            // 3. write final pixel heights
+            MemoWidget.pendingMemoResizeElements.forEach((el, i) => {
                 el.style.height = heights[i] + 'px';
             });
             MemoWidget.pendingMemoResizeElements.length = 0;

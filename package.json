@@ -1,17 +1,19 @@
 {
 	"name": "obsidian-widget-board-plugin",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+        "description": "Create customizable widget boards inside Obsidian.",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"test": "jest"
 	},
 	"keywords": [],
-	"author": "",
+        "author": "Mekann",
 	"license": "MIT",
 	"devDependencies": {
+		"@types/jest": "^29.5.14",
 		"@types/lodash": "^4.17.17",
 		"@types/lodash.clonedeep": "^4.5.9",
 		"@types/node": "^16.11.6",
@@ -19,7 +21,10 @@
 		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
 		"esbuild": "0.17.3",
+		"jest": "^29.7.0",
+		"jest-environment-jsdom": "^30.0.0-beta.3",
 		"obsidian": "latest",
+		"ts-jest": "^29.3.4",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
 	},
