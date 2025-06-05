@@ -37,12 +37,10 @@ export async function renderMarkdownBatch(
   // 3) オフスクリーンdivをbodyから外す（ここでreflowが1回走るが、画面外なので影響最小）
   document.body.removeChild(offscreenDiv);
 
-  // 4) fragmentに全ノードをimportNodeでバッチ化
+  // 4) fragmentに全ノードを直接移動してバッチ化
   const frag = document.createDocumentFragment();
   while (offscreenDiv.firstChild) {
-    const clone = document.importNode(offscreenDiv.firstChild, true);
-    frag.appendChild(clone);
-    offscreenDiv.removeChild(offscreenDiv.firstChild);
+    frag.appendChild(offscreenDiv.firstChild);
   }
 
   // 5) containerに一度だけappendChild（ここでreflowが1回だけ）
