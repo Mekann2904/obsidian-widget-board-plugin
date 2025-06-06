@@ -14,7 +14,7 @@ import { LLMManager } from './llm/llmManager';
 import { GeminiProvider } from './llm/gemini/geminiApi';
 import yaml from 'js-yaml';
 import { TweetRepository } from './widgets/tweetWidget/TweetRepository';
-import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
+import { renderMarkdownBatchWithCache, DEFAULT_SOURCE_PATH } from './utils/renderMarkdownBatch';
 import { debugLog } from './utils/logger';
 import { Component, TFile } from 'obsidian';
 
@@ -416,12 +416,12 @@ export default class WidgetBoardPlugin extends Plugin {
                 const tweetEnd = Math.min(tweetIndex + batchSize, tweetPosts.length);
                 for (; tweetIndex < tweetEnd; tweetIndex++) {
                     const post = tweetPosts[tweetIndex];
-                    await renderMarkdownBatchWithCache(post.text, document.createElement('div'), '', new Component());
+                    await renderMarkdownBatchWithCache(post.text, document.createElement('div'), DEFAULT_SOURCE_PATH, new Component());
                 }
                 // MemoWidget
                 const memoEnd = Math.min(memoIndex + batchSize, memoContents.length);
                 for (; memoIndex < memoEnd; memoIndex++) {
-                    await renderMarkdownBatchWithCache(memoContents[memoIndex], document.createElement('div'), '', new Component());
+                    await renderMarkdownBatchWithCache(memoContents[memoIndex], document.createElement('div'), DEFAULT_SOURCE_PATH, new Component());
                 }
                 // FileViewWidget
                 const fileEnd = Math.min(fileIndex + batchSize, fileViewFiles.length);
@@ -435,7 +435,7 @@ export default class WidgetBoardPlugin extends Plugin {
                 // ReflectionWidget AI要約
                 const reflectionEnd = Math.min(reflectionIndex + batchSize, reflectionSummaries.length);
                 for (; reflectionIndex < reflectionEnd; reflectionIndex++) {
-                    await renderMarkdownBatchWithCache(reflectionSummaries[reflectionIndex], document.createElement('div'), '', new Component());
+                    await renderMarkdownBatchWithCache(reflectionSummaries[reflectionIndex], document.createElement('div'), DEFAULT_SOURCE_PATH, new Component());
                 }
                 if (
                     tweetIndex < tweetPosts.length ||

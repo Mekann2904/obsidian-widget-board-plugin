@@ -6,7 +6,7 @@ import { TweetRepository } from '../tweetWidget/TweetRepository';
 import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/gemini/summaryPrompts';
 import { deobfuscate } from '../../utils';
-import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
+import { renderMarkdownBatchWithCache, DEFAULT_SOURCE_PATH } from '../../utils/renderMarkdownBatch';
 
 let Chart: any;
 
@@ -333,7 +333,7 @@ export class ReflectionWidgetUI {
     private async renderMarkdown(el: HTMLElement, text: string, lastText: string | null, setLast: (v: string) => void) {
         if (lastText === text) return;
         el.empty();
-        await renderMarkdownBatchWithCache(text, el, '', new Component());
+        await renderMarkdownBatchWithCache(text, el, DEFAULT_SOURCE_PATH, new Component());
         setLast(text);
     }
 

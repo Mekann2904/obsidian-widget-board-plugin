@@ -8,7 +8,7 @@ import { deobfuscate } from '../../utils';
 import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';
 import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
-import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
+import { renderMarkdownBatchWithCache, DEFAULT_SOURCE_PATH } from '../../utils/renderMarkdownBatch';
 
 // グローバルで再計算が必要な要素を管理
 const pendingTweetResizeElements: HTMLTextAreaElement[] = [];
@@ -330,7 +330,12 @@ export class TweetWidgetUI {
                 previewArea.style.display = '';
                 input.style.display = 'none';
                 previewArea.empty();
-                await renderMarkdownBatchWithCache(input.value, previewArea, this.app.workspace.getActiveFile()?.path || '', new Component());
+                await renderMarkdownBatchWithCache(
+                    input.value,
+                    previewArea,
+                    this.app.workspace.getActiveFile()?.path || DEFAULT_SOURCE_PATH,
+                    new Component()
+                );
             } else {
                 previewArea.style.display = 'none';
                 input.style.display = '';
@@ -651,7 +656,12 @@ export class TweetWidgetUI {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
         } catch {}
-        // 画像リンク解決のため、投稿IDを含む仮想パスをsourcePathに渡す
+        await renderMarkdownBatchWithCache(
+            displayText,
+            textDiv,
+            DEFAULT_SOURCE_PATH,
+            new Component()
+        );
         const virtualPath = `tweetWidget/${post.id || 'unknown'}.md`;
         if (process.env.NODE_ENV === 'development') {
             // デバッグ用にパスやテキストをコンソール出力
