@@ -35,7 +35,7 @@ export class FileViewWidget implements WidgetImplementation {
   private selectButton!: HTMLButtonElement;
   private currentFile: TFile | null = null;
   private obsidianOpenButton!: HTMLButtonElement;
-  private titleEl!: HTMLElement;
+  private titleEl: HTMLElement | undefined;
   // 高さモード: 'auto' or 'fixed'
   private heightMode: 'auto' | 'fixed' = 'auto';
   private fixedHeightPx: number = 200;
@@ -52,8 +52,10 @@ export class FileViewWidget implements WidgetImplementation {
     // --- カード型ウィジェット本体 ---
     const { widgetEl, titleEl } = createWidgetContainer(config, 'file-view-widget');
     this.widgetEl = widgetEl;
-    this.titleEl = titleEl;
-    this.updateTitle();
+    if (titleEl) {
+      this.titleEl = titleEl;
+      this.updateTitle();
+    }
 
     // --- カード内コンテンツ ---
     const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
@@ -177,11 +179,13 @@ export class FileViewWidget implements WidgetImplementation {
   // タイトルをファイル名に自動更新
   private updateTitle() {
     const fileName = this.config.settings?.fileName;
-    if (fileName && fileName.trim() !== '') {
-      const name = fileName.split(/[\\/]/).pop();
-      this.titleEl.textContent = name || 'ファイルビューア';
-    } else {
-      this.titleEl.textContent = 'ファイルビューア';
+    if (this.titleEl) {
+      if (fileName && fileName.trim() !== '') {
+        const name = fileName.split(/[\\/]/).pop();
+        this.titleEl.textContent = name || 'ファイルビューア';
+      } else {
+        this.titleEl.textContent = 'ファイルビューア';
+      }
     }
   }
 

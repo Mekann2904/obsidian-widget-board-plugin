@@ -48,7 +48,9 @@ export class RecentNotesWidget implements WidgetImplementation {
 
         const { widgetEl, titleEl } = createWidgetContainer(config, 'recent-notes-widget');
         this.widgetEl = widgetEl;
-        titleEl.textContent = this.config.title?.trim() || '最近編集したノート';
+        if (titleEl) {
+            titleEl.textContent = this.config.title?.trim() || '最近編集したノート';
+        }
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
         this.renderNotesList(contentEl);

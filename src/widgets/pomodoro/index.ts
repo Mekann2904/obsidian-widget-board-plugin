@@ -2,7 +2,7 @@
 import { App, MarkdownRenderer, Notice, setIcon, TFolder } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main'; // main.ts の WidgetBoardPlugin クラスをインポート
-import { PomodoroMemoWidget, PomodoroMemoSettings } from '../pomodoroMemoWidget';
+import { PomodoroMemoWidget, PomodoroMemoSettings } from './pomodoroMemoWidget';
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
 
@@ -295,11 +295,13 @@ export class PomodoroWidget implements WidgetImplementation {
         const { widgetEl, titleEl } = createWidgetContainer(config, 'pomodoro-timer-widget');
         this.widgetEl = widgetEl;
         this.applyBackground(this.currentSettings.backgroundImageUrl);
-        titleEl.textContent = this.config.title || "ポモドーロタイマー";
-        if (!this.config.title || this.config.title.trim() === "") {
-            titleEl.style.display = 'none';
-        } else {
-            titleEl.style.display = '';
+        if (titleEl) {
+            titleEl.textContent = this.config.title || "ポモドーロタイマー";
+            if (!this.config.title || this.config.title.trim() === "") {
+                titleEl.style.display = 'none';
+            } else {
+                titleEl.style.display = '';
+            }
         }
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });

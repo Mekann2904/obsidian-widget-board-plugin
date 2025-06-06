@@ -1,5 +1,5 @@
 import { App, MarkdownRenderer, Notice, setIcon, Component } from 'obsidian';
-import { renderMarkdownBatch } from '../utils/renderMarkdownBatch';
+import { renderMarkdownBatch } from '../../utils/renderMarkdownBatch';
 
 export interface PomodoroMemoSettings {
     memoContent?: string;

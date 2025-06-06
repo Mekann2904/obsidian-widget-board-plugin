@@ -657,7 +657,7 @@ export class WidgetBoardModal {
         if (!this.draggedElement) return;
 
         const container = e.currentTarget as HTMLElement;
-        const overElement = (e.target as HTMLElement).closest('.wb-widget-edit-wrapper');
+        const overElement = (e.target as HTMLElement).closest('.wb-widget-edit-wrapper') as HTMLElement | null;
 
         if (!overElement || overElement === this.draggedElement) return;
 

@@ -51,7 +51,9 @@ export class CalendarWidget implements WidgetImplementation {
 
         const { widgetEl, titleEl } = createWidgetContainer(config, 'calendar-widget');
         this.widgetEl = widgetEl;
-        titleEl.textContent = this.config.title;
+        if (titleEl) {
+            titleEl.textContent = this.config.title;
+        }
 
         this.calendarContentEl = this.widgetEl.createDiv({ cls: 'widget-content calendar-flex-content' });
         
