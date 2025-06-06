@@ -47,7 +47,7 @@ describe('renderMarkdownBatchWithCache', () => {
 
     await renderMarkdownBatchWithCache('md0', document.createElement('div'), '', new Component());
     expect((MarkdownRenderer.renderMarkdown as jest.Mock).mock.calls.length).toBe(1002);
-  });
+  }, 20000);
 
   test('uses fallback path when source path is empty', async () => {
     const container = document.createElement('div');

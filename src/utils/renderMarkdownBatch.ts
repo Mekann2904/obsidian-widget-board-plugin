@@ -40,8 +40,14 @@ export async function renderMarkdownBatch(
     component
   );
 
-  // 3) オフスクリーンdivをbodyから外す（ここでreflowが1回走るが、画面外なので影響最小）
-  document.body.removeChild(offscreenDiv);
+  // 3) Markdownのpost processingが完了するのを待つ
+  await new Promise((r) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => r(null));
+    } else {
+      setTimeout(() => r(null), 0);
+    }
+  });
 
   // 4) fragmentに全ノードを直接移動してバッチ化
   const frag = document.createDocumentFragment();
@@ -127,12 +133,20 @@ export async function renderMarkdownBatchWithCache(
     component
   );
 
-  document.body.removeChild(offscreenDiv);
+  await new Promise((r) => {
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => r(null));
+    } else {
+      setTimeout(() => r(null), 0);
+    }
+  });
 
   const frag = document.createDocumentFragment();
   while (offscreenDiv.firstChild) {
     frag.appendChild(offscreenDiv.firstChild);
   }
+
+  document.body.removeChild(offscreenDiv);
   // キャッシュに保存
   markdownCache.set(markdownText, frag.cloneNode(true) as DocumentFragment);
   container.appendChild(frag);
