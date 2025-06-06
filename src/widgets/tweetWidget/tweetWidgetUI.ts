@@ -10,6 +10,11 @@ import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './t
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 
+// --- ユーティリティ関数 ---
+function escapeRegExp(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // グローバルで再計算が必要な要素を管理
 const pendingTweetResizeElements: HTMLTextAreaElement[] = [];
 let scheduledTweetResize = false;
@@ -651,7 +656,48 @@ export class TweetWidgetUI {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
         } catch {}
-        await renderMarkdownBatchWithCache(displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', new Component());
+
+        // --- 画像Markdown記法のパスを置換 ---
+        let replacedText = displayText;
+        // 添付ファイル（dataUrl）を優先
+        if (post.files && post.files.length) {
+            for (const file of post.files) {
+                // ![[xxx.png]]
+                const wikilinkPattern = new RegExp(`!\\[\\[${escapeRegExp(file.name)}\\]\\]`, 'g');
+                replacedText = replacedText.replace(wikilinkPattern, `![](${file.dataUrl})`);
+                // ![](xxx.png)
+                const mdPattern = new RegExp(`!\\[\\]\\(${escapeRegExp(file.name)}\\)`, 'g');
+                replacedText = replacedText.replace(mdPattern, `![](${file.dataUrl})`);
+            }
+        }
+        // Vault内画像（![[xxx]]や![](xxx)）の解決
+        const vaultFiles = this.app.vault.getFiles();
+        replacedText = replacedText.replace(/!\[\[(.+?)\]\]/g, (match, p1) => {
+            const f = vaultFiles.find(f => f.name === p1);
+            if (f) {
+                const url = this.app.vault.getResourcePath(f);
+                return `![](${url})`;
+            }
+            return match;
+        });
+        replacedText = replacedText.replace(/!\[\]\((.+?)\)/g, (match, p1) => {
+            const f = vaultFiles.find(f => f.name === p1);
+            if (f) {
+                const url = this.app.vault.getResourcePath(f);
+                return `![](${url})`;
+            }
+            return match;
+        });
+        // --- ここまで追加 ---
+
+        await renderMarkdownBatchWithCache(replacedText, textDiv, this.app.workspace.getActiveFile()?.path || '', new Component());
+        // 画像の幅を親要素に合わせる
+        Array.from(textDiv.querySelectorAll('img')).forEach(img => {
+            img.style.width = '100%';
+            img.style.height = 'auto';
+            img.style.maxWidth = '100%';
+            img.style.display = 'block';
+        });
 
         if (post.files && post.files.length) {
             const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${post.files.length}` });
