@@ -45,6 +45,7 @@ export async function renderMarkdownBatch(
 
   // 5) containerに一度だけappendChild（ここでreflowが1回だけ）
   container.appendChild(frag);
+  sanitizeHtml(container);
 }
 
 // LRUCacheクラスの実装
@@ -126,4 +127,19 @@ export async function renderMarkdownBatchWithCache(
   // キャッシュに保存
   markdownCache.set(markdownText, frag.cloneNode(true) as DocumentFragment);
   container.appendChild(frag);
+  sanitizeHtml(container);
 }
+
+function sanitizeHtml(container: HTMLElement) {
+  container.querySelectorAll('script').forEach(el => el.remove());
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT);
+  while (walker.nextNode()) {
+    const el = walker.currentNode as HTMLElement;
+    Array.from(el.attributes).forEach(attr => {
+      if (attr.name.toLowerCase().startsWith('on')) {
+        el.removeAttribute(attr.name);
+      }
+    });
+  }
+}
+

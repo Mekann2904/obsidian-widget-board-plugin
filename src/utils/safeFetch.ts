@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { createCipheriv, createDecipheriv, scryptSync } from 'crypto';
 
 // Obsidianプラグイン環境用 CORS回避fetchラッパー
 export async function safeFetch(url: string, options: RequestInit = {}): Promise<Response> {
@@ -85,14 +86,31 @@ function createReadableStreamFromString(input: string) {
   });
 }
 
-// APIキーなどの簡易難読化（Base64）
+// APIキーなどの保存時暗号化 (AES-256-CTR)
+const ENC_ALGORITHM = 'aes-256-ctr';
+const ENC_KEY = scryptSync('obsidian-widget-board-plugin', 'widget-salt', 32);
+const ENC_IV = Buffer.alloc(16, 0);
+
 export function obfuscate(str: string): string {
-    return btoa(unescape(encodeURIComponent(str)));
+    const cipher = createCipheriv(ENC_ALGORITHM, ENC_KEY, ENC_IV);
+    const encrypted = Buffer.concat([cipher.update(str, 'utf8'), cipher.final()]);
+    return encrypted.toString('base64');
 }
+
 export function deobfuscate(str: string): string {
     try {
-        return decodeURIComponent(escape(atob(str)));
+        const decipher = createDecipheriv(ENC_ALGORITHM, ENC_KEY, ENC_IV);
+        const decrypted = Buffer.concat([
+            decipher.update(Buffer.from(str, 'base64')),
+            decipher.final(),
+        ]);
+        return decrypted.toString('utf8');
     } catch {
-        return '';
+        // fall back to legacy Base64 obfuscation
+        try {
+            return decodeURIComponent(escape(atob(str)));
+        } catch {
+            return '';
+        }
     }
-} 
+}

@@ -12,7 +12,7 @@ import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timer-stopwatch';
 import cloneDeep from 'lodash.clonedeep';
 import { LLMManager } from './llm/llmManager';
 import { GeminiProvider } from './llm/gemini/geminiApi';
-import yaml from 'js-yaml';
+import yaml, { JSON_SCHEMA } from 'js-yaml';
 import { TweetRepository } from './widgets/tweetWidget/TweetRepository';
 import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
 import { debugLog } from './utils/logger';
@@ -55,7 +55,7 @@ export default class WidgetBoardPlugin extends Plugin {
             async (source, element, context) => {
                 let config: any;
                 try {
-                    config = yaml.load(source);
+                    config = yaml.load(source, { schema: JSON_SCHEMA });
                 } catch (e) {
                     element.createEl('pre', { text: `YAMLパースエラー: ${String(e)}` });
                     return;

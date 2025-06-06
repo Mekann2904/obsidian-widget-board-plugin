@@ -75,6 +75,12 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     text.setValue(this.plugin.settings.baseFolder || '');
                     return;
                 }
+                const normalized = v.replace(/\\/g, '/');
+                if (normalized.split('/').some(part => part === '..' || part === '.')) {
+                    new Notice('.. を含むパスは指定できません。');
+                    text.setValue(this.plugin.settings.baseFolder || '');
+                    return;
+                }
                 // フォルダ存在チェック
                 const folder = this.app.vault.getAbstractFileByPath(v);
                 if (!folder || folder.constructor.name !== 'TFolder') {
