@@ -13,6 +13,7 @@ jest.mock('obsidian', () => {
 }, { virtual: true });
 
 import { Component } from 'obsidian';
+import { DEFAULT_SOURCE_PATH } from '../src/utils/renderMarkdownBatch';
 
 let MarkdownRenderer: { renderMarkdown: jest.Mock };
 const { renderMarkdownBatchWithCache } = require('../src/utils/renderMarkdownBatch.ts');
@@ -52,6 +53,6 @@ describe('renderMarkdownBatchWithCache', () => {
     const container = document.createElement('div');
     await renderMarkdownBatchWithCache('sample', container, '', new Component());
     const call = (MarkdownRenderer.renderMarkdown as jest.Mock).mock.calls[0];
-    expect(call[2]).toBe('__virtual.md');
+    expect(call[2]).toBe(DEFAULT_SOURCE_PATH);
   });
 });

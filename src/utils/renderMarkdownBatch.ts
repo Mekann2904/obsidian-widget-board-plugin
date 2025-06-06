@@ -1,6 +1,6 @@
 import { MarkdownRenderer, TFile, Component } from "obsidian";
 
-const DEFAULT_SOURCE_PATH = "__virtual.md";
+export const DEFAULT_SOURCE_PATH = "__virtual.md";
 
 /**
  * renderMarkdownBatch
