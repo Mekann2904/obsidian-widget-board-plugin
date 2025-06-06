@@ -435,7 +435,7 @@ export class MemoWidget implements WidgetImplementation {
         this.widgetEl.style.display = 'flex';
         this.widgetEl.style.flexDirection = 'column';
         this.widgetEl.style.minHeight = '0'; // flexコンテナ内のアイテムとして縮小できるように
-        titleEl.textContent = (this.config.title && this.config.title.trim() !== "") ? this.config.title : "";
+        titleEl && (titleEl.textContent = (this.config.title && this.config.title.trim() !== "") ? this.config.title : "");
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
         // CSS で .widget-content に display:flex, flex-direction:column, flex-grow:1, min-height:0 が設定されている前提
