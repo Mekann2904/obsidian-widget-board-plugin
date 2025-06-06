@@ -18,6 +18,9 @@ export async function renderMarkdownBatch(
   sourcePath: string | TFile,
   component: Component
 ) {
+  if (typeof sourcePath === "string" && sourcePath.trim() === "") {
+    sourcePath = "__virtual.md";
+  }
   // 1) オフスクリーンの一時コンテナを作る
   const offscreenDiv = document.createElement("div");
   offscreenDiv.style.position = "absolute";
@@ -96,6 +99,9 @@ export async function renderMarkdownBatchWithCache(
   sourcePath: string | TFile,
   component: Component
 ) {
+  if (typeof sourcePath === "string" && sourcePath.trim() === "") {
+    sourcePath = "__virtual.md";
+  }
   const cached = markdownCache.get(markdownText);
   if (cached) {
     const clone = cached.cloneNode(true) as DocumentFragment;
