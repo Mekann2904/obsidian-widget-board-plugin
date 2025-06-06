@@ -651,7 +651,14 @@ export class TweetWidgetUI {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
         } catch {}
-        await renderMarkdownBatchWithCache(displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', new Component());
+        // 画像リンク解決のため、投稿IDを含む仮想パスをsourcePathに渡す
+        const virtualPath = `tweetWidget/${post.id || 'unknown'}.md`;
+        if (process.env.NODE_ENV === 'development') {
+            // デバッグ用にパスやテキストをコンソール出力
+            // @ts-ignore
+            console.log('[TweetWidgetUI] renderSinglePost', { virtualPath, displayText });
+        }
+        await renderMarkdownBatchWithCache(displayText, textDiv, virtualPath, new Component());
 
         if (post.files && post.files.length) {
             const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${post.files.length}` });
