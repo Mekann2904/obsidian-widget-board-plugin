@@ -18,6 +18,8 @@ import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
 import { debugLog } from './utils/logger';
 import { Component, TFile } from 'obsidian';
 
+const DEFAULT_TWEET_MD_PATH = 'tweet-widget.md';
+
 /**
  * Obsidian Widget Board Pluginのメインクラス
  * - ウィジェットボードの管理・設定・コマンド登録などを担当
@@ -416,7 +418,7 @@ export default class WidgetBoardPlugin extends Plugin {
                 const tweetEnd = Math.min(tweetIndex + batchSize, tweetPosts.length);
                 for (; tweetIndex < tweetEnd; tweetIndex++) {
                     const post = tweetPosts[tweetIndex];
-                    await renderMarkdownBatchWithCache(post.text, document.createElement('div'), '', new Component());
+                    await renderMarkdownBatchWithCache(post.text, document.createElement('div'), DEFAULT_TWEET_MD_PATH, new Component());
                 }
                 // MemoWidget
                 const memoEnd = Math.min(memoIndex + batchSize, memoContents.length);

@@ -10,6 +10,8 @@ import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './t
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 
+const DEFAULT_TWEET_MD_PATH = 'tweet-widget.md';
+
 // グローバルで再計算が必要な要素を管理
 const pendingTweetResizeElements: HTMLTextAreaElement[] = [];
 let scheduledTweetResize = false;
@@ -330,7 +332,8 @@ export class TweetWidgetUI {
                 previewArea.style.display = '';
                 input.style.display = 'none';
                 previewArea.empty();
-                await renderMarkdownBatchWithCache(input.value, previewArea, this.app.workspace.getActiveFile()?.path || '', new Component());
+                const srcPath = this.app.workspace.getActiveFile()?.path || DEFAULT_TWEET_MD_PATH;
+                await renderMarkdownBatchWithCache(input.value, previewArea, srcPath, new Component());
             } else {
                 previewArea.style.display = 'none';
                 input.style.display = '';
@@ -651,7 +654,8 @@ export class TweetWidgetUI {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
         } catch {}
-        await renderMarkdownBatchWithCache(displayText, textDiv, this.app.workspace.getActiveFile()?.path || '', new Component());
+        const srcPath2 = this.app.workspace.getActiveFile()?.path || DEFAULT_TWEET_MD_PATH;
+        await renderMarkdownBatchWithCache(displayText, textDiv, srcPath2, new Component());
 
         if (post.files && post.files.length) {
             const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${post.files.length}` });
