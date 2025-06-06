@@ -480,16 +480,8 @@ export class TweetWidgetUI {
     }
 
     public renderFilePreview(container: HTMLElement): void {
+        // 画像プレビューはMarkdownレンダリングに統一したため、何もしない
         container.empty();
-        const files = this.widget.attachedFiles;
-        if (!files.length) return;
-        container.className = `tweet-file-preview files-count-${files.length}`;
-        files.forEach((file: TweetWidgetFile) => {
-            container.createEl('img', { 
-                cls: 'tweet-file-image-main',
-                attr: { src: file.dataUrl, alt: file.name }
-            });
-        });
     }
 
     private updateCharCount(el: HTMLElement, len: number): void {
@@ -662,18 +654,18 @@ export class TweetWidgetUI {
         // 添付ファイル（dataUrl）を優先
         if (post.files && post.files.length) {
             for (const file of post.files) {
-                // ![[xxx.png]]
-                const wikilinkPattern = new RegExp(`!\\[\\[${escapeRegExp(file.name)}\\]\\]`, 'g');
+                // ![[xxx.png]] や ![[tweet-widget-files/xxx.png]]
+                const wikilinkPattern = new RegExp(`!\\[\\[(?:${escapeRegExp(file.name)}|tweet-widget-files/${escapeRegExp(file.name)})\\]\\]`, 'g');
                 replacedText = replacedText.replace(wikilinkPattern, `![](${file.dataUrl})`);
-                // ![](xxx.png)
-                const mdPattern = new RegExp(`!\\[\\]\\(${escapeRegExp(file.name)}\\)`, 'g');
+                // ![](xxx.png) や ![](tweet-widget-files/xxx.png)
+                const mdPattern = new RegExp(`!\\[\\]\\((?:${escapeRegExp(file.name)}|tweet-widget-files/${escapeRegExp(file.name)})\\)`, 'g');
                 replacedText = replacedText.replace(mdPattern, `![](${file.dataUrl})`);
             }
         }
-        // Vault内画像（![[xxx]]や![](xxx)）の解決
+        // Vault内画像のパスをgetResourcePathでURLに変換
         const vaultFiles = this.app.vault.getFiles();
         replacedText = replacedText.replace(/!\[\[(.+?)\]\]/g, (match, p1) => {
-            const f = vaultFiles.find(f => f.name === p1);
+            const f = vaultFiles.find(f => f.name === p1 || f.path === p1);
             if (f) {
                 const url = this.app.vault.getResourcePath(f);
                 return `![](${url})`;
@@ -681,7 +673,7 @@ export class TweetWidgetUI {
             return match;
         });
         replacedText = replacedText.replace(/!\[\]\((.+?)\)/g, (match, p1) => {
-            const f = vaultFiles.find(f => f.name === p1);
+            const f = vaultFiles.find(f => f.name === p1 || f.path === p1);
             if (f) {
                 const url = this.app.vault.getResourcePath(f);
                 return `![](${url})`;
@@ -699,13 +691,6 @@ export class TweetWidgetUI {
             img.style.display = 'block';
         });
 
-        if (post.files && post.files.length) {
-            const filesDiv = item.createDiv({ cls: `tweet-item-files-main files-count-${post.files.length}` });
-            post.files.forEach(file => {
-                filesDiv.createEl('img', { attr: { src: file.dataUrl, alt: file.name }, cls: 'tweet-item-image-main' });
-            });
-        }
-        
         const metadataDiv = item.createDiv({ cls: 'tweet-item-metadata-main' });
         if (post.bookmark) metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: 'Bookmarked' });
         if (post.visibility && post.visibility !== 'public') metadataDiv.createEl('span', { cls: 'tweet-chip visibility', text: post.visibility });

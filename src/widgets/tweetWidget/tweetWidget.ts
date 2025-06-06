@@ -389,9 +389,36 @@ export class TweetWidget implements WidgetImplementation {
     public wrapSelection = wrapSelection;
     
     public async attachFiles(files: File[]) {
+        const tweetDbPath = this.getTweetDbPath();
+        const baseDir = tweetDbPath.lastIndexOf('/') !== -1 ? tweetDbPath.substring(0, tweetDbPath.lastIndexOf('/')) : '';
+        const imagesDir = baseDir ? `${baseDir}/tweet-widget-files` : 'tweet-widget-files';
+        if (!(await this.app.vault.adapter.exists(imagesDir))) {
+            await this.app.vault.adapter.mkdir(imagesDir);
+        }
+        let insertedLinks: string[] = [];
         for (const file of files) {
             const dataUrl = await readFileAsDataUrl(file);
-            this.attachedFiles.push({ name: file.name, type: file.type, dataUrl });
+            const ext = file.name.split('.').pop() || 'png';
+            const uniqueName = `img_${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+            const vaultPath = imagesDir + '/' + uniqueName;
+            const base64 = dataUrl.split(',')[1];
+            const bin = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+            await this.app.vault.createBinary(vaultPath, bin);
+            // Vaultファイルを取得し、getResourcePathでURLを取得
+            const vaultFile = this.app.vault.getFiles().find(f => f.path === vaultPath);
+            let url = '';
+            if (vaultFile) {
+                url = this.app.vault.getResourcePath(vaultFile);
+            }
+            this.attachedFiles.push({ name: uniqueName, type: file.type, dataUrl: url });
+            insertedLinks.push(`![[tweet-widget-files/${uniqueName}]]`);
+        }
+        // 本文テキストエリアに![[ファイル名]]を自動挿入
+        const input = document.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
+        if (input && insertedLinks.length > 0) {
+            const sep = input.value && !input.value.endsWith('\n') ? '\n' : '';
+            input.value = input.value + sep + insertedLinks.join('\n');
+            input.dispatchEvent(new Event('input'));
         }
     }
 
