@@ -1,5 +1,7 @@
 import { MarkdownRenderer, TFile, Component } from "obsidian";
 
+const DEFAULT_SOURCE_PATH = "__virtual.md";
+
 /**
  * renderMarkdownBatch
  *
@@ -18,9 +20,10 @@ export async function renderMarkdownBatch(
   sourcePath: string | TFile,
   component: Component
 ) {
-  if (typeof sourcePath === "string" && sourcePath.trim() === "") {
-    sourcePath = "__virtual.md";
-  }
+  const resolvedPath =
+    typeof sourcePath === "string"
+      ? sourcePath.trim() === "" ? DEFAULT_SOURCE_PATH : sourcePath
+      : (sourcePath as TFile).path;
   // 1) オフスクリーンの一時コンテナを作る
   const offscreenDiv = document.createElement("div");
   offscreenDiv.style.position = "absolute";
@@ -33,7 +36,7 @@ export async function renderMarkdownBatch(
   await MarkdownRenderer.renderMarkdown(
     markdownText,
     offscreenDiv,
-    typeof sourcePath === "string" ? sourcePath : (sourcePath as TFile).path,
+    resolvedPath,
     component
   );
 
@@ -99,9 +102,10 @@ export async function renderMarkdownBatchWithCache(
   sourcePath: string | TFile,
   component: Component
 ) {
-  if (typeof sourcePath === "string" && sourcePath.trim() === "") {
-    sourcePath = "__virtual.md";
-  }
+  const resolvedPath =
+    typeof sourcePath === "string"
+      ? sourcePath.trim() === "" ? DEFAULT_SOURCE_PATH : sourcePath
+      : (sourcePath as TFile).path;
   const cached = markdownCache.get(markdownText);
   if (cached) {
     const clone = cached.cloneNode(true) as DocumentFragment;
@@ -119,7 +123,7 @@ export async function renderMarkdownBatchWithCache(
   await MarkdownRenderer.renderMarkdown(
     markdownText,
     offscreenDiv,
-    typeof sourcePath === "string" ? sourcePath : (sourcePath as TFile).path,
+    resolvedPath,
     component
   );
 
