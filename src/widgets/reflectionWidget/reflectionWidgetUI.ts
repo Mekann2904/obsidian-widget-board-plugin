@@ -8,6 +8,7 @@ import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/ge
 import { deobfuscate } from '../../utils';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
+import { loadChartCache, saveChartCache } from './chartCache';
 
 let Chart: any;
 let chartModulePromise: Promise<any> | null = null;
@@ -232,6 +233,40 @@ export class ReflectionWidgetUI {
             } else {
                 this.weekSummaryEl.innerText = this.preloadBundle.weekSummary.summary || '今週の投稿がありません。';
             }
+            this.lastTodaySummary = this.preloadBundle.todaySummary.summary || null;
+            this.lastWeekSummary = this.preloadBundle.weekSummary.summary || null;
+            if (this.preloadBundle.chartData && this.canvasEl && Chart) {
+                const { days, counts } = this.preloadBundle.chartData;
+                const ctx = this.canvasEl.getContext('2d');
+                if (ctx) {
+                    if (this.chart) this.chart.destroy();
+                    this.chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: days.map(d => d.slice(5)),
+                            datasets: [{
+                                label: '投稿数',
+                                data: counts,
+                                borderColor: '#4a90e2',
+                                backgroundColor: 'rgba(74,144,226,0.15)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 3,
+                            }]
+                        },
+                        options: {
+                            responsive: false,
+                            animation: false,
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { grid: { display: false }, ticks: { maxTicksLimit: 5 } },
+                                y: { beginAtZero: true, grid: { color: '#eee' } }
+                            }
+                        }
+                    });
+                    this.lastChartData = [...counts];
+                }
+            }
         } else {
             const todayKey = getDateKeyLocal(new Date());
             const [weekStart, weekEnd] = getWeekRange();
@@ -327,20 +362,29 @@ export class ReflectionWidgetUI {
                         const weekHtml = await this.renderMarkdown(this.weekSummaryEl!, weekText || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v);
                         await saveReflectionSummary('week', weekKey, weekText, weekHtml, this.app);
                     }
-                    // グラフデータ取得・描画（既存）
-                    const days = getLastNDays(7);
-                    const daySet = new Set(days);
-                    const countMap: Record<string, number> = {};
-                    for (const post of posts) {
-                        if (post.deleted) continue;
-                        const d = getDateKey(new Date(post.created));
-                        if (daySet.has(d)) {
-                            countMap[d] = (countMap[d] || 0) + 1;
+                    // グラフデータ取得・描画
+                    let chartInfo = await loadChartCache(this.app);
+                    let days: string[] = [];
+                    let counts: number[] = [];
+                    if (chartInfo && chartInfo.postCount === posts.length) {
+                        days = chartInfo.days;
+                        counts = chartInfo.counts;
+                    } else {
+                        days = getLastNDays(7);
+                        const daySet = new Set(days);
+                        const countMap: Record<string, number> = {};
+                        for (const post of posts) {
+                            if (post.deleted) continue;
+                            const d = getDateKey(new Date(post.created));
+                            if (daySet.has(d)) {
+                                countMap[d] = (countMap[d] || 0) + 1;
+                            }
                         }
+                        counts = days.map(d => countMap[d] || 0);
+                        await saveChartCache(this.app, posts);
                     }
-                    const counts = days.map(d => countMap[d] || 0);
                     if (this.lastChartData && this.lastChartData.length === counts.length && this.lastChartData.every((v, i) => v === counts[i])) {
-                        // 何もしない
+                        // noop
                     } else if (this.canvasEl) {
                         if (this.chart) {
                             this.chart.destroy();
@@ -363,16 +407,11 @@ export class ReflectionWidgetUI {
                                     }]
                                 },
                                 options: {
-                                    responsive: false, // 追加: レスポンシブ無効化
-                                    animation: false, // アニメーション無効化
+                                    responsive: false,
+                                    animation: false,
                                     plugins: { legend: { display: false } },
                                     scales: {
-                                        x: {
-                                            grid: { display: false },
-                                            ticks: {
-                                                maxTicksLimit: 5 // ★ラベル数を最大5件に制限
-                                            }
-                                        },
+                                        x: { grid: { display: false }, ticks: { maxTicksLimit: 5 } },
                                         y: { beginAtZero: true, grid: { color: '#eee' } }
                                     }
                                 }

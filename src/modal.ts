@@ -5,6 +5,7 @@ import { registeredWidgetImplementations } from './widgetRegistry';
 import type { WidgetImplementation, BoardConfiguration, WidgetConfig } from './interfaces';
 import cloneDeep from 'lodash.clonedeep';
 import { preloadChartJS, loadReflectionSummaryShared } from './widgets/reflectionWidget/reflectionWidgetUI';
+import { loadChartCache } from './widgets/reflectionWidget/chartCache';
 import type { ReflectionWidgetPreloadBundle } from './widgets/reflectionWidget/reflectionWidget';
 
 /**
@@ -517,11 +518,12 @@ export class WidgetBoardModal {
                 return [start, end];
             })();
             const weekKey = [weekEnd.getFullYear(), String(weekEnd.getMonth() + 1).padStart(2, '0'), String(weekEnd.getDate()).padStart(2, '0')].join('-');
-            const [todaySummary, weekSummary] = await Promise.all([
+            const [todaySummary, weekSummary, chartData] = await Promise.all([
                 loadReflectionSummaryShared('today', todayKey, this.plugin.app),
-                loadReflectionSummaryShared('week', weekKey, this.plugin.app)
+                loadReflectionSummaryShared('week', weekKey, this.plugin.app),
+                loadChartCache(this.plugin.app)
             ]);
-            reflectionPreloadBundle = { chartModule, todaySummary, weekSummary };
+            reflectionPreloadBundle = { chartModule, todaySummary, weekSummary, chartData };
         }
         // --- Lazy Load & 非同期描画 ---
         const observer = new IntersectionObserver((entries, obs) => {

@@ -125,6 +125,7 @@ export interface ReflectionWidgetPreloadBundle {
     chartModule: any;
     todaySummary: { summary: string|null, html: string|null };
     weekSummary: { summary: string|null, html: string|null };
+    chartData: { days: string[]; counts: number[]; postCount: number } | null;
 }
 
 // WidgetImplementation型を拡張

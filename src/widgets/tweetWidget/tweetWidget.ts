@@ -17,6 +17,7 @@ import { TweetWidgetUI } from './tweetWidgetUI';
 import { TweetRepository } from './TweetRepository';
 import { TweetStore } from './TweetStore';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from './constants';
+import { saveChartCache } from '../reflectionWidget/chartCache';
 
 export class TweetWidget implements WidgetImplementation {
     // --- Public properties for UI and Plugin ---
@@ -89,6 +90,9 @@ export class TweetWidget implements WidgetImplementation {
             // update path in case settings changed while widget is open
             this.repository.setPath(this.getTweetDbPath());
             await this.repository.save(this.store.settings);
+            try {
+                await saveChartCache(this.app, this.store.settings.posts);
+            } catch {}
             this.saveTimeout = null;
         }, 500);
     }
