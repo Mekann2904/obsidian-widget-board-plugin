@@ -91,6 +91,7 @@ let YOUTUBE_TITLE_TTL = 1000 * 60 * 60 * 24; // 24h
 type CachedTitle = { title: string | null; time: number };
 const YT_CACHE_KEY = 'tweetWidget.youtubeTitleCache';
 let youtubeTitleCache = new Map<string, CachedTitle>();
+const pendingRequests = new Map<string, Promise<string | null>>();
 
 export function __loadYouTubeTitleCache() {
     try {
@@ -112,8 +113,11 @@ function saveYouTubeTitleCache() {
 __loadYouTubeTitleCache();
 
 function refreshYouTubeTitle(url: string) {
+    if (pendingRequests.has(url)) {
+        return pendingRequests.get(url)!;
+    }
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
-    return safeFetch(oembedUrl, { method: 'GET' })
+    const promise = safeFetch(oembedUrl, { method: 'GET' })
         .then(res => res.ok ? res.json() : null)
         .then(data => {
             const title = data ? (data.title as string) : null;
@@ -125,7 +129,12 @@ function refreshYouTubeTitle(url: string) {
             youtubeTitleCache.set(url, { title: null, time: Date.now() });
             saveYouTubeTitleCache();
             return null;
+        })
+        .finally(() => {
+            pendingRequests.delete(url);
         });
+    pendingRequests.set(url, promise);
+    return promise;
 }
 
 export async function fetchYouTubeTitle(url: string): Promise<string | null> {
