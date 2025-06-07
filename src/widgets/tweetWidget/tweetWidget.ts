@@ -34,6 +34,7 @@ export class TweetWidget implements WidgetImplementation {
     detailPostId: string | null = null;
     replyModalPost: TweetWidgetPost | null = null;
     retweetModalPost: TweetWidgetPost | null = null;
+    retweetListPost: TweetWidgetPost | null = null;
     currentTab: 'home' | 'notification' = 'home';
     currentPeriod: string = 'all';
     customPeriodDays: number = 1;
@@ -150,7 +151,7 @@ export class TweetWidget implements WidgetImplementation {
         const trimmedText = text.trim();
         const quote = '> ' + target.text.replace(/\n/g, '\n> ');
         const finalText = trimmedText ? `${trimmedText}\n\n${quote}` : quote;
-        const newPost = this.createNewPostObject(finalText);
+        const newPost = this.createNewPostObject(finalText, null, target.id);
         this.store.addPost(newPost);
         this.store.updatePost(target.id, {
             retweet: (target.retweet || 0) + 1,
@@ -161,7 +162,7 @@ export class TweetWidget implements WidgetImplementation {
         this.ui.render();
     }
     
-    private createNewPostObject(text: string, threadId: string | null = this.replyingToParentId): TweetWidgetPost {
+    private createNewPostObject(text: string, threadId: string | null = this.replyingToParentId, quoteId: string | null = null): TweetWidgetPost {
         return {
             id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
             text,
@@ -176,6 +177,7 @@ export class TweetWidget implements WidgetImplementation {
             deleted: false,
             bookmark: false,
             threadId: threadId,
+            quoteId,
             visibility: 'public',
             noteQuality: 'fleeting',
             taskStatus: null,
@@ -251,6 +253,7 @@ export class TweetWidget implements WidgetImplementation {
     public startReply(post: TweetWidgetPost) {
         this.replyModalPost = post;
         this.retweetModalPost = null;
+        this.retweetListPost = null;
         this.editingPostId = null;
         this.replyingToParentId = null;
         this.ui.render();
@@ -264,6 +267,7 @@ export class TweetWidget implements WidgetImplementation {
     public startRetweet(post: TweetWidgetPost) {
         this.retweetModalPost = post;
         this.replyModalPost = null;
+        this.retweetListPost = null;
         this.editingPostId = null;
         this.replyingToParentId = null;
         this.ui.render();
@@ -271,6 +275,20 @@ export class TweetWidget implements WidgetImplementation {
 
     public cancelRetweet() {
         this.retweetModalPost = null;
+        this.ui.render();
+    }
+
+    public openRetweetList(post: TweetWidgetPost) {
+        this.retweetListPost = post;
+        this.replyModalPost = null;
+        this.retweetModalPost = null;
+        this.editingPostId = null;
+        this.replyingToParentId = null;
+        this.ui.render();
+    }
+
+    public closeRetweetList() {
+        this.retweetListPost = null;
         this.ui.render();
     }
 

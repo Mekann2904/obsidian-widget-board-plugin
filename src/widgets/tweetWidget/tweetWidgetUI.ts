@@ -154,6 +154,8 @@ export class TweetWidgetUI {
             this.renderReplyModal(this.widget.replyModalPost);
         } else if (this.widget.retweetModalPost) {
             this.renderRetweetModal(this.widget.retweetModalPost);
+        } else if (this.widget.retweetListPost) {
+            this.renderRetweetListModal(this.widget.retweetListPost);
         }
 
         if (this.widget.detailPostId) {
@@ -735,7 +737,7 @@ export class TweetWidgetUI {
         };
         
         const rtBtn = this.createActionButton(actionBar, 'repeat-2', post.retweet, 'retweet', post.retweeted);
-        rtBtn.onclick = (e) => { e.stopPropagation(); this.widget.startRetweet(post); };
+        rtBtn.onclick = (e) => { e.stopPropagation(); this.showRetweetMenu(e, post); };
 
         const likeBtn = this.createActionButton(actionBar, 'heart', post.like, 'like', post.liked);
         likeBtn.onclick = (e) => { e.stopPropagation(); this.widget.toggleLike(post.id); };
@@ -840,6 +842,13 @@ export class TweetWidgetUI {
         menu.addItem(item => item.setTitle("Open/Create Context Note").setIcon("file-text")
             .onClick(() => this.widget.openContextNote(post)));
 
+        menu.showAtMouseEvent(event);
+    }
+
+    private showRetweetMenu(event: MouseEvent, post: TweetWidgetPost): void {
+        const menu = new Menu();
+        menu.addItem(item => item.setTitle('引用').setIcon('quote').onClick(() => this.widget.startRetweet(post)));
+        menu.addItem(item => item.setTitle('詳細').setIcon('list').onClick(() => this.widget.openRetweetList(post)));
         menu.showAtMouseEvent(event);
     }
     
@@ -1019,6 +1028,38 @@ export class TweetWidgetUI {
                 retweetBtn.click();
             }
         });
+    }
+
+    private renderRetweetListModal(post: TweetWidgetPost): void {
+        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
+        const closeModal = () => {
+            this.widget.closeRetweetList();
+            backdrop.remove();
+            this.render();
+        };
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) closeModal();
+        };
+        const modal = backdrop.createDiv('tweet-reply-modal');
+        const widgetRect = this.container.getBoundingClientRect();
+        modal.style.position = 'fixed';
+        modal.style.top = `${widgetRect.top + 50}px`;
+        const modalWidth = Math.min(widgetRect.width - 40, 600);
+        modal.style.width = `${modalWidth}px`;
+        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+
+        const header = modal.createDiv('tweet-reply-modal-header');
+        header.createSpan({ text: '引用リツイート一覧' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = closeModal;
+
+        const listBox = modal.createDiv('tweet-reply-modal-post');
+        const retweets = this.widget.currentSettings.posts.filter(p => p.quoteId === post.id);
+        if (retweets.length === 0) {
+            listBox.createDiv({ text: 'まだ引用リツイートはありません。', cls: 'tweet-empty-notice' });
+        } else {
+            retweets.forEach(rt => this.renderSinglePost(rt, listBox, true));
+        }
     }
 
     private renderEditModal(post: TweetWidgetPost): void {

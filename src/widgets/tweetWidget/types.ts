@@ -23,6 +23,8 @@ export interface TweetWidgetPost {
     retweeted?: boolean;
     edited?: boolean;
     replyCount?: number;
+    /** 引用リツイート元の投稿ID */
+    quoteId?: string | null;
 
     // PKM（個人知識管理）フィールド
     tags?: string[];
