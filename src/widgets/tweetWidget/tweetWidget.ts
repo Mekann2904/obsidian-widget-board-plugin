@@ -346,13 +346,7 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     public promptBookmarkFolders(post: TweetWidgetPost) {
-        const input = prompt('ブックマークフォルダ名 (カンマ区切り可)', post.bookmarkFolders?.join(',') || '');
-        if (input !== null) {
-            const folders = input.split(',').map(s => s.trim()).filter(Boolean);
-            this.store.updatePost(post.id, { bookmarkFolders: folders });
-            this.saveDataDebounced();
-            this.ui.render();
-        }
+        this.ui.openBookmarkFolderModal(post);
     }
 
     public async setPostDeleted(postId: string, deleted: boolean) {

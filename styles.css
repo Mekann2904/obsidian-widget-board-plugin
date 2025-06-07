@@ -2184,6 +2184,38 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   z-index: 50;
 }
 
+/* --- bookmark folder modal --- */
+.tweet-bookmark-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  max-width: 95vw;
+  max-height: 80vh;
+  background: var(--background-primary, #222);
+  border-radius: 12px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.3);
+  display: flex;
+  flex-direction: column;
+  z-index: 9999;
+  padding-bottom: 12px;
+}
+.tweet-bookmark-folder-list {
+  padding: 8px 22px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+.tweet-bookmark-folder-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.tweet-bookmark-input {
+  padding: 8px 22px 0 22px;
+}
+
 /* Ensure mermaid diagrams scale within the reflection widget */
 .reflection-widget .mermaid svg {
   width: 100% !important;

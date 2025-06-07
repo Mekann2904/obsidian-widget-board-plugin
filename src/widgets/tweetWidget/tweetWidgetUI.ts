@@ -79,12 +79,12 @@ export class TweetWidgetUI {
             this.bookmarkToastEl.className = 'tweet-bookmark-toast';
             this.bookmarkToastEl.onclick = () => {
                 this.hideBookmarkToast();
-                this.widget.promptBookmarkFolders(post);
+                this.openBookmarkFolderModal(post);
             };
         }
         this.bookmarkToastEl.textContent = 'フォルダーに追加しますか？';
         this.container.appendChild(this.bookmarkToastEl);
-        this.toastTimeout = window.setTimeout(() => this.hideBookmarkToast(), 4000);
+        this.toastTimeout = window.setTimeout(() => this.hideBookmarkToast(), 5000);
     }
 
     public hideBookmarkToast(): void {
@@ -95,6 +95,42 @@ export class TweetWidgetUI {
             clearTimeout(this.toastTimeout);
             this.toastTimeout = null;
         }
+    }
+
+    public openBookmarkFolderModal(post: TweetWidgetPost): void {
+        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
+        const closeModal = () => backdrop.remove();
+        backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
+
+        const modal = backdrop.createDiv('tweet-bookmark-modal');
+        const header = modal.createDiv('tweet-reply-modal-header');
+        header.createSpan({ text: 'ブックマークフォルダ' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = closeModal;
+
+        const list = modal.createDiv('tweet-bookmark-folder-list');
+        const selected = new Set(post.bookmarkFolders || []);
+        this.widget.getBookmarkFolders().forEach(f => {
+            const label = list.createEl('label', { cls: 'tweet-bookmark-folder-item' });
+            const checkbox = label.createEl('input', { type: 'checkbox' });
+            checkbox.checked = selected.has(f);
+            checkbox.onchange = () => {
+                if (checkbox.checked) selected.add(f); else selected.delete(f);
+            };
+            label.appendText(f);
+        });
+
+        const inputWrap = modal.createDiv('tweet-bookmark-input');
+        const newInput = inputWrap.createEl('input', { type: 'text', placeholder: '新規フォルダ名 (カンマ区切り)' });
+
+        const footer = modal.createDiv('tweet-reply-modal-input');
+        const saveBtn = footer.createEl('button', { text: '保存', cls: 'tweet-reply-modal-btn' });
+        saveBtn.onclick = () => {
+            const add = newInput.value.split(',').map(s => s.trim()).filter(Boolean);
+            add.forEach(f => selected.add(f));
+            this.widget.updatePostProperty(post.id, 'bookmarkFolders', Array.from(selected));
+            closeModal();
+        };
     }
 
     public render(): void {
@@ -915,11 +951,7 @@ export class TweetWidgetUI {
 
         if (post.bookmark) {
             menu.addItem(item => item.setTitle('ブックマークフォルダを設定').setIcon('folder-plus').onClick(() => {
-                const input = prompt('ブックマークフォルダ名 (カンマ区切り可)', post.bookmarkFolders?.join(',') || '');
-                if (input !== null) {
-                    const folders = input.split(',').map(s => s.trim()).filter(Boolean);
-                    this.widget.updatePostProperty(post.id, 'bookmarkFolders', folders);
-                }
+                this.openBookmarkFolderModal(post);
             }));
         }
 
