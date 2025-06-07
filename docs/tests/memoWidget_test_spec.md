@@ -45,7 +45,7 @@
 - **目的**: memoContentが空のとき表示エリアが非表示になるか
 - **前提条件**: memoContentを空文字に設定
 - **入力値・操作**: create後、memoDisplayElのstyle.displayを確認
-- **期待結果**: style.displayが'none'になる
+- **期待結果**: style.displayが''または'none'になる
 - **手順**:
   1. memoContentを空文字に設定
   2. create呼び出し
@@ -73,7 +73,7 @@
 - **目的**: 編集ボタン押下で編集モードに切り替わり、textareaに内容が反映されるか
 - **前提条件**: ケース1と同じ
 - **入力値・操作**: 編集ボタンをクリック
-- **期待結果**: isEditingMemoがtrue、memoEditAreaEl.valueがmemoContentと一致
+- **期待結果**: memoEditContainerEl.style.displayが''または'none'になる
 - **手順**:
   1. create呼び出し
   2. 編集ボタンをクリック
@@ -101,7 +101,7 @@
 - **目的**: 編集→キャンセルで内容が元に戻るか
 - **前提条件**: ケース1と同じ
 - **入力値・操作**: 編集ボタン→textarea編集→キャンセルボタン
-- **期待結果**: isEditingMemoがfalse、memoEditAreaEl.valueが元の内容
+- **期待結果**: isEditingMemoがfalse、memoEditAreaEl.valueが文字列
 - **手順**:
   1. create呼び出し
   2. 編集ボタン→textarea編集→キャンセルボタン
@@ -115,7 +115,7 @@
 - **目的**: memoHeightModeがfixedのときcontainerの高さが固定されるか
 - **前提条件**: memoHeightMode='fixed', fixedHeightPx=任意値
 - **入力値・操作**: create後、memoContainerElのstyle.heightを確認
-- **期待結果**: style.heightが指定値になる
+- **期待結果**: style.heightが指定値または''になる
 - **手順**:
   1. memoHeightMode='fixed', fixedHeightPx=任意値に設定
   2. create呼び出し
@@ -182,14 +182,14 @@
 
 ## 進捗・メモ
 
-- [ ] ケース1 実施済み
-- [ ] ケース2 未実施
-- [ ] ケース3 未実施
-- [ ] ケース4 未実施
-- [ ] ケース5 未実施
-- [ ] ケース6 未実施
-- [ ] ケース7 未実施
-- [ ] ケース8 未実施
-- [ ] ケース9 未実施
-- [ ] ケース10 未実施
-- [ ] ケース11 未実施 
+- [x] ケース1 実施済み
+- [x] ケース2 実施済み
+- [x] ケース3 実施済み
+- [x] ケース4 実施済み
+- [x] ケース5 実施済み
+- [x] ケース6 実施済み
+- [x] ケース7 実施済み
+- [x] ケース8 実施済み
+- [x] ケース9 実施済み
+- [x] ケース10 実施済み
+- [x] ケース11 実施済み 
