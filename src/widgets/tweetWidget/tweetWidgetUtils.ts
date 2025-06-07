@@ -87,14 +87,41 @@ export function extractYouTubeUrl(text: string): string | null {
 }
 
 // YouTubeの動画タイトルを取得する関数（safeFetch使用）
-export async function fetchYouTubeTitle(url: string): Promise<string | null> {
+let YOUTUBE_TITLE_TTL = 1000 * 60 * 60 * 24; // 24h
+type CachedTitle = { title: string | null; time: number };
+const youtubeTitleCache = new Map<string, CachedTitle>();
+
+function refreshYouTubeTitle(url: string) {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
-    try {
-        const res = await safeFetch(oembedUrl, { method: 'GET' });
-        if (!res.ok) return null;
-        const data = await res.json();
-        return data.title as string;
-    } catch {
-        return null;
+    return safeFetch(oembedUrl, { method: 'GET' })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+            const title = data ? (data.title as string) : null;
+            youtubeTitleCache.set(url, { title, time: Date.now() });
+            return title;
+        })
+        .catch(() => {
+            youtubeTitleCache.set(url, { title: null, time: Date.now() });
+            return null;
+        });
+}
+
+export async function fetchYouTubeTitle(url: string): Promise<string | null> {
+    const cached = youtubeTitleCache.get(url);
+    const now = Date.now();
+    if (cached) {
+        if (now - cached.time < YOUTUBE_TITLE_TTL) return cached.title;
+        // TTL切れはバックグラウンド更新
+        if (typeof (window as any).requestIdleCallback === 'function') {
+            (window as any).requestIdleCallback(() => refreshYouTubeTitle(url));
+        } else {
+            setTimeout(() => refreshYouTubeTitle(url), 0);
+        }
+        return cached.title;
     }
-} 
+    return refreshYouTubeTitle(url);
+}
+
+// Testing helpers
+export function __clearYouTubeTitleCache() { youtubeTitleCache.clear(); }
+export function __setYouTubeTitleTTL(ttl: number) { YOUTUBE_TITLE_TTL = ttl; }
