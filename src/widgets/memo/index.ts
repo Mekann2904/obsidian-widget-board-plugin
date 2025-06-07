@@ -303,15 +303,19 @@ export class MemoWidget implements WidgetImplementation {
                 parent.replaceChild(newDisplayEl, this.memoDisplayEl);
                 this.memoDisplayEl = newDisplayEl;
             }
-            // Markdown描画は次のフレームで実行
-            requestAnimationFrame(() => {
-                this.renderMemo(this.currentSettings.memoContent).then(() => {
-                    this.applyContainerHeightStyles();
-                }).catch(error => {
-                    console.error(`[${this.config.id}] Error rendering memo in updateMemoEditUI:`, error);
-                    this.applyContainerHeightStyles();
-                });
-            });
+            const render = () => {
+                this.renderMemo(this.currentSettings.memoContent)
+                    .then(() => this.applyContainerHeightStyles())
+                    .catch(err => {
+                        console.error(`[${this.config.id}] Error rendering memo in updateMemoEditUI:`, err);
+                        this.applyContainerHeightStyles();
+                    });
+            };
+            if ('requestIdleCallback' in window) {
+                (window as any).requestIdleCallback(render);
+            } else {
+                setTimeout(render, 0);
+            }
             prev.memoContent = this.currentSettings.memoContent;
         }
         // 編集モード時のテキストエリア内容
