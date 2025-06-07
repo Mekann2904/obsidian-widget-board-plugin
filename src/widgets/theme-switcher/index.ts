@@ -38,7 +38,9 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
 
         const { widgetEl, titleEl } = createWidgetContainer(config, 'theme-switcher-widget');
         this.widgetEl = widgetEl;
-        titleEl.textContent = this.config.title?.trim() || 'テーマ切り替え';
+        if (titleEl) {
+            titleEl.textContent = this.config.title?.trim() || 'テーマ切り替え';
+        }
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
         this.renderThemeSelector(contentEl);
