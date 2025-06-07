@@ -71,7 +71,14 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
         return '要約生成に失敗しました';
     }
 }
-async function saveReflectionSummary(type: 'today' | 'week', dateKey: string, summary: string, html: string, app: App) {
+async function saveReflectionSummary(
+    type: 'today' | 'week',
+    dateKey: string,
+    summary: string,
+    html: string,
+    postCount: number,
+    app: App
+) {
     const path = 'data.json';
     let data: any = {};
     try {
@@ -79,14 +86,23 @@ async function saveReflectionSummary(type: 'today' | 'week', dateKey: string, su
         data = JSON.parse(raw);
     } catch {}
     if (!data.reflectionSummaries) data.reflectionSummaries = {};
-    data.reflectionSummaries[type] = { date: dateKey, summary, html };
+    data.reflectionSummaries[type] = { date: dateKey, summary, html, postCount };
     await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
+    aiSummaryMemoryCache[`${type}:${dateKey}`] = Promise.resolve({
+        summary,
+        html,
+        postCount
+    });
 }
 
 // --- AI要約キャッシュのメモリ共有 ---
-const aiSummaryMemoryCache: Record<string, Promise<{summary: string|null, html: string|null}>> = {};
+const aiSummaryMemoryCache: Record<string, Promise<{summary: string|null, html: string|null, postCount: number}>> = {};
 // 元のloadReflectionSummary関数を復活
-async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: App): Promise<{summary: string|null, html: string|null}> {
+async function loadReflectionSummary(
+    type: 'today' | 'week',
+    dateKey: string,
+    app: App
+): Promise<{summary: string|null, html: string|null, postCount: number}> {
     const path = 'data.json';
     try {
         const raw = await app.vault.adapter.read(path);
@@ -94,13 +110,18 @@ async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, ap
         if (data.reflectionSummaries && data.reflectionSummaries[type]?.date === dateKey) {
             return {
                 summary: data.reflectionSummaries[type].summary ?? null,
-                html: data.reflectionSummaries[type].html ?? null
+                html: data.reflectionSummaries[type].html ?? null,
+                postCount: data.reflectionSummaries[type].postCount ?? 0
             };
         }
     } catch {}
-    return { summary: null, html: null };
+    return { summary: null, html: null, postCount: 0 };
 }
-export async function loadReflectionSummaryShared(type: 'today' | 'week', dateKey: string, app: App): Promise<{summary: string|null, html: string|null}> {
+export async function loadReflectionSummaryShared(
+    type: 'today' | 'week',
+    dateKey: string,
+    app: App
+): Promise<{summary: string|null, html: string|null, postCount: number}> {
     const key = `${type}:${dateKey}`;
     if (!aiSummaryMemoryCache[key]) {
         aiSummaryMemoryCache[key] = loadReflectionSummary(type, dateKey, app);
@@ -318,14 +339,28 @@ export class ReflectionWidgetUI {
                         const todayPrompt = userPromptToday && userPromptToday.trim() ? userPromptToday : geminiSummaryPromptToday;
                         const todayText = todayPosts.length > 0 ? await generateSummary(todayPosts, todayPrompt, this.plugin) : '';
                         const todayHtml = await this.renderMarkdown(this.todaySummaryEl!, todayText || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v);
-                        await saveReflectionSummary('today', todayKey, todayText, todayHtml, this.app);
+                        await saveReflectionSummary(
+                            'today',
+                            todayKey,
+                            todayText,
+                            todayHtml,
+                            todayPosts.length,
+                            this.app
+                        );
                     }
                     if (force || !cachedWeek.summary) {
                         const weekPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) >= weekStart && getDateKeyLocal(new Date(p.created)) <= weekKey && p.userId === '@you');
                         const weekPrompt = userPromptWeek && userPromptWeek.trim() ? userPromptWeek : geminiSummaryPromptWeek;
                         const weekText = weekPosts.length > 0 ? await generateSummary(weekPosts, weekPrompt, this.plugin) : '';
                         const weekHtml = await this.renderMarkdown(this.weekSummaryEl!, weekText || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v);
-                        await saveReflectionSummary('week', weekKey, weekText, weekHtml, this.app);
+                        await saveReflectionSummary(
+                            'week',
+                            weekKey,
+                            weekText,
+                            weekHtml,
+                            weekPosts.length,
+                            this.app
+                        );
                     }
                     // グラフデータ取得・描画（既存）
                     const days = getLastNDays(7);
