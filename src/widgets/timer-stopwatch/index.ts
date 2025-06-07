@@ -353,8 +353,9 @@ export class TimerStopwatchWidget implements WidgetImplementation {
     }
 
     private handleTimerSettingsChange() {
-        const newMinutes = Math.max(0, Math.min(999, parseInt(this.timerMinInput.valueAsNumber.toFixed(0)) || 0));
-        const newSeconds = Math.max(0, Math.min(59, parseInt(this.timerSecInput.valueAsNumber.toFixed(0)) || 0));
+        // jsdom では valueAsNumber が NaN を返すことがあるため、文字列値から数値へ変換する
+        const newMinutes = Math.max(0, Math.min(999, parseInt(this.timerMinInput.value) || 0));
+        const newSeconds = Math.max(0, Math.min(59, parseInt(this.timerSecInput.value) || 0));
 
         this.currentSettings.timerMinutes = newMinutes; // インスタンスの設定も更新
         this.currentSettings.timerSeconds = newSeconds;

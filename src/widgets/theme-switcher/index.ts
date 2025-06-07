@@ -95,6 +95,8 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
                     return;
                 }
                 customCss.setTheme(theme.id);
+                // テーマ適用後は現在のテーマ名も更新する
+                (customCss as any).theme = theme.id;
                 new Notice(`テーマ「${theme.name}」を適用しました。`);
                 // ここでactiveクラスだけ付け替える
                 liElements.forEach(li => li.classList.remove('active'));
