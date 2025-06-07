@@ -58,6 +58,7 @@ export function validatePost(raw: any): TweetWidgetPost {
         retweeted: !!raw.retweeted,
         edited: !!raw.edited,
         replyCount: typeof raw.replyCount === 'number' ? raw.replyCount : 0,
+        quoteId: typeof raw.quoteId === 'string' ? raw.quoteId : null,
         deleted: !!raw.deleted,
         bookmark: !!raw.bookmark,
         contextNote: typeof raw.contextNote === 'string' ? raw.contextNote : null,

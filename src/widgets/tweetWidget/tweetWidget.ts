@@ -73,6 +73,7 @@ export class TweetWidget implements WidgetImplementation {
         this.widgetEl.innerText = 'Loading...';
         this.repository.load().then(initialSettings => {
             this.store = new TweetStore(initialSettings);
+            this.recalculateQuoteCounts();
             this.ui = new TweetWidgetUI(this, this.widgetEl);
             this.ui.render();
         });
@@ -153,13 +154,24 @@ export class TweetWidget implements WidgetImplementation {
         const finalText = trimmedText ? `${trimmedText}\n\n${quote}` : quote;
         const newPost = this.createNewPostObject(finalText, null, target.id);
         this.store.addPost(newPost);
+        const count = this.getQuoteCount(target.id);
         this.store.updatePost(target.id, {
-            retweet: (target.retweet || 0) + 1,
+            retweet: count,
             retweeted: true,
         });
         new Notice('引用リツイートを投稿しました');
         this.saveDataDebounced();
         this.ui.render();
+    }
+
+    public getQuoteCount(postId: string): number {
+        return this.store.settings.posts.filter(p => p.quoteId === postId).length;
+    }
+
+    private recalculateQuoteCounts() {
+        this.store.settings.posts.forEach(p => {
+            p.retweet = this.getQuoteCount(p.id);
+        });
     }
     
     private createNewPostObject(text: string, threadId: string | null = this.replyingToParentId, quoteId: string | null = null): TweetWidgetPost {

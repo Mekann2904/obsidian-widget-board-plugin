@@ -695,6 +695,19 @@ export class TweetWidgetUI {
             img.style.display = 'block';
         });
 
+        if (post.quoteId) {
+            const quoted = this.postsById.get(post.quoteId);
+            if (quoted) {
+                const quoteWrap = item.createDiv({ cls: 'tweet-quote-container' });
+                quoteWrap.onclick = (e) => {
+                    if ((e.target as HTMLElement).closest('.tweet-action-bar-main') ||
+                        (e.target as HTMLElement).closest('.tweet-item-avatar-main')) return;
+                    this.widget.navigateToDetail(quoted.id);
+                };
+                await this.renderSinglePost(quoted, quoteWrap, true);
+            }
+        }
+
         const metadataDiv = item.createDiv({ cls: 'tweet-item-metadata-main' });
         if (post.bookmark) metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: 'Bookmarked' });
         if (post.visibility && post.visibility !== 'public') metadataDiv.createEl('span', { cls: 'tweet-chip visibility', text: post.visibility });
@@ -736,7 +749,8 @@ export class TweetWidgetUI {
             this.widget.startReply(post);
         };
         
-        const rtBtn = this.createActionButton(actionBar, 'repeat-2', post.retweet, 'retweet', post.retweeted);
+        const quoteCount = this.widget.getQuoteCount(post.id);
+        const rtBtn = this.createActionButton(actionBar, 'repeat-2', quoteCount, 'retweet', post.retweeted);
         rtBtn.onclick = (e) => { e.stopPropagation(); this.showRetweetMenu(e, post); };
 
         const likeBtn = this.createActionButton(actionBar, 'heart', post.like, 'like', post.liked);
@@ -1058,7 +1072,16 @@ export class TweetWidgetUI {
         if (retweets.length === 0) {
             listBox.createDiv({ text: 'まだ引用リツイートはありません。', cls: 'tweet-empty-notice' });
         } else {
-            retweets.forEach(rt => this.renderSinglePost(rt, listBox, true));
+            retweets.forEach(rt => {
+                const wrapper = listBox.createDiv({ cls: 'tweet-quote-list-item' });
+                wrapper.onclick = (e) => {
+                    if ((e.target as HTMLElement).closest('.tweet-action-bar-main') ||
+                        (e.target as HTMLElement).closest('.tweet-item-avatar-main')) return;
+                    closeModal();
+                    this.widget.navigateToDetail(rt.id);
+                };
+                this.renderSinglePost(rt, wrapper, true);
+            });
         }
     }
 
