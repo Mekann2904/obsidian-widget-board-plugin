@@ -321,21 +321,21 @@ export default class WidgetBoardPlugin extends Plugin {
                 name: `ボードグループをトグル: ${group.name}`,
                 hotkeys,
                 callback: () => {
-                    const anyOpen = (group.boardIds || []).some(boardId => {
+                    const openBoards = (group.boardIds || []).filter(boardId => {
                         const modal = this.widgetBoardModals.get(boardId);
                         return modal && modal.isOpen;
                     });
-                    if (anyOpen) {
-                        (group.boardIds || []).filter(boardId => {
-                            const modal = this.widgetBoardModals.get(boardId);
-                            return modal && modal.isOpen;
-                        }).forEach(boardId => {
+                    if (openBoards.length === (group.boardIds || []).length) {
+                        openBoards.forEach(boardId => {
                             const modal = this.widgetBoardModals.get(boardId);
                             if (modal) modal.close();
                         });
                     } else {
                         (group.boardIds || []).forEach(boardId => {
-                            this.openWidgetBoardById(boardId);
+                            const modal = this.widgetBoardModals.get(boardId);
+                            if (!modal || !modal.isOpen) {
+                                this.openWidgetBoardById(boardId);
+                            }
                         });
                     }
                 }
