@@ -72,7 +72,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
      * インスタンス初期化
      */
     constructor() {
-        // ... 既存コード ...
+        // no initialization logic
     }
 
     private getInternalState(): TimerStopwatchState | undefined {
@@ -560,6 +560,31 @@ export class TimerStopwatchWidget implements WidgetImplementation {
      * @param widgetId 対象ウィジェットID
      */
     public async updateExternalSettings(newSettings: Partial<TimerStopwatchWidgetSettings>, widgetId?: string) {
-        // ... 既存コード ...
+        if (widgetId && this.config.id !== widgetId) return;
+
+        const before = { ...this.currentSettings };
+        this.currentSettings = { ...this.currentSettings, ...newSettings };
+
+        if (this.config && this.config.settings) {
+            Object.assign(this.config.settings, this.currentSettings);
+        }
+
+        const mins = this.currentSettings.timerMinutes ?? before.timerMinutes ?? 0;
+        const secs = this.currentSettings.timerSeconds ?? before.timerSeconds ?? 0;
+        const total = mins * 60 + secs;
+
+        const state = TimerStopwatchWidget.widgetStates.get(this.config.id);
+        if (state) {
+            state.initialTimerSeconds = total;
+            if (!state.running && state.mode === 'timer') {
+                state.remainingSeconds = total;
+            }
+            TimerStopwatchWidget.widgetStates.set(this.config.id, state);
+        }
+
+        if (this.timerMinInput) this.timerMinInput.value = String(mins);
+        if (this.timerSecInput) this.timerSecInput.value = String(secs);
+
+        this.updateDisplay();
     }
 }

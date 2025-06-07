@@ -22,7 +22,7 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
      * インスタンス初期化
      */
     constructor() {
-        // ... 既存コード ...
+        // no initialization needed
     }
 
     /**
