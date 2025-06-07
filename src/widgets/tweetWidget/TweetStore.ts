@@ -31,6 +31,13 @@ export class TweetStore {
                 parent.updated = Date.now();
             }
         }
+        if (post.quoteId) {
+            const target = this.postsById.get(post.quoteId);
+            if (target) {
+                target.retweet = (target.retweet || 0) + 1;
+                target.updated = Date.now();
+            }
+        }
         this.updatePostsById();
     }
 
@@ -60,6 +67,12 @@ export class TweetStore {
                 parent.replyCount = Math.max(0, (parent.replyCount || 0) - 1);
             }
         }
+        if (post?.quoteId) {
+            const target = this.postsById.get(post.quoteId);
+            if (target) {
+                target.retweet = Math.max(0, (target.retweet || 0) - 1);
+            }
+        }
         this.settings.posts = this.settings.posts.filter(p => p.id !== postId);
         this.updatePostsById();
     }
@@ -78,7 +91,17 @@ export class TweetStore {
                 parent.replyCount = Math.max(0, (parent.replyCount || 0) - 1);
             }
         }
-        
+
+        for (const id of threadIds) {
+            const p = this.postsById.get(id);
+            if (p?.quoteId) {
+                const target = this.postsById.get(p.quoteId);
+                if (target) {
+                    target.retweet = Math.max(0, (target.retweet || 0) - 1);
+                }
+            }
+        }
+
         this.settings.posts = this.settings.posts.filter(p => !threadIds.includes(p.id));
         this.updatePostsById();
     }

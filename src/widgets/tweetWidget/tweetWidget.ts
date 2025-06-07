@@ -33,6 +33,8 @@ export class TweetWidget implements WidgetImplementation {
     currentFilter: 'all' | 'active' | 'deleted' | 'bookmark' = 'active';
     detailPostId: string | null = null;
     replyModalPost: TweetWidgetPost | null = null;
+    retweetModalPost: TweetWidgetPost | null = null;
+    retweetListPost: TweetWidgetPost | null = null;
     currentTab: 'home' | 'notification' = 'home';
     currentPeriod: string = 'all';
     customPeriodDays: number = 1;
@@ -71,6 +73,7 @@ export class TweetWidget implements WidgetImplementation {
         this.widgetEl.innerText = 'Loading...';
         this.repository.load().then(initialSettings => {
             this.store = new TweetStore(initialSettings);
+            this.recalculateQuoteCounts();
             this.ui = new TweetWidgetUI(this, this.widgetEl);
             this.ui.render();
         });
@@ -144,8 +147,32 @@ export class TweetWidget implements WidgetImplementation {
         this.saveDataDebounced();
         this.ui.render();
     }
+
+    public async submitRetweet(text: string, target: TweetWidgetPost) {
+        const trimmedText = text.trim();
+        const newPost = this.createNewPostObject(trimmedText, null, target.id);
+        this.store.addPost(newPost);
+        const count = this.getQuoteCount(target.id);
+        this.store.updatePost(target.id, {
+            retweet: count,
+            retweeted: true,
+        });
+        new Notice('引用リツイートを投稿しました');
+        this.saveDataDebounced();
+        this.ui.render();
+    }
+
+    public getQuoteCount(postId: string): number {
+        return this.store.settings.posts.filter(p => p.quoteId === postId).length;
+    }
+
+    private recalculateQuoteCounts() {
+        this.store.settings.posts.forEach(p => {
+            p.retweet = this.getQuoteCount(p.id);
+        });
+    }
     
-    private createNewPostObject(text: string, threadId: string | null = this.replyingToParentId): TweetWidgetPost {
+    private createNewPostObject(text: string, threadId: string | null = this.replyingToParentId, quoteId: string | null = null): TweetWidgetPost {
         return {
             id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
             text,
@@ -160,6 +187,7 @@ export class TweetWidget implements WidgetImplementation {
             deleted: false,
             bookmark: false,
             threadId: threadId,
+            quoteId,
             visibility: 'public',
             noteQuality: 'fleeting',
             taskStatus: null,
@@ -234,6 +262,8 @@ export class TweetWidget implements WidgetImplementation {
     
     public startReply(post: TweetWidgetPost) {
         this.replyModalPost = post;
+        this.retweetModalPost = null;
+        this.retweetListPost = null;
         this.editingPostId = null;
         this.replyingToParentId = null;
         this.ui.render();
@@ -241,6 +271,34 @@ export class TweetWidget implements WidgetImplementation {
 
     public cancelReply() {
         this.replyingToParentId = null;
+        this.ui.render();
+    }
+
+    public startRetweet(post: TweetWidgetPost) {
+        this.retweetModalPost = post;
+        this.replyModalPost = null;
+        this.retweetListPost = null;
+        this.editingPostId = null;
+        this.replyingToParentId = null;
+        this.ui.render();
+    }
+
+    public cancelRetweet() {
+        this.retweetModalPost = null;
+        this.ui.render();
+    }
+
+    public openRetweetList(post: TweetWidgetPost) {
+        this.retweetListPost = post;
+        this.replyModalPost = null;
+        this.retweetModalPost = null;
+        this.editingPostId = null;
+        this.replyingToParentId = null;
+        this.ui.render();
+    }
+
+    public closeRetweetList() {
+        this.retweetListPost = null;
         this.ui.render();
     }
 

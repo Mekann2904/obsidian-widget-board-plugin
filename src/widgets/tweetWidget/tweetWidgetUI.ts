@@ -152,6 +152,10 @@ export class TweetWidgetUI {
     private renderHomeTab(): void {
         if (this.widget.replyModalPost) {
             this.renderReplyModal(this.widget.replyModalPost);
+        } else if (this.widget.retweetModalPost) {
+            this.renderRetweetModal(this.widget.retweetModalPost);
+        } else if (this.widget.retweetListPost) {
+            this.renderRetweetListModal(this.widget.retweetListPost);
         }
 
         if (this.widget.detailPostId) {
@@ -611,7 +615,12 @@ export class TweetWidgetUI {
         };
     }
 
-    private async renderSinglePost(post: TweetWidgetPost, container: HTMLElement, isDetail: boolean = false): Promise<void> {
+    private async renderSinglePost(
+        post: TweetWidgetPost,
+        container: HTMLElement,
+        isDetail: boolean = false,
+        isQuoteEmbed: boolean = false
+    ): Promise<void> {
         container.empty();
         const item = container.createDiv({ cls: 'tweet-item-main' });
         
@@ -648,6 +657,12 @@ export class TweetWidgetUI {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
         } catch {}
+        if (post.quoteId) {
+            displayText = displayText
+                .split('\n')
+                .filter(line => !/^>\s?/.test(line.trim()))
+                .join('\n');
+        }
 
         // --- 画像Markdown記法のパスを置換 ---
         let replacedText = displayText;
@@ -691,6 +706,19 @@ export class TweetWidgetUI {
             img.style.display = 'block';
         });
 
+        if (post.quoteId) {
+            const quoted = this.postsById.get(post.quoteId);
+            if (quoted) {
+                const quoteWrap = item.createDiv({ cls: 'tweet-quote-container' });
+                quoteWrap.onclick = (e) => {
+                    if ((e.target as HTMLElement).closest('.tweet-action-bar-main') ||
+                        (e.target as HTMLElement).closest('.tweet-item-avatar-main')) return;
+                    this.widget.navigateToDetail(quoted.id);
+                };
+                await this.renderSinglePost(quoted, quoteWrap, true, true);
+            }
+        }
+
         const metadataDiv = item.createDiv({ cls: 'tweet-item-metadata-main' });
         if (post.bookmark) metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: 'Bookmarked' });
         if (post.visibility && post.visibility !== 'public') metadataDiv.createEl('span', { cls: 'tweet-chip visibility', text: post.visibility });
@@ -716,7 +744,9 @@ export class TweetWidgetUI {
             });
         }
 
-        this.renderActionBar(item, post);
+        if (!isQuoteEmbed) {
+            this.renderActionBar(item, post);
+        }
         
         if (!isDetail) {
             this.renderReactedUsers(item, post);
@@ -732,8 +762,9 @@ export class TweetWidgetUI {
             this.widget.startReply(post);
         };
         
-        const rtBtn = this.createActionButton(actionBar, 'repeat-2', post.retweet, 'retweet', post.retweeted);
-        rtBtn.onclick = (e) => { e.stopPropagation(); this.widget.toggleRetweet(post.id); };
+        const quoteCount = this.widget.getQuoteCount(post.id);
+        const rtBtn = this.createActionButton(actionBar, 'repeat-2', quoteCount, 'retweet', post.retweeted);
+        rtBtn.onclick = (e) => { e.stopPropagation(); this.showRetweetMenu(e, post); };
 
         const likeBtn = this.createActionButton(actionBar, 'heart', post.like, 'like', post.liked);
         likeBtn.onclick = (e) => { e.stopPropagation(); this.widget.toggleLike(post.id); };
@@ -840,6 +871,13 @@ export class TweetWidgetUI {
 
         menu.showAtMouseEvent(event);
     }
+
+    private showRetweetMenu(event: MouseEvent, post: TweetWidgetPost): void {
+        const menu = new Menu();
+        menu.addItem(item => item.setTitle('引用').setIcon('quote').onClick(() => this.widget.startRetweet(post)));
+        menu.addItem(item => item.setTitle('詳細').setIcon('list').onClick(() => this.widget.openRetweetList(post)));
+        menu.showAtMouseEvent(event);
+    }
     
     private renderReplyModal(post: TweetWidgetPost): void {
         const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
@@ -931,6 +969,133 @@ export class TweetWidgetUI {
                 replyBtn.click();
             }
         });
+    }
+
+    private renderRetweetModal(post: TweetWidgetPost): void {
+        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
+        const closeModal = () => {
+            this.widget.retweetModalPost = null;
+            backdrop.remove();
+            this.render();
+        };
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) closeModal();
+        };
+        const modal = backdrop.createDiv('tweet-reply-modal');
+        const widgetRect = this.container.getBoundingClientRect();
+        modal.style.position = 'fixed';
+        modal.style.top = `${widgetRect.top + 50}px`;
+        const modalWidth = Math.min(widgetRect.width - 40, 600);
+        modal.style.width = `${modalWidth}px`;
+        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+
+        const header = modal.createDiv('tweet-reply-modal-header');
+        header.createSpan({ text: '引用リツイート' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = closeModal;
+
+        const postBox = modal.createDiv('tweet-reply-modal-post');
+        this.renderSinglePost(post, postBox, true);
+
+        const inputArea = modal.createDiv('tweet-reply-modal-input');
+        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: 'コメントを追加' } });
+        textarea.focus();
+
+        const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
+        ytSuggest.style.display = 'none';
+        ytSuggest.textContent = '';
+        let lastYtUrl = '';
+        let lastYtTitle = '';
+        textarea.addEventListener('input', () => {
+            const val = textarea.value;
+            const url = extractYouTubeUrl(val);
+            if (!url) {
+                ytSuggest.style.display = 'none';
+                ytSuggest.textContent = '';
+                lastYtUrl = '';
+                lastYtTitle = '';
+                return;
+            }
+            ytSuggest.textContent = '動画タイトル取得中...';
+            ytSuggest.style.display = 'block';
+            lastYtUrl = url;
+            const currentInput = val;
+            fetchYouTubeTitle(url).then(title => {
+                if (textarea.value !== currentInput) return;
+                if (title) {
+                    lastYtTitle = title;
+                    ytSuggest.textContent = `「${title}」を挿入 → クリック`;
+                    ytSuggest.onclick = () => {
+                        const insertText = `![${title}](${url})`;
+                        const urlRegex = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}(?:[?&][^\s]*)?)/;
+                        textarea.value = textarea.value.replace(urlRegex, insertText);
+                        ytSuggest.style.display = 'none';
+                        ytSuggest.textContent = '';
+                        textarea.dispatchEvent(new Event('input'));
+                    };
+                } else {
+                    ytSuggest.textContent = '動画タイトル取得失敗';
+                    ytSuggest.onclick = null;
+                }
+            });
+        });
+
+        const retweetBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: 'リツイート' });
+        retweetBtn.onclick = async () => {
+            await this.widget.submitRetweet(textarea.value, post);
+            closeModal();
+        };
+
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                closeModal();
+            }
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                retweetBtn.click();
+            }
+        });
+    }
+
+    private renderRetweetListModal(post: TweetWidgetPost): void {
+        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
+        const closeModal = () => {
+            this.widget.closeRetweetList();
+            backdrop.remove();
+            this.render();
+        };
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) closeModal();
+        };
+        const modal = backdrop.createDiv('tweet-reply-modal');
+        const widgetRect = this.container.getBoundingClientRect();
+        modal.style.position = 'fixed';
+        modal.style.top = `${widgetRect.top + 50}px`;
+        const modalWidth = Math.min(widgetRect.width - 40, 600);
+        modal.style.width = `${modalWidth}px`;
+        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+
+        const header = modal.createDiv('tweet-reply-modal-header');
+        header.createSpan({ text: '引用リツイート一覧' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = closeModal;
+
+        const listBox = modal.createDiv('tweet-reply-modal-post');
+        const retweets = this.widget.currentSettings.posts.filter(p => p.quoteId === post.id);
+        if (retweets.length === 0) {
+            listBox.createDiv({ text: 'まだ引用リツイートはありません。', cls: 'tweet-empty-notice' });
+        } else {
+            retweets.forEach(rt => {
+                const wrapper = listBox.createDiv({ cls: 'tweet-quote-list-item' });
+                wrapper.onclick = (e) => {
+                    if ((e.target as HTMLElement).closest('.tweet-action-bar-main') ||
+                        (e.target as HTMLElement).closest('.tweet-item-avatar-main')) return;
+                    closeModal();
+                    this.widget.navigateToDetail(rt.id);
+                };
+                this.renderSinglePost(rt, wrapper, true);
+            });
+        }
     }
 
     private renderEditModal(post: TweetWidgetPost): void {
