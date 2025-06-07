@@ -123,8 +123,8 @@ async function clearOldReflectionSummaries(app: App) {
 // プリロードバンドル型を定義
 export interface ReflectionWidgetPreloadBundle {
     chartModule: any;
-    todaySummary: { summary: string|null, html: string|null };
-    weekSummary: { summary: string|null, html: string|null };
+    todaySummary: { summary: string|null, html: string|null, postCount: number|null };
+    weekSummary: { summary: string|null, html: string|null, postCount: number|null };
     chartData: { days: string[]; counts: number[]; postCount: number } | null;
 }
 
