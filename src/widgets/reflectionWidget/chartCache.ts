@@ -1,6 +1,9 @@
 import { App } from 'obsidian';
 import type { TweetWidgetPost } from '../tweetWidget/types';
 
+// --- In-memory cache to avoid repeated disk reads ---
+let memoryCache: { postCount: number; days: string[]; counts: number[] } | null | undefined = undefined;
+
 function getDateKey(date: Date): string {
     return date.toISOString().slice(0, 10);
 }
@@ -34,17 +37,20 @@ export async function saveChartCache(app: App, posts: TweetWidgetPost[]): Promis
         data = JSON.parse(raw);
     } catch {}
     data.reflectionChartCache = { postCount: posts.length, days, counts };
+    memoryCache = data.reflectionChartCache;
     await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
 }
 
 export async function loadChartCache(app: App): Promise<{postCount:number, days:string[], counts:number[]} | null> {
+    if (memoryCache !== undefined) return memoryCache;
     const path = 'data.json';
     try {
         const raw = await app.vault.adapter.read(path);
         const data = JSON.parse(raw);
-        if (data.reflectionChartCache) {
-            return data.reflectionChartCache;
-        }
-    } catch {}
-    return null;
+        memoryCache = data.reflectionChartCache || null;
+        return memoryCache;
+    } catch {
+        memoryCache = null;
+        return null;
+    }
 }
