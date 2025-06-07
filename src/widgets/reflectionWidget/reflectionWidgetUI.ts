@@ -265,11 +265,16 @@ export class ReflectionWidgetUI {
                     }
                     // グラフデータ取得・描画（既存）
                     const days = getLastNDays(7);
-                    const filteredPosts: TweetWidgetPost[] = posts.filter(p => {
-                        const d = getDateKey(new Date(p.created));
-                        return days.includes(d) && !p.deleted;
-                    });
-                    const counts = days.map(day => filteredPosts.filter(p => getDateKey(new Date(p.created)) === day).length);
+                    const daySet = new Set(days);
+                    const countMap: Record<string, number> = {};
+                    for (const post of posts) {
+                        if (post.deleted) continue;
+                        const d = getDateKey(new Date(post.created));
+                        if (daySet.has(d)) {
+                            countMap[d] = (countMap[d] || 0) + 1;
+                        }
+                    }
+                    const counts = days.map(d => countMap[d] || 0);
                     if (this.lastChartData && this.lastChartData.length === counts.length && this.lastChartData.every((v, i) => v === counts[i])) {
                         // 何もしない
                     } else if (this.canvasEl) {
@@ -308,8 +313,8 @@ export class ReflectionWidgetUI {
                                     }
                                 }
                             });
-                            this.lastChartData = [...counts];
                         }
+                        this.lastChartData = [...counts];
                     }
                 })(),
                 timeoutPromise

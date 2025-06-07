@@ -39,6 +39,8 @@ export default class WidgetBoardPlugin extends Plugin {
         debugLog(this, 'Widget Board Plugin: Loading...');
         this.llmManager = new LLMManager();
         this.llmManager.register(GeminiProvider);
+        // Preload Chart.js for ReflectionWidget to avoid first render delay
+        import('chart.js/auto').catch(() => {});
         await this.loadSettings();
         this.registerAllBoardCommands();
         this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());
