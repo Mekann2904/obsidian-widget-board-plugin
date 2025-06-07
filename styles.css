@@ -2166,6 +2166,24 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   object-fit: contain;
 }
 
+/* --- tweet-widget bookmark toast --- */
+.widget.tweet-widget {
+  position: relative;
+}
+.tweet-bookmark-toast {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--background-secondary-alt, #333);
+  color: var(--text-normal);
+  padding: 6px 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  z-index: 50;
+}
+
 /* Ensure mermaid diagrams scale within the reflection widget */
 .reflection-widget .mermaid svg {
   width: 100% !important;

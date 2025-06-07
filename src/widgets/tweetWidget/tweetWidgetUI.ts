@@ -51,6 +51,8 @@ export class TweetWidgetUI {
     private app: App;
     private postsById: Map<string, TweetWidgetPost>;
     private needsRender = false;
+    private bookmarkToastEl: HTMLElement | null = null;
+    private toastTimeout: number | null = null;
     // showAvatarModalで使うためのハンドラ参照を保持
     private _escHandlerForAvatarModal: ((ev: KeyboardEvent) => void) | null = null;
 
@@ -68,6 +70,31 @@ export class TweetWidgetUI {
             this.render();
             this.needsRender = false;
         });
+    }
+
+    public showBookmarkToast(post: TweetWidgetPost): void {
+        this.hideBookmarkToast();
+        if (!this.bookmarkToastEl) {
+            this.bookmarkToastEl = document.createElement('div');
+            this.bookmarkToastEl.className = 'tweet-bookmark-toast';
+            this.bookmarkToastEl.onclick = () => {
+                this.hideBookmarkToast();
+                this.widget.promptBookmarkFolders(post);
+            };
+        }
+        this.bookmarkToastEl.textContent = 'フォルダーに追加しますか？';
+        this.container.appendChild(this.bookmarkToastEl);
+        this.toastTimeout = window.setTimeout(() => this.hideBookmarkToast(), 4000);
+    }
+
+    public hideBookmarkToast(): void {
+        if (this.bookmarkToastEl && this.bookmarkToastEl.parentElement) {
+            this.bookmarkToastEl.remove();
+        }
+        if (this.toastTimeout) {
+            clearTimeout(this.toastTimeout);
+            this.toastTimeout = null;
+        }
     }
 
     public render(): void {
@@ -89,6 +116,10 @@ export class TweetWidgetUI {
             this.renderNotificationTab();
         } else {
             this.renderHomeTab();
+        }
+
+        if (this.bookmarkToastEl && this.bookmarkToastEl.parentElement == null) {
+            this.container.appendChild(this.bookmarkToastEl);
         }
     }
 

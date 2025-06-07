@@ -193,6 +193,7 @@ export class TweetWidget implements WidgetImplementation {
             replyCount: 0,
             deleted: false,
             bookmark: false,
+            bookmarkFolders: [],
             threadId: threadId,
             quoteId,
             visibility: 'public',
@@ -333,15 +334,22 @@ export class TweetWidget implements WidgetImplementation {
             const newStatus = !post.bookmark;
             const updates: Partial<TweetWidgetPost> = { bookmark: newStatus };
             if (newStatus) {
-                new Notice('フォルダーに追加しますか？', 4000);
-                const input = prompt('ブックマークフォルダ名 (カンマ区切り可)', post.bookmarkFolders?.join(',') || '');
-                if (input !== null) {
-                    updates.bookmarkFolders = input.split(',').map(s => s.trim()).filter(Boolean);
-                }
+                updates.bookmarkFolders = post.bookmarkFolders || [];
+                this.ui.showBookmarkToast(post);
             } else {
                 updates.bookmarkFolders = [];
             }
             this.store.updatePost(postId, updates);
+            this.saveDataDebounced();
+            this.ui.render();
+        }
+    }
+
+    public promptBookmarkFolders(post: TweetWidgetPost) {
+        const input = prompt('ブックマークフォルダ名 (カンマ区切り可)', post.bookmarkFolders?.join(',') || '');
+        if (input !== null) {
+            const folders = input.split(',').map(s => s.trim()).filter(Boolean);
+            this.store.updatePost(post.id, { bookmarkFolders: folders });
             this.saveDataDebounced();
             this.ui.render();
         }
