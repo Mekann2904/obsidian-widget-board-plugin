@@ -89,6 +89,11 @@ async function saveReflectionSummary(
     if (!data.reflectionSummaries) data.reflectionSummaries = {};
     data.reflectionSummaries[type] = { date: dateKey, summary, html, postCount };
     await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
+    aiSummaryMemoryCache[`${type}:${dateKey}`] = Promise.resolve({
+        summary,
+        html,
+        postCount
+    });
 }
 
 // --- AI要約キャッシュのメモリ共有 ---
@@ -99,7 +104,6 @@ async function loadReflectionSummary(
     dateKey: string,
     app: App
 ): Promise<{summary: string|null, html: string|null, postCount: number|null}> {
-    const path = 'data.json';
     try {
         const raw = await app.vault.adapter.read(path);
         const data = JSON.parse(raw);
