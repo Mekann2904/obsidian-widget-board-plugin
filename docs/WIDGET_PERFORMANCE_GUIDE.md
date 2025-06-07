@@ -401,6 +401,7 @@ const chart = new Chart(ctx, {
 
 #### 適用例
 - `reflectionWidgetUI.ts`（2024/06最適化）
+- `reflectionWidgetUI.ts`（2025/06 キャッシュ読み込みと投稿データ取得の並列化）
 
 #### 注意点・アンチパターン
 - responsive: trueやanimation: trueはreflow・再描画コスト増大の原因となります。
