@@ -150,9 +150,7 @@ export class TweetWidget implements WidgetImplementation {
 
     public async submitRetweet(text: string, target: TweetWidgetPost) {
         const trimmedText = text.trim();
-        const quote = '> ' + target.text.replace(/\n/g, '\n> ');
-        const finalText = trimmedText ? `${trimmedText}\n\n${quote}` : quote;
-        const newPost = this.createNewPostObject(finalText, null, target.id);
+        const newPost = this.createNewPostObject(trimmedText, null, target.id);
         this.store.addPost(newPost);
         const count = this.getQuoteCount(target.id);
         this.store.updatePost(target.id, {

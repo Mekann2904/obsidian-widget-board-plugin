@@ -615,7 +615,12 @@ export class TweetWidgetUI {
         };
     }
 
-    private async renderSinglePost(post: TweetWidgetPost, container: HTMLElement, isDetail: boolean = false): Promise<void> {
+    private async renderSinglePost(
+        post: TweetWidgetPost,
+        container: HTMLElement,
+        isDetail: boolean = false,
+        isQuoteEmbed: boolean = false
+    ): Promise<void> {
         container.empty();
         const item = container.createDiv({ cls: 'tweet-item-main' });
         
@@ -704,7 +709,7 @@ export class TweetWidgetUI {
                         (e.target as HTMLElement).closest('.tweet-item-avatar-main')) return;
                     this.widget.navigateToDetail(quoted.id);
                 };
-                await this.renderSinglePost(quoted, quoteWrap, true);
+                await this.renderSinglePost(quoted, quoteWrap, true, true);
             }
         }
 
@@ -733,7 +738,9 @@ export class TweetWidgetUI {
             });
         }
 
-        this.renderActionBar(item, post);
+        if (!isQuoteEmbed) {
+            this.renderActionBar(item, post);
+        }
         
         if (!isDetail) {
             this.renderReactedUsers(item, post);
