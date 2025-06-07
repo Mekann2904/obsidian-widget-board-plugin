@@ -152,6 +152,8 @@ export class TweetWidgetUI {
     private renderHomeTab(): void {
         if (this.widget.replyModalPost) {
             this.renderReplyModal(this.widget.replyModalPost);
+        } else if (this.widget.retweetModalPost) {
+            this.renderRetweetModal(this.widget.retweetModalPost);
         }
 
         if (this.widget.detailPostId) {
@@ -733,7 +735,7 @@ export class TweetWidgetUI {
         };
         
         const rtBtn = this.createActionButton(actionBar, 'repeat-2', post.retweet, 'retweet', post.retweeted);
-        rtBtn.onclick = (e) => { e.stopPropagation(); this.widget.toggleRetweet(post.id); };
+        rtBtn.onclick = (e) => { e.stopPropagation(); this.widget.startRetweet(post); };
 
         const likeBtn = this.createActionButton(actionBar, 'heart', post.like, 'like', post.liked);
         likeBtn.onclick = (e) => { e.stopPropagation(); this.widget.toggleLike(post.id); };
@@ -929,6 +931,92 @@ export class TweetWidgetUI {
             }
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 replyBtn.click();
+            }
+        });
+    }
+
+    private renderRetweetModal(post: TweetWidgetPost): void {
+        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
+        const closeModal = () => {
+            this.widget.retweetModalPost = null;
+            backdrop.remove();
+            this.render();
+        };
+        backdrop.onclick = (e) => {
+            if (e.target === backdrop) closeModal();
+        };
+        const modal = backdrop.createDiv('tweet-reply-modal');
+        const widgetRect = this.container.getBoundingClientRect();
+        modal.style.position = 'fixed';
+        modal.style.top = `${widgetRect.top + 50}px`;
+        const modalWidth = Math.min(widgetRect.width - 40, 600);
+        modal.style.width = `${modalWidth}px`;
+        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+
+        const header = modal.createDiv('tweet-reply-modal-header');
+        header.createSpan({ text: '引用リツイート' });
+        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
+        closeBtn.onclick = closeModal;
+
+        const postBox = modal.createDiv('tweet-reply-modal-post');
+        this.renderSinglePost(post, postBox, true);
+
+        const inputArea = modal.createDiv('tweet-reply-modal-input');
+        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: 'コメントを追加' } });
+        textarea.focus();
+
+        const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
+        ytSuggest.style.display = 'none';
+        ytSuggest.textContent = '';
+        let lastYtUrl = '';
+        let lastYtTitle = '';
+        textarea.addEventListener('input', () => {
+            const val = textarea.value;
+            const url = extractYouTubeUrl(val);
+            if (!url) {
+                ytSuggest.style.display = 'none';
+                ytSuggest.textContent = '';
+                lastYtUrl = '';
+                lastYtTitle = '';
+                return;
+            }
+            ytSuggest.textContent = '動画タイトル取得中...';
+            ytSuggest.style.display = 'block';
+            lastYtUrl = url;
+            const currentInput = val;
+            fetchYouTubeTitle(url).then(title => {
+                if (textarea.value !== currentInput) return;
+                if (title) {
+                    lastYtTitle = title;
+                    ytSuggest.textContent = `「${title}」を挿入 → クリック`;
+                    ytSuggest.onclick = () => {
+                        const insertText = `![${title}](${url})`;
+                        const urlRegex = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}(?:[?&][^\s]*)?)/;
+                        textarea.value = textarea.value.replace(urlRegex, insertText);
+                        ytSuggest.style.display = 'none';
+                        ytSuggest.textContent = '';
+                        textarea.dispatchEvent(new Event('input'));
+                    };
+                } else {
+                    ytSuggest.textContent = '動画タイトル取得失敗';
+                    ytSuggest.onclick = null;
+                }
+            });
+        });
+
+        const retweetBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: 'リツイート' });
+        retweetBtn.onclick = async () => {
+            await this.widget.submitRetweet(textarea.value, post);
+            closeModal();
+        };
+
+        textarea.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.stopPropagation();
+                closeModal();
+            }
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                retweetBtn.click();
             }
         });
     }

@@ -33,6 +33,7 @@ export class TweetWidget implements WidgetImplementation {
     currentFilter: 'all' | 'active' | 'deleted' | 'bookmark' = 'active';
     detailPostId: string | null = null;
     replyModalPost: TweetWidgetPost | null = null;
+    retweetModalPost: TweetWidgetPost | null = null;
     currentTab: 'home' | 'notification' = 'home';
     currentPeriod: string = 'all';
     customPeriodDays: number = 1;
@@ -144,6 +145,21 @@ export class TweetWidget implements WidgetImplementation {
         this.saveDataDebounced();
         this.ui.render();
     }
+
+    public async submitRetweet(text: string, target: TweetWidgetPost) {
+        const trimmedText = text.trim();
+        const quote = '> ' + target.text.replace(/\n/g, '\n> ');
+        const finalText = trimmedText ? `${trimmedText}\n\n${quote}` : quote;
+        const newPost = this.createNewPostObject(finalText);
+        this.store.addPost(newPost);
+        this.store.updatePost(target.id, {
+            retweet: (target.retweet || 0) + 1,
+            retweeted: true,
+        });
+        new Notice('引用リツイートを投稿しました');
+        this.saveDataDebounced();
+        this.ui.render();
+    }
     
     private createNewPostObject(text: string, threadId: string | null = this.replyingToParentId): TweetWidgetPost {
         return {
@@ -234,6 +250,7 @@ export class TweetWidget implements WidgetImplementation {
     
     public startReply(post: TweetWidgetPost) {
         this.replyModalPost = post;
+        this.retweetModalPost = null;
         this.editingPostId = null;
         this.replyingToParentId = null;
         this.ui.render();
@@ -241,6 +258,19 @@ export class TweetWidget implements WidgetImplementation {
 
     public cancelReply() {
         this.replyingToParentId = null;
+        this.ui.render();
+    }
+
+    public startRetweet(post: TweetWidgetPost) {
+        this.retweetModalPost = post;
+        this.replyModalPost = null;
+        this.editingPostId = null;
+        this.replyingToParentId = null;
+        this.ui.render();
+    }
+
+    public cancelRetweet() {
+        this.retweetModalPost = null;
         this.ui.render();
     }
 
