@@ -127,6 +127,7 @@ export class TweetWidget implements WidgetImplementation {
         } else {
             const newPost = this.createNewPostObject(trimmedText);
             this.store.addPost(newPost);
+            this.plugin.updateTweetPostCount(newPost.created, 1);
             new Notice(this.replyingToParentId ? '返信を投稿しました' : 'つぶやきを投稿しました');
             this.triggerAiReply(newPost);
         }
@@ -142,6 +143,7 @@ export class TweetWidget implements WidgetImplementation {
         
         const newPost = this.createNewPostObject(trimmedText, parentId);
         this.store.addPost(newPost);
+        this.plugin.updateTweetPostCount(newPost.created, 1);
         new Notice('返信を投稿しました');
         
         this.triggerAiReply(newPost);
@@ -153,6 +155,7 @@ export class TweetWidget implements WidgetImplementation {
         const trimmedText = text.trim();
         const newPost = this.createNewPostObject(trimmedText, null, target.id);
         this.store.addPost(newPost);
+        this.plugin.updateTweetPostCount(newPost.created, 1);
         const count = this.getQuoteCount(target.id);
         this.store.updatePost(target.id, {
             retweet: count,
@@ -226,6 +229,7 @@ export class TweetWidget implements WidgetImplementation {
                 llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-1.5-flash-latest' },
                 saveReply: async (reply) => {
                     this.store.addPost(reply);
+                    this.plugin.updateTweetPostCount(reply.created, 1);
                     this.saveDataDebounced();
                     this.ui.render();
                 },
@@ -331,19 +335,44 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     public async setPostDeleted(postId: string, deleted: boolean) {
+        const post = this.store.getPostById(postId);
+        if (post && post.deleted !== deleted) {
+            this.plugin.updateTweetPostCount(post.created, deleted ? -1 : 1);
+        }
         this.store.updatePost(postId, { deleted });
         this.saveDataDebounced();
         this.ui.scheduleRender();
     }
 
     public async deletePost(postId: string) {
+        const post = this.store.getPostById(postId);
         this.store.deletePost(postId);
+        if (post && !post.deleted) {
+            this.plugin.updateTweetPostCount(post.created, -1);
+        }
         this.saveDataDebounced();
         this.ui.render();
     }
 
     public async deleteThread(rootId: string) {
+        const ids = new Set<string>();
+        const queue = [rootId];
+        ids.add(rootId);
+        while (queue.length > 0) {
+            const current = queue.shift()!;
+            const children = this.store.settings.posts.filter(p => p.threadId === current);
+            for (const child of children) {
+                if (!ids.has(child.id)) {
+                    ids.add(child.id);
+                    queue.push(child.id);
+                }
+            }
+        }
+        const posts = Array.from(ids).map(id => this.store.getPostById(id)).filter(Boolean) as TweetWidgetPost[];
         this.store.deleteThread(rootId);
+        for (const p of posts) {
+            if (!p.deleted) this.plugin.updateTweetPostCount(p.created, -1);
+        }
         this.detailPostId = null;
         this.saveDataDebounced();
         this.ui.render();
@@ -352,6 +381,9 @@ export class TweetWidget implements WidgetImplementation {
     public async updatePostProperty(postId: string, key: keyof TweetWidgetPost, value: any) {
         const post = this.store.getPostById(postId);
         if(post && post[key] !== value) {
+            if (key === 'deleted') {
+                this.plugin.updateTweetPostCount(post.created, value ? -1 : 1);
+            }
             this.store.updatePost(postId, { [key]: value });
             this.saveDataDebounced();
             this.ui.scheduleRender();

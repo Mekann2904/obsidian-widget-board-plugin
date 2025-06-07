@@ -369,18 +369,9 @@ export class ReflectionWidgetUI {
                             this.app
                         );
                     }
-                    // グラフデータ取得・描画（既存）
+                    // グラフデータ取得・描画
                     const days = getLastNDays(7);
-                    const daySet = new Set(days);
-                    const countMap: Record<string, number> = {};
-                    for (const post of posts) {
-                        if (post.deleted) continue;
-                        const d = getDateKey(new Date(post.created));
-                        if (daySet.has(d)) {
-                            countMap[d] = (countMap[d] || 0) + 1;
-                        }
-                    }
-                    const counts = days.map(d => countMap[d] || 0);
+                    const counts = this.plugin.getTweetPostCounts(days);
                     if (this.lastChartData && this.lastChartData.length === counts.length && this.lastChartData.every((v, i) => v === counts[i])) {
                         // 何もしない
                     } else if (this.canvasEl) {
