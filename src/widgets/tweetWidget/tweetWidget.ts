@@ -70,7 +70,8 @@ export class TweetWidget implements WidgetImplementation {
         this.repository = new TweetRepository(this.app, dbPath);
 
         // 非同期初期化は副作用として行い、UIは一旦ローディング表示
-        this.widgetEl.innerText = 'Loading...';
+        // jsdom の innerText は textContent を更新しないため textContent を使用する
+        this.widgetEl.textContent = 'Loading...';
         this.repository.load().then(initialSettings => {
             this.store = new TweetStore(initialSettings);
             this.recalculateQuoteCounts();
