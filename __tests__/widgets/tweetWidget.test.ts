@@ -15,7 +15,12 @@ describe('TweetWidget', () => {
     },
     workspace: { getActiveFile: jest.fn(() => ({ path: 'active.md' })) },
   } as any;
-  const dummyPlugin = { settings: { defaultTweetPeriod: 'all', defaultTweetCustomDays: 1 }, manifest: { id: 'test-plugin' } } as any;
+  const dummyPlugin = {
+    settings: { defaultTweetPeriod: 'all', defaultTweetCustomDays: 1 },
+    manifest: { id: 'test-plugin' },
+    updateTweetPostCount: jest.fn(),
+    getTweetPostCounts: jest.fn(() => [])
+  } as any;
 
   it('createメソッドでHTMLElementを返す', () => {
     const widget = new TweetWidget();

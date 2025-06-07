@@ -19,6 +19,10 @@ import { debugLog } from './utils/logger';
 import { Component, TFile } from 'obsidian';
 import { preloadChartJS } from './widgets/reflectionWidget/reflectionWidgetUI';
 
+function getDateKey(date: Date): string {
+    return date.toISOString().slice(0, 10);
+}
+
 /**
  * Obsidian Widget Board Pluginのメインクラス
  * - ウィジェットボードの管理・設定・コマンド登録などを担当
@@ -31,6 +35,10 @@ export default class WidgetBoardPlugin extends Plugin {
     private isSaving: boolean = false;
     private registeredGroupCommandIds: string[] = [];
     llmManager: LLMManager;
+    tweetPostCountCache: Record<string, number> = {};
+    tweetChartDirty: boolean = true;
+    tweetChartImageData: string | null = null;
+    tweetChartCountsKey: string | null = null;
 
     /**
      * プラグインの初期化処理
@@ -43,6 +51,7 @@ export default class WidgetBoardPlugin extends Plugin {
         // Preload Chart.js for ReflectionWidget without blocking startup
         setTimeout(() => preloadChartJS().catch(() => {}), 0);
         await this.loadSettings();
+        await this.initTweetPostCountCache();
         this.registerAllBoardCommands();
         this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());
         this.addSettingTab(new WidgetBoardSettingTab(this.app, this));
@@ -351,6 +360,33 @@ export default class WidgetBoardPlugin extends Plugin {
         this.widgetBoardModals.forEach(modal => {
             if (modal.isOpen) modal.close();
         });
+    }
+
+    private async initTweetPostCountCache() {
+        const dbPath = this.settings.baseFolder
+            ? `${this.settings.baseFolder.replace(/\/$/, '')}/tweets.json`
+            : 'tweets.json';
+        const repo = new TweetRepository(this.app, dbPath);
+        const tweetSettings = await repo.load();
+        this.tweetPostCountCache = {};
+        for (const p of tweetSettings.posts || []) {
+            if (p.deleted) continue;
+            const key = getDateKey(new Date(p.created));
+            this.tweetPostCountCache[key] = (this.tweetPostCountCache[key] || 0) + 1;
+        }
+    }
+
+    public updateTweetPostCount(created: number, delta: number) {
+        const key = getDateKey(new Date(created));
+        this.tweetPostCountCache[key] = (this.tweetPostCountCache[key] || 0) + delta;
+        if (this.tweetPostCountCache[key] <= 0) {
+            delete this.tweetPostCountCache[key];
+        }
+        this.tweetChartDirty = true;
+    }
+
+    public getTweetPostCounts(days: string[]): number[] {
+        return days.map(d => this.tweetPostCountCache[d] || 0);
     }
 
     /**
