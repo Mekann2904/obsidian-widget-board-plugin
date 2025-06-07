@@ -2155,3 +2155,10 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   display: block;
   object-fit: contain;
 }
+
+/* Ensure mermaid diagrams scale within the reflection widget */
+.reflection-widget .mermaid svg {
+  width: 100% !important;
+  height: auto;
+  display: block;
+}
