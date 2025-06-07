@@ -107,6 +107,8 @@ describe('TimerStopwatchWidget', () => {
   it('handleTimerSettingsChangeでstateとUIが更新される', () => {
     const widget = new TimerStopwatchWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
+    // stateを初期化し直す
+    (TimerStopwatchWidget as any).widgetStates.set(dummyConfig.id, widget['initializeInternalState']());
     widget['timerMinInput'].value = '2';
     widget['timerSecInput'].value = '30';
     widget['handleTimerSettingsChange']();

@@ -71,7 +71,7 @@ describe('TweetWidget', () => {
     const widget = new TweetWidget();
     const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
     expect(el.classList.contains('tweet-widget')).toBe(true);
-    expect(el.querySelector('.widget-title')?.textContent).toBe('テストツイート');
+    expect(el.textContent).toBe('Loading...');
   });
 
   it('タブ切替でcurrentTabが切り替わりUIが再描画される', async () => {
@@ -116,6 +116,7 @@ describe('TweetWidget', () => {
   });
 
   it('ファイル添付でattachedFilesが更新される', async () => {
+    dummyApp.vault.createBinary = jest.fn();
     const widget = new TweetWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));

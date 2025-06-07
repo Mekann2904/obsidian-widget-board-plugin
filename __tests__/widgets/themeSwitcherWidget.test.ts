@@ -1,3 +1,12 @@
+jest.mock('obsidian', () => {
+  const Notice = jest.fn();
+  return {
+    Notice,
+    App: class {},
+    setIcon: jest.fn()
+  };
+}, { virtual: true });
+
 import { ThemeSwitcherWidget } from '../../src/widgets/theme-switcher';
 import type { WidgetConfig } from '../../src/interfaces';
 
@@ -38,21 +47,17 @@ describe('ThemeSwitcherWidget', () => {
   });
 
   it('テーマ切替時にsetThemeとNoticeが呼ばれactiveクラスが切り替わる', () => {
-    // Noticeをモック
-    const noticeMock = jest.fn();
-    jest.spyOn(global, 'Notice' as any).mockImplementation(noticeMock);
+    const { Notice } = require('obsidian');
+    Notice.mockClear();
     const widget = new ThemeSwitcherWidget();
     const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
     const items = el.querySelectorAll('.theme-switcher-item');
-    // 2番目（dracula→solarized）をクリック
     items[2].dispatchEvent(new MouseEvent('click'));
     expect(dummyApp.customCss.setTheme).toHaveBeenCalledWith('solarized');
-    expect(noticeMock).toHaveBeenCalledWith('テーマ「solarized」を適用しました。');
+    expect(Notice).toHaveBeenCalledWith('テーマ「solarized」を適用しました。');
     expect(items[2].classList.contains('active')).toBe(true);
-    // 既にactiveなテーマをクリック
     items[2].dispatchEvent(new MouseEvent('click'));
-    expect(noticeMock).toHaveBeenCalledWith('すでにこのテーマが適用されています。');
-    (global as any).Notice.mockRestore?.();
+    expect(Notice).toHaveBeenCalledWith('すでにこのテーマが適用されています。');
   });
 
   it('テーマ一覧が空の場合はデフォルトのみ表示', () => {
@@ -81,8 +86,8 @@ describe('ThemeSwitcherWidget', () => {
   });
 
   it('applyWidgetSizeが呼ばれる（設定反映）', () => {
-    const applyWidgetSize = require('../../src/utils').applyWidgetSize;
-    const spy = jest.spyOn(require('../../src/utils'), 'applyWidgetSize');
+    const widgetSize = require('../../src/utils/widgetSize');
+    const spy = jest.spyOn(widgetSize, 'applyWidgetSize');
     const widget = new ThemeSwitcherWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
     expect(spy).toHaveBeenCalled();
