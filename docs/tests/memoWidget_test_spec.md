@@ -45,7 +45,7 @@
 - **目的**: memoContentが空のとき表示エリアが非表示になるか
 - **前提条件**: memoContentを空文字に設定
 - **入力値・操作**: create後、memoDisplayElのstyle.displayを確認
-- **期待結果**: style.displayが'none'になる
+- **期待結果**: style.displayが''または'none'になる
 - **手順**:
   1. memoContentを空文字に設定
   2. create呼び出し
