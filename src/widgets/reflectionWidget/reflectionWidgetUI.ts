@@ -13,6 +13,11 @@ import { renderMermaidInWorker } from '../../utils';
 let Chart: any;
 let chartModulePromise: Promise<any> | null = null;
 
+// --- Mermaid SVGメモリキャッシュ ---
+const mermaidSvgCache = new Map<string, string>();
+// --- まとめHTMLキャッシュ ---
+const summaryHtmlCache = new Map<string, string>();
+
 export function preloadChartJS(): Promise<any> {
     if (!chartModulePromise) {
         chartModulePromise = import('chart.js/auto')
@@ -283,6 +288,7 @@ export class ReflectionWidgetUI {
     }
 
     private async runSummary(force = false) {
+        this.clearAllCaches();
         // 実行中フラグ
         if (this.manualBtnEl) {
             this.manualBtnEl.disabled = true;
@@ -445,7 +451,18 @@ export class ReflectionWidgetUI {
         return el.innerHTML;
     }
 
-    // MermaidブロックをWorkerでSVG化して差し替える
+    // Markdownレンダリング結果をキャッシュして返す
+    private async renderMarkdownWithCache(el: HTMLElement, text: string, cacheKey: string) {
+        if (summaryHtmlCache.has(cacheKey)) {
+            el.innerHTML = summaryHtmlCache.get(cacheKey)!;
+            return;
+        }
+        el.empty();
+        await renderMarkdownBatchWithCache(text, el, '', new Component());
+        summaryHtmlCache.set(cacheKey, el.innerHTML);
+    }
+
+    // MermaidブロックをWorkerでSVG化して差し替える（キャッシュ利用）
     private async replaceMermaidBlocksWithSVG(container: HTMLElement) {
         const codeBlocks = Array.from(container.querySelectorAll('pre > code.language-mermaid')) as HTMLElement[];
         for (const codeEl of codeBlocks) {
@@ -453,8 +470,17 @@ export class ReflectionWidgetUI {
             if (!pre) continue;
             const code = codeEl.innerText;
             const id = 'mermaid-' + Math.random().toString(36).slice(2, 10);
+            // キャッシュ利用
+            if (mermaidSvgCache.has(code)) {
+                const svg = mermaidSvgCache.get(code)!;
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = svg;
+                pre.replaceWith(wrapper);
+                continue;
+            }
             try {
                 const svg = await renderMermaidInWorker(code, id);
+                mermaidSvgCache.set(code, svg);
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = svg;
                 pre.replaceWith(wrapper);
@@ -537,5 +563,11 @@ export class ReflectionWidgetUI {
         this.weekSummaryEl = null;
         this.aiSummarySectionEl = null;
         this.manualBtnEl = null;
+    }
+
+    // 振り返りAI生成時にキャッシュクリア
+    private clearAllCaches() {
+        mermaidSvgCache.clear();
+        summaryHtmlCache.clear();
     }
 } 
