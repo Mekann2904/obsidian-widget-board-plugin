@@ -230,18 +230,17 @@ export class ReflectionWidgetUI {
                     const todayKey = getDateKeyLocal(new Date());
                     const [weekStart, weekEnd] = getWeekRange();
                     const weekKey = getDateKeyLocal(new Date(weekEnd));
-                    // キャッシュ取得を並列化
-                    const [cachedToday, cachedWeek] = await Promise.all([
-                        loadReflectionSummary('today', todayKey, this.app),
-                        loadReflectionSummary('week', weekKey, this.app)
-                    ]);
-                    // 投稿データ取得（グラフ描画と共通化）
+                    // 投稿データ読み込みを先行して開始
                     const dbPath = this.plugin.settings.baseFolder
                         ? `${this.plugin.settings.baseFolder.replace(/\/$/, '')}/tweets.json`
                         : 'tweets.json';
                     const repo = new TweetRepository(this.app, dbPath);
-                    const tweetSettings: TweetWidgetSettings = await repo.load();
-                    const posts: TweetWidgetPost[] = tweetSettings.posts || [];
+                    const postsPromise = repo.load().then((s: TweetWidgetSettings) => s.posts || []);
+                    // キャッシュ取得
+                    const [cachedToday, cachedWeek] = await Promise.all([
+                        loadReflectionSummary('today', todayKey, this.app),
+                        loadReflectionSummary('week', weekKey, this.app)
+                    ]);
                     // キャッシュ済み要約があれば再レンダリングをスキップ
                     let todaySummaryRendered = false;
                     let weekSummaryRendered = false;
@@ -260,6 +259,8 @@ export class ReflectionWidgetUI {
                         renderMdTasks.push(this.renderMarkdown(this.weekSummaryEl, cachedWeek || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v));
                     }
                     await Promise.all(renderMdTasks);
+                    // 投稿データ読み込み完了を待つ
+                    const posts: TweetWidgetPost[] = await postsPromise;
                     // --- ここからAI要約生成（強制再生成 or キャッシュなし時） ---
                     // ユーザプロンプトがあればそれを優先
                     const userPromptToday = this.plugin.settings.userSummaryPromptToday;
