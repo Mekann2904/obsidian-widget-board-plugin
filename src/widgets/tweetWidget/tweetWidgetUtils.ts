@@ -61,6 +61,7 @@ export function validatePost(raw: any): TweetWidgetPost {
         quoteId: typeof raw.quoteId === 'string' ? raw.quoteId : null,
         deleted: !!raw.deleted,
         bookmark: !!raw.bookmark,
+        bookmarkFolders: Array.isArray(raw.bookmarkFolders) ? raw.bookmarkFolders : [],
         contextNote: typeof raw.contextNote === 'string' ? raw.contextNote : null,
         threadId: typeof raw.threadId === 'string' ? raw.threadId : null,
         visibility: raw.visibility || 'public',

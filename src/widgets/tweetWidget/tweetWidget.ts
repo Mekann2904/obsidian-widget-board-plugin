@@ -31,6 +31,7 @@ export class TweetWidget implements WidgetImplementation {
     editingPostId: string | null = null;
     replyingToParentId: string | null = null;
     currentFilter: 'all' | 'active' | 'deleted' | 'bookmark' = 'active';
+    currentBookmarkFolder: string | null = null;
     detailPostId: string | null = null;
     replyModalPost: TweetWidgetPost | null = null;
     retweetModalPost: TweetWidgetPost | null = null;
@@ -106,6 +107,12 @@ export class TweetWidget implements WidgetImplementation {
     
     public setFilter(filter: 'all' | 'active' | 'deleted' | 'bookmark') {
         this.currentFilter = filter;
+        this.detailPostId = null;
+        this.ui.render();
+    }
+
+    public setBookmarkFolder(folder: string | null) {
+        this.currentBookmarkFolder = folder;
         this.detailPostId = null;
         this.ui.render();
     }
@@ -323,7 +330,17 @@ export class TweetWidget implements WidgetImplementation {
     public async toggleBookmark(postId: string) {
         const post = this.store.getPostById(postId);
         if (post) {
-            this.store.updatePost(postId, { bookmark: !post.bookmark });
+            const newStatus = !post.bookmark;
+            const updates: Partial<TweetWidgetPost> = { bookmark: newStatus };
+            if (newStatus) {
+                const input = prompt('ブックマークフォルダ名 (カンマ区切り可)', post.bookmarkFolders?.join(',') || '');
+                if (input !== null) {
+                    updates.bookmarkFolders = input.split(',').map(s => s.trim()).filter(Boolean);
+                }
+            } else {
+                updates.bookmarkFolders = [];
+            }
+            this.store.updatePost(postId, updates);
             this.saveDataDebounced();
             this.ui.render();
         }
@@ -485,7 +502,12 @@ export class TweetWidget implements WidgetImplementation {
         switch (this.currentFilter) {
             case 'all': break;
             case 'deleted': posts = posts.filter(t => t.deleted); break;
-            case 'bookmark': posts = posts.filter(t => t.bookmark); break;
+            case 'bookmark':
+                posts = posts.filter(t => t.bookmark);
+                if (this.currentBookmarkFolder) {
+                    posts = posts.filter(t => t.bookmarkFolders?.includes(this.currentBookmarkFolder!));
+                }
+                break;
             case 'active':
             default:
                 posts = posts.filter(t => !t.deleted);
@@ -521,6 +543,16 @@ export class TweetWidget implements WidgetImplementation {
             if (ms > 0 && this.currentPeriod !== 'today') posts = posts.filter(p => now - p.created < ms);
         }
         return posts;
+    }
+
+    public getBookmarkFolders(): string[] {
+        const set = new Set<string>();
+        this.store.settings.posts.forEach(p => {
+            if (p.bookmark && p.bookmarkFolders) {
+                p.bookmarkFolders.forEach(f => set.add(f));
+            }
+        });
+        return Array.from(set).sort();
     }
     
     public getAvatarUrl(post?: TweetWidgetPost): string {

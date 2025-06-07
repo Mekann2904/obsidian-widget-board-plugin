@@ -191,6 +191,19 @@ export class TweetWidgetUI {
         filterSelect.onchange = () => {
             this.widget.setFilter(filterSelect.value as any);
         };
+        let folderSelect: HTMLSelectElement | null = null;
+        if (this.widget.currentFilter === 'bookmark') {
+            folderSelect = filterBar.createEl('select', { cls: 'tweet-bookmark-folder-select' });
+            folderSelect.createEl('option', { value: '', text: 'すべて' });
+            this.widget.getBookmarkFolders().forEach(f => {
+                folderSelect!.createEl('option', { value: f, text: f });
+            });
+            folderSelect.value = this.widget.currentBookmarkFolder || '';
+            folderSelect.onchange = () => {
+                const val = folderSelect!.value || null;
+                this.widget.setBookmarkFolder(val);
+            };
+        }
         const periodSelect = filterBar.createEl('select', { cls: 'tweet-period-select' });
         [
             { value: 'all', label: '全期間' },
@@ -720,7 +733,10 @@ export class TweetWidgetUI {
         }
 
         const metadataDiv = item.createDiv({ cls: 'tweet-item-metadata-main' });
-        if (post.bookmark) metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: 'Bookmarked' });
+        if (post.bookmark) {
+            const label = post.bookmarkFolders && post.bookmarkFolders.length > 0 ? post.bookmarkFolders.join('/') : 'Bookmarked';
+            metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: label });
+        }
         if (post.visibility && post.visibility !== 'public') metadataDiv.createEl('span', { cls: 'tweet-chip visibility', text: post.visibility });
         if (post.noteQuality && post.noteQuality !== 'fleeting') metadataDiv.createEl('span', { cls: 'tweet-chip quality', text: post.noteQuality });
         if (post.taskStatus) metadataDiv.createEl('span', { cls: 'tweet-chip status', text: post.taskStatus });

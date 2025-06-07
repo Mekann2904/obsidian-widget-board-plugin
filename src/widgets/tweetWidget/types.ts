@@ -35,6 +35,8 @@ export interface TweetWidgetPost {
     updated?: number;
     deleted?: boolean;
     bookmark?: boolean;
+    /** ブックマーク時のフォルダ名リスト */
+    bookmarkFolders?: string[];
     noteQuality?: "fleeting" | "literature" | "permanent";
     taskStatus?: "todo" | "doing" | "done" | null;
     
