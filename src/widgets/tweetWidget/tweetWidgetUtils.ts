@@ -90,7 +90,19 @@ export function extractYouTubeUrl(text: string): string | null {
 let YOUTUBE_TITLE_TTL = 1000 * 60 * 60 * 24; // 24h
 type CachedTitle = { title: string | null; time: number };
 const YT_CACHE_KEY = 'tweetWidget.youtubeTitleCache';
-let youtubeTitleCache = new Map<string, CachedTitle>();
+declare global {
+    interface Window { tweetWidgetYouTubeTitleCache?: Map<string, CachedTitle>; }
+}
+let youtubeTitleCache: Map<string, CachedTitle>;
+const shouldLoadFromStorage = typeof window !== 'undefined' && !(window as any).tweetWidgetYouTubeTitleCache;
+if (typeof window !== 'undefined') {
+    youtubeTitleCache = (window as any).tweetWidgetYouTubeTitleCache || new Map();
+    if (!(window as any).tweetWidgetYouTubeTitleCache) {
+        (window as any).tweetWidgetYouTubeTitleCache = youtubeTitleCache;
+    }
+} else {
+    youtubeTitleCache = new Map();
+}
 const pendingRequests = new Map<string, Promise<string | null>>();
 
 export function __loadYouTubeTitleCache() {
@@ -110,7 +122,9 @@ function saveYouTubeTitleCache() {
     } catch {}
 }
 
-__loadYouTubeTitleCache();
+if (shouldLoadFromStorage) {
+    __loadYouTubeTitleCache();
+}
 
 function refreshYouTubeTitle(url: string) {
     if (pendingRequests.has(url)) {
