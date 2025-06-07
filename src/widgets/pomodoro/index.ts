@@ -359,6 +359,8 @@ export class PomodoroWidget implements WidgetImplementation {
             this.pomodorosCompletedInCycle = state.pomodorosCompletedInCycle;
         }
         PomodoroWidget.ensureGlobalInterval();
+        // Immediately reflect restored state to avoid flicker when reopening boards
+        this.updateDisplay();
 
         this.initialized = true;
         this.lastConfiguredId = newConfigId;
