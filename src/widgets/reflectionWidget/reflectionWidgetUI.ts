@@ -9,6 +9,22 @@ import { deobfuscate } from '../../utils';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 
 let Chart: any;
+let chartModulePromise: Promise<any> | null = null;
+
+export function preloadChartJS(): Promise<any> {
+    if (!chartModulePromise) {
+        chartModulePromise = import('chart.js/auto')
+            .then(m => {
+                Chart = m.default;
+                return Chart;
+            })
+            .catch(e => {
+                chartModulePromise = null;
+                throw e;
+            });
+    }
+    return chartModulePromise;
+}
 
 function getDateKey(date: Date): string {
     return date.toISOString().slice(0, 10);
@@ -108,8 +124,7 @@ export class ReflectionWidgetUI {
     public async render() {
         // Chart.jsの動的import（初回のみ）
         if (!Chart) {
-            const chartModule = await import('chart.js/auto');
-            Chart = chartModule.default;
+            await preloadChartJS();
         }
         // 初回のみ主要DOM生成
         if (!this.contentEl) {
@@ -265,11 +280,16 @@ export class ReflectionWidgetUI {
                     }
                     // グラフデータ取得・描画（既存）
                     const days = getLastNDays(7);
-                    const filteredPosts: TweetWidgetPost[] = posts.filter(p => {
-                        const d = getDateKey(new Date(p.created));
-                        return days.includes(d) && !p.deleted;
-                    });
-                    const counts = days.map(day => filteredPosts.filter(p => getDateKey(new Date(p.created)) === day).length);
+                    const daySet = new Set(days);
+                    const countMap: Record<string, number> = {};
+                    for (const post of posts) {
+                        if (post.deleted) continue;
+                        const d = getDateKey(new Date(post.created));
+                        if (daySet.has(d)) {
+                            countMap[d] = (countMap[d] || 0) + 1;
+                        }
+                    }
+                    const counts = days.map(d => countMap[d] || 0);
                     if (this.lastChartData && this.lastChartData.length === counts.length && this.lastChartData.every((v, i) => v === counts[i])) {
                         // 何もしない
                     } else if (this.canvasEl) {
@@ -308,8 +328,8 @@ export class ReflectionWidgetUI {
                                     }
                                 }
                             });
-                            this.lastChartData = [...counts];
                         }
+                        this.lastChartData = [...counts];
                     }
                 })(),
                 timeoutPromise
