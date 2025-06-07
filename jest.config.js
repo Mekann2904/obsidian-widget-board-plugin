@@ -3,4 +3,8 @@ module.exports = {
   transform: {
     '^.+\\.tsx?$': '<rootDir>/jest.transform.js',
   },
+  moduleNameMapper: {
+    '^obsidian$': '<rootDir>/__mocks__/obsidian.ts',
+  },
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
 };
