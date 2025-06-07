@@ -8,6 +8,7 @@ import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/ge
 import { deobfuscate } from '../../utils';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
+import { renderMermaidInWorker } from '../../utils';
 
 let Chart: any;
 let chartModulePromise: Promise<any> | null = null;
@@ -435,14 +436,32 @@ export class ReflectionWidgetUI {
     }
 
     private async renderMarkdown(el: HTMLElement, text: string, lastText: string | null, setLast: (v: string) => void): Promise<string> {
-        if (lastText === text) return el.innerHTML;
+        if (text === lastText) return '';
         el.empty();
-        // 一時的なdivでHTML取得
-        const tempDiv = document.createElement('div');
-        await renderMarkdownBatchWithCache(text, tempDiv, '', new Component());
-        el.innerHTML = tempDiv.innerHTML;
+        await renderMarkdownBatchWithCache(text, el, '', new Component());
         setLast(text);
-        return tempDiv.innerHTML;
+        // --- MermaidブロックをWorkerでSVG化して差し替え ---
+        await this.replaceMermaidBlocksWithSVG(el);
+        return el.innerHTML;
+    }
+
+    // MermaidブロックをWorkerでSVG化して差し替える
+    private async replaceMermaidBlocksWithSVG(container: HTMLElement) {
+        const codeBlocks = Array.from(container.querySelectorAll('pre > code.language-mermaid')) as HTMLElement[];
+        for (const codeEl of codeBlocks) {
+            const pre = codeEl.parentElement;
+            if (!pre) continue;
+            const code = codeEl.innerText;
+            const id = 'mermaid-' + Math.random().toString(36).slice(2, 10);
+            try {
+                const svg = await renderMermaidInWorker(code, id);
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = svg;
+                pre.replaceWith(wrapper);
+            } catch (e) {
+                // エラー時はそのまま
+            }
+        }
     }
 
     private updateGraphAndSummaries() {

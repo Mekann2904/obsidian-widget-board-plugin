@@ -1,3 +1,4 @@
 export * from './safeFetch';
-export * from './logger';
 export * from './widgetSize';
+export * from './logger';
+export * from './mermaidRenderWorkerClient';

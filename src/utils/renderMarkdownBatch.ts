@@ -76,8 +76,8 @@ class LRUCache<K, V> {
   }
 }
 
-// 最大1000件までキャッシュ
-const markdownCache = new LRUCache<string, DocumentFragment>(1000);
+// 最大100件までキャッシュ
+const markdownCache = new LRUCache<string, DocumentFragment>(100);
 
 /**
  * renderMarkdownBatchWithCache

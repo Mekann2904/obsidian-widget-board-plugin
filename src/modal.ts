@@ -586,7 +586,7 @@ export class WidgetBoardModal {
             });
         }, { root: container, rootMargin: '200px' });
         let index = 0;
-        const batchSize = 5;
+        const batchSize = 3;
         const processBatch = () => {
             const end = Math.min(index + batchSize, widgetsToLoad.length);
             for (; index < end; index++) {

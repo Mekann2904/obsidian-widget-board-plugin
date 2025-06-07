@@ -5,6 +5,7 @@ import type WidgetBoardPlugin from '../../main'; // main.ts の WidgetBoardPlugi
 import { renderMarkdownBatch, renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
+import { renderMermaidInWorker } from '../../utils';
 
 // --- メモウィジェット設定インターフェース ---
 export interface MemoWidgetSettings {
@@ -99,8 +100,29 @@ export class MemoWidget implements WidgetImplementation {
                 await renderMarkdownBatchWithCache(trimmedContent, this.memoDisplayEl, this.config.id, new Component());
             }
             this.setupTaskEventListeners();
+            // --- MermaidブロックをWorkerでSVG化して差し替え ---
+            await this.replaceMermaidBlocksWithSVG(this.memoDisplayEl);
         } else if (!this.isEditingMemo) {
             this.memoDisplayEl.style.display = 'none';
+        }
+    }
+
+    // MermaidブロックをWorkerでSVG化して差し替える
+    private async replaceMermaidBlocksWithSVG(container: HTMLElement) {
+        const codeBlocks = Array.from(container.querySelectorAll('pre > code.language-mermaid')) as HTMLElement[];
+        for (const codeEl of codeBlocks) {
+            const pre = codeEl.parentElement;
+            if (!pre) continue;
+            const code = codeEl.innerText;
+            const id = 'mermaid-' + Math.random().toString(36).slice(2, 10);
+            try {
+                const svg = await renderMermaidInWorker(code, id);
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = svg;
+                pre.replaceWith(wrapper);
+            } catch (e) {
+                // エラー時はそのまま
+            }
         }
     }
 

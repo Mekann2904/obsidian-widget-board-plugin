@@ -9,6 +9,7 @@ import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';
 import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
+import { renderMermaidInWorker } from '../../utils';
 
 // --- ユーティリティ関数 ---
 function escapeRegExp(str: string): string {
@@ -339,7 +340,7 @@ export class TweetWidgetUI {
                 previewArea.style.display = '';
                 input.style.display = 'none';
                 previewArea.empty();
-                await renderMarkdownBatchWithCache(input.value, previewArea, this.app.workspace.getActiveFile()?.path || '', new Component());
+                await this.renderMarkdownWithMermaid(previewArea, input.value);
             } else {
                 previewArea.style.display = 'none';
                 input.style.display = '';
@@ -697,7 +698,7 @@ export class TweetWidgetUI {
         });
         // --- ここまで追加 ---
 
-        await renderMarkdownBatchWithCache(replacedText, textDiv, this.app.workspace.getActiveFile()?.path || '', new Component());
+        await this.renderMarkdownWithMermaid(textDiv, replacedText);
         // 画像の幅を親要素に合わせる
         Array.from(textDiv.querySelectorAll('img')).forEach(img => {
             img.style.width = '100%';
@@ -1152,5 +1153,30 @@ export class TweetWidgetUI {
         // 例: showAvatarModalでkeydownを追加している
         window.removeEventListener('keydown', this._escHandlerForAvatarModal as any);
         // 必要に応じて他のクリーンアップ処理をここに追加
+    }
+
+    private async renderMarkdownWithMermaid(el: HTMLElement, text: string) {
+        el.empty();
+        await renderMarkdownBatchWithCache(text, el, '', new Component());
+        await this.replaceMermaidBlocksWithSVG(el);
+    }
+
+    // MermaidブロックをWorkerでSVG化して差し替える
+    private async replaceMermaidBlocksWithSVG(container: HTMLElement) {
+        const codeBlocks = Array.from(container.querySelectorAll('pre > code.language-mermaid')) as HTMLElement[];
+        for (const codeEl of codeBlocks) {
+            const pre = codeEl.parentElement;
+            if (!pre) continue;
+            const code = codeEl.innerText;
+            const id = 'mermaid-' + Math.random().toString(36).slice(2, 10);
+            try {
+                const svg = await renderMermaidInWorker(code, id);
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = svg;
+                pre.replaceWith(wrapper);
+            } catch (e) {
+                // エラー時はそのまま
+            }
+        }
     }
 }
