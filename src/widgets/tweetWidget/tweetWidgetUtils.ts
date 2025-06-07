@@ -89,7 +89,27 @@ export function extractYouTubeUrl(text: string): string | null {
 // YouTubeの動画タイトルを取得する関数（safeFetch使用）
 let YOUTUBE_TITLE_TTL = 1000 * 60 * 60 * 24; // 24h
 type CachedTitle = { title: string | null; time: number };
-const youtubeTitleCache = new Map<string, CachedTitle>();
+const YT_CACHE_KEY = 'tweetWidget.youtubeTitleCache';
+let youtubeTitleCache = new Map<string, CachedTitle>();
+
+export function __loadYouTubeTitleCache() {
+    try {
+        const saved = localStorage.getItem(YT_CACHE_KEY);
+        if (saved) {
+            const obj = JSON.parse(saved) as Record<string, CachedTitle>;
+            youtubeTitleCache = new Map(Object.entries(obj));
+        }
+    } catch {}
+}
+
+function saveYouTubeTitleCache() {
+    try {
+        const obj = Object.fromEntries(youtubeTitleCache);
+        localStorage.setItem(YT_CACHE_KEY, JSON.stringify(obj));
+    } catch {}
+}
+
+__loadYouTubeTitleCache();
 
 function refreshYouTubeTitle(url: string) {
     const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
@@ -98,10 +118,12 @@ function refreshYouTubeTitle(url: string) {
         .then(data => {
             const title = data ? (data.title as string) : null;
             youtubeTitleCache.set(url, { title, time: Date.now() });
+            saveYouTubeTitleCache();
             return title;
         })
         .catch(() => {
             youtubeTitleCache.set(url, { title: null, time: Date.now() });
+            saveYouTubeTitleCache();
             return null;
         });
 }
@@ -123,5 +145,6 @@ export async function fetchYouTubeTitle(url: string): Promise<string | null> {
 }
 
 // Testing helpers
-export function __clearYouTubeTitleCache() { youtubeTitleCache.clear(); }
+export function __clearYouTubeTitleCache() { youtubeTitleCache.clear(); saveYouTubeTitleCache(); }
 export function __setYouTubeTitleTTL(ttl: number) { YOUTUBE_TITLE_TTL = ttl; }
+export { saveYouTubeTitleCache as __saveYouTubeTitleCache };
