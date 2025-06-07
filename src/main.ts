@@ -36,6 +36,9 @@ export default class WidgetBoardPlugin extends Plugin {
     private registeredGroupCommandIds: string[] = [];
     llmManager: LLMManager;
     tweetPostCountCache: Record<string, number> = {};
+    tweetChartDirty: boolean = true;
+    tweetChartImageData: string | null = null;
+    tweetChartCountsKey: string | null = null;
 
     /**
      * プラグインの初期化処理
@@ -379,6 +382,7 @@ export default class WidgetBoardPlugin extends Plugin {
         if (this.tweetPostCountCache[key] <= 0) {
             delete this.tweetPostCountCache[key];
         }
+        this.tweetChartDirty = true;
     }
 
     public getTweetPostCounts(days: string[]): number[] {

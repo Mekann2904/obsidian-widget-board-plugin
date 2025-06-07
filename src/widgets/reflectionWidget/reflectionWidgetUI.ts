@@ -149,6 +149,7 @@ export class ReflectionWidgetUI {
     // 差分描画用の要素参照
     private contentEl: HTMLElement | null = null;
     private canvasEl: HTMLCanvasElement | null = null;
+    private chartImgEl: HTMLImageElement | null = null;
     private todaySummaryEl: HTMLElement | null = null;
     private weekSummaryEl: HTMLElement | null = null;
     private aiSummarySectionEl: HTMLElement | null = null;
@@ -213,6 +214,12 @@ export class ReflectionWidgetUI {
             this.canvasEl.style.maxWidth = '80%';
             this.canvasEl.style.width = '80%';
             this.contentEl.appendChild(this.canvasEl);
+            this.chartImgEl = document.createElement('img');
+            this.chartImgEl.style.display = 'none';
+            this.chartImgEl.style.margin = '0 auto 16px auto';
+            this.chartImgEl.style.maxWidth = '80%';
+            this.chartImgEl.style.width = '80%';
+            this.contentEl.appendChild(this.chartImgEl);
             this.aiSummarySectionEl = document.createElement('div');
             this.aiSummarySectionEl.style.width = '100%';
             this.aiSummarySectionEl.style.marginTop = '18px';
@@ -372,13 +379,21 @@ export class ReflectionWidgetUI {
                     // グラフデータ取得・描画
                     const days = getLastNDays(7);
                     const counts = this.plugin.getTweetPostCounts(days);
-                    if (this.lastChartData && this.lastChartData.length === counts.length && this.lastChartData.every((v, i) => v === counts[i])) {
-                        // 何もしない
+                    const key = counts.join(',');
+                    if (!this.plugin.tweetChartDirty && this.plugin.tweetChartImageData && this.plugin.tweetChartCountsKey === key) {
+                        if (this.chartImgEl) {
+                            this.chartImgEl.src = this.plugin.tweetChartImageData;
+                            this.chartImgEl.style.display = 'block';
+                        }
+                        if (this.canvasEl) this.canvasEl.style.display = 'none';
+                        this.lastChartData = [...counts];
                     } else if (this.canvasEl) {
                         if (this.chart) {
                             this.chart.destroy();
                             this.chart = null;
                         }
+                        this.canvasEl.style.display = 'block';
+                        if (this.chartImgEl) this.chartImgEl.style.display = 'none';
                         const ctx = this.canvasEl.getContext('2d');
                         if (ctx) {
                             this.chart = new Chart(ctx, {
@@ -396,20 +411,22 @@ export class ReflectionWidgetUI {
                                     }]
                                 },
                                 options: {
-                                    responsive: false, // 追加: レスポンシブ無効化
-                                    animation: false, // アニメーション無効化
+                                    responsive: false,
+                                    animation: false,
                                     plugins: { legend: { display: false } },
                                     scales: {
                                         x: {
                                             grid: { display: false },
-                                            ticks: {
-                                                maxTicksLimit: 5 // ★ラベル数を最大5件に制限
-                                            }
+                                            ticks: { maxTicksLimit: 5 }
                                         },
                                         y: { beginAtZero: true, grid: { color: '#eee' } }
                                     }
                                 }
                             });
+                            await new Promise(r => requestAnimationFrame(r));
+                            this.plugin.tweetChartImageData = this.canvasEl.toDataURL();
+                            this.plugin.tweetChartCountsKey = key;
+                            this.plugin.tweetChartDirty = false;
                         }
                         this.lastChartData = [...counts];
                     }
@@ -550,6 +567,7 @@ export class ReflectionWidgetUI {
         // DOM参照のクリア
         this.contentEl = null;
         this.canvasEl = null;
+        this.chartImgEl = null;
         this.todaySummaryEl = null;
         this.weekSummaryEl = null;
         this.aiSummarySectionEl = null;
