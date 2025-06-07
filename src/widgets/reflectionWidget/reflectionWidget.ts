@@ -1,5 +1,5 @@
 import { App, MarkdownRenderer } from 'obsidian';
-import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
+import type { WidgetConfig } from '../../interfaces';
 import { TweetRepository } from '../tweetWidget/TweetRepository';
 import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../tweetWidget/constants';
@@ -120,6 +120,21 @@ async function clearOldReflectionSummaries(app: App) {
     } catch {}
 }
 
+// プリロードバンドル型を定義
+export interface ReflectionWidgetPreloadBundle {
+    chartModule: any;
+    todaySummary: { summary: string|null, html: string|null };
+    weekSummary: { summary: string|null, html: string|null };
+}
+
+// WidgetImplementation型を拡張
+export interface WidgetImplementation {
+    id: string;
+    create(config: WidgetConfig, app: App, plugin: any, preloadBundle?: any): HTMLElement;
+    updateExternalSettings?(newSettings: any, widgetId?: string): void;
+    refresh?(): void;
+}
+
 export class ReflectionWidget implements WidgetImplementation {
     id = 'reflection-widget';
     private autoTimer: any = null;
@@ -132,13 +147,14 @@ export class ReflectionWidget implements WidgetImplementation {
     public app!: App;
     public plugin: any;
 
-    create(config: WidgetConfig, app: App, plugin: any): HTMLElement {
+    // プリロードバンドルを受け取れるように拡張
+    create(config: WidgetConfig, app: App, plugin: any, preloadBundle?: ReflectionWidgetPreloadBundle): HTMLElement {
         this.config = config;
         this.app = app;
         this.plugin = plugin;
         const el = document.createElement('div');
         el.className = 'widget reflection-widget';
-        this.ui = new ReflectionWidgetUI(this, el, config, app, plugin);
+        this.ui = new ReflectionWidgetUI(this, el, config, app, plugin, preloadBundle);
         this.ui.render();
         return el;
     }

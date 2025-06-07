@@ -7,6 +7,7 @@ import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types'
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/gemini/summaryPrompts';
 import { deobfuscate } from '../../utils';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
+import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
 
 let Chart: any;
 let chartModulePromise: Promise<any> | null = null;
@@ -70,7 +71,7 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
         return '要約生成に失敗しました';
     }
 }
-async function saveReflectionSummary(type: 'today' | 'week', dateKey: string, summary: string, app: App) {
+async function saveReflectionSummary(type: 'today' | 'week', dateKey: string, summary: string, html: string, app: App) {
     const path = 'data.json';
     let data: any = {};
     try {
@@ -78,19 +79,33 @@ async function saveReflectionSummary(type: 'today' | 'week', dateKey: string, su
         data = JSON.parse(raw);
     } catch {}
     if (!data.reflectionSummaries) data.reflectionSummaries = {};
-    data.reflectionSummaries[type] = { date: dateKey, summary };
+    data.reflectionSummaries[type] = { date: dateKey, summary, html };
     await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
 }
-async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: App): Promise<string | null> {
+
+// --- AI要約キャッシュのメモリ共有 ---
+const aiSummaryMemoryCache: Record<string, Promise<{summary: string|null, html: string|null}>> = {};
+// 元のloadReflectionSummary関数を復活
+async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: App): Promise<{summary: string|null, html: string|null}> {
     const path = 'data.json';
     try {
         const raw = await app.vault.adapter.read(path);
         const data = JSON.parse(raw);
         if (data.reflectionSummaries && data.reflectionSummaries[type]?.date === dateKey) {
-            return data.reflectionSummaries[type].summary;
+            return {
+                summary: data.reflectionSummaries[type].summary ?? null,
+                html: data.reflectionSummaries[type].html ?? null
+            };
         }
     } catch {}
-    return null;
+    return { summary: null, html: null };
+}
+export async function loadReflectionSummaryShared(type: 'today' | 'week', dateKey: string, app: App): Promise<{summary: string|null, html: string|null}> {
+    const key = `${type}:${dateKey}`;
+    if (!aiSummaryMemoryCache[key]) {
+        aiSummaryMemoryCache[key] = loadReflectionSummary(type, dateKey, app);
+    }
+    return aiSummaryMemoryCache[key];
 }
 
 export class ReflectionWidgetUI {
@@ -112,19 +127,23 @@ export class ReflectionWidgetUI {
     private aiSummarySectionEl: HTMLElement | null = null;
     private manualBtnEl: HTMLButtonElement | null = null;
     private needsRender = false;
+    private preloadBundle?: ReflectionWidgetPreloadBundle;
 
-    constructor(widget: ReflectionWidget, container: HTMLElement, config: WidgetConfig, app: App, plugin: any) {
+    constructor(widget: ReflectionWidget, container: HTMLElement, config: WidgetConfig, app: App, plugin: any, preloadBundle?: ReflectionWidgetPreloadBundle) {
         this.widget = widget;
         this.container = container;
         this.config = config;
         this.app = app;
         this.plugin = plugin;
+        this.preloadBundle = preloadBundle;
     }
 
     public async render() {
         // Chart.jsの動的import（初回のみ）
-        if (!Chart) {
-            await preloadChartJS();
+        if (this.preloadBundle && this.preloadBundle.chartModule) {
+            Chart = this.preloadBundle.chartModule;
+        } else if (!Chart) {
+            preloadChartJS(); // awaitしないでバックグラウンドでロード
         }
         // 初回のみ主要DOM生成
         if (!this.contentEl) {
@@ -134,18 +153,15 @@ export class ReflectionWidgetUI {
                 parent.replaceChild(newContainer, this.container);
                 this.container = newContainer;
             }
-            // Chart.jsのインスタンスがあれば破棄
             if (this.chart) {
                 this.chart.destroy();
                 this.chart = null;
             }
             const settings: ReflectionWidgetSettings = this.config.settings || {};
-            // タイトル
             const title = document.createElement('div');
             title.className = 'widget-title';
             title.innerText = this.config.title || '振り返りレポート';
             this.container.appendChild(title);
-            // コンテンツ
             this.contentEl = document.createElement('div');
             this.contentEl.className = 'widget-content';
             this.contentEl.style.display = 'flex';
@@ -153,10 +169,8 @@ export class ReflectionWidgetUI {
             this.contentEl.style.alignItems = 'center';
             this.contentEl.style.justifyContent = 'center';
             this.contentEl.style.padding = '8px 0 0 0';
-            // CSS containmentを追加
             this.contentEl.style.contain = 'layout style';
             this.container.appendChild(this.contentEl);
-            // グラフタイトル
             const graphTitle = document.createElement('div');
             graphTitle.style.fontWeight = 'bold';
             graphTitle.style.marginBottom = '4px';
@@ -164,7 +178,6 @@ export class ReflectionWidgetUI {
             graphTitle.style.fontSize = '1em';
             graphTitle.innerText = '直近7日間の投稿数トレンド';
             this.contentEl.appendChild(graphTitle);
-            // グラフcanvas
             this.canvasEl = document.createElement('canvas');
             this.canvasEl.width = 600;
             this.canvasEl.height = 220;
@@ -173,14 +186,12 @@ export class ReflectionWidgetUI {
             this.canvasEl.style.maxWidth = '80%';
             this.canvasEl.style.width = '80%';
             this.contentEl.appendChild(this.canvasEl);
-            // AIまとめセクション
             this.aiSummarySectionEl = document.createElement('div');
             this.aiSummarySectionEl.style.width = '100%';
             this.aiSummarySectionEl.style.marginTop = '18px';
             this.aiSummarySectionEl.style.padding = '8px 0 0 0';
             this.aiSummarySectionEl.style.borderTop = '1px solid var(--divider-color, #444)';
             this.contentEl.appendChild(this.aiSummarySectionEl);
-            // 今日・今週のまとめタイトル
             const todayTitle = document.createElement('div');
             todayTitle.style.fontWeight = 'bold';
             todayTitle.style.margin = '16px 0 2px 0';
@@ -209,7 +220,44 @@ export class ReflectionWidgetUI {
                 this.canvasEl.width = parentWidth;
             }
         }
-        this.updateGraphAndSummaries();
+        // --- ここから即時キャッシュ表示処理を追加（プリロードバンドル対応） ---
+        if (this.preloadBundle && this.todaySummaryEl && this.weekSummaryEl) {
+            if (this.preloadBundle.todaySummary.html) {
+                this.todaySummaryEl.innerHTML = this.preloadBundle.todaySummary.html;
+            } else {
+                this.todaySummaryEl.innerText = this.preloadBundle.todaySummary.summary || '本日の投稿がありません。';
+            }
+            if (this.preloadBundle.weekSummary.html) {
+                this.weekSummaryEl.innerHTML = this.preloadBundle.weekSummary.html;
+            } else {
+                this.weekSummaryEl.innerText = this.preloadBundle.weekSummary.summary || '今週の投稿がありません。';
+            }
+        } else {
+            const todayKey = getDateKeyLocal(new Date());
+            const [weekStart, weekEnd] = getWeekRange();
+            const weekKey = getDateKeyLocal(new Date(weekEnd));
+            Promise.all([
+                loadReflectionSummaryShared('today', todayKey, this.app),
+                loadReflectionSummaryShared('week', weekKey, this.app)
+            ]).then(([cachedToday, cachedWeek]) => {
+                if (this.todaySummaryEl) {
+                    if (cachedToday.html) {
+                        this.todaySummaryEl.innerHTML = cachedToday.html;
+                    } else {
+                        this.todaySummaryEl.innerText = cachedToday.summary || '本日の投稿がありません。';
+                    }
+                }
+                if (this.weekSummaryEl) {
+                    if (cachedWeek.html) {
+                        this.weekSummaryEl.innerHTML = cachedWeek.html;
+                    } else {
+                        this.weekSummaryEl.innerText = cachedWeek.summary || '今週の投稿がありません。';
+                    }
+                }
+            });
+        }
+        // --- ここまで ---
+        setTimeout(() => this.updateGraphAndSummaries(), 0);
     }
 
     private async runSummary(force = false) {
@@ -238,25 +286,25 @@ export class ReflectionWidgetUI {
                     const postsPromise = repo.load().then((s: TweetWidgetSettings) => s.posts || []);
                     // キャッシュ取得
                     const [cachedToday, cachedWeek] = await Promise.all([
-                        loadReflectionSummary('today', todayKey, this.app),
-                        loadReflectionSummary('week', weekKey, this.app)
+                        loadReflectionSummaryShared('today', todayKey, this.app),
+                        loadReflectionSummaryShared('week', weekKey, this.app)
                     ]);
                     // キャッシュ済み要約があれば再レンダリングをスキップ
                     let todaySummaryRendered = false;
                     let weekSummaryRendered = false;
-                    if (cachedToday && this.lastTodaySummary === cachedToday) {
+                    if (cachedToday.summary && this.lastTodaySummary === cachedToday.summary) {
                         todaySummaryRendered = true;
                     }
-                    if (cachedWeek && this.lastWeekSummary === cachedWeek) {
+                    if (cachedWeek.summary && this.lastWeekSummary === cachedWeek.summary) {
                         weekSummaryRendered = true;
                     }
                     // MarkdownRendererの呼び出しも内容が変わったときだけ
                     const renderMdTasks = [];
                     if (!todaySummaryRendered && this.todaySummaryEl) {
-                        renderMdTasks.push(this.renderMarkdown(this.todaySummaryEl, cachedToday || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v));
+                        renderMdTasks.push(this.renderMarkdown(this.todaySummaryEl, cachedToday.summary || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v));
                     }
                     if (!weekSummaryRendered && this.weekSummaryEl) {
-                        renderMdTasks.push(this.renderMarkdown(this.weekSummaryEl, cachedWeek || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v));
+                        renderMdTasks.push(this.renderMarkdown(this.weekSummaryEl, cachedWeek.summary || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v));
                     }
                     await Promise.all(renderMdTasks);
                     // 投稿データ読み込み完了を待つ
@@ -265,19 +313,19 @@ export class ReflectionWidgetUI {
                     // ユーザプロンプトがあればそれを優先
                     const userPromptToday = this.plugin.settings.userSummaryPromptToday;
                     const userPromptWeek = this.plugin.settings.userSummaryPromptWeek;
-                    if (force || !cachedToday) {
+                    if (force || !cachedToday.summary) {
                         const todayPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) === todayKey && p.userId === '@you');
                         const todayPrompt = userPromptToday && userPromptToday.trim() ? userPromptToday : geminiSummaryPromptToday;
                         const todayText = todayPosts.length > 0 ? await generateSummary(todayPosts, todayPrompt, this.plugin) : '';
-                        await this.renderMarkdown(this.todaySummaryEl!, todayText || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v);
-                        await saveReflectionSummary('today', todayKey, todayText, this.app);
+                        const todayHtml = await this.renderMarkdown(this.todaySummaryEl!, todayText || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v);
+                        await saveReflectionSummary('today', todayKey, todayText, todayHtml, this.app);
                     }
-                    if (force || !cachedWeek) {
+                    if (force || !cachedWeek.summary) {
                         const weekPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) >= weekStart && getDateKeyLocal(new Date(p.created)) <= weekKey && p.userId === '@you');
                         const weekPrompt = userPromptWeek && userPromptWeek.trim() ? userPromptWeek : geminiSummaryPromptWeek;
                         const weekText = weekPosts.length > 0 ? await generateSummary(weekPosts, weekPrompt, this.plugin) : '';
-                        await this.renderMarkdown(this.weekSummaryEl!, weekText || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v);
-                        await saveReflectionSummary('week', weekKey, weekText, this.app);
+                        const weekHtml = await this.renderMarkdown(this.weekSummaryEl!, weekText || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v);
+                        await saveReflectionSummary('week', weekKey, weekText, weekHtml, this.app);
                     }
                     // グラフデータ取得・描画（既存）
                     const days = getLastNDays(7);
@@ -351,11 +399,15 @@ export class ReflectionWidgetUI {
         }
     }
 
-    private async renderMarkdown(el: HTMLElement, text: string, lastText: string | null, setLast: (v: string) => void) {
-        if (lastText === text) return;
+    private async renderMarkdown(el: HTMLElement, text: string, lastText: string | null, setLast: (v: string) => void): Promise<string> {
+        if (lastText === text) return el.innerHTML;
         el.empty();
-        await renderMarkdownBatchWithCache(text, el, '', new Component());
+        // 一時的なdivでHTML取得
+        const tempDiv = document.createElement('div');
+        await renderMarkdownBatchWithCache(text, tempDiv, '', new Component());
+        el.innerHTML = tempDiv.innerHTML;
         setLast(text);
+        return tempDiv.innerHTML;
     }
 
     private updateGraphAndSummaries() {

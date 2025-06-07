@@ -13,7 +13,7 @@ export interface WidgetConfig {
 // --- ウィジェット実装のインターフェース ---
 export interface WidgetImplementation {
     id: string;
-    create(config: WidgetConfig, app: App, plugin: any): HTMLElement;
+    create(config: WidgetConfig, app: App, plugin: any, preloadBundle?: any): HTMLElement;
     onunload?(): void;
     updateExternalSettings?(newSettings: any, widgetId?: string): void;
 }

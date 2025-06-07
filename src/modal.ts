@@ -4,6 +4,8 @@ import type WidgetBoardPlugin from './main';
 import { registeredWidgetImplementations } from './widgetRegistry';
 import type { WidgetImplementation, BoardConfiguration, WidgetConfig } from './interfaces';
 import cloneDeep from 'lodash.clonedeep';
+import { preloadChartJS, loadReflectionSummaryShared } from './widgets/reflectionWidget/reflectionWidgetUI';
+import type { ReflectionWidgetPreloadBundle } from './widgets/reflectionWidget/reflectionWidget';
 
 /**
  * 新しいウィジェットの種類を選択して追加するためのモーダル
@@ -472,7 +474,7 @@ export class WidgetBoardModal {
      * ボード内のウィジェットをすべてロード
      * @param container ウィジェット配置先の要素
      */
-    loadWidgets(container: HTMLElement) {
+    async loadWidgets(container: HTMLElement) {
         const boardInGlobal = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
         const widgetsToLoad = boardInGlobal ? boardInGlobal.widgets : this.currentBoardConfig.widgets;
         const newOrder = widgetsToLoad.map(w => w.id);
@@ -499,6 +501,28 @@ export class WidgetBoardModal {
             this.lastWidgetOrder = [];
             return;
         }
+        // --- プリロードバンドル生成（ReflectionWidget用） ---
+        let reflectionPreloadBundle: ReflectionWidgetPreloadBundle | undefined = undefined;
+        if (widgetsToLoad.some(w => w.type === 'reflection-widget')) {
+            const chartModule = await preloadChartJS();
+            const todayKey = (() => {
+                const now = new Date();
+                return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
+            })();
+            const [weekStart, weekEnd] = (() => {
+                const now = new Date();
+                const day = now.getDay();
+                const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
+                const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - day));
+                return [start, end];
+            })();
+            const weekKey = [weekEnd.getFullYear(), String(weekEnd.getMonth() + 1).padStart(2, '0'), String(weekEnd.getDate()).padStart(2, '0')].join('-');
+            const [todaySummary, weekSummary] = await Promise.all([
+                loadReflectionSummaryShared('today', todayKey, this.plugin.app),
+                loadReflectionSummaryShared('week', weekKey, this.plugin.app)
+            ]);
+            reflectionPreloadBundle = { chartModule, todaySummary, weekSummary };
+        }
         // --- Lazy Load & 非同期描画 ---
         const observer = new IntersectionObserver((entries, obs) => {
             entries.forEach(entry => {
@@ -511,15 +535,18 @@ export class WidgetBoardModal {
                     if (wrapper.dataset.loaded === '1') return;
                     const WidgetClass = registeredWidgetImplementations.get(widgetConfig.type) as (new () => WidgetImplementation) | undefined;
                     if (WidgetClass) {
-                        // 重いウィジェットは次フレームに遅延描画
                         const isHeavy = ['pomodoro', 'calendar', 'recent-notes'].includes(widgetConfig.type);
                         const createWidget = () => {
                             try {
                                 const widgetInstance = new WidgetClass();
-                                const widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
+                                let widgetElement;
+                                if (widgetConfig.type === 'reflection-widget') {
+                                    widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin, reflectionPreloadBundle);
+                                } else {
+                                    widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
+                                }
                                 if (this.isEditMode) {
                                     wrapper.empty();
-                                    // ここで削除ボタンを再度追加
                                     const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
                                     setIcon(deleteBtn, 'trash');
                                     deleteBtn.onclick = async () => {
