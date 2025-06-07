@@ -1,5 +1,5 @@
-import { CalendarWidget } from '../src/widgets/calendar';
-import type { WidgetConfig } from '../src/interfaces';
+import { CalendarWidget } from '../../src/widgets/calendar';
+import type { WidgetConfig } from '../../src/interfaces';
 
 describe('CalendarWidget', () => {
   const dummyConfig: WidgetConfig = {

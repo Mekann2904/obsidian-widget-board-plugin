@@ -1,5 +1,5 @@
-import { TweetWidget } from '../src/widgets/tweetWidget/tweetWidget';
-import type { WidgetConfig } from '../src/interfaces';
+import { TweetWidget } from '../../src/widgets/tweetWidget/tweetWidget';
+import type { WidgetConfig } from '../../src/interfaces';
 
 describe('TweetWidget', () => {
   const dummyConfig: WidgetConfig = {

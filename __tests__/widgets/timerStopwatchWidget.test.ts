@@ -1,5 +1,5 @@
-import { TimerStopwatchWidget, DEFAULT_TIMER_STOPWATCH_SETTINGS } from '../src/widgets/timer-stopwatch';
-import type { WidgetConfig } from '../src/interfaces';
+import { TimerStopwatchWidget, DEFAULT_TIMER_STOPWATCH_SETTINGS } from '../../src/widgets/timer-stopwatch';
+import type { WidgetConfig } from '../../src/interfaces';
 
 describe('TimerStopwatchWidget', () => {
   const dummyConfig: WidgetConfig = {

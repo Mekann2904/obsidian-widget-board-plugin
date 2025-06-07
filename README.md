@@ -256,6 +256,8 @@ LLM（AI）を使った要約やAIリプライのプロンプト（指示文）�
 npm test
 ```
 
+テストのディレクトリ構成や追加方法などの詳細は [docs/tests/README.md](docs/tests/README.md) を参照してください。
+
 ---
 
 ## 注意事項・その他

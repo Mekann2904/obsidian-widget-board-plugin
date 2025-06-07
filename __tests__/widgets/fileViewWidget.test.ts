@@ -1,5 +1,5 @@
-import { FileViewWidget } from '../src/widgets/file-view';
-import type { WidgetConfig } from '../src/interfaces';
+import { FileViewWidget } from '../../src/widgets/file-view';
+import type { WidgetConfig } from '../../src/interfaces';
 
 describe('FileViewWidget', () => {
   const dummyConfig: WidgetConfig = {

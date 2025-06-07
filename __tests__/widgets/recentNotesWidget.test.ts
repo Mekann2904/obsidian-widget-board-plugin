@@ -1,5 +1,5 @@
-import { RecentNotesWidget, DEFAULT_RECENT_NOTES_SETTINGS } from '../src/widgets/recent-notes';
-import type { WidgetConfig } from '../src/interfaces';
+import { RecentNotesWidget, DEFAULT_RECENT_NOTES_SETTINGS } from '../../src/widgets/recent-notes';
+import type { WidgetConfig } from '../../src/interfaces';
 
 describe('RecentNotesWidget', () => {
   const dummyConfig: WidgetConfig = {
