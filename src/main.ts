@@ -203,6 +203,17 @@ export default class WidgetBoardPlugin extends Plugin {
     }
 
     /**
+     * 指定IDのウィジェットボードを閉じる
+     * @param boardId ボードID
+     */
+    closeWidgetBoardById(boardId: string): void {
+        const modal = this.widgetBoardModals.get(boardId);
+        if (modal && modal.isOpen) {
+            modal.close();
+        }
+    }
+
+    /**
      * 設定をロード（旧形式からのマイグレーションも対応）
      */
     async loadSettings(): Promise<void> {
@@ -297,13 +308,18 @@ export default class WidgetBoardPlugin extends Plugin {
         }
         this.registeredGroupCommandIds = [];
         // ボードごとにコマンドを動的登録
-        this.settings.boards.map(board =>
+        this.settings.boards.map(board => {
             this.addCommand({
                 id: `toggle-widget-board-${board.id}`,
                 name: `ウィジェットボードをトグル: ${board.name}`,
                 callback: () => this.toggleWidgetBoardById(board.id)
-            })
-        );
+            });
+            this.addCommand({
+                id: `close-widget-board-${board.id}`,
+                name: `ウィジェットボードを閉じる: ${board.name}`,
+                callback: () => this.closeWidgetBoardById(board.id)
+            });
+        });
         // ボードグループごとにコマンドを動的登録
         (this.settings.boardGroups || []).forEach(group => {
             let hotkeys: Hotkey[] = [];
