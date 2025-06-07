@@ -405,7 +405,6 @@ private static widgetStates: Map<string, any> = new Map();
 
 ### - **YAMLで大きさ指定が可能なサンプル**
   ```ts
-  // ...既存コード...
   // 追加: YAMLで大きさ指定があれば反映
   const settings = (config.settings || {}) as any;
   if (settings.width) this.widgetEl.style.width = settings.width;
