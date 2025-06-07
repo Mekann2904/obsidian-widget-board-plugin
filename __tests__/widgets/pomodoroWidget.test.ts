@@ -1,5 +1,5 @@
-import { PomodoroWidget, DEFAULT_POMODORO_SETTINGS } from '../src/widgets/pomodoro';
-import type { WidgetConfig } from '../src/interfaces';
+import { PomodoroWidget, DEFAULT_POMODORO_SETTINGS } from '../../src/widgets/pomodoro';
+import type { WidgetConfig } from '../../src/interfaces';
 
 describe('PomodoroWidget', () => {
   const dummyConfig: WidgetConfig = {

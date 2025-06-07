@@ -1,5 +1,5 @@
-import { MemoWidget, DEFAULT_MEMO_SETTINGS } from '../src/widgets/memo';
-import type { WidgetConfig } from '../src/interfaces';
+import { MemoWidget, DEFAULT_MEMO_SETTINGS } from '../../src/widgets/memo';
+import type { WidgetConfig } from '../../src/interfaces';
 
 describe('MemoWidget', () => {
   const dummyConfig: WidgetConfig = {

@@ -1,5 +1,5 @@
-import { ReflectionWidget } from '../src/widgets/reflectionWidget/reflectionWidget';
-import type { WidgetConfig } from '../src/interfaces';
+import { ReflectionWidget } from '../../src/widgets/reflectionWidget/reflectionWidget';
+import type { WidgetConfig } from '../../src/interfaces';
 
 describe('ReflectionWidget', () => {
   const dummyConfig: WidgetConfig = {

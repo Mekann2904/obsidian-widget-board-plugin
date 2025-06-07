@@ -1,5 +1,5 @@
-import { ThemeSwitcherWidget } from '../src/widgets/theme-switcher';
-import type { WidgetConfig } from '../src/interfaces';
+import { ThemeSwitcherWidget } from '../../src/widgets/theme-switcher';
+import type { WidgetConfig } from '../../src/interfaces';
 
 describe('ThemeSwitcherWidget', () => {
   const dummyConfig: WidgetConfig = {

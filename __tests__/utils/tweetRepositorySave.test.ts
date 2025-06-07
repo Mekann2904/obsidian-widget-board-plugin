@@ -6,8 +6,8 @@ jest.mock('obsidian', () => {
   };
 }, { virtual: true });
 
-import type { TweetWidgetSettings } from '../src/widgets/tweetWidget/types';
-const { TweetRepository } = require('../src/widgets/tweetWidget/TweetRepository.ts');
+import type { TweetWidgetSettings } from '../../src/widgets/tweetWidget/types';
+const { TweetRepository } = require('../../src/widgets/tweetWidget/TweetRepository.ts');
 
 describe('TweetRepository.save', () => {
   const sampleSettings: TweetWidgetSettings = { posts: [] };
