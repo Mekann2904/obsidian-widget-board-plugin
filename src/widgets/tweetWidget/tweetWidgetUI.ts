@@ -657,6 +657,12 @@ export class TweetWidgetUI {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
         } catch {}
+        if (post.quoteId) {
+            displayText = displayText
+                .split('\n')
+                .filter(line => !/^>\s?/.test(line.trim()))
+                .join('\n');
+        }
 
         // --- 画像Markdown記法のパスを置換 ---
         let replacedText = displayText;
