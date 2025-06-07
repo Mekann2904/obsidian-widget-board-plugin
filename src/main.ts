@@ -17,6 +17,7 @@ import { TweetRepository } from './widgets/tweetWidget/TweetRepository';
 import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
 import { debugLog } from './utils/logger';
 import { Component, TFile } from 'obsidian';
+import { preloadChartJS } from './widgets/reflectionWidget/reflectionWidgetUI';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -39,8 +40,8 @@ export default class WidgetBoardPlugin extends Plugin {
         debugLog(this, 'Widget Board Plugin: Loading...');
         this.llmManager = new LLMManager();
         this.llmManager.register(GeminiProvider);
-        // Preload Chart.js for ReflectionWidget to avoid first render delay
-        import('chart.js/auto').catch(() => {});
+        // Preload Chart.js for ReflectionWidget without blocking startup
+        setTimeout(() => preloadChartJS().catch(() => {}), 0);
         await this.loadSettings();
         this.registerAllBoardCommands();
         this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());

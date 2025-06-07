@@ -9,6 +9,22 @@ import { deobfuscate } from '../../utils';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 
 let Chart: any;
+let chartModulePromise: Promise<any> | null = null;
+
+export function preloadChartJS(): Promise<any> {
+    if (!chartModulePromise) {
+        chartModulePromise = import('chart.js/auto')
+            .then(m => {
+                Chart = m.default;
+                return Chart;
+            })
+            .catch(e => {
+                chartModulePromise = null;
+                throw e;
+            });
+    }
+    return chartModulePromise;
+}
 
 function getDateKey(date: Date): string {
     return date.toISOString().slice(0, 10);
@@ -108,8 +124,7 @@ export class ReflectionWidgetUI {
     public async render() {
         // Chart.jsの動的import（初回のみ）
         if (!Chart) {
-            const chartModule = await import('chart.js/auto');
-            Chart = chartModule.default;
+            await preloadChartJS();
         }
         // 初回のみ主要DOM生成
         if (!this.contentEl) {
