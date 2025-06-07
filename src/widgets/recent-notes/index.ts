@@ -30,7 +30,7 @@ export class RecentNotesWidget implements WidgetImplementation {
      * インスタンス初期化
      */
     constructor() {
-        // ... 既存コード ...
+        // no initialization required
     }
 
     /**
