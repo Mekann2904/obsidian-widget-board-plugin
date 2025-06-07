@@ -19,6 +19,7 @@ export function createWidgetContainer(
     if (withTitle) {
         titleEl = widgetEl.createEl('h4');
         titleEl.textContent = config.title?.trim() || '';
+        titleEl.classList.add('widget-title');
     }
 
     return { widgetEl, titleEl };

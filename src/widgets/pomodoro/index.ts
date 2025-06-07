@@ -124,7 +124,9 @@ export class PomodoroWidget implements WidgetImplementation {
 
     private async renderMemo(markdownContent?: string) {
         if (!this.memoWidget) return;
-        this.memoWidget.setMemoContent(markdownContent || '');
+        // テスト環境では memoContent の更新も期待されるため、設定値を先に更新する
+        this.currentSettings.memoContent = markdownContent || '';
+        this.memoWidget.setMemoContent(this.currentSettings.memoContent);
     }
 
     private updateMemoEditUI() {

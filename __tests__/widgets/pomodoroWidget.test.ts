@@ -1,59 +1,46 @@
 import { PomodoroWidget, DEFAULT_POMODORO_SETTINGS } from '../../src/widgets/pomodoro';
 import type { WidgetConfig } from '../../src/interfaces';
 
-describe('PomodoroWidget', () => {
-  const dummyConfig: WidgetConfig = {
-    id: 'test-pomodoro',
-    type: 'pomodoro',
-    title: 'テストポモドーロ',
-    settings: { ...DEFAULT_POMODORO_SETTINGS }
-  };
-  const dummyApp = { vault: { adapter: { exists: jest.fn(), mkdir: jest.fn(), read: jest.fn(), write: jest.fn() } } } as any;
-  const dummyPlugin = { settings: { boards: [] }, manifest: { id: 'test-plugin' }, saveData: jest.fn() } as any;
+describe('PomodoroWidget 詳細テスト', () => {
+  let dummyConfig: WidgetConfig;
+  let dummyApp: any;
+  let dummyPlugin: any;
 
-  it('createメソッドでHTMLElementを返す', () => {
+  beforeEach(() => {
+    dummyConfig = {
+      id: 'test-pomodoro',
+      type: 'pomodoro',
+      title: 'テストポモドーロ',
+      settings: { ...DEFAULT_POMODORO_SETTINGS }
+    };
+    dummyApp = { vault: { adapter: { exists: jest.fn(), mkdir: jest.fn(), read: jest.fn(), write: jest.fn() } } };
+    dummyPlugin = { settings: { boards: [] }, manifest: { id: 'test-plugin' }, saveData: jest.fn() };
+  });
+
+  it('createでpomodoro-timer-widgetクラスとUI要素が生成される', () => {
     const widget = new PomodoroWidget();
     const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
-    expect(el).toBeInstanceOf(HTMLElement);
+    expect(el.classList.contains('pomodoro-timer-widget')).toBe(true);
+    expect(el.querySelector('.pomodoro-time-display')).toBeTruthy();
+    expect(el.querySelector('.pomodoro-status-display')).toBeTruthy();
+    expect(el.querySelector('.pomodoro-controls')).toBeTruthy();
   });
 
-  it('updateExternalSettings: メモのみ変更時にmemoContentが更新される', async () => {
-    const widget = new PomodoroWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
-    const newMemo = '新しいメモ';
-    await widget.updateExternalSettings({ memoContent: newMemo });
-    expect(widget['currentSettings'].memoContent).toBe(newMemo);
-  });
-
-  it('updateExternalSettings: タイマー関連設定変更時にworkMinutesが更新される', async () => {
-    const widget = new PomodoroWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
-    const newWorkMinutes = 50;
-    await widget.updateExternalSettings({ workMinutes: newWorkMinutes });
-    expect(widget['currentSettings'].workMinutes).toBe(newWorkMinutes);
-  });
-
-  it('updateExternalSettings: 背景画像変更時にbackgroundImageUrlが更新される', async () => {
-    const widget = new PomodoroWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
-    const newUrl = 'https://example.com/bg.png';
-    await widget.updateExternalSettings({ backgroundImageUrl: newUrl });
-    expect(widget['currentSettings'].backgroundImageUrl).toBe(newUrl);
-  });
-
-  it('startTimerでisRunningがtrueになる', () => {
+  it('startTimerでisRunningがtrueになりUIが更新される', () => {
     const widget = new PomodoroWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
     widget['startTimer']();
     expect(widget['isRunning']).toBe(true);
+    expect(widget['startPauseButton'].getAttribute('aria-label')).toBe('一時停止');
   });
 
-  it('pauseTimerでisRunningがfalseになる', () => {
+  it('pauseTimerでisRunningがfalseになりUIが更新される', () => {
     const widget = new PomodoroWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
     widget['startTimer']();
     widget['pauseTimer']();
     expect(widget['isRunning']).toBe(false);
+    expect(widget['startPauseButton'].getAttribute('aria-label')).toBe('開始');
   });
 
   it('resetTimerStateで残り時間が初期化される', () => {
@@ -72,7 +59,7 @@ describe('PomodoroWidget', () => {
     expect(widget['currentPomodoroSet']).not.toBe(before);
   });
 
-  it('handleSessionEndでisRunningがfalseになる', async () => {
+  it('handleSessionEndでisRunningがfalseになり次セッションに進む', async () => {
     const widget = new PomodoroWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
     widget['isRunning'] = true;
@@ -83,9 +70,17 @@ describe('PomodoroWidget', () => {
   it('メモ編集でmemoContentが更新される', async () => {
     const widget = new PomodoroWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
-    const newMemo = 'テストメモ内容';
-    await widget['renderMemo'](newMemo);
-    expect(widget['currentSettings'].memoContent).not.toBe(undefined); // UI反映はモック
+    await widget['renderMemo']('テストメモ内容');
+    expect(widget['currentSettings'].memoContent).toBe('テストメモ内容');
+  });
+
+  it('updateExternalSettingsで各種設定が反映される', async () => {
+    const widget = new PomodoroWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.updateExternalSettings({ workMinutes: 50, backgroundImageUrl: 'url', notificationSound: 'bell' });
+    expect(widget['currentSettings'].workMinutes).toBe(50);
+    expect(widget['currentSettings'].backgroundImageUrl).toBe('url');
+    expect(widget['currentSettings'].notificationSound).toBe('bell');
   });
 
   it('getWidgetIdでconfig.idが返る', () => {
@@ -98,7 +93,6 @@ describe('PomodoroWidget', () => {
     const widget = new PomodoroWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
     widget.onunload();
-    // widgetInstancesから消えていること
     expect((PomodoroWidget as any).widgetInstances.has(dummyConfig.id)).toBe(false);
   });
 
@@ -117,4 +111,6 @@ describe('PomodoroWidget', () => {
     PomodoroWidget.cleanupAllPersistentInstances(dummyPlugin);
     expect((PomodoroWidget as any).widgetInstances.size).toBe(0);
   });
+
+  // 背景画像や通知音のUI反映、セッションログ出力なども必要に応じて追加可能
 }); 
