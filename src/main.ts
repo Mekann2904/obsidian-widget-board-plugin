@@ -318,26 +318,15 @@ export default class WidgetBoardPlugin extends Plugin {
             const cmdId = `open-board-group-${group.id}`;
             this.addCommand({
                 id: cmdId,
-                name: `ボードグループをトグル: ${group.name}`,
+                name: `ボードグループを開く: ${group.name}`,
                 hotkeys,
                 callback: () => {
-                    const anyOpen = (group.boardIds || []).some(boardId => {
+                    (group.boardIds || []).forEach(boardId => {
                         const modal = this.widgetBoardModals.get(boardId);
-                        return modal && modal.isOpen;
-                    });
-                    if (anyOpen) {
-                        (group.boardIds || []).filter(boardId => {
-                            const modal = this.widgetBoardModals.get(boardId);
-                            return modal && modal.isOpen;
-                        }).forEach(boardId => {
-                            const modal = this.widgetBoardModals.get(boardId);
-                            if (modal) modal.close();
-                        });
-                    } else {
-                        (group.boardIds || []).forEach(boardId => {
+                        if (!modal || !modal.isOpen) {
                             this.openWidgetBoardById(boardId);
-                        });
-                    }
+                        }
+                    });
                 }
             });
             this.registeredGroupCommandIds.push(cmdId);
