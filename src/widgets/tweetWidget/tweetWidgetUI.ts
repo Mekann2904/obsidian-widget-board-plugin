@@ -876,11 +876,21 @@ export class TweetWidgetUI {
 
         addMenuItems("Visibility", ["public", "private", "draft"], post.visibility, 'visibility' as keyof TweetWidgetPost);
         menu.addSeparator();
-        addMenuItems("Note Quality", ["fleeting", "literature", "permanent"], post.noteQuality, 'noteQuality' as keyof TweetWidgetPost, 
+        addMenuItems("Note Quality", ["fleeting", "literature", "permanent"], post.noteQuality, 'noteQuality' as keyof TweetWidgetPost,
             { fleeting: "アイデア", literature: "文献", permanent: "永久" });
         menu.addSeparator();
         addMenuItems("Task Status", [null, "todo", "doing", "done"], post.taskStatus, 'taskStatus' as keyof TweetWidgetPost);
         menu.addSeparator();
+
+        if (post.bookmark) {
+            menu.addItem(item => item.setTitle('ブックマークフォルダを設定').setIcon('folder-plus').onClick(() => {
+                const input = prompt('ブックマークフォルダ名 (カンマ区切り可)', post.bookmarkFolders?.join(',') || '');
+                if (input !== null) {
+                    const folders = input.split(',').map(s => s.trim()).filter(Boolean);
+                    this.widget.updatePostProperty(post.id, 'bookmarkFolders', folders);
+                }
+            }));
+        }
 
         menu.addItem(item => item.setTitle("Open/Create Context Note").setIcon("file-text")
             .onClick(() => this.widget.openContextNote(post)));

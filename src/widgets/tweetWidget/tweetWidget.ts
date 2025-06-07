@@ -333,6 +333,7 @@ export class TweetWidget implements WidgetImplementation {
             const newStatus = !post.bookmark;
             const updates: Partial<TweetWidgetPost> = { bookmark: newStatus };
             if (newStatus) {
+                new Notice('フォルダーに追加しますか？', 4000);
                 const input = prompt('ブックマークフォルダ名 (カンマ区切り可)', post.bookmarkFolders?.join(',') || '');
                 if (input !== null) {
                     updates.bookmarkFolders = input.split(',').map(s => s.trim()).filter(Boolean);
