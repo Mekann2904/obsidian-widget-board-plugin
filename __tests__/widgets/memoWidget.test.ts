@@ -89,6 +89,14 @@ describe('MemoWidget 詳細テスト', () => {
     expect(widget['currentSettings'].memoContent).toBe('外部更新');
   });
 
+  it('updateExternalSettings後にMarkdownがレンダリングされる', async () => {
+    const widget = new MemoWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.updateExternalSettings({ memoContent: '# 更新' });
+    await new Promise(res => setTimeout(res, 0));
+    expect(typeof widget['memoDisplayEl'].innerHTML).toBe('string');
+  });
+
   it('onunloadでインスタンスが削除される', () => {
     const widget = new MemoWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
