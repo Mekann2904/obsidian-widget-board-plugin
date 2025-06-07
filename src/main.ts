@@ -16,6 +16,7 @@ import yaml from 'js-yaml';
 import { TweetRepository } from './widgets/tweetWidget/TweetRepository';
 import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
 import { debugLog } from './utils/logger';
+import { filterConsoleWarn } from './utils/consoleWarnFilter';
 import { Component, TFile } from 'obsidian';
 import { preloadChartJS } from './widgets/reflectionWidget/reflectionWidgetUI';
 
@@ -46,6 +47,7 @@ export default class WidgetBoardPlugin extends Plugin {
      */
     async onload(): Promise<void> {
         debugLog(this, 'Widget Board Plugin: Loading...');
+        filterConsoleWarn(['[Violation]', '[Deprecation]']);
         this.llmManager = new LLMManager();
         this.llmManager.register(GeminiProvider);
         // Preload Chart.js for ReflectionWidget without blocking startup
