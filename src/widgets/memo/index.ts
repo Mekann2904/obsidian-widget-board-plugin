@@ -7,6 +7,9 @@ import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
 import { renderMermaidInWorker } from '../../utils';
 
+// --- Mermaid SVGメモリキャッシュ ---
+const mermaidSvgCache = new Map<string, string>();
+
 // --- メモウィジェット設定インターフェース ---
 export interface MemoWidgetSettings {
     memoContent?: string;
@@ -115,8 +118,17 @@ export class MemoWidget implements WidgetImplementation {
             if (!pre) continue;
             const code = codeEl.innerText;
             const id = 'mermaid-' + Math.random().toString(36).slice(2, 10);
+            // キャッシュ利用
+            if (mermaidSvgCache.has(code)) {
+                const svg = mermaidSvgCache.get(code)!;
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = svg;
+                pre.replaceWith(wrapper);
+                continue;
+            }
             try {
                 const svg = await renderMermaidInWorker(code, id);
+                mermaidSvgCache.set(code, svg);
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = svg;
                 pre.replaceWith(wrapper);
