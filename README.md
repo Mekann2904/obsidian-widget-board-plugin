@@ -64,7 +64,7 @@ npm run build
     - **つぶやき（tweet-widget）**
 - **各ウィジェットは個別にタイトル・設定を持ち、ボード内で自由に並べ替え・削除が可能**
 - **通知音や音量などの全体設定・個別設定**
-- **ホットキー（トグルのみ）で各ボードを素早く開閉**
+ - **ホットキーで各ボードを素早く開閉**
 - **ポモドーロ作業ログの自動エクスポート（CSV/JSON/Markdown）**
 - **独自ウィジェットの追加・開発も可能です。詳しくは [WIDGET_DEV_GUIDE.md](docs/WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](docs/WIDGET_PERFORMANCE_GUIDE.md) を必ずご参照ください。**
 
@@ -85,7 +85,7 @@ npm run build
 - **独自ウィジェットの追加・開発方法については [WIDGET_DEV_GUIDE.md](docs/WIDGET_DEV_GUIDE.md) および [WIDGET_PERFORMANCE_GUIDE.md](docs/WIDGET_PERFORMANCE_GUIDE.md) をご覧ください。パフォーマンス設計指針も必ずご確認ください。**
 
 ### 3. ホットキー
-- 各ボードには「トグル」ホットキーのみ設定できます（Obsidianのホットキー設定画面から割り当て）。
+- 各ボードには「開く」「閉じる」「トグル」用のホットキーを設定できます（Obsidianのホットキー設定画面から割り当て）。
 - ボードを素早く開閉したい場合に便利です。
 
 ### 4. ポモドーロ作業ログのエクスポート
@@ -262,7 +262,7 @@ npm test
 
 ## 注意事項・その他
 
-- ホットキーは「トグル」のみ設定できます（「開く」系は廃止）。
+ - ホットキーでボードの開閉を個別に設定できます。
 - ボードやウィジェットの追加・削除・名前変更は即時反映されます。
 - ポモドーロの作業ログは重複排除なしで全件保存されます（必要に応じてコードで切り替え可能）。
 - エクスポートファイルは`<Vault>/.obsidian/plugins/obsidian-widget-board-plugin/logs/`に保存されます。
