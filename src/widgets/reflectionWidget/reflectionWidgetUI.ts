@@ -2,7 +2,7 @@ import type { WidgetConfig } from '../../interfaces';
 import { App, MarkdownRenderer, Component } from 'obsidian';
 import type { ReflectionWidget } from './reflectionWidget';
 import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
-import { TweetRepository } from '../tweetWidget/TweetRepository';
+import { TweetRepository } from '../tweetWidget';
 import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/gemini/summaryPrompts';
 import { deobfuscate } from '../../utils';
