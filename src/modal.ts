@@ -586,37 +586,45 @@ export class WidgetBoardModal {
             });
         }, { root: container, rootMargin: '200px' });
         let index = 0;
-        const batchSize = 3;
-        const processBatch = () => {
-            const end = Math.min(index + batchSize, widgetsToLoad.length);
-            for (; index < end; index++) {
-                const widgetConfig = widgetsToLoad[index];
-                let wrapper: HTMLElement;
-                if (this.isEditMode) {
-                    wrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
-                    wrapper.setAttribute('draggable', 'true');
-                    wrapper.dataset.widgetId = widgetConfig.id;
-                    const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
-                    setIcon(deleteBtn, 'trash');
-                    deleteBtn.onclick = async () => {
-                        if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
-                            await this.deleteWidget(widgetConfig.id);
-                        }
-                    };
-                    const placeholder = wrapper.createDiv({ cls: 'wb-widget-placeholder' });
-                    placeholder.setText('Loading...');
-                    const dragHandle = wrapper.createDiv({ cls: 'wb-widget-drag-handle' });
-                    setIcon(dragHandle, 'grip-vertical');
-                } else {
-                    wrapper = container.createDiv();
-                    wrapper.dataset.widgetId = widgetConfig.id;
-                    wrapper.empty();
+        // MessageChannelによる即時キューイング
+        const channel = new MessageChannel();
+        channel.port1.onmessage = () => processBatch();
+        function scheduleNext() {
+            channel.port2.postMessage(undefined);
+        }
+        function renderOneWidget(widgetConfig: WidgetConfig) {
+            let wrapper;
+            if (this.isEditMode) {
+                wrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
+                wrapper.setAttribute('draggable', 'true');
+                wrapper.dataset.widgetId = widgetConfig.id;
+                const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
+                setIcon(deleteBtn, 'trash');
+                deleteBtn.onclick = async () => {
+                    if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
+                        await this.deleteWidget(widgetConfig.id);
+                    }
+                };
+                const placeholder = wrapper.createDiv({ cls: 'wb-widget-placeholder' });
+                placeholder.setText('Loading...');
+                const dragHandle = wrapper.createDiv({ cls: 'wb-widget-drag-handle' });
+                setIcon(dragHandle, 'grip-vertical');
+            } else {
+                wrapper = container.createDiv();
+                wrapper.dataset.widgetId = widgetConfig.id;
+                wrapper.empty();
                 wrapper.createDiv({ cls: 'wb-widget-placeholder', text: 'Loading...' });
-                }
-                observer.observe(wrapper);
+            }
+            observer.observe(wrapper);
+        }
+        const processBatch = () => {
+            const start = performance.now();
+            while (index < widgetsToLoad.length && performance.now() - start < 8) {
+                renderOneWidget.call(this, widgetsToLoad[index]);
+                index++;
             }
             if (index < widgetsToLoad.length) {
-                requestAnimationFrame(processBatch);
+                scheduleNext();
             } else {
                 if (this.isEditMode) {
                     this.addDragDropListeners(container);
@@ -624,7 +632,8 @@ export class WidgetBoardModal {
                 this.lastWidgetOrder = [...newOrder];
             }
         };
-        processBatch();
+        // 最初のキック
+        scheduleNext();
     }
 
     /**

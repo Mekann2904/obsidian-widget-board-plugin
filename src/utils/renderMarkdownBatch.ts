@@ -127,3 +127,77 @@ export async function renderMarkdownBatchWithCache(
   markdownCache.set(markdownText, frag.cloneNode(true) as DocumentFragment);
   container.appendChild(frag);
 }
+
+// セグメント単位のキャッシュ（最大100件）
+const segmentCache = new LRUCache<string, DocumentFragment>(100);
+
+/**
+ * renderMarkdownBatchSegmentedWithCache
+ *
+ * Markdownテキストを空行ごとに分割し、MessageChannelでマクロタスク分割しながら
+ * セグメントごとにキャッシュを利用して順次レンダリングする。
+ *
+ * @param markdownText  ユーザーが入力した Markdown 文字列
+ * @param container     最終的に描画先となる HTMLElement
+ * @param sourcePath    レンダリングルールを適用するためのファイルパスまたはTFile
+ * @param component     ObsidianのComponentインスタンス（new Component() で渡す）
+ */
+export async function renderMarkdownBatchSegmentedWithCache(
+  markdownText: string,
+  container: HTMLElement,
+  sourcePath: string | TFile,
+  component: Component
+) {
+  // 1. セグメント分割（空行で区切る例）
+  const segments = markdownText.split(/\n\s*\n/);
+
+  // 2. MessageChannelでマクロタスク分割
+  const channel = new MessageChannel();
+
+  async function processNextSegment() {
+    const seg = segments.shift();
+    if (!seg) return; // 全部終わり
+
+    // --- キャッシュチェック ---
+    const cached = segmentCache.get(seg);
+    if (cached) {
+      container.appendChild(cached.cloneNode(true) as DocumentFragment);
+    } else {
+      // オフスクリーンdiv
+      const offscreenDiv = document.createElement("div");
+      offscreenDiv.style.cssText = "position:absolute;top:-9999px;width:0;height:0;";
+      document.body.appendChild(offscreenDiv);
+
+      // レンダリング
+      await MarkdownRenderer.renderMarkdown(
+        seg,
+        offscreenDiv,
+        typeof sourcePath === "string" ? sourcePath : (sourcePath as TFile).path,
+        component
+      );
+
+      document.body.removeChild(offscreenDiv);
+
+      // フラグメントに移動
+      const frag = document.createDocumentFragment();
+      while (offscreenDiv.firstChild) {
+        frag.appendChild(offscreenDiv.firstChild);
+      }
+      // キャッシュ保存
+      segmentCache.set(seg, frag.cloneNode(true) as DocumentFragment);
+      container.appendChild(frag);
+    }
+
+    // 次のセグメントがあればキュー
+    if (segments.length) {
+      channel.port2.postMessage(undefined);
+    }
+  }
+
+  channel.port1.onmessage = () => {
+    processNextSegment();
+  };
+
+  // 最初のキック
+  channel.port2.postMessage(undefined);
+}
