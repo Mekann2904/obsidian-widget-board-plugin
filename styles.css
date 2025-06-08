@@ -1,3 +1,11 @@
+/* Generic modal visibility */
+.modal {
+    opacity: 0;
+}
+.modal.is-open {
+    opacity: 1;
+}
+
 /* Panel styles */
 .widget-board-panel-custom {
     padding: 0 !important;

@@ -152,9 +152,6 @@ export class WidgetBoardModal {
         if (this.isOpen) return;
         document.body.appendChild(this.modalEl);
         this.onOpen();
-        // アニメーションクラスの付与だけをrAFで行う
-        this.modalEl.classList.remove('is-open');
-        void this.modalEl.offsetWidth;
         requestAnimationFrame(() => {
             this.modalEl.classList.add('is-open');
         });
@@ -466,9 +463,6 @@ export class WidgetBoardModal {
             }
         });
 
-        requestAnimationFrame(() => {
-            modalEl.classList.add('is-open');
-        });
     }
 
     /**
