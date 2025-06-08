@@ -1,5 +1,5 @@
 import { App, MarkdownRenderer } from 'obsidian';
-import type { WidgetConfig } from '../../interfaces';
+import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import { TweetRepository } from '../tweetWidget';
 import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../tweetWidget/constants';
@@ -125,14 +125,6 @@ export interface ReflectionWidgetPreloadBundle {
     chartModule: any;
     todaySummary: { summary: string|null, html: string|null, postCount: number };
     weekSummary: { summary: string|null, html: string|null, postCount: number };
-}
-
-// WidgetImplementation型を拡張
-export interface WidgetImplementation {
-    id: string;
-    create(config: WidgetConfig, app: App, plugin: any, preloadBundle?: any): HTMLElement;
-    updateExternalSettings?(newSettings: any, widgetId?: string): void;
-    refresh?(): void;
 }
 
 export class ReflectionWidget implements WidgetImplementation {

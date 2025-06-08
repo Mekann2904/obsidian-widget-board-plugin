@@ -1,3 +1,2 @@
-export * from './types';
 export * from '../settingsTab';
-export * from '../settingsDefaults'; 
+export * from '../settingsDefaults';

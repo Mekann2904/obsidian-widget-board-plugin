@@ -16,6 +16,8 @@ export interface WidgetImplementation {
     create(config: WidgetConfig, app: App, plugin: any, preloadBundle?: any): HTMLElement;
     onunload?(): void;
     updateExternalSettings?(newSettings: any, widgetId?: string): void;
+    /** Optionally refresh the widget's internal state */
+    refresh?(): void;
 }
 
 // --- 個別のボード設定用インターフェース ---
