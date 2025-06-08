@@ -3,6 +3,7 @@ import type { TweetWidgetSettings, TweetWidgetPost } from './types';
 export class TweetStore {
     public settings: TweetWidgetSettings;
     public postsById: Map<string, TweetWidgetPost> = new Map();
+    public childrenByThreadId: Map<string, TweetWidgetPost[]> = new Map();
 
     constructor(initialSettings: TweetWidgetSettings) {
         this.settings = initialSettings;
@@ -120,12 +121,13 @@ export class TweetStore {
      */
     private updatePostsById(): void {
         this.postsById = new Map(this.settings.posts.map(p => [p.id, p]));
+        this.updateChildrenMap();
     }
 
     /**
-     * スレッドの子投稿一覧を親IDでグループ化したMapを作成する
+     * threadIdごとの子投稿マップを再構築する
      */
-    private buildChildrenMap(): Map<string, TweetWidgetPost[]> {
+    private updateChildrenMap(): void {
         const map = new Map<string, TweetWidgetPost[]>();
         for (const post of this.settings.posts) {
             if (post.threadId) {
@@ -135,14 +137,14 @@ export class TweetStore {
                 map.get(post.threadId)!.push(post);
             }
         }
-        return map;
+        this.childrenByThreadId = map;
     }
 
     /**
      * スレッドの全IDを収集する
      */
     public collectThreadIds(rootId: string): string[] {
-        const childrenMap = this.buildChildrenMap();
+        const childrenMap = this.childrenByThreadId;
         const ids = new Set<string>();
         const queue = [rootId];
         ids.add(rootId);
