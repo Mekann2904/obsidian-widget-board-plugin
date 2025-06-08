@@ -28,6 +28,7 @@ export interface BoardConfiguration {
     widgets: WidgetConfig[];
     customWidth?: number;
     customWidthAnchor?: 'left' | 'center' | 'right';
+    outerWidth?: number;
 }
 
 // --- ボードグループ管理用インターフェース ---

@@ -693,6 +693,11 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             } else if (customWidthSettingEl) {
                                 customWidthSettingEl.style.display = 'none';
                             }
+                            if ((value === WidgetBoardModal.MODES.RIGHT_OUTER || value === WidgetBoardModal.MODES.LEFT_OUTER) && outerWidthSettingEl) {
+                                outerWidthSettingEl.style.display = '';
+                            } else if (outerWidthSettingEl) {
+                                outerWidthSettingEl.style.display = 'none';
+                            }
                         }
                     });
             });
@@ -738,12 +743,40 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
         customWidthAnchorSettingEl = customWidthAnchorSetting.settingEl;
+
+        // スプリット外幅入力欄
+        let outerWidthSettingEl: HTMLElement | null = null;
+        const outerWidthSetting = new Setting(containerEl)
+            .setName('スプリット外幅（vw）')
+            .setDesc('スプリット外モードで使用する幅をvw単位で指定します（例: 32）')
+            .addText(text => {
+                text.setPlaceholder('例: 32')
+                    .setValue(board.outerWidth ? String(board.outerWidth) : '')
+                    .onChange(() => {});
+                text.inputEl.addEventListener('blur', async () => {
+                    const v = text.inputEl.value;
+                    const n = parseFloat(v);
+                    if (!isNaN(n)) {
+                        board.outerWidth = n;
+                        await this.plugin.saveSettings(board.id);
+                        if (n <= 0 || n > 100) {
+                            new Notice('1〜100の範囲でvwを指定することを推奨します。');
+                        }
+                    } else {
+                        new Notice('数値を入力してください（vw単位）');
+                    }
+                });
+            });
+        outerWidthSettingEl = outerWidthSetting.settingEl;
         // 初期表示制御
         if (board.defaultMode !== 'custom-width' && customWidthSettingEl) {
             customWidthSettingEl.style.display = 'none';
         }
         if (board.defaultMode !== 'custom-width' && customWidthAnchorSettingEl) {
             customWidthAnchorSettingEl.style.display = 'none';
+        }
+        if (board.defaultMode !== WidgetBoardModal.MODES.RIGHT_OUTER && board.defaultMode !== WidgetBoardModal.MODES.LEFT_OUTER && outerWidthSettingEl) {
+            outerWidthSettingEl.style.display = 'none';
         }
         new Setting(containerEl)
             .addButton(button => button
