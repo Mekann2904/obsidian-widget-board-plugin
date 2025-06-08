@@ -87,12 +87,12 @@ function createReadableStreamFromString(input: string) {
 
 // APIキーなどの簡易難読化（Base64）
 export function obfuscate(str: string): string {
-    return btoa(unescape(encodeURIComponent(str)));
+  return Buffer.from(str, 'utf8').toString('base64');
 }
 export function deobfuscate(str: string): string {
-    try {
-        return decodeURIComponent(escape(atob(str)));
-    } catch {
-        return '';
-    }
-} 
+  try {
+    return Buffer.from(str, 'base64').toString('utf8');
+  } catch {
+    return '';
+  }
+}
