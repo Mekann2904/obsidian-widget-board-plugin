@@ -77,6 +77,7 @@ export class WidgetBoardModal {
     private dragDropListeners: Array<{ type: string, handler: EventListenerOrEventListenerObject }> = [];
     private dragOverScheduled = false;
     private pendingDragOverEvent: { container: HTMLElement; overElement: HTMLElement; clientY: number } | null = null;
+    private widgetLoadGeneration = 0;
 
     static readonly MODES = {
         RIGHT_HALF: 'mode-right-half',
@@ -476,6 +477,7 @@ export class WidgetBoardModal {
      * @param container ウィジェット配置先の要素
      */
     async loadWidgets(container: HTMLElement) {
+        const generation = ++this.widgetLoadGeneration;
         const boardInGlobal = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
         const widgetsToLoad = boardInGlobal ? boardInGlobal.widgets : this.currentBoardConfig.widgets;
         const newOrder = widgetsToLoad.map(w => w.id);
@@ -516,6 +518,10 @@ export class WidgetBoardModal {
         }
         // --- Lazy Load & 非同期描画 ---
         const observer = new IntersectionObserver((entries, obs) => {
+            if (generation !== this.widgetLoadGeneration) {
+                obs.disconnect();
+                return;
+            }
             entries.forEach(entry => {
                 if (entry.isIntersecting) {
                     const wrapper = entry.target as HTMLElement;
@@ -579,11 +585,16 @@ export class WidgetBoardModal {
         let index = 0;
         // MessageChannelによる即時キューイング
         const channel = new MessageChannel();
-        channel.port1.onmessage = () => processBatch();
+        channel.port1.onmessage = () => {
+            if (generation !== this.widgetLoadGeneration) return;
+            processBatch();
+        };
         function scheduleNext() {
+            if (generation !== this.widgetLoadGeneration) return;
             channel.port2.postMessage(undefined);
         }
         function renderOneWidget(widgetConfig: WidgetConfig) {
+            if (generation !== this.widgetLoadGeneration) return;
             let wrapper;
             if (this.isEditMode) {
                 wrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });
@@ -609,6 +620,7 @@ export class WidgetBoardModal {
             observer.observe(wrapper);
         }
         const processBatch = () => {
+            if (generation !== this.widgetLoadGeneration) return;
             const start = performance.now();
             while (index < widgetsToLoad.length && performance.now() - start < 8) {
                 renderOneWidget.call(this, widgetsToLoad[index]);
