@@ -51,6 +51,8 @@ export class TweetWidget implements WidgetImplementation {
      */
     get currentSettings(): TweetWidgetSettings { return this.store.settings; }
     get postsById(): Map<string, TweetWidgetPost> { return this.store.postsById; }
+    getReplies(parentId: string): TweetWidgetPost[] { return this.store.getReplies(parentId); }
+    getQuotePosts(postId: string): TweetWidgetPost[] { return this.store.getQuotePosts(postId); }
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
         this.config = config;
@@ -167,7 +169,7 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     public getQuoteCount(postId: string): number {
-        return this.store.settings.posts.filter(p => p.quoteId === postId).length;
+        return this.store.getQuotePosts(postId).length;
     }
 
     private recalculateQuoteCounts() {
