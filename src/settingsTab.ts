@@ -736,14 +736,16 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         let customWidthAnchorSettingEl: HTMLElement | null = null;
         const customWidthAnchorSetting = new Setting(containerEl)
             .setName('カスタム幅の基準位置')
-            .setDesc('カスタム幅パネルの表示基準（左・中央・右）')
+            .setDesc('カスタム幅パネルの表示基準（左・中央・右・スプリット外）')
             .addDropdown(dropdown => {
                 dropdown.addOption('right', '右（デフォルト）');
                 dropdown.addOption('center', '中央');
                 dropdown.addOption('left', '左');
+                dropdown.addOption('right-outer', '右スプリット外');
+                dropdown.addOption('left-outer', '左スプリット外');
                 dropdown.setValue(board.customWidthAnchor || 'right')
                     .onChange(async (value) => {
-                        board.customWidthAnchor = value as 'left' | 'center' | 'right';
+                        board.customWidthAnchor = value as BoardConfiguration['customWidthAnchor'];
                         await this.plugin.saveSettings(board.id);
                     });
             });

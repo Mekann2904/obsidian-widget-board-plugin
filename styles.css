@@ -151,6 +151,38 @@
     transform: translate(-50%, 0);
     opacity: 1;
 }
+/* カスタム幅モード（右スプリット外） */
+.widget-board-panel-custom.custom-width-right-outer {
+    position: absolute !important;
+    right: 0 !important;
+    top: 0 !important;
+    width: var(--custom-width, 40vw);
+    height: 100vh !important;
+    transform: translateX(100%);
+    opacity: 0;
+    z-index: 20;
+    transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.2s cubic-bezier(.4,0,.2,1);
+}
+.widget-board-panel-custom.custom-width-right-outer.is-open {
+    transform: translateX(0);
+    opacity: 1;
+}
+/* カスタム幅モード（左スプリット外） */
+.widget-board-panel-custom.custom-width-left-outer {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: var(--custom-width, 40vw);
+    height: 100vh !important;
+    transform: translateX(-100%);
+    opacity: 0;
+    z-index: 20;
+    transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.2s cubic-bezier(.4,0,.2,1);
+}
+.widget-board-panel-custom.custom-width-left-outer.is-open {
+    transform: translateX(0);
+    opacity: 1;
+}
 
 /* Panel Header and Controls */
 .wb-panel-header {
@@ -636,8 +668,8 @@
 .wb-panel-resize-handle-left {
   left: 0;
 }
-.widget-board-panel-custom:not(.custom-width-right):not(.custom-width-left):not(.custom-width-center) .wb-panel-resize-handle-left,
-.widget-board-panel-custom:not(.custom-width-right):not(.custom-width-left):not(.custom-width-center) .wb-panel-resize-handle-right {
+.widget-board-panel-custom:not(.custom-width-right):not(.custom-width-left):not(.custom-width-center):not(.custom-width-right-outer):not(.custom-width-left-outer) .wb-panel-resize-handle-left,
+.widget-board-panel-custom:not(.custom-width-right):not(.custom-width-left):not(.custom-width-center):not(.custom-width-right-outer):not(.custom-width-left-outer) .wb-panel-resize-handle-right {
   display: none;
 }
 

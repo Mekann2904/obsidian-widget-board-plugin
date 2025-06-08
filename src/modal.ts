@@ -169,13 +169,25 @@ export class WidgetBoardModal {
     onOpen() {
         document.body.classList.add('wb-modal-open');
         // 右・左スプリット外モード時はbodyに専用クラスを付与
-        if (this.currentMode === WidgetBoardModal.MODES.RIGHT_OUTER) {
+        if (
+            this.currentMode === WidgetBoardModal.MODES.RIGHT_OUTER ||
+            (this.currentMode === WidgetBoardModal.MODES.CUSTOM_WIDTH && this.currentBoardConfig.customWidthAnchor === 'right-outer')
+        ) {
             document.body.classList.add('wb-modal-right-outer-open');
-            const width = (this.currentBoardConfig.outerWidth ?? 32) + 'vw';
+            const width =
+                (this.currentMode === WidgetBoardModal.MODES.CUSTOM_WIDTH
+                    ? this.currentBoardConfig.customWidth || 40
+                    : this.currentBoardConfig.outerWidth ?? 32) + 'vw';
             document.body.style.setProperty('--outer-width', width);
-        } else if (this.currentMode === WidgetBoardModal.MODES.LEFT_OUTER) {
+        } else if (
+            this.currentMode === WidgetBoardModal.MODES.LEFT_OUTER ||
+            (this.currentMode === WidgetBoardModal.MODES.CUSTOM_WIDTH && this.currentBoardConfig.customWidthAnchor === 'left-outer')
+        ) {
             document.body.classList.add('wb-modal-left-outer-open');
-            const width = (this.currentBoardConfig.outerWidth ?? 32) + 'vw';
+            const width =
+                (this.currentMode === WidgetBoardModal.MODES.CUSTOM_WIDTH
+                    ? this.currentBoardConfig.customWidth || 40
+                    : this.currentBoardConfig.outerWidth ?? 32) + 'vw';
             document.body.style.setProperty('--outer-width', width);
         } else {
             document.body.style.removeProperty('--outer-width');
@@ -407,8 +419,12 @@ export class WidgetBoardModal {
             return buttons;
         });
 
-        const anchors: Array<{ key: 'left' | 'center' | 'right', label: string }> = [
-            { key: 'left', label: '左' }, { key: 'center', label: '中央' }, { key: 'right', label: '右' }
+        const anchors: Array<{ key: 'left' | 'center' | 'right' | 'right-outer' | 'left-outer', label: string }> = [
+            { key: 'left', label: '左' },
+            { key: 'center', label: '中央' },
+            { key: 'right', label: '右' },
+            { key: 'right-outer', label: '右スプリット外' },
+            { key: 'left-outer', label: '左スプリット外' }
         ];
         anchors.forEach(anchorObj => {
             const anchorBtn = customWidthAnchorBtnContainer.createEl('button', { text: anchorObj.label });
@@ -775,7 +791,14 @@ export class WidgetBoardModal {
         const validModeClasses = Object.values(WidgetBoardModal.MODES) as string[];
 
         validModeClasses.forEach(cls => modalEl.classList.remove(cls));
-        modalEl.classList.remove('custom-width-right', 'custom-width-left', 'custom-width-center');
+        modalEl.classList.remove(
+            'custom-width-right',
+            'custom-width-left',
+            'custom-width-center',
+            'custom-width-right-outer',
+            'custom-width-left-outer'
+        );
+        document.body.classList.remove('wb-modal-right-outer-open', 'wb-modal-left-outer-open');
 
         if (newModeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) {
             const anchor = this.currentBoardConfig.customWidthAnchor || 'right';
@@ -783,9 +806,24 @@ export class WidgetBoardModal {
             const width = (this.currentBoardConfig.customWidth || 40) + 'vw';
             modalEl.style.width = width;
             modalEl.style.setProperty('--custom-width', width);
-            modalEl.style.right = '';
-            modalEl.style.left = '';
-            modalEl.style.transform = '';
+            if (anchor === 'right-outer') {
+                modalEl.style.right = '';
+                modalEl.style.left = '';
+                modalEl.style.transform = '';
+                modalEl.style.setProperty('--outer-width', width);
+                document.body.classList.add('wb-modal-right-outer-open');
+            } else if (anchor === 'left-outer') {
+                modalEl.style.left = '';
+                modalEl.style.right = '';
+                modalEl.style.transform = '';
+                modalEl.style.setProperty('--outer-width', width);
+                document.body.classList.add('wb-modal-left-outer-open');
+            } else {
+                modalEl.style.right = '';
+                modalEl.style.left = '';
+                modalEl.style.transform = '';
+                modalEl.style.removeProperty('--outer-width');
+            }
         } else if (newModeClass === WidgetBoardModal.MODES.RIGHT_OUTER) {
             modalEl.classList.add(WidgetBoardModal.MODES.RIGHT_OUTER);
             const width = (this.currentBoardConfig.outerWidth ?? 32) + 'vw';

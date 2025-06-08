@@ -27,7 +27,12 @@ export interface BoardConfiguration {
     defaultMode: string;
     widgets: WidgetConfig[];
     customWidth?: number;
-    customWidthAnchor?: 'left' | 'center' | 'right';
+    customWidthAnchor?:
+        | 'left'
+        | 'center'
+        | 'right'
+        | 'right-outer'
+        | 'left-outer';
     outerWidth?: number;
 }
 
