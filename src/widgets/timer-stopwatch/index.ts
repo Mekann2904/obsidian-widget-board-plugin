@@ -539,6 +539,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
             this.currentAudioElement.src = "";
             this.currentAudioElement = null;
         }
+        TimerStopwatchWidget.clearGlobalIntervalIfNoneRunning();
     }
 
     /**
