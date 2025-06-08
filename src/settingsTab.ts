@@ -693,6 +693,11 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             } else if (customWidthSettingEl) {
                                 customWidthSettingEl.style.display = 'none';
                             }
+                            if (value === 'custom-width' && customWidthAnchorSettingEl) {
+                                customWidthAnchorSettingEl.style.display = '';
+                            } else if (customWidthAnchorSettingEl) {
+                                customWidthAnchorSettingEl.style.display = 'none';
+                            }
                             if ((value === WidgetBoardModal.MODES.RIGHT_OUTER || value === WidgetBoardModal.MODES.LEFT_OUTER) && outerWidthSettingEl) {
                                 outerWidthSettingEl.style.display = '';
                             } else if (outerWidthSettingEl) {
