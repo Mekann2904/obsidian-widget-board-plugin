@@ -324,7 +324,14 @@ export class MemoWidget implements WidgetImplementation {
                     });
             };
             if ('requestIdleCallback' in window) {
-                (window as any).requestIdleCallback(render);
+                const idleRender = (deadline?: IdleDeadline) => {
+                    if (deadline && deadline.timeRemaining() < 5 && !deadline.didTimeout) {
+                        (window as any).requestIdleCallback(idleRender);
+                        return;
+                    }
+                    render();
+                };
+                (window as any).requestIdleCallback(idleRender);
             } else {
                 setTimeout(render, 0);
             }
