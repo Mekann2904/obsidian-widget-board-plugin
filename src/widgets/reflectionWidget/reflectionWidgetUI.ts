@@ -8,7 +8,7 @@ import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/ge
 import { deobfuscate, getDateKey, getDateKeyLocal, getWeekRange } from '../../utils';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
-import { renderMermaidInWorker } from '../../utils';
+import { renderMermaidInWorker, renderChartInWorker } from '../../utils';
 
 let Chart: any;
 let chartModulePromise: Promise<any> | null = null;
@@ -377,39 +377,47 @@ export class ReflectionWidgetUI {
                         }
                         this.canvasEl.style.display = 'block';
                         if (this.chartImgEl) this.chartImgEl.style.display = 'none';
-                        const ctx = this.canvasEl.getContext('2d');
-                        if (ctx) {
-                            this.chart = new Chart(ctx, {
-                                type: 'line',
-                                data: {
-                                    labels: days.map(d => d.slice(5)),
-                                    datasets: [{
-                                        label: '投稿数',
-                                        data: counts,
-                                        borderColor: '#4a90e2',
-                                        backgroundColor: 'rgba(74,144,226,0.15)',
-                                        fill: true,
-                                        tension: 0.3,
-                                        pointRadius: 3,
-                                    }]
-                                },
-                                options: {
-                                    responsive: false,
-                                    animation: false,
-                                    plugins: { legend: { display: false } },
-                                    scales: {
-                                        x: {
-                                            grid: { display: false },
-                                            ticks: { maxTicksLimit: 5 }
-                                        },
-                                        y: { beginAtZero: true, grid: { color: '#eee' } }
-                                    }
-                                }
-                            });
+                        if ('OffscreenCanvas' in window && this.canvasEl.transferControlToOffscreen) {
+                            await renderChartInWorker(this.canvasEl, days.map(d => d.slice(5)), counts);
                             await new Promise(r => requestAnimationFrame(r));
                             this.plugin.tweetChartImageData = this.canvasEl.toDataURL();
                             this.plugin.tweetChartCountsKey = key;
                             this.plugin.tweetChartDirty = false;
+                        } else {
+                            const ctx = this.canvasEl.getContext('2d');
+                            if (ctx) {
+                                this.chart = new Chart(ctx, {
+                                    type: 'line',
+                                    data: {
+                                        labels: days.map(d => d.slice(5)),
+                                        datasets: [{
+                                            label: '投稿数',
+                                            data: counts,
+                                            borderColor: '#4a90e2',
+                                            backgroundColor: 'rgba(74,144,226,0.15)',
+                                            fill: true,
+                                            tension: 0.3,
+                                            pointRadius: 3,
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: false,
+                                        animation: false,
+                                        plugins: { legend: { display: false } },
+                                        scales: {
+                                            x: {
+                                                grid: { display: false },
+                                                ticks: { maxTicksLimit: 5 }
+                                            },
+                                            y: { beginAtZero: true, grid: { color: '#eee' } }
+                                        }
+                                    }
+                                });
+                                await new Promise(r => requestAnimationFrame(r));
+                                this.plugin.tweetChartImageData = this.canvasEl.toDataURL();
+                                this.plugin.tweetChartCountsKey = key;
+                                this.plugin.tweetChartDirty = false;
+                            }
                         }
                         this.lastChartData = [...counts];
                     }
