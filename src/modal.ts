@@ -152,10 +152,10 @@ export class WidgetBoardModal {
         if (this.isOpen) return;
         document.body.appendChild(this.modalEl);
         this.onOpen();
-        // アニメーションクラスの付与だけをrAFで行う
+        // rAF 内で reflow をまとめて実行
         this.modalEl.classList.remove('is-open');
-        void this.modalEl.offsetWidth;
         requestAnimationFrame(() => {
+            void this.modalEl.offsetWidth;
             this.modalEl.classList.add('is-open');
         });
     }
@@ -229,8 +229,8 @@ export class WidgetBoardModal {
             if (!isResizingRight) return;
             isResizingRight = false;
             document.body.style.cursor = '';
-            modalEl.classList.remove('no-transition');
             const finalWidthPx = modalEl.offsetWidth;
+            modalEl.classList.remove('no-transition');
             const vw = finalWidthPx / window.innerWidth * 100;
             this.currentCustomWidth = vw;
             this.currentBoardConfig.customWidth = vw;
@@ -281,8 +281,8 @@ export class WidgetBoardModal {
             if (!isResizingLeft) return;
             isResizingLeft = false;
             document.body.style.cursor = '';
-            modalEl.classList.remove('no-transition');
             const finalWidthPx = modalEl.offsetWidth;
+            modalEl.classList.remove('no-transition');
             const vw = (finalWidthPx / window.innerWidth) * 100;
             this.currentCustomWidth = vw;
             this.currentBoardConfig.customWidth = vw;
