@@ -162,7 +162,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
                     clearInterval(this.globalIntervalId);
                     this.globalIntervalId = null;
                 }
-            }, 250);
+            }, 500);
         }
     }
 
