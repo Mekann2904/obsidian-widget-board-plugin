@@ -77,6 +77,7 @@ export class WidgetBoardModal {
     private dragDropListeners: Array<{ type: string, handler: EventListenerOrEventListenerObject }> = [];
     private dragOverScheduled = false;
     private pendingDragOverEvent: { container: HTMLElement; overElement: HTMLElement; clientY: number } | null = null;
+    private widgetObserver: IntersectionObserver | null = null;
 
     static readonly MODES = {
         RIGHT_HALF: 'mode-right-half',
@@ -476,6 +477,11 @@ export class WidgetBoardModal {
      * @param container ウィジェット配置先の要素
      */
     async loadWidgets(container: HTMLElement) {
+        // 既存のobserverがあれば解除
+        if (this.widgetObserver) {
+            this.widgetObserver.disconnect();
+            this.widgetObserver = null;
+        }
         const boardInGlobal = this.plugin.settings.boards.find(b => b.id === this.currentBoardId);
         const widgetsToLoad = boardInGlobal ? boardInGlobal.widgets : this.currentBoardConfig.widgets;
         const newOrder = widgetsToLoad.map(w => w.id);
@@ -576,6 +582,7 @@ export class WidgetBoardModal {
                 }
             });
         }, { root: container, rootMargin: '200px' });
+        this.widgetObserver = observer;
         let index = 0;
         // MessageChannelによる即時キューイング
         const channel = new MessageChannel();
@@ -584,6 +591,9 @@ export class WidgetBoardModal {
             channel.port2.postMessage(undefined);
         }
         function renderOneWidget(widgetConfig: WidgetConfig) {
+            // 既存の同じIDのwrapperがあれば削除
+            const old = container.querySelector(`[data-widget-id="${widgetConfig.id}"]`);
+            if (old) old.remove();
             let wrapper;
             if (this.isEditMode) {
                 wrapper = container.createDiv({ cls: 'wb-widget-edit-wrapper' });

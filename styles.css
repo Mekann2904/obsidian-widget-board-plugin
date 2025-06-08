@@ -212,12 +212,11 @@
 
 /* Widget Container and General Widget Styling */
 .wb-widget-container {
-    flex: 1 1 0 !important;
-    min-height: 0 !important;
-    max-height: 100% !important;
-    overflow-y: auto !important;
-    padding: 15px;
-    background-color: var(--background-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    padding: 20px 12px;
+    background: var(--background-primary, #181818);
 }
 .wb-widget-container.is-editing {
     flex: 1 1 0 !important;
@@ -689,6 +688,7 @@
 /* --- Animation Enhancements --- */
 .wb-widget-edit-wrapper {
   transition: border-color 0.2s, background 0.2s;
+  width: 100%;
 }
 .wb-widget-edit-wrapper.is-dragging {
   transition: opacity 0.2s, background 0.2s;
