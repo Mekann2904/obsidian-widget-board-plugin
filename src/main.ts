@@ -19,10 +19,7 @@ import { debugLog } from './utils/logger';
 import { filterConsoleWarn } from './utils/consoleWarnFilter';
 import { Component, TFile } from 'obsidian';
 import { preloadChartJS } from './widgets/reflectionWidget/reflectionWidgetUI';
-
-function getDateKey(date: Date): string {
-    return date.toISOString().slice(0, 10);
-}
+import { getDateKey, getWeekRange } from './utils';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -450,11 +447,9 @@ export default class WidgetBoardPlugin extends Plugin {
                 } catch {}
                 return null;
             }
-            const todayKey = (new Date()).toISOString().slice(0, 10);
-            const now = new Date();
-            const day = now.getDay();
-            const weekEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - day));
-            const weekKey = weekEnd.toISOString().slice(0, 10);
+            const todayKey = getDateKey(new Date());
+            const [, weekEnd] = getWeekRange();
+            const weekKey = weekEnd;
             const todaySummary = await loadReflectionSummary('today', todayKey, this.app);
             const weekSummary = await loadReflectionSummary('week', weekKey, this.app);
 

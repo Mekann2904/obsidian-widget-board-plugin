@@ -2,7 +2,7 @@ import { App, Notice, TFile } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
-import { deobfuscate } from '../../utils';
+import { deobfuscate, pad2, getDateKeyLocal } from '../../utils';
 import { geminiPrompt } from '../../llm/gemini/tweetReplyPrompt';
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
@@ -417,7 +417,7 @@ export class TweetWidget implements WidgetImplementation {
             // スレッドの最後の投稿の投稿日時を取得
             const lastPost = thread[thread.length - 1];
             const date = new Date(lastPost.created);
-            const dateStr = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${date.getHours()}時${date.getMinutes().toString().padStart(2, '0')}分`;
+            const dateStr = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${date.getHours()}時${pad2(date.getMinutes())}分`;
             // 時間帯ラベルを判定
             function getTimeZoneLabel(date: Date): string {
                 const hour = date.getHours();
@@ -519,16 +519,9 @@ export class TweetWidget implements WidgetImplementation {
             if (this.currentPeriod === 'today') {
                 // ローカルタイムで今日の日付
                 const today = new Date();
-                const yyyy = today.getFullYear();
-                const mm = String(today.getMonth() + 1).padStart(2, '0');
-                const dd = String(today.getDate()).padStart(2, '0');
-                const todayStr = `${yyyy}-${mm}-${dd}`;
+                const todayStr = getDateKeyLocal(today);
                 posts = posts.filter(p => {
-                    const d = new Date(p.created);
-                    const yyyy2 = d.getFullYear();
-                    const mm2 = String(d.getMonth() + 1).padStart(2, '0');
-                    const dd2 = String(d.getDate()).padStart(2, '0');
-                    const dateStr = `${yyyy2}-${mm2}-${dd2}`;
+                    const dateStr = getDateKeyLocal(new Date(p.created));
                     return dateStr === todayStr;
                 });
             } else if (this.currentPeriod === 'custom') {

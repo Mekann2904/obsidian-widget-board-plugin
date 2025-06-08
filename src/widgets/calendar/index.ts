@@ -4,7 +4,7 @@ import { DEFAULT_CALENDAR_SETTINGS } from '../../settingsDefaults';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { debugLog } from '../../utils/logger';
-import { applyWidgetSize, createWidgetContainer } from '../../utils';
+import { applyWidgetSize, createWidgetContainer, pad2 } from '../../utils';
 import moment from 'moment';
 
 // --- カレンダーウィジェット設定インターフェース ---
@@ -124,7 +124,7 @@ export class CalendarWidget implements WidgetImplementation {
                 const y = cellDate.getFullYear();
                 const m = cellDate.getMonth() + 1;
                 const d = cellDate.getDate();
-                const dateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const dateStr = `${y}-${pad2(m)}-${pad2(d)}`;
                 td.setAttr('data-date', dateStr);
                 if (cellDate.getMonth() !== month) {
                     td.addClass('calendar-other-month');
@@ -200,8 +200,8 @@ export class CalendarWidget implements WidgetImplementation {
         const format = globalFormat;
         debugLog(this.plugin, 'calendar format:', format, 'dateStr:', dateStr);
         const [y, m, d] = dateStr.split('-');
-        const MM = m.padStart(2, '0');
-        const DD = d.padStart(2, '0');
+        const MM = pad2(parseInt(m, 10));
+        const DD = pad2(parseInt(d, 10));
         let dailyNoteName = format.toUpperCase()
             .replace(/YYYY/g, y)
             .replace(/MM/g, MM)

@@ -5,6 +5,7 @@ import { registeredWidgetImplementations } from './widgetRegistry';
 import type { WidgetImplementation, BoardConfiguration, WidgetConfig } from './interfaces';
 import cloneDeep from 'lodash.clonedeep';
 import { preloadChartJS, loadReflectionSummaryShared } from './widgets/reflectionWidget/reflectionWidgetUI';
+import { getDateKeyLocal, getWeekRange } from './utils';
 import type { ReflectionWidgetPreloadBundle } from './widgets/reflectionWidget/reflectionWidget';
 
 /**
@@ -505,18 +506,8 @@ export class WidgetBoardModal {
         let reflectionPreloadBundle: ReflectionWidgetPreloadBundle | undefined = undefined;
         if (widgetsToLoad.some(w => w.type === 'reflection-widget')) {
             const chartModule = await preloadChartJS();
-            const todayKey = (() => {
-                const now = new Date();
-                return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
-            })();
-            const [weekStart, weekEnd] = (() => {
-                const now = new Date();
-                const day = now.getDay();
-                const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
-                const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - day));
-                return [start, end];
-            })();
-            const weekKey = [weekEnd.getFullYear(), String(weekEnd.getMonth() + 1).padStart(2, '0'), String(weekEnd.getDate()).padStart(2, '0')].join('-');
+            const todayKey = getDateKeyLocal(new Date());
+            const [, weekKey] = getWeekRange();
             const [todaySummary, weekSummary] = await Promise.all([
                 loadReflectionSummaryShared('today', todayKey, this.plugin.app),
                 loadReflectionSummaryShared('week', weekKey, this.plugin.app)

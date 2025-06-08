@@ -6,7 +6,7 @@ import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../tweetWidget/constants';
 import { LLMManager } from '../../llm/llmManager';
 import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from '../../llm/gemini/summaryPrompts';
-import { deobfuscate } from '../../utils';
+import { deobfuscate, getDateKey, getDateKeyLocal } from '../../utils';
 import { debugLog } from '../../utils/logger';
 import { ReflectionWidgetUI } from './reflectionWidgetUI';
 
@@ -22,18 +22,6 @@ function getTweetDbPath(plugin: any): string {
     return 'tweets.json';
 }
 
-function getDateKey(date: Date): string {
-    return date.toISOString().slice(0, 10); // YYYY-MM-DD
-}
-
-// ローカルタイム基準でYYYY-MM-DDを返す
-function getDateKeyLocal(date: Date): string {
-    return [
-        date.getFullYear(),
-        String(date.getMonth() + 1).padStart(2, '0'),
-        String(date.getDate()).padStart(2, '0')
-    ].join('-');
-}
 
 function getLastNDays(n: number): string[] {
     const days: string[] = [];
@@ -45,13 +33,6 @@ function getLastNDays(n: number): string[] {
     return days;
 }
 
-function getWeekRange(): [string, string] {
-    const now = new Date();
-    const day = now.getDay(); // 0:日〜6:土
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - day));
-    return [getDateKey(start), getDateKey(end)];
-}
 
 async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: any): Promise<string> {
     if (!plugin.llmManager) return 'LLM未初期化';
