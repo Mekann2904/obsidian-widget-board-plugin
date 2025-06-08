@@ -1,7 +1,7 @@
 import { App, Notice, setIcon } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
-import { createWidgetContainer } from '../../utils';
+import { createWidgetContainer, pad2 } from '../../utils';
 
 // --- 通知音の種類の型定義 ---
 export type TimerSoundType = 'off' | 'default_beep' | 'bell' | 'chime'; // chime を追加する場合
@@ -436,7 +436,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         const t = Math.max(0, Math.round(totalSeconds));
         const m = Math.floor(t / 60);
         const s = t % 60;
-        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        return `${pad2(m)}:${pad2(s)}`;
     }
 
     // --- 通知音再生メソッド ---

@@ -1,5 +1,6 @@
 import type { TweetWidgetPost } from './types';
 import { Notice } from 'obsidian';
+import { pad2 } from '../../utils';
 
 const ALL_COLUMNS = [
     { key: 'id', label: 'ID' },
@@ -199,7 +200,7 @@ export class TweetWidgetDataViewer {
 
     private formatDate(ts: number): string {
         const d = new Date(ts);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
     }
 
     private copyCsvToClipboard() {

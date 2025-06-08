@@ -5,7 +5,7 @@ import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 import { TweetRepository } from '../tweetWidget';
 import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
 import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/gemini/summaryPrompts';
-import { deobfuscate } from '../../utils';
+import { deobfuscate, getDateKey, getDateKeyLocal, getWeekRange } from '../../utils';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
 import { renderMermaidInWorker } from '../../utils';
@@ -33,16 +33,6 @@ export function preloadChartJS(): Promise<any> {
     return chartModulePromise;
 }
 
-function getDateKey(date: Date): string {
-    return date.toISOString().slice(0, 10);
-}
-function getDateKeyLocal(date: Date): string {
-    return [
-        date.getFullYear(),
-        String(date.getMonth() + 1).padStart(2, '0'),
-        String(date.getDate()).padStart(2, '0')
-    ].join('-');
-}
 function getLastNDays(n: number): string[] {
     const days: string[] = [];
     const now = new Date();
@@ -51,13 +41,6 @@ function getLastNDays(n: number): string[] {
         days.push(getDateKey(d));
     }
     return days;
-}
-function getWeekRange(): [string, string] {
-    const now = new Date();
-    const day = now.getDay();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - day));
-    return [getDateKey(start), getDateKey(end)];
 }
 async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: any): Promise<string> {
     if (!plugin.llmManager) return 'LLM未初期化';

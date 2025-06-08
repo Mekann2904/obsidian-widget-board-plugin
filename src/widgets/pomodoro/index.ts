@@ -4,7 +4,7 @@ import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main'; // main.ts の WidgetBoardPlugin クラスをインポート
 import { PomodoroMemoWidget, PomodoroMemoSettings } from './pomodoroMemoWidget';
 import { debugLog } from '../../utils/logger';
-import { applyWidgetSize, createWidgetContainer } from '../../utils';
+import { applyWidgetSize, createWidgetContainer, pad2, getDateKeyLocal } from '../../utils';
 
 // --- 通知音の種類の型定義 ---
 export type PomodoroSoundType = 'off' | 'default_beep' | 'bell' | 'chime';
@@ -376,7 +376,7 @@ export class PomodoroWidget implements WidgetImplementation {
     private formatTime(totalSeconds: number): string {
         const m = Math.floor(totalSeconds / 60);
         const s = totalSeconds % 60;
-        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+        return `${pad2(m)}:${pad2(s)}`;
     }
 
     /**
@@ -575,10 +575,9 @@ export class PomodoroWidget implements WidgetImplementation {
                 startDate = new Date();
                 endDate = new Date();
             }
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
-            const startStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
-            const endStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+            const dateStr = getDateKeyLocal(startDate);
+            const startStr = `${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`;
+            const endStr = `${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}`;
             this.sessionLogs.push({
                 date: dateStr,
                 start: startStr,
@@ -598,10 +597,9 @@ export class PomodoroWidget implements WidgetImplementation {
                 startDate = new Date();
                 endDate = new Date();
             }
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
-            const startStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
-            const endStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+            const dateStr = getDateKeyLocal(startDate);
+            const startStr = `${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`;
+            const endStr = `${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}`;
             this.sessionLogs.push({
                 date: dateStr,
                 start: startStr,
@@ -621,10 +619,9 @@ export class PomodoroWidget implements WidgetImplementation {
                 startDate = new Date();
                 endDate = new Date();
             }
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
-            const startStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
-            const endStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+            const dateStr = getDateKeyLocal(startDate);
+            const startStr = `${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`;
+            const endStr = `${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}`;
             this.sessionLogs.push({
                 date: dateStr,
                 start: startStr,
@@ -660,9 +657,8 @@ export class PomodoroWidget implements WidgetImplementation {
         // セッション未開始でスキップする場合の対応
         if (!this.currentSessionStartTime) {
             const now = new Date();
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-            const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            const dateStr = getDateKeyLocal(now);
+            const timeStr = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
             // 0秒作業ログを記録
             this.sessionLogs.push({
                 date: dateStr,
@@ -686,10 +682,9 @@ export class PomodoroWidget implements WidgetImplementation {
         if (this.currentSessionStartTime) {
             const startDate = this.currentSessionStartTime;
             const endDate = new Date();
-            const pad = (n: number) => n.toString().padStart(2, '0');
-            const dateStr = `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`;
-            const startStr = `${pad(startDate.getHours())}:${pad(startDate.getMinutes())}`;
-            const endStr = `${pad(endDate.getHours())}:${pad(endDate.getMinutes())}`;
+            const dateStr = getDateKeyLocal(startDate);
+            const startStr = `${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`;
+            const endStr = `${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}`;
             this.sessionLogs.push({
                 date: dateStr,
                 start: startStr,
