@@ -1,6 +1,6 @@
 jest.mock('obsidian', () => ({ Notice: jest.fn(), App: class {}, TFile: class {} }), { virtual: true });
 
-const { TweetWidget } = require('../../src/widgets/tweetWidget/tweetWidget.ts');
+const { TweetWidget } = require('../../src/widgets/tweetWidget');
 
 describe('TweetWidget.getTweetDbPath', () => {
   const createWidget = (baseFolder = '') => {

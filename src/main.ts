@@ -13,7 +13,7 @@ import cloneDeep from 'lodash.clonedeep';
 import { LLMManager } from './llm/llmManager';
 import { GeminiProvider } from './llm/gemini/geminiApi';
 import yaml from 'js-yaml';
-import { TweetRepository } from './widgets/tweetWidget/TweetRepository';
+import { TweetRepository } from './widgets/tweetWidget';
 import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
 import { debugLog } from './utils/logger';
 import { filterConsoleWarn } from './utils/consoleWarnFilter';
