@@ -82,7 +82,7 @@ export class TweetStore {
      * @param rootId スレッドの起点となる投稿のID
      */
     public deleteThread(rootId: string): void {
-        const threadIds = this.collectThreadIdsRecursive(rootId);
+        const threadIds = this.collectThreadIds(rootId);
         const rootPost = this.postsById.get(rootId);
 
         if (rootPost?.threadId) {
@@ -123,16 +123,33 @@ export class TweetStore {
     }
 
     /**
-     * スレッドの全IDを収集するヘルパー関数
+     * スレッドの子投稿一覧を親IDでグループ化したMapを作成する
      */
-    private collectThreadIdsRecursive(rootId: string): string[] {
+    private buildChildrenMap(): Map<string, TweetWidgetPost[]> {
+        const map = new Map<string, TweetWidgetPost[]>();
+        for (const post of this.settings.posts) {
+            if (post.threadId) {
+                if (!map.has(post.threadId)) {
+                    map.set(post.threadId, []);
+                }
+                map.get(post.threadId)!.push(post);
+            }
+        }
+        return map;
+    }
+
+    /**
+     * スレッドの全IDを収集する
+     */
+    public collectThreadIds(rootId: string): string[] {
+        const childrenMap = this.buildChildrenMap();
         const ids = new Set<string>();
         const queue = [rootId];
         ids.add(rootId);
 
         while (queue.length > 0) {
             const currentId = queue.shift()!;
-            const children = this.settings.posts.filter(p => p.threadId === currentId);
+            const children = childrenMap.get(currentId) || [];
             for (const child of children) {
                 if (!ids.has(child.id)) {
                     ids.add(child.id);
@@ -142,4 +159,5 @@ export class TweetStore {
         }
         return Array.from(ids);
     }
+
 }
