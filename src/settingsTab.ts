@@ -671,6 +671,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 dropdown.addOption(WidgetBoardModal.MODES.LEFT_THIRD, '左パネル（33vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.LEFT_HALF, '左パネル（50vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.LEFT_TWO_THIRD, '左パネル（66vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.LEFT_OUTER, '左スプリット外（32vw）'); // 追加
                 // 中央パネル
                 dropdown.addOption(WidgetBoardModal.MODES.CENTER_THIRD, '中央パネル（33vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.CENTER_HALF, '中央パネル（50vw）');
@@ -678,6 +679,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 dropdown.addOption(WidgetBoardModal.MODES.RIGHT_THIRD, '右パネル（33vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, '右パネル（50vw）');
                 dropdown.addOption(WidgetBoardModal.MODES.RIGHT_TWO_THIRD, '右パネル（66vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_OUTER, '右スプリット外（32vw）'); // 追加
                 // カスタム
                 dropdown.addOption('custom-width', 'カスタム幅（vw）');
                 dropdown.setValue(board.defaultMode)

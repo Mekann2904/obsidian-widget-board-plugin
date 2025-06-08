@@ -2172,3 +2172,80 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   height: auto;
   display: block;
 }
+
+/* 右スプリット外 */
+.widget-board-panel-custom.mode-right-outer {
+    width: 25vw !important;
+    right: -25vw !important;
+    top: 0 !important;
+    height: 100vh !important;
+    transform: none !important;
+    opacity: 1;
+    z-index: 20;
+}
+.widget-board-panel-custom.mode-right-outer.is-open {
+    right: 0 !important;
+    opacity: 1;
+}
+/* 左スプリット外 */
+.widget-board-panel-custom.mode-left-outer {
+    width: 25vw !important;
+    left: -25vw !important;
+    top: 0 !important;
+    height: 100vh !important;
+    transform: none !important;
+    opacity: 1;
+    z-index: 20;
+}
+.widget-board-panel-custom.mode-left-outer.is-open {
+    left: 0 !important;
+    opacity: 1;
+}
+
+/* 右スプリット外モード時、ワークスペース全体を押し出す */
+body.wb-modal-right-outer-open .workspace {
+    margin-right: 25vw !important;
+    transition: margin 0.35s cubic-bezier(.4,0,.2,1);
+}
+/* 左スプリット外モード時、ワークスペース全体を押し出す */
+body.wb-modal-left-outer-open .workspace {
+    margin-left: 25vw !important;
+    transition: margin 0.35s cubic-bezier(.4,0,.2,1);
+}
+/* モーダル自体もスライドインアニメーションを揃える */
+.widget-board-panel-custom.mode-right-outer {
+    position: absolute !important;
+    right: 0 !important;
+    top: 0 !important;
+    height: 100vh !important;
+    width: 25vw !important;
+    z-index: 20;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.2s cubic-bezier(.4,0,.2,1);
+}
+.widget-board-panel-custom.mode-right-outer.is-open {
+    opacity: 1;
+    transform: translateX(0);
+}
+.widget-board-panel-custom.mode-left-outer {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    height: 100vh !important;
+    width: 25vw !important;
+    z-index: 20;
+    opacity: 0;
+    transform: translateX(-100%);
+    transition: transform 0.35s cubic-bezier(.4,0,.2,1), opacity 0.2s cubic-bezier(.4,0,.2,1);
+}
+.widget-board-panel-custom.mode-left-outer.is-open {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* 右スプリット外 */
+.widget-board-panel-custom.mode-right-outer,
+.widget-board-panel-custom.mode-left-outer {
+    overflow-y: auto !important;
+}

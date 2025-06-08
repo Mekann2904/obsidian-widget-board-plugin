@@ -88,7 +88,9 @@ export class WidgetBoardModal {
         LEFT_THIRD: 'mode-left-third',
         CENTER_HALF: 'mode-center-half',
         CENTER_THIRD: 'mode-center-third',
-        CUSTOM_WIDTH: 'custom-width'
+        CUSTOM_WIDTH: 'custom-width',
+        RIGHT_OUTER: 'mode-right-outer',
+        LEFT_OUTER: 'mode-left-outer'
     } as const;
 
     /**
@@ -166,6 +168,12 @@ export class WidgetBoardModal {
      */
     onOpen() {
         document.body.classList.add('wb-modal-open');
+        // 右・左スプリット外モード時はbodyに専用クラスを付与
+        if (this.currentMode === WidgetBoardModal.MODES.RIGHT_OUTER) {
+            document.body.classList.add('wb-modal-right-outer-open');
+        } else if (this.currentMode === WidgetBoardModal.MODES.LEFT_OUTER) {
+            document.body.classList.add('wb-modal-left-outer-open');
+        }
         this.isOpen = true;
         this.isEditMode = false; // 開いたときは必ず表示モードで開始
         const { contentEl, modalEl } = this;
@@ -348,9 +356,9 @@ export class WidgetBoardModal {
         const displayControlsContainer = displayBody.createDiv({ cls: 'wb-display-controls-container' });
         this.modeButtons = [];
         const modeGroups = [
-            { label: '左パネル', modes: [WidgetBoardModal.MODES.LEFT_THIRD, WidgetBoardModal.MODES.LEFT_HALF, WidgetBoardModal.MODES.LEFT_TWO_THIRD] },
+            { label: '左パネル', modes: [WidgetBoardModal.MODES.LEFT_THIRD, WidgetBoardModal.MODES.LEFT_HALF, WidgetBoardModal.MODES.LEFT_TWO_THIRD, WidgetBoardModal.MODES.LEFT_OUTER] },
             { label: '中央パネル', modes: [WidgetBoardModal.MODES.CENTER_THIRD, WidgetBoardModal.MODES.CENTER_HALF] },
-            { label: '右パネル', modes: [WidgetBoardModal.MODES.RIGHT_THIRD, WidgetBoardModal.MODES.RIGHT_HALF, WidgetBoardModal.MODES.RIGHT_TWO_THIRD] },
+            { label: '右パネル', modes: [WidgetBoardModal.MODES.RIGHT_THIRD, WidgetBoardModal.MODES.RIGHT_HALF, WidgetBoardModal.MODES.RIGHT_TWO_THIRD, WidgetBoardModal.MODES.RIGHT_OUTER] },
             { label: 'カスタム', modes: [WidgetBoardModal.MODES.CUSTOM_WIDTH] }
         ];
         let customWidthAnchorBtnContainer = displayControlsContainer.createDiv({ cls: 'custom-width-anchor-btns' });
@@ -365,9 +373,11 @@ export class WidgetBoardModal {
                 if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
                 else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = '右パネル（50vw）';
                 else if (modeClass === WidgetBoardModal.MODES.RIGHT_TWO_THIRD) buttonText = '右パネル（66vw）';
+                else if (modeClass === WidgetBoardModal.MODES.RIGHT_OUTER) buttonText = '右スプリット外（32vw）';
                 else if (modeClass === WidgetBoardModal.MODES.LEFT_TWO_THIRD) buttonText = '左パネル（66vw）';
                 else if (modeClass === WidgetBoardModal.MODES.LEFT_HALF) buttonText = '左パネル（50vw）';
                 else if (modeClass === WidgetBoardModal.MODES.LEFT_THIRD) buttonText = '左パネル（33vw）';
+                else if (modeClass === WidgetBoardModal.MODES.LEFT_OUTER) buttonText = '左スプリット外（32vw）';
                 else if (modeClass === WidgetBoardModal.MODES.CENTER_HALF) buttonText = '中央パネル（50vw）';
                 else if (modeClass === WidgetBoardModal.MODES.CENTER_THIRD) buttonText = '中央パネル（33vw）';
                 else if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) buttonText = 'カスタム幅';
@@ -770,6 +780,18 @@ export class WidgetBoardModal {
             modalEl.style.right = '';
             modalEl.style.left = '';
             modalEl.style.transform = '';
+        } else if (newModeClass === WidgetBoardModal.MODES.RIGHT_OUTER) {
+            modalEl.classList.add(WidgetBoardModal.MODES.RIGHT_OUTER);
+            modalEl.style.width = '32vw';
+            modalEl.style.right = '-32vw';
+            modalEl.style.left = '';
+            modalEl.style.transform = 'none';
+        } else if (newModeClass === WidgetBoardModal.MODES.LEFT_OUTER) {
+            modalEl.classList.add(WidgetBoardModal.MODES.LEFT_OUTER);
+            modalEl.style.width = '32vw';
+            modalEl.style.left = '-32vw';
+            modalEl.style.right = '';
+            modalEl.style.transform = 'none';
         } else {
             if (validModeClasses.includes(newModeClass)) {
                 modalEl.classList.add(newModeClass);
@@ -805,6 +827,8 @@ export class WidgetBoardModal {
             this.removeDragDropListeners(widgetContainerEl);
         }
         modalEl.classList.remove('is-open');
+        // 右・左スプリット外モード時はbodyの専用クラスを削除
+        document.body.classList.remove('wb-modal-right-outer-open', 'wb-modal-left-outer-open');
         setTimeout(() => {
             this.onClose();
             const selector = `.widget-board-panel-custom[data-board-id='${this.currentBoardId}']`;
