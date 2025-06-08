@@ -3,6 +3,8 @@ import type { TweetWidgetSettings, TweetWidgetPost } from './types';
 export class TweetStore {
     public settings: TweetWidgetSettings;
     public postsById: Map<string, TweetWidgetPost> = new Map();
+    public childrenByThreadId: Map<string, TweetWidgetPost[]> = new Map();
+    public quotesById: Map<string, TweetWidgetPost[]> = new Map();
 
     constructor(initialSettings: TweetWidgetSettings) {
         this.settings = initialSettings;
@@ -82,7 +84,7 @@ export class TweetStore {
      * @param rootId スレッドの起点となる投稿のID
      */
     public deleteThread(rootId: string): void {
-        const threadIds = this.collectThreadIdsRecursive(rootId);
+        const threadIds = this.collectThreadIds(rootId);
         const rootPost = this.postsById.get(rootId);
 
         if (rootPost?.threadId) {
@@ -120,19 +122,59 @@ export class TweetStore {
      */
     private updatePostsById(): void {
         this.postsById = new Map(this.settings.posts.map(p => [p.id, p]));
+        this.updateChildrenMap();
     }
 
     /**
-     * スレッドの全IDを収集するヘルパー関数
+     * threadIdごとの子投稿マップを再構築する
      */
-    private collectThreadIdsRecursive(rootId: string): string[] {
+    private updateChildrenMap(): void {
+        const childMap = new Map<string, TweetWidgetPost[]>();
+        const quoteMap = new Map<string, TweetWidgetPost[]>();
+        for (const post of this.settings.posts) {
+            if (post.threadId) {
+                if (!childMap.has(post.threadId)) {
+                    childMap.set(post.threadId, []);
+                }
+                childMap.get(post.threadId)!.push(post);
+            }
+            if (post.quoteId) {
+                if (!quoteMap.has(post.quoteId)) {
+                    quoteMap.set(post.quoteId, []);
+                }
+                quoteMap.get(post.quoteId)!.push(post);
+            }
+        }
+        this.childrenByThreadId = childMap;
+        this.quotesById = quoteMap;
+    }
+
+    /**
+     * 指定IDを親とするリプライ一覧を取得する
+     */
+    public getReplies(parentId: string): TweetWidgetPost[] {
+        return this.childrenByThreadId.get(parentId) || [];
+    }
+
+    /**
+     * 指定IDを引用した投稿一覧を取得する
+     */
+    public getQuotePosts(postId: string): TweetWidgetPost[] {
+        return this.quotesById.get(postId) || [];
+    }
+
+    /**
+     * スレッドの全IDを収集する
+     */
+    public collectThreadIds(rootId: string): string[] {
+        const childrenMap = this.childrenByThreadId;
         const ids = new Set<string>();
         const queue = [rootId];
         ids.add(rootId);
 
         while (queue.length > 0) {
             const currentId = queue.shift()!;
-            const children = this.settings.posts.filter(p => p.threadId === currentId);
+            const children = childrenMap.get(currentId) || [];
             for (const child of children) {
                 if (!ids.has(child.id)) {
                     ids.add(child.id);
@@ -142,4 +184,5 @@ export class TweetStore {
         }
         return Array.from(ids);
     }
+
 }

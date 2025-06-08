@@ -395,6 +395,7 @@ export default class WidgetBoardPlugin extends Plugin {
      * すべてのウィジェットのMarkdownをプリウォームしてキャッシュを作成
      */
     private async prewarmAllWidgetMarkdownCache() {
+        const MAX_PREWARM_ENTRIES = 50;
         try {
             new Notice('キャッシュ中…');
             // --- TweetWidget ---
@@ -403,7 +404,7 @@ export default class WidgetBoardPlugin extends Plugin {
                 : 'tweets.json';
             const repo = new TweetRepository(this.app, dbPath);
             const tweetSettings = await repo.load();
-            const tweetPosts = tweetSettings.posts || [];
+            const tweetPosts = (tweetSettings.posts || []).slice(0, MAX_PREWARM_ENTRIES);
 
             // --- MemoWidget, FileViewWidget ---
             const memoContents: string[] = [];
@@ -411,7 +412,6 @@ export default class WidgetBoardPlugin extends Plugin {
             for (const board of this.settings.boards) {
                 for (const widget of board.widgets) {
                     if (widget.type === 'memo' && widget.settings?.memoContent) {
-                        // 今後ファイルや外部データ参照があればここで取得してpushする
                         memoContents.push(widget.settings.memoContent);
                     }
                     if (widget.type === 'file-view-widget' && widget.settings?.fileName) {
@@ -419,6 +419,8 @@ export default class WidgetBoardPlugin extends Plugin {
                     }
                 }
             }
+            memoContents.splice(MAX_PREWARM_ENTRIES);
+            fileViewFiles.splice(MAX_PREWARM_ENTRIES);
 
             // --- ReflectionWidget: AI要約（今日・今週） ---
             async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: any): Promise<string | null> {
@@ -443,7 +445,7 @@ export default class WidgetBoardPlugin extends Plugin {
             // プリウォーム対象をまとめてバッチ処理
             let tweetIndex = 0, memoIndex = 0, fileIndex = 0;
             let reflectionIndex = 0;
-            const reflectionSummaries = [todaySummary, weekSummary].filter(Boolean) as string[];
+            const reflectionSummaries = [todaySummary, weekSummary].filter(Boolean).slice(0, MAX_PREWARM_ENTRIES) as string[];
             const batchSize = 3;
             const schedule = (cb: () => void) => {
                 if (typeof (window as any).requestIdleCallback === 'function') {

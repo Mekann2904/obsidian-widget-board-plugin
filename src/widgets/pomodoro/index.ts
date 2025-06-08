@@ -727,6 +727,7 @@ export class PomodoroWidget implements WidgetImplementation {
         if (this.memoWidget && this.memoWidget.isEditing) {
             this.memoWidget.saveChanges();
         }
+        (this.constructor as typeof PomodoroWidget).clearGlobalIntervalIfNoneRunning();
     }
     
     /**

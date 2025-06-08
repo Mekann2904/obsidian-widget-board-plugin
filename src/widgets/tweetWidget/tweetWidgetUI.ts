@@ -571,7 +571,7 @@ export class TweetWidgetUI {
         container.createDiv({ cls: 'tweet-detail-section-sep' });
 
         const renderRecursiveReplies = (parentId: string, cont: HTMLElement, depth: number = 0) => {
-            const replies = this.widget.currentSettings.posts.filter(t => t.threadId === parentId);
+            const replies = this.widget.getReplies(parentId);
             replies.sort((a, b) => a.created - b.created);
             replies.forEach(reply => {
                 const replyCard = cont.createDiv({ cls: 'tweet-detail-reply' });
@@ -588,7 +588,7 @@ export class TweetWidgetUI {
         
         renderRecursiveReplies(target.id, container);
 
-        if (this.widget.currentSettings.posts.filter(t => t.threadId === target.id).length === 0) {
+        if (this.widget.getReplies(target.id).length === 0) {
             container.createDiv({ cls: 'tweet-detail-no-reply', text: 'リプライはありません' });
         }
     }
@@ -799,7 +799,7 @@ export class TweetWidgetUI {
     }
 
     private renderReactedUsers(container: HTMLElement, post: TweetWidgetPost): void {
-        const replies = this.widget.currentSettings.posts.filter(t => t.threadId === post.id);
+        const replies = this.widget.getReplies(post.id);
         const uniqueUsers = new Map(replies.map(r => [r.userId, r]));
 
         if (uniqueUsers.size > 0) {
@@ -1082,7 +1082,7 @@ export class TweetWidgetUI {
         closeBtn.onclick = closeModal;
 
         const listBox = modal.createDiv('tweet-reply-modal-post');
-        const retweets = this.widget.currentSettings.posts.filter(p => p.quoteId === post.id);
+        const retweets = this.widget.getQuotePosts(post.id);
         if (retweets.length === 0) {
             listBox.createDiv({ text: 'まだ引用リツイートはありません。', cls: 'tweet-empty-notice' });
         } else {
