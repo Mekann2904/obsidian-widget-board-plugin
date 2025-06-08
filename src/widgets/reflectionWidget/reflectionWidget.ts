@@ -1,6 +1,6 @@
 import { App, MarkdownRenderer } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
-import { TweetRepository } from '../tweetWidget/TweetRepository';
+import { TweetRepository } from '../tweetWidget';
 import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../tweetWidget/constants';
 import { LLMManager } from '../../llm/llmManager';
