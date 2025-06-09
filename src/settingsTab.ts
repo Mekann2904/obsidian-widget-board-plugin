@@ -394,7 +394,73 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
 
         // --- つぶやき（グローバル設定） ---
         const tweetGlobalAcc = createAccordion('つぶやき（グローバル設定）', false);
-        // ベースフォルダは上部で指定
+        // ユーザー一覧セクション
+        tweetGlobalAcc.body.createEl('h4', { text: 'ユーザー一覧（グローバル）' });
+        const userListDiv = tweetGlobalAcc.body.createDiv({ cls: 'tweet-user-list-table' });
+        const renderUserList = () => {
+            userListDiv.empty();
+            // '@you'ユーザーがいなければ必ず先頭に追加
+            if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+            if (!this.plugin.settings.userProfiles.some(p => p.userId === '@you')) {
+                this.plugin.settings.userProfiles.unshift({ userName: 'あなた', userId: '@you', avatarUrl: '' });
+            }
+            const table = userListDiv.createEl('table', { cls: 'tweet-user-table' });
+            const thead = table.createEl('thead');
+            const headerRow = thead.createEl('tr');
+            ['ユーザー名', 'ユーザーID', 'アバターURL', ''].forEach(h => headerRow.createEl('th', { text: h }));
+            const tbody = table.createEl('tbody');
+            (this.plugin.settings.userProfiles || []).forEach((profile, idx) => {
+                const isSelf = profile.userId === '@you';
+                const row = tbody.createEl('tr');
+                // ユーザー名
+                const nameTd = row.createEl('td');
+                const nameInput = nameTd.createEl('input', { type: 'text', value: profile.userName || '', placeholder: '例: あなた' });
+                nameInput.onchange = async () => {
+                    if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                    this.plugin.settings.userProfiles[idx].userName = nameInput.value;
+                    await this.plugin.saveSettings();
+                };
+                // ユーザーID
+                const idTd = row.createEl('td');
+                const idInput = idTd.createEl('input', { type: 'text', value: profile.userId || '', placeholder: '例: @you' });
+                if (isSelf) idInput.disabled = true;
+                idInput.onchange = async () => {
+                    if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                    this.plugin.settings.userProfiles[idx].userId = idInput.value;
+                    await this.plugin.saveSettings();
+                };
+                // アバターURL
+                const avatarTd = row.createEl('td');
+                const avatarInput = avatarTd.createEl('input', { type: 'text', value: profile.avatarUrl || '', placeholder: 'https://example.com/avatar.png' });
+                avatarInput.onchange = async () => {
+                    if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                    this.plugin.settings.userProfiles[idx].avatarUrl = avatarInput.value;
+                    await this.plugin.saveSettings();
+                };
+                // 削除ボタン
+                const delTd = row.createEl('td');
+                if (!isSelf) {
+                    const delBtn = delTd.createEl('button', { text: '削除', cls: 'mod-warning' });
+                    delBtn.onclick = async () => {
+                        if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                        this.plugin.settings.userProfiles.splice(idx, 1);
+                        await this.plugin.saveSettings();
+                        renderUserList();
+                    };
+                }
+            });
+            // 追加ボタン
+            const addTr = tbody.createEl('tr');
+            addTr.createEl('td', { attr: { colspan: 4 } });
+            const addBtn = addTr.createEl('button', { text: '＋ ユーザーを追加', cls: 'mod-cta' });
+            addBtn.onclick = async () => {
+                if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                this.plugin.settings.userProfiles.push({ userName: '', userId: '', avatarUrl: '' });
+                await this.plugin.saveSettings();
+                renderUserList();
+            };
+        };
+        renderUserList();
         // --- AIリプライ発火上限設定 ---
         new Setting(tweetGlobalAcc.body)
             .setName('AIリプライをトリガーワードなしでも自動発火させる')
@@ -1448,48 +1514,49 @@ class ScheduleTweetModal extends Modal {
         let start = this.sched && this.sched.startDate ? this.sched.startDate : '';
         let end = this.sched && this.sched.endDate ? this.sched.endDate : '';
         let userId = this.sched && this.sched.userId ? this.sched.userId : '@you';
-        let userName = this.sched && this.sched.userName ? this.sched.userName : 'あなた';
+        let aiPrompt = this.sched && this.sched.aiPrompt ? this.sched.aiPrompt : '';
+        let aiModel = this.sched && this.sched.aiModel ? this.sched.aiModel : (this.plugin.settings.tweetAiModel || 'gemini-1.5-flash-latest');
+        // 内容入力欄（テキストエリア）
         new Setting(contentEl)
-            .setName('内容')
-            .addTextArea(t => {
-                t.setValue(text);
-                t.onChange(v => { text = v; });
-            });
-        // ユーザーID
+        .setName('内容')
+        .addTextArea(t => {
+            t.setValue(text);
+            t.onChange(v => { text = v; });
+        });
+        // ユーザーID（ドロップダウン選択に変更）
         new Setting(contentEl)
             .setName('ユーザーID')
-            .setDesc('例: @you')
-            .addText(t => {
-                t.setValue(userId);
-                t.onChange(v => { userId = v; });
-            });
-        // ユーザー名
-        new Setting(contentEl)
-            .setName('ユーザー名')
-            .setDesc('例: あなた')
-            .addText(t => {
-                t.setValue(userName);
-                t.onChange(v => { userName = v; });
-            });
-        // 時 select
-        new Setting(contentEl)
-            .setName('時 (0-23)')
+            .setDesc('グローバル設定で登録したユーザーから選択')
             .addDropdown(drop => {
-                for (let i = 0; i < 24; i++) {
-                    drop.addOption(i.toString(), i.toString().padStart(2, '0'));
-                }
-                drop.setValue(hour.toString());
-                drop.onChange(v => { hour = parseInt(v, 10); });
+                const profiles = this.plugin.settings.userProfiles || [];
+                profiles.forEach(p => {
+                    drop.addOption(p.userId, `${p.userName || p.userId} (${p.userId})`);
+                });
+                drop.setValue(userId);
+                drop.onChange(v => { userId = v; });
             });
-        // 分 select
+        // 時刻入力欄（時:分 形式のテキスト入力）
+        let timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         new Setting(contentEl)
-            .setName('分 (0-59)')
-            .addDropdown(drop => {
-                for (let i = 0; i < 60; i += 5) {
-                    drop.addOption(i.toString(), i.toString().padStart(2, '0'));
-                }
-                drop.setValue(minute.toString());
-                drop.onChange(v => { minute = parseInt(v, 10); });
+            .setName('時刻')
+            .setDesc('例: 09:00（24時間表記）')
+            .addText(t => {
+                t.setPlaceholder('09:00');
+                t.setValue(timeStr);
+                t.onChange(v => { timeStr = v; });
+                t.inputEl.addEventListener('blur', () => {
+                    const match = timeStr.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+                    if (match) {
+                        hour = parseInt(match[1], 10);
+                        minute = parseInt(match[2], 10);
+                        // 正常
+                        t.setValue(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                    } else {
+                        // 不正な場合は直前の値に戻す
+                        t.setValue(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                        new Notice('時刻は00:00〜23:59の形式で入力してください');
+                    }
+                });
             });
         // 曜日チェックボックス
         new Setting(contentEl)
@@ -1536,6 +1603,24 @@ class ScheduleTweetModal extends Modal {
                 t.inputEl.type = 'date';
                 t.onChange(v => { end = v; });
             });
+        // AIプロンプト入力欄
+        new Setting(contentEl)
+            .setName('AIプロンプト')
+            .setDesc('投稿時にAIで内容を自動生成したい場合にプロンプトを記入。{{ai}}で内容欄に埋め込まれます。')
+            .addTextArea(t => {
+                t.setValue(aiPrompt);
+                t.onChange(v => { aiPrompt = v; });
+            });
+        // AIモデル選択欄
+        new Setting(contentEl)
+            .setName('AIモデル')
+            .setDesc('AIプロンプト実行時に使うモデル。空欄でグローバル設定のつぶやき返信用モデルを使用')
+            .addText(t => {
+                t.setPlaceholder('例: gemini-1.5-flash-latest');
+                t.setValue(aiModel);
+                t.onChange(v => { aiModel = v; });
+            });
+
         const btnRow = contentEl.createDiv({ cls: 'modal-button-row', attr: { style: 'display:flex;justify-content:flex-end;gap:12px;margin-top:24px;' } });
         new Setting(btnRow)
             .addButton(btn => btn.setButtonText(this.sched ? '更新' : '追加').setCta().onClick(async () => {
@@ -1556,7 +1641,8 @@ class ScheduleTweetModal extends Modal {
                     endDate: opts.endDate,
                     nextTime: next,
                     userId: userId && userId.trim() ? userId.trim() : '@you',
-                    userName: userName && userName.trim() ? userName.trim() : 'あなた',
+                    aiPrompt: aiPrompt?.trim() || undefined,
+                    aiModel: aiModel?.trim() || undefined,
                 };
                 const settings = await this.repo.load();
                 if (!Array.isArray(settings.scheduledPosts)) settings.scheduledPosts = [];

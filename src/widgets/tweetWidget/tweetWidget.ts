@@ -6,6 +6,7 @@ import { deobfuscate, pad2, getDateKeyLocal } from '../../utils';
 import { geminiPrompt } from '../../llm/gemini/tweetReplyPrompt';
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
+import { getWeekRange } from '../../utils';
 
 // --- 分離したモジュールをインポート ---
 import type { TweetWidgetFile, TweetWidgetPost, TweetWidgetSettings } from './types';
@@ -183,6 +184,8 @@ export class TweetWidget implements WidgetImplementation {
     }
     
     private createNewPostObject(text: string, threadId: string | null = this.replyingToParentId, quoteId: string | null = null): TweetWidgetPost {
+        // グローバル設定のuserProfilesから'@you'ユーザーを取得
+        const selfProfile = this.plugin.settings.userProfiles?.find(p => p.userId === '@you');
         return {
             id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
             text,
@@ -203,8 +206,9 @@ export class TweetWidget implements WidgetImplementation {
             taskStatus: null,
             tags: parseTags(text),
             links: parseLinks(text),
-            userId: this.store.settings.userId || '@you',
-            userName: this.store.settings.userName || 'あなた',
+            userId: selfProfile?.userId || this.store.settings.userId || '@you',
+            userName: selfProfile?.userName || this.store.settings.userName || 'あなた',
+            avatarUrl: selfProfile?.avatarUrl || this.store.settings.avatarUrl || '',
             verified: this.store.settings.verified,
         };
     }
@@ -452,8 +456,8 @@ export class TweetWidget implements WidgetImplementation {
             });
 
             let replyText = await GeminiProvider.generateReply(promptText, {
-                apiKey: deobfuscate(this.plugin.settings.llm!.gemini!.apiKey),
-                model: this.plugin.settings.tweetAiModel || this.plugin.settings.llm!.gemini!.model,
+                apiKey: deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''),
+                model: this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model,
                 postText: threadText, post, thread
             });
             debugLog(this.plugin, 'Gemini生成結果:', replyText);
@@ -560,6 +564,12 @@ export class TweetWidget implements WidgetImplementation {
                 const idx = this.getAiAvatarIndex(user.userId, aiAvatars.length);
                 url = aiAvatars[idx];
             }
+        } else if (user.avatarUrl && user.avatarUrl.trim() !== '') {
+            url = user.avatarUrl;
+        } else if (user.userId) {
+            // userIdが指定されている場合はグローバル設定から取得
+            const profile = this.plugin.settings.userProfiles?.find(p => p.userId === user.userId);
+            url = profile?.avatarUrl || this.plugin.settings.tweetWidgetAvatarUrl || this.store.settings.avatarUrl || '';
         } else {
             url = this.plugin.settings.tweetWidgetAvatarUrl || this.store.settings.avatarUrl || '';
         }
@@ -618,15 +628,92 @@ export class TweetWidget implements WidgetImplementation {
         this.scheduleCheckId = window.setInterval(() => this.checkScheduledPosts(), 60000);
     }
 
-    private checkScheduledPosts() {
+    private async checkScheduledPosts() {
         if (!this.store?.settings?.scheduledPosts) return;
         const now = Date.now();
         let changed = false;
         for (const s of [...this.store.settings.scheduledPosts]) {
             if (s.nextTime <= now) {
-                const post = this.createNewPostObject(s.text);
-                if (s.userId) post.userId = s.userId;
-                if (s.userName) post.userName = s.userName;
+                let postText = s.text;
+                // --- 追加: aiPromptの変数展開 ---
+                let aiPrompt = s.aiPrompt;
+                if (aiPrompt) {
+                    // 投稿一覧取得用の関数（{postDate}形式で日付を付与）
+                    const getPostsText = (filterFn: (p: any) => boolean) => {
+                        return this.store.settings.posts
+                            .filter(filterFn)
+                            .map(p => {
+                                const date = new Date(p.created);
+                                const dateStr = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${date.getHours()}時${pad2(date.getMinutes())}分`;
+                                function getTimeZoneLabel(date: Date): string {
+                                    const hour = date.getHours();
+                                    if (hour >= 0 && hour < 3) return "未明";
+                                    if (hour >= 3 && hour < 6) return "明け方";
+                                    if (hour >= 6 && hour < 9) return "朝";
+                                    if (hour >= 9 && hour < 12) return "昼前";
+                                    if (hour >= 12 && hour < 15) return "昼過ぎ";
+                                    if (hour >= 15 && hour < 18) return "夕方";
+                                    if (hour >= 18 && hour < 21) return "夜のはじめ頃";
+                                    if (hour >= 21 && hour < 24) return "夜遅く";
+                                    return "";
+                                }
+                                const timeZoneLabel = getTimeZoneLabel(date);
+                                const dateWithZone = `${dateStr}（この時間帯は「${timeZoneLabel}」です）`;
+                                return `[${dateWithZone}] ${p.text}`;
+                            })
+                            .join('\n');
+                    };
+                    // 今日の投稿一覧
+                    if (aiPrompt.includes('{{today}}')) {
+                        const todayStr = getDateKeyLocal(new Date());
+                        const todayPostsText = getPostsText(p => !p.deleted && getDateKeyLocal(new Date(p.created)) === todayStr);
+                        aiPrompt = aiPrompt.replace(/\{\{today\}\}/g, todayPostsText);
+                    }
+                    // 今週の投稿一覧
+                    if (aiPrompt.includes('{{week}}')) {
+                        const [weekStart, weekEnd] = getWeekRange();
+                        const weekStartStr = weekStart.replace(/-/g, '-');
+                        const weekEndStr = weekEnd.replace(/-/g, '-');
+                        const weekPostsText = getPostsText(p => {
+                            if (p.deleted) return false;
+                            const dateStr = getDateKeyLocal(new Date(p.created));
+                            return dateStr >= weekStartStr && dateStr <= weekEndStr;
+                        });
+                        aiPrompt = aiPrompt.replace(/\{\{week\}\}/g, weekPostsText);
+                    }
+                }
+                // AIプロンプトが指定されていて{{ai}}が含まれている場合はAIで生成
+                if (aiPrompt && s.text.includes('{{ai}}')) {
+                    try {
+                        const aiResult = await GeminiProvider.generateReply(aiPrompt, {
+                            apiKey: deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''),
+                            model: s.aiModel || this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model || 'gemini-1.5-flash-latest',
+                        });
+                        let aiText = aiResult;
+                        try {
+                            const parsed = JSON.parse(aiResult);
+                            if (parsed && typeof parsed.reply === 'string') aiText = parsed.reply;
+                        } catch {}
+                        // デバッグモードでも通常と同じく{{ai}}に埋め込む
+                        postText = s.text.replace('{{ai}}', aiText);
+                        if (this.plugin.settings.debugLogging) {
+                            console.log('[予約投稿AIデバッグ] AI生成結果:', aiText);
+                        }
+                    } catch (e) {
+                        postText = s.text.replace('{{ai}}', '[AI生成失敗]');
+                        console.error('[予約投稿AIエラー]', e);
+                    }
+                }
+                const post = this.createNewPostObject(postText);
+                if (s.userId) {
+                    post.userId = s.userId;
+                    // グローバル設定からuserNameとavatarUrlも反映
+                    const profile = this.plugin.settings.userProfiles?.find(p => p.userId === s.userId);
+                    if (profile) {
+                        post.userName = profile.userName;
+                        post.avatarUrl = profile.avatarUrl;
+                    }
+                }
                 this.store.addPost(post);
                 this.plugin.updateTweetPostCount(post.created, 1);
                 const next = computeNextTime(s, new Date(now + 60000));

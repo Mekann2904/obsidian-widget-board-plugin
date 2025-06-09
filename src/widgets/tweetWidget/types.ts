@@ -41,6 +41,7 @@ export interface TweetWidgetPost {
     // ユーザー情報
     userId?: string;
     userName?: string;
+    avatarUrl?: string;
     verified?: boolean;
 }
 
@@ -55,6 +56,8 @@ export interface ScheduledTweet {
     nextTime: number;
     userId?: string;
     userName?: string;
+    aiPrompt?: string;
+    aiModel?: string;
 }
 
 export interface AiGovernanceData {

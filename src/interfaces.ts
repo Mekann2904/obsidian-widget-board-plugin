@@ -109,6 +109,10 @@ export interface PluginGlobalSettings {
     calendarDailyNoteFormat?: string;
     /** デバッグログ出力を有効にする */
     debugLogging?: boolean;
+    /**
+     * ユーザー一覧（グローバル）
+     */
+    userProfiles?: { userName: string; userId: string; avatarUrl: string }[];
 }
 
 // 共通型があればここに記載

@@ -67,6 +67,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     tweetAiModel: 'gemini-1.5-flash-latest',
     reflectionAiModel: 'gemini-2.0-flash-exp',
     debugLogging: false,
+    userProfiles: [],
 };
 
 // カレンダーウィジェットのデフォルト設定
