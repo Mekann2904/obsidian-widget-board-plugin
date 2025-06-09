@@ -327,6 +327,30 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+        // つぶやきAI返信用モデル名
+        new Setting(llmAcc.body)
+            .setName('つぶやきAI返信用モデル名')
+            .setDesc('空欄の場合は上記モデル名を使用')
+            .addText(text => {
+                text.setPlaceholder('例: gemini-1.5-flash-latest')
+                    .setValue(this.plugin.settings.tweetAiModel || '')
+                    .onChange(async (v) => {
+                        this.plugin.settings.tweetAiModel = v;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        // 振り返りAI要約用モデル名
+        new Setting(llmAcc.body)
+            .setName('振り返りAI要約用モデル名')
+            .setDesc('空欄の場合は上記モデル名を使用')
+            .addText(text => {
+                text.setPlaceholder('例: gemini-2.0-flash-exp')
+                    .setValue(this.plugin.settings.reflectionAiModel || '')
+                    .onChange(async (v) => {
+                        this.plugin.settings.reflectionAiModel = v;
+                        await this.plugin.saveSettings();
+                    });
+            });
 
         // --- ユーザプロンプト（今日用） ---
         new Setting(llmAcc.body)

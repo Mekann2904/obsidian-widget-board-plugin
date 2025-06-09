@@ -99,6 +99,10 @@ export interface PluginGlobalSettings {
     userSummaryPromptToday?: string; // ユーザカスタムプロンプト（今日用）
     userSummaryPromptWeek?: string;  // ユーザカスタムプロンプト（今週用）
     userTweetPrompt?: string;        // ユーザカスタムプロンプト（つぶやき用）
+    /** つぶやきAI返信用のモデル名（空欄で共通モデルを使用） */
+    tweetAiModel?: string;
+    /** 振り返りAI要約用のモデル名（空欄で共通モデルを使用） */
+    reflectionAiModel?: string;
     /**
      * カレンダーウィジェットのデイリーノートファイル名フォーマット（グローバル設定）
      */

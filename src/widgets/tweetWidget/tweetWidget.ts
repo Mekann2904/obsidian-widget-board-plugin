@@ -225,10 +225,14 @@ export class TweetWidget implements WidgetImplementation {
         }
 
         if (allow) {
+            debugLog(this.plugin, 'generateAiReply: model =', this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model || 'gemini-1.5-flash-latest');
             generateAiReply({
                 tweet: post,
                 allTweets: this.store.settings.posts,
-                llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-1.5-flash-latest' },
+                llmGemini: {
+                    apiKey: this.plugin.settings.llm?.gemini?.apiKey || '',
+                    model: this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model || 'gemini-1.5-flash-latest'
+                },
                 saveReply: async (reply) => {
                     this.store.addPost(reply);
                     this.plugin.updateTweetPostCount(reply.created, 1);
@@ -439,12 +443,16 @@ export class TweetWidget implements WidgetImplementation {
 
             // ここでプロンプトをコンソール出力
             debugLog(this.plugin, '[Gemini Prompt]', promptText);
-            
+            debugLog(this.plugin, 'Gemini送信context:', {
+                model: this.plugin.settings.tweetAiModel || this.plugin.settings.llm!.gemini!.model,
+            });
+
             let replyText = await GeminiProvider.generateReply(promptText, {
                 apiKey: deobfuscate(this.plugin.settings.llm!.gemini!.apiKey),
-                model: this.plugin.settings.llm!.gemini!.model,
+                model: this.plugin.settings.tweetAiModel || this.plugin.settings.llm!.gemini!.model,
                 postText: threadText, post, thread
             });
+            debugLog(this.plugin, 'Gemini生成結果:', replyText);
 
             try {
                 const parsed = JSON.parse(replyText);
