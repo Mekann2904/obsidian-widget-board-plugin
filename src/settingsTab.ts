@@ -11,6 +11,9 @@ import type { CalendarWidgetSettings } from './widgets/calendar';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recent-notes';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timer-stopwatch';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from 'src/widgets/tweetWidget/constants';
+import { TweetRepository } from './widgets/tweetWidget';
+import { computeNextTime, ScheduleOptions } from './widgets/tweetWidget/scheduleUtils';
+import type { ScheduledTweet } from './widgets/tweetWidget/types';
 import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 import { obfuscate, deobfuscate } from './utils';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
@@ -533,6 +536,13 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+
+        new Setting(tweetGlobalAcc.body)
+            .setName('予約投稿を追加')
+            .setDesc('指定した日時に自動投稿するメッセージを登録します')
+            .addButton(btn => btn.setButtonText('追加').setCta().onClick(() => {
+                this.openScheduleTweetModal();
+            }));
 
         // --- カレンダー（グローバル設定） ---
         const calendarAcc = createAccordion('カレンダー（グローバル設定）', false);
@@ -1222,6 +1232,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             if (this.boardGroupBodyEl) this.renderBoardGroupManagementUI(this.boardGroupBodyEl);
         }, group, editIdx).open();
     }
+
+    private openScheduleTweetModal() {
+        new ScheduleTweetModal(this.app, this.plugin).open();
+    }
 }
 
 function playTestNotificationSound(plugin: any, soundType: string, volume: number) {
@@ -1368,4 +1382,83 @@ class BoardGroupEditModal extends Modal {
             }))
             .addButton(btn => btn.setButtonText('キャンセル').onClick(() => this.close()));
     }
+}
+
+class ScheduleTweetModal extends Modal {
+    plugin: WidgetBoardPlugin;
+    repo: TweetRepository;
+    constructor(app: App, plugin: WidgetBoardPlugin) {
+        super(app);
+        this.plugin = plugin;
+        this.repo = new TweetRepository(app, getTweetDbPath(plugin));
+    }
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('h2', { text: '予約投稿を追加' });
+        let text = '';
+        let hour = 9;
+        let minute = 0;
+        let days = '';
+        let start = '';
+        let end = '';
+        new Setting(contentEl)
+            .setName('内容')
+            .addTextArea(t => t.onChange(v => { text = v; }));
+        new Setting(contentEl)
+            .setName('時 (0-23)')
+            .addText(t => t.setValue('9').onChange(v => { const n = parseInt(v,10); hour = isNaN(n) ? 0 : n; }));
+        new Setting(contentEl)
+            .setName('分 (0-59)')
+            .addText(t => t.setValue('0').onChange(v => { const n = parseInt(v,10); minute = isNaN(n) ? 0 : n; }));
+        new Setting(contentEl)
+            .setName('曜日 (例:1,3,5)')
+            .setDesc('0=日,1=月')
+            .addText(t => t.onChange(v => { days = v; }));
+        new Setting(contentEl)
+            .setName('開始日')
+            .setDesc('YYYY-MM-DD')
+            .addText(t => t.onChange(v => { start = v; }));
+        new Setting(contentEl)
+            .setName('終了日')
+            .setDesc('YYYY-MM-DD')
+            .addText(t => t.onChange(v => { end = v; }));
+        const btnRow = contentEl.createDiv({ cls: 'modal-button-row', attr: { style: 'display:flex;justify-content:flex-end;gap:12px;margin-top:24px;' } });
+        new Setting(btnRow)
+            .addButton(btn => btn.setButtonText('追加').setCta().onClick(async () => {
+                if (!text.trim()) { new Notice('内容を入力してください'); return; }
+                const opts: ScheduleOptions = { hour, minute };
+                if (days.trim()) opts.daysOfWeek = days.split(',').map(d => parseInt(d.trim(),10)).filter(n => !isNaN(n));
+                if (start.trim()) opts.startDate = start.trim();
+                if (end.trim()) opts.endDate = end.trim();
+                const next = computeNextTime(opts);
+                if (next === null) { new Notice('次の投稿日時が計算できません'); return; }
+                const sched: ScheduledTweet = {
+                    id: 'sch-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
+                    text: text.trim(),
+                    hour: opts.hour,
+                    minute: opts.minute,
+                    daysOfWeek: opts.daysOfWeek,
+                    startDate: opts.startDate,
+                    endDate: opts.endDate,
+                    nextTime: next,
+                };
+                const settings = await this.repo.load();
+                if (!Array.isArray(settings.scheduledPosts)) settings.scheduledPosts = [];
+                settings.scheduledPosts.push(sched);
+                await this.repo.save(settings);
+                new Notice('予約投稿を追加しました');
+                this.close();
+            }))
+            .addButton(btn => btn.setButtonText('キャンセル').onClick(() => this.close()));
+    }
+}
+
+function getTweetDbPath(plugin: WidgetBoardPlugin): string {
+    const { baseFolder } = plugin.settings;
+    if (baseFolder) {
+        const folder = baseFolder.endsWith('/') ? baseFolder.slice(0, -1) : baseFolder;
+        return `${folder}/tweets.json`;
+    }
+    return 'tweets.json';
 }
