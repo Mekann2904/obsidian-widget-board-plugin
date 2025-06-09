@@ -5,6 +5,7 @@ import type { TweetWidgetSettings } from './types';
  */
 export const DEFAULT_TWEET_WIDGET_SETTINGS: TweetWidgetSettings = {
     posts: [],
+    scheduledPosts: [],
     avatarUrl: '',
     userName: 'あなた',
     userId: '@you',

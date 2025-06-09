@@ -41,7 +41,23 @@ export interface TweetWidgetPost {
     // ユーザー情報
     userId?: string;
     userName?: string;
+    avatarUrl?: string;
     verified?: boolean;
+}
+
+export interface ScheduledTweet {
+    id: string;
+    text: string;
+    hour: number;
+    minute: number;
+    daysOfWeek?: number[];
+    startDate?: string;
+    endDate?: string;
+    nextTime: number;
+    userId?: string;
+    userName?: string;
+    aiPrompt?: string;
+    aiModel?: string;
 }
 
 export interface AiGovernanceData {
@@ -56,6 +72,7 @@ export interface AiGovernanceData {
  */
 export interface TweetWidgetSettings {
     posts: TweetWidgetPost[];
+    scheduledPosts?: ScheduledTweet[];
     avatarUrl?: string;
     userName?: string;
     userId?: string;

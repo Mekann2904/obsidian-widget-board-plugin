@@ -11,6 +11,9 @@ import type { CalendarWidgetSettings } from './widgets/calendar';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recent-notes';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timer-stopwatch';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from 'src/widgets/tweetWidget/constants';
+import { TweetRepository } from './widgets/tweetWidget';
+import { computeNextTime, ScheduleOptions } from './widgets/tweetWidget/scheduleUtils';
+import type { ScheduledTweet } from './widgets/tweetWidget/types';
 import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 import { obfuscate, deobfuscate } from './utils';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
@@ -391,7 +394,73 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
 
         // --- つぶやき（グローバル設定） ---
         const tweetGlobalAcc = createAccordion('つぶやき（グローバル設定）', false);
-        // ベースフォルダは上部で指定
+        // ユーザー一覧セクション
+        tweetGlobalAcc.body.createEl('h4', { text: 'ユーザー一覧（グローバル）' });
+        const userListDiv = tweetGlobalAcc.body.createDiv({ cls: 'tweet-user-list-table' });
+        const renderUserList = () => {
+            userListDiv.empty();
+            // '@you'ユーザーがいなければ必ず先頭に追加
+            if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+            if (!this.plugin.settings.userProfiles.some(p => p.userId === '@you')) {
+                this.plugin.settings.userProfiles.unshift({ userName: 'あなた', userId: '@you', avatarUrl: '' });
+            }
+            const table = userListDiv.createEl('table', { cls: 'tweet-user-table' });
+            const thead = table.createEl('thead');
+            const headerRow = thead.createEl('tr');
+            ['ユーザー名', 'ユーザーID', 'アバターURL', ''].forEach(h => headerRow.createEl('th', { text: h }));
+            const tbody = table.createEl('tbody');
+            (this.plugin.settings.userProfiles || []).forEach((profile, idx) => {
+                const isSelf = profile.userId === '@you';
+                const row = tbody.createEl('tr');
+                // ユーザー名
+                const nameTd = row.createEl('td');
+                const nameInput = nameTd.createEl('input', { type: 'text', value: profile.userName || '', placeholder: '例: あなた' });
+                nameInput.onchange = async () => {
+                    if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                    this.plugin.settings.userProfiles[idx].userName = nameInput.value;
+                    await this.plugin.saveSettings();
+                };
+                // ユーザーID
+                const idTd = row.createEl('td');
+                const idInput = idTd.createEl('input', { type: 'text', value: profile.userId || '', placeholder: '例: @you' });
+                if (isSelf) idInput.disabled = true;
+                idInput.onchange = async () => {
+                    if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                    this.plugin.settings.userProfiles[idx].userId = idInput.value;
+                    await this.plugin.saveSettings();
+                };
+                // アバターURL
+                const avatarTd = row.createEl('td');
+                const avatarInput = avatarTd.createEl('input', { type: 'text', value: profile.avatarUrl || '', placeholder: 'https://example.com/avatar.png' });
+                avatarInput.onchange = async () => {
+                    if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                    this.plugin.settings.userProfiles[idx].avatarUrl = avatarInput.value;
+                    await this.plugin.saveSettings();
+                };
+                // 削除ボタン
+                const delTd = row.createEl('td');
+                if (!isSelf) {
+                    const delBtn = delTd.createEl('button', { text: '削除', cls: 'mod-warning' });
+                    delBtn.onclick = async () => {
+                        if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                        this.plugin.settings.userProfiles.splice(idx, 1);
+                        await this.plugin.saveSettings();
+                        renderUserList();
+                    };
+                }
+            });
+            // 追加ボタン
+            const addTr = tbody.createEl('tr');
+            addTr.createEl('td', { attr: { colspan: 4 } });
+            const addBtn = addTr.createEl('button', { text: '＋ ユーザーを追加', cls: 'mod-cta' });
+            addBtn.onclick = async () => {
+                if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
+                this.plugin.settings.userProfiles.push({ userName: '', userId: '', avatarUrl: '' });
+                await this.plugin.saveSettings();
+                renderUserList();
+            };
+        };
+        renderUserList();
         // --- AIリプライ発火上限設定 ---
         new Setting(tweetGlobalAcc.body)
             .setName('AIリプライをトリガーワードなしでも自動発火させる')
@@ -533,6 +602,54 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+
+        new Setting(tweetGlobalAcc.body)
+            .setName('予約投稿を追加')
+            .setDesc('指定した日時に自動投稿するメッセージを登録します')
+            .addButton(btn => btn.setButtonText('追加').setCta().onClick(() => {
+                this.openScheduleTweetModal();
+            }));
+
+        // 予約投稿一覧表示・削除
+        (async () => {
+            const repo = new TweetRepository(this.app, getTweetDbPath(this.plugin));
+            const settings = await repo.load();
+            const scheduledPosts = settings.scheduledPosts || [];
+            const listDiv = tweetGlobalAcc.body.createDiv({ cls: 'scheduled-tweet-list' });
+            listDiv.createEl('h4', { text: '予約投稿一覧' });
+            if (scheduledPosts.length === 0) {
+                listDiv.createEl('div', { text: '現在、予約投稿はありません。', cls: 'scheduled-tweet-empty' });
+            } else {
+                scheduledPosts.forEach((sched, idx) => {
+                    const item = listDiv.createDiv({ cls: 'scheduled-tweet-item' });
+                    const main = item.createDiv({ cls: 'scheduled-tweet-item-main' });
+                    main.createEl('div', { text: sched.text, cls: 'scheduled-tweet-text' });
+                    let info = `時刻: ${sched.hour.toString().padStart(2, '0')}:${sched.minute.toString().padStart(2, '0')}`;
+                    if (sched.daysOfWeek && sched.daysOfWeek.length > 0) {
+                        info += `  曜日: ${sched.daysOfWeek.map(d => ['日','月','火','水','木','金','土'][d]).join(',')}`;
+                    }
+                    if (sched.startDate) info += `  開始: ${sched.startDate}`;
+                    if (sched.endDate) info += `  終了: ${sched.endDate}`;
+                    main.createEl('div', { text: info, cls: 'scheduled-tweet-info' });
+                    // ボタン横並び
+                    const actions = item.createDiv({ cls: 'scheduled-tweet-actions' });
+                    const editBtn = actions.createEl('button', { text: '編集', cls: 'scheduled-tweet-edit-btn' });
+                    editBtn.onclick = () => {
+                        this.openScheduleTweetModal(sched, idx);
+                    };
+                    const delBtn = actions.createEl('button', { text: '削除', cls: 'scheduled-tweet-delete-btn' });
+                    delBtn.onclick = async () => {
+                        if (!confirm('この予約投稿を削除しますか？')) return;
+                        scheduledPosts.splice(idx, 1);
+                        await repo.save({ ...settings, scheduledPosts });
+                        new Notice('予約投稿を削除しました');
+                        listDiv.remove();
+                        // 再描画
+                        this.display();
+                    };
+                });
+            }
+        })();
 
         // --- カレンダー（グローバル設定） ---
         const calendarAcc = createAccordion('カレンダー（グローバル設定）', false);
@@ -1222,6 +1339,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             if (this.boardGroupBodyEl) this.renderBoardGroupManagementUI(this.boardGroupBodyEl);
         }, group, editIdx).open();
     }
+
+    private openScheduleTweetModal(sched?: ScheduledTweet, idx?: number) {
+        new ScheduleTweetModal(this.app, this.plugin, sched, idx).open();
+    }
 }
 
 function playTestNotificationSound(plugin: any, soundType: string, volume: number) {
@@ -1368,4 +1489,181 @@ class BoardGroupEditModal extends Modal {
             }))
             .addButton(btn => btn.setButtonText('キャンセル').onClick(() => this.close()));
     }
+}
+
+class ScheduleTweetModal extends Modal {
+    plugin: WidgetBoardPlugin;
+    repo: TweetRepository;
+    sched?: ScheduledTweet;
+    idx?: number;
+    constructor(app: App, plugin: WidgetBoardPlugin, sched?: ScheduledTweet, idx?: number) {
+        super(app);
+        this.plugin = plugin;
+        this.repo = new TweetRepository(app, getTweetDbPath(plugin));
+        this.sched = sched;
+        this.idx = idx;
+    }
+    onOpen() {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('h2', { text: this.sched ? '予約投稿を編集' : '予約投稿を追加' });
+        let text = this.sched ? this.sched.text : '';
+        let hour = this.sched ? this.sched.hour : 9;
+        let minute = this.sched ? this.sched.minute : 0;
+        let daysArr: number[] = this.sched ? this.sched.daysOfWeek || [] : [];
+        let start = this.sched && this.sched.startDate ? this.sched.startDate : '';
+        let end = this.sched && this.sched.endDate ? this.sched.endDate : '';
+        let userId = this.sched && this.sched.userId ? this.sched.userId : '@you';
+        let aiPrompt = this.sched && this.sched.aiPrompt ? this.sched.aiPrompt : '';
+        let aiModel = this.sched && this.sched.aiModel ? this.sched.aiModel : (this.plugin.settings.tweetAiModel || 'gemini-1.5-flash-latest');
+        // 内容入力欄（テキストエリア）
+        new Setting(contentEl)
+        .setName('内容')
+        .addTextArea(t => {
+            t.setValue(text);
+            t.onChange(v => { text = v; });
+        });
+        // ユーザーID（ドロップダウン選択に変更）
+        new Setting(contentEl)
+            .setName('ユーザーID')
+            .setDesc('グローバル設定で登録したユーザーから選択')
+            .addDropdown(drop => {
+                const profiles = this.plugin.settings.userProfiles || [];
+                profiles.forEach(p => {
+                    drop.addOption(p.userId, `${p.userName || p.userId} (${p.userId})`);
+                });
+                drop.setValue(userId);
+                drop.onChange(v => { userId = v; });
+            });
+        // 時刻入力欄（時:分 形式のテキスト入力）
+        let timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        new Setting(contentEl)
+            .setName('時刻')
+            .setDesc('例: 09:00（24時間表記）')
+            .addText(t => {
+                t.setPlaceholder('09:00');
+                t.setValue(timeStr);
+                t.onChange(v => { timeStr = v; });
+                t.inputEl.addEventListener('blur', () => {
+                    const match = timeStr.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+                    if (match) {
+                        hour = parseInt(match[1], 10);
+                        minute = parseInt(match[2], 10);
+                        // 正常
+                        t.setValue(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                    } else {
+                        // 不正な場合は直前の値に戻す
+                        t.setValue(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                        new Notice('時刻は00:00〜23:59の形式で入力してください');
+                    }
+                });
+            });
+        // 曜日チェックボックス
+        new Setting(contentEl)
+            .setName('曜日')
+            .setDesc('複数選択可')
+            .addExtraButton(btn => {
+                const daysLabel = ['日','月','火','水','木','金','土'];
+                const container = btn.extraSettingsEl.parentElement;
+                if (!container) return;
+                daysLabel.forEach((label, idx) => {
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.id = 'weekday-' + idx;
+                    cb.style.marginLeft = '8px';
+                    cb.checked = daysArr.includes(idx);
+                    cb.onchange = () => {
+                        if (cb.checked) {
+                            if (!daysArr.includes(idx)) daysArr.push(idx);
+                        } else {
+                            daysArr = daysArr.filter(d => d !== idx);
+                        }
+                    };
+                    const lbl = document.createElement('label');
+                    lbl.htmlFor = cb.id;
+                    lbl.textContent = label;
+                    lbl.style.marginRight = '4px';
+                    container.appendChild(cb);
+                    container.appendChild(lbl);
+                });
+            });
+        // 開始日 date picker
+        new Setting(contentEl)
+            .setName('開始日')
+            .setDesc('YYYY-MM-DD')
+            .addText(t => {
+                t.inputEl.type = 'date';
+                t.onChange(v => { start = v; });
+            });
+        // 終了日 date picker
+        new Setting(contentEl)
+            .setName('終了日')
+            .setDesc('YYYY-MM-DD')
+            .addText(t => {
+                t.inputEl.type = 'date';
+                t.onChange(v => { end = v; });
+            });
+        // AIプロンプト入力欄
+        new Setting(contentEl)
+            .setName('AIプロンプト')
+            .setDesc('投稿時にAIで内容を自動生成したい場合にプロンプトを記入。{{ai}}で内容欄に埋め込まれます。')
+            .addTextArea(t => {
+                t.setValue(aiPrompt);
+                t.onChange(v => { aiPrompt = v; });
+            });
+        // AIモデル選択欄
+        new Setting(contentEl)
+            .setName('AIモデル')
+            .setDesc('AIプロンプト実行時に使うモデル。空欄でグローバル設定のつぶやき返信用モデルを使用')
+            .addText(t => {
+                t.setPlaceholder('例: gemini-1.5-flash-latest');
+                t.setValue(aiModel);
+                t.onChange(v => { aiModel = v; });
+            });
+
+        const btnRow = contentEl.createDiv({ cls: 'modal-button-row', attr: { style: 'display:flex;justify-content:flex-end;gap:12px;margin-top:24px;' } });
+        new Setting(btnRow)
+            .addButton(btn => btn.setButtonText(this.sched ? '更新' : '追加').setCta().onClick(async () => {
+                if (!text.trim()) { new Notice('内容を入力してください'); return; }
+                const opts: ScheduleOptions = { hour, minute };
+                if (daysArr.length > 0) opts.daysOfWeek = daysArr;
+                if (start.trim()) opts.startDate = start.trim();
+                if (end.trim()) opts.endDate = end.trim();
+                const next = computeNextTime(opts);
+                if (next === null) { new Notice('次の投稿日時が計算できません'); return; }
+                const sched: ScheduledTweet = {
+                    id: this.sched ? this.sched.id : 'sch-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
+                    text: text.trim(),
+                    hour: opts.hour,
+                    minute: opts.minute,
+                    daysOfWeek: opts.daysOfWeek,
+                    startDate: opts.startDate,
+                    endDate: opts.endDate,
+                    nextTime: next,
+                    userId: userId && userId.trim() ? userId.trim() : '@you',
+                    aiPrompt: aiPrompt?.trim() || undefined,
+                    aiModel: aiModel?.trim() || undefined,
+                };
+                const settings = await this.repo.load();
+                if (!Array.isArray(settings.scheduledPosts)) settings.scheduledPosts = [];
+                if (this.sched) {
+                    settings.scheduledPosts[this.idx!] = sched;
+                } else {
+                    settings.scheduledPosts.push(sched);
+                }
+                await this.repo.save(settings);
+                new Notice(this.sched ? '予約投稿を更新しました' : '予約投稿を追加しました');
+                this.close();
+            }))
+            .addButton(btn => btn.setButtonText('キャンセル').onClick(() => this.close()));
+    }
+}
+
+function getTweetDbPath(plugin: WidgetBoardPlugin): string {
+    const { baseFolder } = plugin.settings;
+    if (baseFolder) {
+        const folder = baseFolder.endsWith('/') ? baseFolder.slice(0, -1) : baseFolder;
+        return `${folder}/tweets.json`;
+    }
+    return 'tweets.json';
 }

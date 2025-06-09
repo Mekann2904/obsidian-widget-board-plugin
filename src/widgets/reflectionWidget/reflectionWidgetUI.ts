@@ -296,7 +296,7 @@ export class ReflectionWidgetUI {
             const timeoutPromise = new Promise((_, reject) => setTimeout(() => {
                 timeoutOccured = true;
                 reject(new Error('タイムアウトしました'));
-            }, 60000)); // 60秒
+            }, 600000)); // 10分
             await Promise.race([
                 (async () => {
                     const settings: ReflectionWidgetSettings = this.config.settings || {};
