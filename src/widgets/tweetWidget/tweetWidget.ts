@@ -228,7 +228,10 @@ export class TweetWidget implements WidgetImplementation {
             generateAiReply({
                 tweet: post,
                 allTweets: this.store.settings.posts,
-                llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: 'gemini-1.5-flash-latest' },
+                llmGemini: {
+                    apiKey: this.plugin.settings.llm?.gemini?.apiKey || '',
+                    model: this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model || 'gemini-1.5-flash-latest'
+                },
                 saveReply: async (reply) => {
                     this.store.addPost(reply);
                     this.plugin.updateTweetPostCount(reply.created, 1);
@@ -442,7 +445,7 @@ export class TweetWidget implements WidgetImplementation {
             
             let replyText = await GeminiProvider.generateReply(promptText, {
                 apiKey: deobfuscate(this.plugin.settings.llm!.gemini!.apiKey),
-                model: this.plugin.settings.llm!.gemini!.model,
+                model: this.plugin.settings.tweetAiModel || this.plugin.settings.llm!.gemini!.model,
                 postText: threadText, post, thread
             });
 

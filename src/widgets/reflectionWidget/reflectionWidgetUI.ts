@@ -48,6 +48,9 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
     if (context.gemini && context.gemini.apiKey) {
         context.apiKey = deobfuscate(context.gemini.apiKey);
     }
+    if (plugin.settings.reflectionAiModel) {
+        context.model = plugin.settings.reflectionAiModel;
+    }
     const text = posts.map(p => {
         const dateStr = getDateKeyLocal(new Date(p.created));
         return `[${dateStr}] ${p.text}`;
