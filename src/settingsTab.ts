@@ -1447,11 +1447,29 @@ class ScheduleTweetModal extends Modal {
         let daysArr: number[] = this.sched ? this.sched.daysOfWeek || [] : [];
         let start = this.sched && this.sched.startDate ? this.sched.startDate : '';
         let end = this.sched && this.sched.endDate ? this.sched.endDate : '';
+        let userId = this.sched && this.sched.userId ? this.sched.userId : '@you';
+        let userName = this.sched && this.sched.userName ? this.sched.userName : 'あなた';
         new Setting(contentEl)
             .setName('内容')
             .addTextArea(t => {
                 t.setValue(text);
                 t.onChange(v => { text = v; });
+            });
+        // ユーザーID
+        new Setting(contentEl)
+            .setName('ユーザーID')
+            .setDesc('例: @you')
+            .addText(t => {
+                t.setValue(userId);
+                t.onChange(v => { userId = v; });
+            });
+        // ユーザー名
+        new Setting(contentEl)
+            .setName('ユーザー名')
+            .setDesc('例: あなた')
+            .addText(t => {
+                t.setValue(userName);
+                t.onChange(v => { userName = v; });
             });
         // 時 select
         new Setting(contentEl)
@@ -1537,6 +1555,8 @@ class ScheduleTweetModal extends Modal {
                     startDate: opts.startDate,
                     endDate: opts.endDate,
                     nextTime: next,
+                    userId: userId && userId.trim() ? userId.trim() : '@you',
+                    userName: userName && userName.trim() ? userName.trim() : 'あなた',
                 };
                 const settings = await this.repo.load();
                 if (!Array.isArray(settings.scheduledPosts)) settings.scheduledPosts = [];
