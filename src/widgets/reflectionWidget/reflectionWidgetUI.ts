@@ -8,6 +8,7 @@ import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from  '../../llm/ge
 import { deobfuscate, getDateKey, getDateKeyLocal, getWeekRange } from '../../utils';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
+import { debugLog } from '../../utils/logger';
 import { renderMermaidInWorker } from '../../utils';
 
 let Chart: any;
@@ -56,8 +57,11 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
         return `[${dateStr}] ${p.text}`;
     }).join('\n');
     const promptText = prompt.replace('{posts}', text);
+    debugLog(plugin, 'Gemini送信プロンプト:', promptText);
+    debugLog(plugin, 'Gemini送信context:', context);
     try {
         const result = await plugin.llmManager.generateReplyWithDefault(promptText, context);
+        debugLog(plugin, 'Gemini生成結果:', result);
         return result;
     } catch (e) {
         return '要約生成に失敗しました';

@@ -55,6 +55,7 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
     debugLog(plugin, 'Gemini送信context:', context);
     try {
         const result = await plugin.llmManager.generateReplyWithDefault(promptText, context);
+        debugLog(plugin, 'Gemini生成結果:', result);
         return result;
     } catch (e) {
         console.error('要約生成エラー:', e);

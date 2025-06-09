@@ -1,6 +1,7 @@
 import { geminiPrompt } from '../../llm/gemini/tweetReplyPrompt';
 import { GeminiProvider } from '../../llm/gemini/geminiApi';
 import { deobfuscate, pad2 } from '../../utils';
+import { debugLog } from '../../utils/logger';
 import type { TweetWidgetPost, AiGovernanceData } from './types'; // AiGovernanceData をインポート
 import type { PluginGlobalSettings } from '../../interfaces';
 
@@ -171,10 +172,14 @@ export async function generateAiReply({
         const customPrompt = settings.userTweetPrompt && settings.userTweetPrompt.trim() ? settings.userTweetPrompt : geminiPrompt;
         const promptText = customPrompt.replace('{postDate}', dateWithZone).replace('{tweet}', threadText);
 
+        debugLog({ settings }, 'Gemini送信プロンプト:', promptText);
+        debugLog({ settings }, 'Gemini送信context:', { model: llmGemini.model || 'gemini-1.5-flash-latest' });
+
         let replyText = await GeminiProvider.generateReply(promptText, {
             apiKey: deobfuscate(llmGemini.apiKey || ''),
             model: llmGemini.model || 'gemini-1.5-flash-latest',
         });
+        debugLog({ settings }, 'Gemini生成結果:', replyText);
         try {
             const parsed = JSON.parse(replyText);
             if (parsed && typeof parsed.reply === 'string') {
