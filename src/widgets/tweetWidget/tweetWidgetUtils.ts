@@ -76,8 +76,8 @@ export function validatePost(raw: any): TweetWidgetPost {
 
 // テキストからYouTube動画IDを抽出し、クリーンなURLを返す
 export function extractYouTubeUrl(text: string): string | null {
-    // youtu.be/ID または youtube.com/watch?v=ID のID部分だけ抽出
-    const regex = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/;
+    // youtu.be/ID, youtube.com/watch?v=ID, youtube.com/live/ID のID部分だけ抽出
+    const regex = /(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?v=|live\/)|youtu\.be\/)([\w-]{11})/;
     const match = text.match(regex);
     if (match && match[1]) {
         // クリーンな youtu.be 形式で返す
