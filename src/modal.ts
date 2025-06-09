@@ -827,8 +827,12 @@ export class WidgetBoardModal {
             this.removeDragDropListeners(widgetContainerEl);
         }
         modalEl.classList.remove('is-open');
-        // 右・左スプリット外モード時はbodyの専用クラスを削除
-        document.body.classList.remove('wb-modal-right-outer-open', 'wb-modal-left-outer-open');
+        // 右・左スプリット外モード時のみbodyの専用クラスを削除
+        if (this.currentMode === WidgetBoardModal.MODES.RIGHT_OUTER) {
+            document.body.classList.remove('wb-modal-right-outer-open');
+        } else if (this.currentMode === WidgetBoardModal.MODES.LEFT_OUTER) {
+            document.body.classList.remove('wb-modal-left-outer-open');
+        }
         setTimeout(() => {
             this.onClose();
             const selector = `.widget-board-panel-custom[data-board-id='${this.currentBoardId}']`;
