@@ -17,6 +17,8 @@ import { TweetWidgetUI } from './tweetWidgetUI';
 import { TweetRepository } from './TweetRepository';
 import { TweetStore } from './TweetStore';
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from './constants';
+import { computeNextTime, ScheduleOptions } from './scheduleUtils';
+import type { ScheduledTweet } from './types';
 
 export class TweetWidget implements WidgetImplementation {
     // --- Public properties for UI and Plugin ---
@@ -45,6 +47,7 @@ export class TweetWidget implements WidgetImplementation {
     private store!: TweetStore;
     private repository!: TweetRepository;
     private saveTimeout: number | null = null;
+    private scheduleCheckId: number | null = null;
 
     /**
      * Getters to provide store data to the UI layer
@@ -79,6 +82,7 @@ export class TweetWidget implements WidgetImplementation {
             this.recalculateQuoteCounts();
             this.ui = new TweetWidgetUI(this, this.widgetEl);
             this.ui.render();
+            this.startScheduleLoop();
         });
 
         // 初期化中は空のUIを返す
@@ -596,5 +600,67 @@ export class TweetWidget implements WidgetImplementation {
     public setCustomPeriodDays(days: number) {
         this.customPeriodDays = days;
         this.ui.render();
+    }
+
+    onunload(): void {
+        if (this.scheduleCheckId) {
+            clearInterval(this.scheduleCheckId);
+            this.scheduleCheckId = null;
+        }
+        if (this.ui && typeof this.ui.onunload === 'function') {
+            this.ui.onunload();
+        }
+    }
+
+    private startScheduleLoop() {
+        this.checkScheduledPosts();
+        if (this.scheduleCheckId) clearInterval(this.scheduleCheckId);
+        this.scheduleCheckId = window.setInterval(() => this.checkScheduledPosts(), 60000);
+    }
+
+    private checkScheduledPosts() {
+        if (!this.store?.settings?.scheduledPosts) return;
+        const now = Date.now();
+        let changed = false;
+        for (const s of [...this.store.settings.scheduledPosts]) {
+            if (s.nextTime <= now) {
+                const post = this.createNewPostObject(s.text);
+                if (s.userId) post.userId = s.userId;
+                if (s.userName) post.userName = s.userName;
+                this.store.addPost(post);
+                this.plugin.updateTweetPostCount(post.created, 1);
+                const next = computeNextTime(s, new Date(now + 60000));
+                if (next) {
+                    s.nextTime = next;
+                } else {
+                    this.store.settings.scheduledPosts = this.store.settings.scheduledPosts!.filter(p => p.id !== s.id);
+                }
+                changed = true;
+            }
+        }
+        if (changed) {
+            this.saveDataDebounced();
+            this.ui.render();
+        }
+    }
+
+    public schedulePost(text: string, opts: ScheduleOptions & {userId?: string; userName?: string}) {
+        const next = computeNextTime(opts);
+        if (next === null) return;
+        const sched: ScheduledTweet = {
+            id: 'sch-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
+            text,
+            hour: opts.hour,
+            minute: opts.minute,
+            daysOfWeek: opts.daysOfWeek,
+            startDate: opts.startDate,
+            endDate: opts.endDate,
+            nextTime: next,
+            userId: opts.userId,
+            userName: opts.userName,
+        };
+        if (!this.store.settings.scheduledPosts) this.store.settings.scheduledPosts = [];
+        this.store.settings.scheduledPosts.push(sched);
+        this.saveDataDebounced();
     }
 }

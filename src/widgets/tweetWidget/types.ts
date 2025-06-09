@@ -44,6 +44,19 @@ export interface TweetWidgetPost {
     verified?: boolean;
 }
 
+export interface ScheduledTweet {
+    id: string;
+    text: string;
+    hour: number;
+    minute: number;
+    daysOfWeek?: number[];
+    startDate?: string;
+    endDate?: string;
+    nextTime: number;
+    userId?: string;
+    userName?: string;
+}
+
 export interface AiGovernanceData {
     /** ユーザーIDごとの直近1分間のリプライタイムスタンプの配列 */
     minuteMap: Record<string, number[]>; // 例: { "userId1": [1678886400000, 1678886410000], ... }
@@ -56,6 +69,7 @@ export interface AiGovernanceData {
  */
 export interface TweetWidgetSettings {
     posts: TweetWidgetPost[];
+    scheduledPosts?: ScheduledTweet[];
     avatarUrl?: string;
     userName?: string;
     userId?: string;

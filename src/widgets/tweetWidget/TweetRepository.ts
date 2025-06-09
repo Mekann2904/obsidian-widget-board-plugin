@@ -58,6 +58,9 @@ export class TweetRepository {
                 // posts がない、または配列でない場合は空配列で初期化
                 loadedSettings.posts = [];
             }
+            if (!Array.isArray(loadedSettings.scheduledPosts)) {
+                loadedSettings.scheduledPosts = [];
+            }
 
             return { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...loadedSettings };
 
