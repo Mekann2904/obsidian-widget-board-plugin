@@ -544,6 +544,47 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 this.openScheduleTweetModal();
             }));
 
+        // 予約投稿一覧表示・削除
+        (async () => {
+            const repo = new TweetRepository(this.app, getTweetDbPath(this.plugin));
+            const settings = await repo.load();
+            const scheduledPosts = settings.scheduledPosts || [];
+            const listDiv = tweetGlobalAcc.body.createDiv({ cls: 'scheduled-tweet-list' });
+            listDiv.createEl('h4', { text: '予約投稿一覧' });
+            if (scheduledPosts.length === 0) {
+                listDiv.createEl('div', { text: '現在、予約投稿はありません。', cls: 'scheduled-tweet-empty' });
+            } else {
+                scheduledPosts.forEach((sched, idx) => {
+                    const item = listDiv.createDiv({ cls: 'scheduled-tweet-item' });
+                    const main = item.createDiv({ cls: 'scheduled-tweet-item-main' });
+                    main.createEl('div', { text: sched.text, cls: 'scheduled-tweet-text' });
+                    let info = `時刻: ${sched.hour.toString().padStart(2, '0')}:${sched.minute.toString().padStart(2, '0')}`;
+                    if (sched.daysOfWeek && sched.daysOfWeek.length > 0) {
+                        info += `  曜日: ${sched.daysOfWeek.map(d => ['日','月','火','水','木','金','土'][d]).join(',')}`;
+                    }
+                    if (sched.startDate) info += `  開始: ${sched.startDate}`;
+                    if (sched.endDate) info += `  終了: ${sched.endDate}`;
+                    main.createEl('div', { text: info, cls: 'scheduled-tweet-info' });
+                    // ボタン横並び
+                    const actions = item.createDiv({ cls: 'scheduled-tweet-actions' });
+                    const editBtn = actions.createEl('button', { text: '編集', cls: 'scheduled-tweet-edit-btn' });
+                    editBtn.onclick = () => {
+                        this.openScheduleTweetModal(sched, idx);
+                    };
+                    const delBtn = actions.createEl('button', { text: '削除', cls: 'scheduled-tweet-delete-btn' });
+                    delBtn.onclick = async () => {
+                        if (!confirm('この予約投稿を削除しますか？')) return;
+                        scheduledPosts.splice(idx, 1);
+                        await repo.save({ ...settings, scheduledPosts });
+                        new Notice('予約投稿を削除しました');
+                        listDiv.remove();
+                        // 再描画
+                        this.display();
+                    };
+                });
+            }
+        })();
+
         // --- カレンダー（グローバル設定） ---
         const calendarAcc = createAccordion('カレンダー（グローバル設定）', false);
         new Setting(calendarAcc.body)
@@ -1233,8 +1274,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         }, group, editIdx).open();
     }
 
-    private openScheduleTweetModal() {
-        new ScheduleTweetModal(this.app, this.plugin).open();
+    private openScheduleTweetModal(sched?: ScheduledTweet, idx?: number) {
+        new ScheduleTweetModal(this.app, this.plugin, sched, idx).open();
     }
 }
 
@@ -1387,54 +1428,108 @@ class BoardGroupEditModal extends Modal {
 class ScheduleTweetModal extends Modal {
     plugin: WidgetBoardPlugin;
     repo: TweetRepository;
-    constructor(app: App, plugin: WidgetBoardPlugin) {
+    sched?: ScheduledTweet;
+    idx?: number;
+    constructor(app: App, plugin: WidgetBoardPlugin, sched?: ScheduledTweet, idx?: number) {
         super(app);
         this.plugin = plugin;
         this.repo = new TweetRepository(app, getTweetDbPath(plugin));
+        this.sched = sched;
+        this.idx = idx;
     }
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.createEl('h2', { text: '予約投稿を追加' });
-        let text = '';
-        let hour = 9;
-        let minute = 0;
-        let days = '';
-        let start = '';
-        let end = '';
+        contentEl.createEl('h2', { text: this.sched ? '予約投稿を編集' : '予約投稿を追加' });
+        let text = this.sched ? this.sched.text : '';
+        let hour = this.sched ? this.sched.hour : 9;
+        let minute = this.sched ? this.sched.minute : 0;
+        let daysArr: number[] = this.sched ? this.sched.daysOfWeek || [] : [];
+        let start = this.sched && this.sched.startDate ? this.sched.startDate : '';
+        let end = this.sched && this.sched.endDate ? this.sched.endDate : '';
         new Setting(contentEl)
             .setName('内容')
-            .addTextArea(t => t.onChange(v => { text = v; }));
+            .addTextArea(t => {
+                t.setValue(text);
+                t.onChange(v => { text = v; });
+            });
+        // 時 select
         new Setting(contentEl)
             .setName('時 (0-23)')
-            .addText(t => t.setValue('9').onChange(v => { const n = parseInt(v,10); hour = isNaN(n) ? 0 : n; }));
+            .addDropdown(drop => {
+                for (let i = 0; i < 24; i++) {
+                    drop.addOption(i.toString(), i.toString().padStart(2, '0'));
+                }
+                drop.setValue(hour.toString());
+                drop.onChange(v => { hour = parseInt(v, 10); });
+            });
+        // 分 select
         new Setting(contentEl)
             .setName('分 (0-59)')
-            .addText(t => t.setValue('0').onChange(v => { const n = parseInt(v,10); minute = isNaN(n) ? 0 : n; }));
+            .addDropdown(drop => {
+                for (let i = 0; i < 60; i += 5) {
+                    drop.addOption(i.toString(), i.toString().padStart(2, '0'));
+                }
+                drop.setValue(minute.toString());
+                drop.onChange(v => { minute = parseInt(v, 10); });
+            });
+        // 曜日チェックボックス
         new Setting(contentEl)
-            .setName('曜日 (例:1,3,5)')
-            .setDesc('0=日,1=月')
-            .addText(t => t.onChange(v => { days = v; }));
+            .setName('曜日')
+            .setDesc('複数選択可')
+            .addExtraButton(btn => {
+                const daysLabel = ['日','月','火','水','木','金','土'];
+                const container = btn.extraSettingsEl.parentElement;
+                if (!container) return;
+                daysLabel.forEach((label, idx) => {
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.id = 'weekday-' + idx;
+                    cb.style.marginLeft = '8px';
+                    cb.checked = daysArr.includes(idx);
+                    cb.onchange = () => {
+                        if (cb.checked) {
+                            if (!daysArr.includes(idx)) daysArr.push(idx);
+                        } else {
+                            daysArr = daysArr.filter(d => d !== idx);
+                        }
+                    };
+                    const lbl = document.createElement('label');
+                    lbl.htmlFor = cb.id;
+                    lbl.textContent = label;
+                    lbl.style.marginRight = '4px';
+                    container.appendChild(cb);
+                    container.appendChild(lbl);
+                });
+            });
+        // 開始日 date picker
         new Setting(contentEl)
             .setName('開始日')
             .setDesc('YYYY-MM-DD')
-            .addText(t => t.onChange(v => { start = v; }));
+            .addText(t => {
+                t.inputEl.type = 'date';
+                t.onChange(v => { start = v; });
+            });
+        // 終了日 date picker
         new Setting(contentEl)
             .setName('終了日')
             .setDesc('YYYY-MM-DD')
-            .addText(t => t.onChange(v => { end = v; }));
+            .addText(t => {
+                t.inputEl.type = 'date';
+                t.onChange(v => { end = v; });
+            });
         const btnRow = contentEl.createDiv({ cls: 'modal-button-row', attr: { style: 'display:flex;justify-content:flex-end;gap:12px;margin-top:24px;' } });
         new Setting(btnRow)
-            .addButton(btn => btn.setButtonText('追加').setCta().onClick(async () => {
+            .addButton(btn => btn.setButtonText(this.sched ? '更新' : '追加').setCta().onClick(async () => {
                 if (!text.trim()) { new Notice('内容を入力してください'); return; }
                 const opts: ScheduleOptions = { hour, minute };
-                if (days.trim()) opts.daysOfWeek = days.split(',').map(d => parseInt(d.trim(),10)).filter(n => !isNaN(n));
+                if (daysArr.length > 0) opts.daysOfWeek = daysArr;
                 if (start.trim()) opts.startDate = start.trim();
                 if (end.trim()) opts.endDate = end.trim();
                 const next = computeNextTime(opts);
                 if (next === null) { new Notice('次の投稿日時が計算できません'); return; }
                 const sched: ScheduledTweet = {
-                    id: 'sch-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
+                    id: this.sched ? this.sched.id : 'sch-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
                     text: text.trim(),
                     hour: opts.hour,
                     minute: opts.minute,
@@ -1445,9 +1540,13 @@ class ScheduleTweetModal extends Modal {
                 };
                 const settings = await this.repo.load();
                 if (!Array.isArray(settings.scheduledPosts)) settings.scheduledPosts = [];
-                settings.scheduledPosts.push(sched);
+                if (this.sched) {
+                    settings.scheduledPosts[this.idx!] = sched;
+                } else {
+                    settings.scheduledPosts.push(sched);
+                }
                 await this.repo.save(settings);
-                new Notice('予約投稿を追加しました');
+                new Notice(this.sched ? '予約投稿を更新しました' : '予約投稿を追加しました');
                 this.close();
             }))
             .addButton(btn => btn.setButtonText('キャンセル').onClick(() => this.close()));
