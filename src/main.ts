@@ -51,10 +51,10 @@ export default class WidgetBoardPlugin extends Plugin {
         filterConsoleWarn(['[Violation]', '[Deprecation]']);
         this.llmManager = new LLMManager();
         this.llmManager.register(GeminiProvider);
-        this.mcpManager = new McpManager();
         // Preload Chart.js for ReflectionWidget without blocking startup
         setTimeout(() => preloadChartJS().catch(() => {}), 0);
         await this.loadSettings();
+        this.mcpManager = new McpManager(`http://localhost:${this.settings.mcpServerPort || 3000}`);
         await this.initTweetPostCountCache();
         this.registerAllBoardCommands();
         this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());
@@ -137,7 +137,8 @@ export default class WidgetBoardPlugin extends Plugin {
         const env = {
             ...process.env,
             MCP_ALLOWED_CMDS: (this.settings.mcpAllowedCommands || []).join(','),
-            BRAVE_SEARCH_API_KEY: this.settings.braveSearchApiKey || ''
+            BRAVE_SEARCH_API_KEY: this.settings.braveSearchApiKey || '',
+            MCP_SERVER_PORT: String(this.settings.mcpServerPort || 3000)
         };
         // ts-nodeに依存しないようNodeで直接実行する
         this.mcpServerProcess = spawn('node', [serverPath], {

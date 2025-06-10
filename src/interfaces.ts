@@ -111,6 +111,8 @@ export interface PluginGlobalSettings {
     debugLogging?: boolean;
     /** MCPサーバーで許可する外部コマンド一覧 */
     mcpAllowedCommands?: string[];
+    /** MCPサーバーのポート番号 */
+    mcpServerPort?: number;
     /** Brave Search APIキー */
     braveSearchApiKey?: string;
     /**

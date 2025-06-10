@@ -140,6 +140,20 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
 
         new Setting(containerEl)
+            .setName('MCPサーバーポート')
+            .setDesc('MCPサーバーが待ち受けるポート番号')
+            .addText(text => {
+                text.setPlaceholder('3000')
+                    .setValue(String(this.plugin.settings.mcpServerPort || 3000))
+                    .onChange(() => {});
+                text.inputEl.addEventListener('blur', async () => {
+                    const port = parseInt(text.inputEl.value.trim(), 10);
+                    this.plugin.settings.mcpServerPort = isNaN(port) ? 3000 : port;
+                    await this.plugin.saveSettings();
+                });
+            });
+
+        new Setting(containerEl)
             .setName('Brave Search APIキー')
             .setDesc('Brave Search APIを利用するためのキー')
             .addText(text => {

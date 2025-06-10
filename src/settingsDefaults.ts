@@ -68,6 +68,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     reflectionAiModel: 'gemini-2.0-flash-exp',
     debugLogging: false,
     mcpAllowedCommands: ['echo', 'ls', 'date'],
+    mcpServerPort: 3000,
     braveSearchApiKey: '',
     userProfiles: [],
 };
