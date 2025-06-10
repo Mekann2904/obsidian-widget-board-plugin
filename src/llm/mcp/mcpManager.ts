@@ -18,10 +18,11 @@ export class McpManager {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ command, args })
             });
+            const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                throw new Error(`MCPサーバーからエラー: ${res.status} ${res.statusText}`);
+                const msg = data && data.error ? data.error : `${res.status} ${res.statusText}`;
+                throw new Error(`MCPサーバーからエラー: ${msg}`);
             }
-            const data = await res.json();
             return data;
         } catch (err) {
             throw new Error(`MCPサーバー通信エラー: ${err}`);
