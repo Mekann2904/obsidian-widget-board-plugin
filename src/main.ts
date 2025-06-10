@@ -132,7 +132,8 @@ export default class WidgetBoardPlugin extends Plugin {
         this.prewarmAllWidgetMarkdownCache();
         // MCPサーバーをバックグラウンドで起動
         // MCPサーバースクリプト(JS版)へのパス
-        const serverPath = process.cwd() + '/.obsidian/plugins/obsidian-widget-board-plugin/src/llm/mcp/mcpServer.js';
+        const pluginFolder = this.app.vault.configDir + '/plugins/' + this.manifest.id;
+        const serverPath = pluginFolder + '/src/llm/mcp/mcpServer.js';
         const env = {
             ...process.env,
             MCP_ALLOWED_CMDS: (this.settings.mcpAllowedCommands || []).join(','),
