@@ -447,6 +447,23 @@ export class TweetWidgetUI {
         input.addEventListener('blur', () => {
             setTimeout(() => atSuggestList.style.display = 'none', 100);
         });
+
+        // --- textarea生成直後に追加 ---
+        input.addEventListener('paste', async (e: ClipboardEvent) => {
+            if (!e.clipboardData) return;
+            const files: File[] = [];
+            for (const item of Array.from(e.clipboardData.items)) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) files.push(file);
+                }
+            }
+            if (files.length > 0) {
+                e.preventDefault();
+                await this.widget.attachFiles(files);
+                this.renderFilePreview(filePreviewArea);
+            }
+        });
     }
 
     private renderReplyInfo(container: HTMLElement): void {
@@ -614,6 +631,23 @@ export class TweetWidgetUI {
             await this.widget.submitReply(text, targetPost.id);
             textarea.value = '';
         };
+
+        // --- 以下、renderDetailReplyInputのtextarea生成直後 ---
+        textarea.addEventListener('paste', async (e: ClipboardEvent) => {
+            if (!e.clipboardData) return;
+            const files: File[] = [];
+            for (const item of Array.from(e.clipboardData.items)) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) files.push(file);
+                }
+            }
+            if (files.length > 0) {
+                e.preventDefault();
+                await this.widget.attachFiles(files);
+                // 画像プレビューが必要ならここで呼ぶ
+            }
+        });
     }
 
     private async renderSinglePost(
@@ -970,6 +1004,23 @@ export class TweetWidgetUI {
                 replyBtn.click();
             }
         });
+
+        // --- 以下、renderReplyModalのtextarea生成直後 ---
+        textarea.addEventListener('paste', async (e: ClipboardEvent) => {
+            if (!e.clipboardData) return;
+            const files: File[] = [];
+            for (const item of Array.from(e.clipboardData.items)) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) files.push(file);
+                }
+            }
+            if (files.length > 0) {
+                e.preventDefault();
+                await this.widget.attachFiles(files);
+                // 画像プレビューが必要ならここで呼ぶ
+            }
+        });
     }
 
     private renderRetweetModal(post: TweetWidgetPost): void {
@@ -1054,6 +1105,23 @@ export class TweetWidgetUI {
             }
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 retweetBtn.click();
+            }
+        });
+
+        // --- 以下、renderRetweetModalのtextarea生成直後 ---
+        textarea.addEventListener('paste', async (e: ClipboardEvent) => {
+            if (!e.clipboardData) return;
+            const files: File[] = [];
+            for (const item of Array.from(e.clipboardData.items)) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) files.push(file);
+                }
+            }
+            if (files.length > 0) {
+                e.preventDefault();
+                await this.widget.attachFiles(files);
+                // 画像プレビューが必要ならここで呼ぶ
             }
         });
     }
@@ -1144,6 +1212,23 @@ export class TweetWidgetUI {
             }
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 replyBtn.click();
+            }
+        });
+
+        // --- 以下、renderEditModalのtextarea生成直後 ---
+        textarea.addEventListener('paste', async (e: ClipboardEvent) => {
+            if (!e.clipboardData) return;
+            const files: File[] = [];
+            for (const item of Array.from(e.clipboardData.items)) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) files.push(file);
+                }
+            }
+            if (files.length > 0) {
+                e.preventDefault();
+                await this.widget.attachFiles(files);
+                // 画像プレビューが必要ならここで呼ぶ
             }
         });
     }

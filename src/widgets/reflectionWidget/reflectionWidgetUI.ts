@@ -226,6 +226,23 @@ export class ReflectionWidgetUI {
             this.todaySummaryEl.innerText = '';
             this.todaySummaryEl.style.minHeight = '2em';
             this.aiSummarySectionEl.appendChild(this.todaySummaryEl);
+            // --- 今日のまとめ コピー用ボタン追加 ---
+            const todayCopyBtn = document.createElement('button');
+            todayCopyBtn.innerText = 'コピー';
+            todayCopyBtn.style.marginLeft = '8px';
+            todayCopyBtn.onclick = async () => {
+                const text = this.lastTodaySummary || '';
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const old = todayCopyBtn.innerText;
+                    todayCopyBtn.innerText = 'コピーしました！';
+                    setTimeout(() => { todayCopyBtn.innerText = old; }, 1500);
+                } catch {
+                    todayCopyBtn.innerText = 'コピー失敗';
+                    setTimeout(() => { todayCopyBtn.innerText = 'コピー'; }, 1500);
+                }
+            };
+            this.aiSummarySectionEl.appendChild(todayCopyBtn);
             const weekTitle = document.createElement('div');
             weekTitle.style.fontWeight = 'bold';
             weekTitle.style.margin = '16px 0 2px 0';
@@ -236,6 +253,23 @@ export class ReflectionWidgetUI {
             this.weekSummaryEl.innerText = '';
             this.weekSummaryEl.style.minHeight = '2em';
             this.aiSummarySectionEl.appendChild(this.weekSummaryEl);
+            // --- 今週のまとめ コピー用ボタン追加 ---
+            const weekCopyBtn = document.createElement('button');
+            weekCopyBtn.innerText = 'コピー';
+            weekCopyBtn.style.marginLeft = '8px';
+            weekCopyBtn.onclick = async () => {
+                const text = this.lastWeekSummary || '';
+                try {
+                    await navigator.clipboard.writeText(text);
+                    const old = weekCopyBtn.innerText;
+                    weekCopyBtn.innerText = 'コピーしました！';
+                    setTimeout(() => { weekCopyBtn.innerText = old; }, 1500);
+                } catch {
+                    weekCopyBtn.innerText = 'コピー失敗';
+                    setTimeout(() => { weekCopyBtn.innerText = 'コピー'; }, 1500);
+                }
+            };
+            this.aiSummarySectionEl.appendChild(weekCopyBtn);
         }
         // 差分描画: グラフ・要約のみ更新
         if (this.canvasEl && this.contentEl) {

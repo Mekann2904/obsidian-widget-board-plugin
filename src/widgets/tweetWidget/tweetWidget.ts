@@ -511,11 +511,14 @@ export class TweetWidget implements WidgetImplementation {
             insertedLinks.push(`![[tweet-widget-files/${uniqueName}]]`);
         }
         // 本文テキストエリアに![[ファイル名]]を自動挿入
-        const input = document.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
-        if (input && insertedLinks.length > 0) {
-            const sep = input.value && !input.value.endsWith('\n') ? '\n' : '';
-            input.value = input.value + sep + insertedLinks.join('\n');
-            input.dispatchEvent(new Event('input'));
+        const selectors = ['.tweet-textarea-main', '.tweet-reply-modal-textarea', '.tweet-detail-reply-textarea', '.tweet-edit-modal-textarea'];
+        const inputs = Array.from(document.querySelectorAll<HTMLTextAreaElement>(selectors.join(',')));
+        for (const input of inputs) {
+            if (insertedLinks.length > 0) {
+                const sep = input.value && !input.value.endsWith('\n') ? '\n' : '';
+                input.value = input.value + sep + insertedLinks.join('\n');
+                input.dispatchEvent(new Event('input'));
+            }
         }
     }
 
