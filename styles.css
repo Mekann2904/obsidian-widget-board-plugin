@@ -1391,12 +1391,14 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   display: flex;
   flex-direction: column;
   align-items: center;
+  overflow: auto;
 }
 .tweet-image-modal-content img {
   max-width: 90vw;
   max-height: 90vh;
   background: #fff;
   display: block;
+  transform-origin: center center;
 }
 .tweet-image-modal-content button {
   margin-top: 12px;

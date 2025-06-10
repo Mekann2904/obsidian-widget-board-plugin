@@ -549,7 +549,17 @@ export class TweetWidgetUI {
         };
 
         const modal = backdrop.createDiv('tweet-image-modal-content');
-        modal.createEl('img', { attr: { src: imgUrl, alt: 'image-large' } });
+        const imgEl = modal.createEl('img', { attr: { src: imgUrl, alt: 'image-large' } });
+        let scale = 1;
+        const updateScale = () => {
+            imgEl.style.transform = `scale(${scale})`;
+        };
+        imgEl.onwheel = (e) => {
+            e.preventDefault();
+            scale *= e.deltaY < 0 ? 1.1 : 0.9;
+            if (scale < 0.1) scale = 0.1;
+            updateScale();
+        };
         const closeBtn = modal.createEl('button', { text: '×' });
         closeBtn.onclick = () => backdrop.remove();
 
@@ -564,12 +574,17 @@ export class TweetWidgetUI {
 
     private showImageContextMenu(event: MouseEvent, img: HTMLImageElement): void {
         const menu = new Menu();
-        menu.addItem(item => item.setTitle('画像をダウンロード').setIcon('download')
-            .onClick(() => {
-                const a = document.createElement('a');
-                a.href = img.src;
-                a.download = img.src.split('/').pop() || 'image';
-                a.click();
+        menu.addItem(item => item.setTitle('画像をコピー').setIcon('copy')
+            .onClick(async () => {
+                try {
+                    const blob = await (await fetch(img.src)).blob();
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ [blob.type]: blob })
+                    ]);
+                    new Notice('画像をコピーしました');
+                } catch {
+                    new Notice('コピーに失敗しました');
+                }
             }));
         menu.addItem(item => item.setTitle('画像を拡大表示').setIcon('image')
             .onClick(() => this.showImageModal(img.src)));
