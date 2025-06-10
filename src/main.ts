@@ -132,9 +132,15 @@ export default class WidgetBoardPlugin extends Plugin {
         this.prewarmAllWidgetMarkdownCache();
         // MCPサーバーをバックグラウンドで起動
         const serverPath = process.cwd() + '/.obsidian/plugins/obsidian-widget-board-plugin/src/llm/mcp/mcpServer.ts';
+        const env = {
+            ...process.env,
+            MCP_ALLOWED_CMDS: (this.settings.mcpAllowedCommands || []).join(','),
+            BRAVE_SEARCH_API_KEY: this.settings.braveSearchApiKey || ''
+        };
         this.mcpServerProcess = spawn('npx', ['ts-node', serverPath], {
             stdio: 'ignore',
-            detached: true
+            detached: true,
+            env
         });
         if (this.mcpServerProcess) this.mcpServerProcess.unref();
         debugLog(this, 'Widget Board Plugin: Loaded.');

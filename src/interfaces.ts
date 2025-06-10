@@ -109,6 +109,10 @@ export interface PluginGlobalSettings {
     calendarDailyNoteFormat?: string;
     /** デバッグログ出力を有効にする */
     debugLogging?: boolean;
+    /** MCPサーバーで許可する外部コマンド一覧 */
+    mcpAllowedCommands?: string[];
+    /** Brave Search APIキー */
+    braveSearchApiKey?: string;
     /**
      * ユーザー一覧（グローバル）
      */

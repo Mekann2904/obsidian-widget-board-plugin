@@ -125,6 +125,34 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
 
+        new Setting(containerEl)
+            .setName('MCP許可コマンド')
+            .setDesc('外部ツール実行を許可するコマンド一覧（カンマ区切り）')
+            .addText(text => {
+                text.setPlaceholder('echo,ls,date')
+                    .setValue((this.plugin.settings.mcpAllowedCommands || ['echo','ls','date']).join(','))
+                    .onChange(() => {});
+                text.inputEl.addEventListener('blur', async () => {
+                    const list = text.inputEl.value.split(',').map(s => s.trim()).filter(Boolean);
+                    this.plugin.settings.mcpAllowedCommands = list;
+                    await this.plugin.saveSettings();
+                });
+            });
+
+        new Setting(containerEl)
+            .setName('Brave Search APIキー')
+            .setDesc('Brave Search APIを利用するためのキー')
+            .addText(text => {
+                text.inputEl.type = 'password';
+                text.setPlaceholder('bs-api-key')
+                    .setValue(this.plugin.settings.braveSearchApiKey || '')
+                    .onChange(() => {});
+                text.inputEl.addEventListener('blur', async () => {
+                    this.plugin.settings.braveSearchApiKey = text.inputEl.value.trim();
+                    await this.plugin.saveSettings();
+                });
+            });
+
         // --- アコーディオン生成ヘルパー (トップレベル用) ---
         const createAccordion = (title: string, defaultOpen: boolean = false) => {
             const acc = containerEl.createDiv({ cls: 'wb-accordion' + (defaultOpen ? ' wb-accordion-open' : '') });
