@@ -123,7 +123,7 @@ export class TweetWidget implements WidgetImplementation {
         if (!trimmedText && this.attachedFiles.length === 0) return;
 
         // --- @コマンド検出・MCPサーバー呼び出し ---
-        const atCmdMatch = trimmedText.match(/^@(\w+)(?:\s+(.*))?$/);
+        const atCmdMatch = trimmedText.match(/^@([\w-]+)(?:\s+(.*))?$/);
         if (atCmdMatch) {
             const command = atCmdMatch[1];
             const args = atCmdMatch[2] ? atCmdMatch[2].split(/\s+/) : [];
