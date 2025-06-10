@@ -141,7 +141,7 @@ export default class WidgetBoardPlugin extends Plugin {
             MCP_SERVER_PORT: String(this.settings.mcpServerPort || 3000)
         };
         // ts-nodeに依存しないようNodeで直接実行する
-        this.mcpServerProcess = spawn('node', [serverPath], {
+        this.mcpServerProcess = spawn(process.execPath, [serverPath], {
             stdio: 'ignore',
             detached: true,
             env
