@@ -54,6 +54,7 @@ export class TweetWidgetUI {
     private needsRender = false;
     // showAvatarModalで使うためのハンドラ参照を保持
     private _escHandlerForAvatarModal: ((ev: KeyboardEvent) => void) | null = null;
+    private _escHandlerForImageModal: ((ev: KeyboardEvent) => void) | null = null;
 
     constructor(widget: TweetWidget, container: HTMLElement) {
         this.widget = widget;
@@ -538,6 +539,43 @@ export class TweetWidgetUI {
         window.addEventListener('keydown', this._escHandlerForAvatarModal);
     }
 
+    private showImageModal(imgUrl: string): void {
+        const oldModal = document.querySelector('.tweet-image-modal-backdrop');
+        if (oldModal) oldModal.remove();
+
+        const backdrop = document.body.createDiv('tweet-image-modal-backdrop');
+        backdrop.onclick = (ev) => {
+            if (ev.target === backdrop) backdrop.remove();
+        };
+
+        const modal = backdrop.createDiv('tweet-image-modal-content');
+        modal.createEl('img', { attr: { src: imgUrl, alt: 'image-large' } });
+        const closeBtn = modal.createEl('button', { text: '×' });
+        closeBtn.onclick = () => backdrop.remove();
+
+        this._escHandlerForImageModal = (ev: KeyboardEvent) => {
+            if (ev.key === 'Escape') {
+                backdrop.remove();
+                window.removeEventListener('keydown', this._escHandlerForImageModal!);
+            }
+        };
+        window.addEventListener('keydown', this._escHandlerForImageModal);
+    }
+
+    private showImageContextMenu(event: MouseEvent, img: HTMLImageElement): void {
+        const menu = new Menu();
+        menu.addItem(item => item.setTitle('画像をダウンロード').setIcon('download')
+            .onClick(() => {
+                const a = document.createElement('a');
+                a.href = img.src;
+                a.download = img.src.split('/').pop() || 'image';
+                a.click();
+            }));
+        menu.addItem(item => item.setTitle('画像を拡大表示').setIcon('image')
+            .onClick(() => this.showImageModal(img.src)));
+        menu.showAtMouseEvent(event);
+    }
+
     private renderPostList(listEl: HTMLElement): void {
         const parent = listEl.parentElement;
         if (parent) {
@@ -739,6 +777,10 @@ export class TweetWidgetUI {
             img.style.height = 'auto';
             img.style.maxWidth = '100%';
             img.style.display = 'block';
+            img.oncontextmenu = (e) => {
+                e.preventDefault();
+                this.showImageContextMenu(e, img);
+            };
         });
 
         if (post.quoteId) {
@@ -1237,6 +1279,7 @@ export class TweetWidgetUI {
         // モーダルで追加したグローバルイベントリスナーの解除
         // 例: showAvatarModalでkeydownを追加している
         window.removeEventListener('keydown', this._escHandlerForAvatarModal as any);
+        window.removeEventListener('keydown', this._escHandlerForImageModal as any);
         // 必要に応じて他のクリーンアップ処理をここに追加
     }
 
