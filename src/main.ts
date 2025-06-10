@@ -131,13 +131,15 @@ export default class WidgetBoardPlugin extends Plugin {
         // プリウォーム処理を追加
         this.prewarmAllWidgetMarkdownCache();
         // MCPサーバーをバックグラウンドで起動
-        const serverPath = process.cwd() + '/.obsidian/plugins/obsidian-widget-board-plugin/src/llm/mcp/mcpServer.ts';
+        // MCPサーバースクリプト(JS版)へのパス
+        const serverPath = process.cwd() + '/.obsidian/plugins/obsidian-widget-board-plugin/src/llm/mcp/mcpServer.js';
         const env = {
             ...process.env,
             MCP_ALLOWED_CMDS: (this.settings.mcpAllowedCommands || []).join(','),
             BRAVE_SEARCH_API_KEY: this.settings.braveSearchApiKey || ''
         };
-        this.mcpServerProcess = spawn('npx', ['ts-node', serverPath], {
+        // ts-nodeに依存しないようNodeで直接実行する
+        this.mcpServerProcess = spawn('node', [serverPath], {
             stdio: 'ignore',
             detached: true,
             env
