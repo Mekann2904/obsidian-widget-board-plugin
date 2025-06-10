@@ -12,7 +12,7 @@ app.use(express.json());
 // 許可するコマンドのホワイトリスト
 const allowedCommands = ['echo', 'ls', 'date'];
 
-app.post('/executeTool', (req, res) => {
+app.post('/executeTool', (req: Request, res: Response) => {
     const { command, args } = req.body;
     if (!allowedCommands.includes(command)) {
         return res.status(400).json({ error: '許可されていないコマンドです' });
