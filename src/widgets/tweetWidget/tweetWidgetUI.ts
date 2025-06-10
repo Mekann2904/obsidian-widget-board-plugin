@@ -823,19 +823,43 @@ export class TweetWidgetUI {
         }
         // Vault内画像のパスをgetResourcePathでURLに変換
         const vaultFiles = this.app.vault.getFiles();
+        // デバッグモード判定（なければfalse）
+        const debugLog = this.widget?.plugin?.settings?.debugLogging === true;
         replacedText = replacedText.replace(/!\[\[(.+?)\]\]/g, (match, p1) => {
-            const f = vaultFiles.find(f => f.name === p1 || f.path === p1);
+            let fileName = p1;
+            try {
+                const urlMatch = /([^\/\\]+?)(\?.*)?$/.exec(p1);
+                if (urlMatch) fileName = urlMatch[1];
+            } catch {}
+            if (debugLog) {
+                console.log('[tweetWidgetUI] 画像置換: p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
+            }
+            const f = vaultFiles.find(f => f.name === fileName || f.path === fileName || f.path === p1 || f.name === p1);
             if (f) {
+                if (debugLog) console.log('[tweetWidgetUI] マッチしたファイル:', f);
                 const url = this.app.vault.getResourcePath(f);
                 return `![](${url})`;
+            } else {
+                if (debugLog) console.warn('[tweetWidgetUI] 画像ファイルが見つかりません:', p1);
             }
             return match;
         });
         replacedText = replacedText.replace(/!\[\]\((.+?)\)/g, (match, p1) => {
-            const f = vaultFiles.find(f => f.name === p1 || f.path === p1);
+            let fileName = p1;
+            try {
+                const urlMatch = /([^\/\\]+?)(\?.*)?$/.exec(p1);
+                if (urlMatch) fileName = urlMatch[1];
+            } catch {}
+            if (debugLog) {
+                console.log('[tweetWidgetUI] 画像置換 (md): p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
+            }
+            const f = vaultFiles.find(f => f.name === fileName || f.path === fileName || f.path === p1 || f.name === p1);
             if (f) {
+                if (debugLog) console.log('[tweetWidgetUI] マッチしたファイル (md):', f);
                 const url = this.app.vault.getResourcePath(f);
                 return `![](${url})`;
+            } else {
+                if (debugLog) console.warn('[tweetWidgetUI] 画像ファイルが見つかりません (md):', p1);
             }
             return match;
         });

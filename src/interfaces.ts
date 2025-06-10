@@ -113,6 +113,8 @@ export interface PluginGlobalSettings {
      * ユーザー一覧（グローバル）
      */
     userProfiles?: { userName: string; userId: string; avatarUrl: string }[];
+    /** デバッグ用ログ出力（trueで詳細ログを出す） */
+    debugLog?: boolean;
 }
 
 // 共通型があればここに記載
