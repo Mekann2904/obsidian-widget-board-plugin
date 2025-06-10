@@ -54,6 +54,7 @@ export class TweetWidgetUI {
     private needsRender = false;
     // showAvatarModalで使うためのハンドラ参照を保持
     private _escHandlerForAvatarModal: ((ev: KeyboardEvent) => void) | null = null;
+    private _escHandlerForImageModal: ((ev: KeyboardEvent) => void) | null = null;
 
     constructor(widget: TweetWidget, container: HTMLElement) {
         this.widget = widget;
@@ -538,6 +539,114 @@ export class TweetWidgetUI {
         window.addEventListener('keydown', this._escHandlerForAvatarModal);
     }
 
+    private showImageModal(imgUrl: string): void {
+        // 既存のレイヤーがあれば削除
+        const oldLayer = document.querySelector('.tweet-image-zoom-layer');
+        if (oldLayer) oldLayer.remove();
+
+        // 独自のフルスクリーンレイヤーを作成
+        const layer = document.createElement('div');
+        layer.className = 'tweet-image-zoom-layer';
+        layer.style.position = 'fixed';
+        layer.style.top = '0';
+        layer.style.left = '0';
+        layer.style.width = '100vw';
+        layer.style.height = '100vh';
+        layer.style.background = 'rgba(0,0,0,0.7)';
+        layer.style.zIndex = '99999';
+        layer.style.display = 'flex';
+        layer.style.alignItems = 'center';
+        layer.style.justifyContent = 'center';
+        layer.style.userSelect = 'none';
+
+        // 画像本体
+        const imgEl = document.createElement('img');
+        imgEl.src = imgUrl;
+        imgEl.alt = 'image-large';
+        imgEl.style.transition = 'transform 0.2s';
+        imgEl.style.background = '#fff';
+        imgEl.style.boxShadow = '0 2px 24px rgba(0,0,0,0.25)';
+        imgEl.style.borderRadius = '8px';
+        imgEl.style.maxWidth = '90vw';
+        imgEl.style.maxHeight = '90vh';
+        imgEl.style.display = 'block';
+        imgEl.style.position = 'relative';
+        layer.appendChild(imgEl);
+
+        // 閉じるボタン
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '32px';
+        closeBtn.style.right = '48px';
+        closeBtn.style.fontSize = '2.2em';
+        closeBtn.style.background = 'rgba(0,0,0,0.3)';
+        closeBtn.style.color = '#fff';
+        closeBtn.style.border = 'none';
+        closeBtn.style.borderRadius = '50%';
+        closeBtn.style.width = '48px';
+        closeBtn.style.height = '48px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.zIndex = '100000';
+        closeBtn.onclick = () => layer.remove();
+        layer.appendChild(closeBtn);
+
+        // Escキーで閉じる
+        const escHandler = (ev: KeyboardEvent) => {
+            if (ev.key === 'Escape') {
+                layer.remove();
+                window.removeEventListener('keydown', escHandler);
+            }
+        };
+        window.addEventListener('keydown', escHandler);
+
+        // 背景クリックで閉じる
+        layer.addEventListener('click', (ev) => {
+            if (ev.target === layer) layer.remove();
+        });
+
+        // 拡大トグル（クリックで2倍、もう一度クリックで元に戻す）
+        let isZoomed = false;
+        imgEl.style.transform = 'scale(1)';
+        imgEl.style.cursor = 'zoom-in';
+        imgEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isZoomed = !isZoomed;
+            if (isZoomed) {
+                imgEl.style.transform = 'scale(2)';
+                imgEl.style.cursor = 'zoom-out';
+                imgEl.style.maxWidth = 'none';
+                imgEl.style.maxHeight = 'none';
+            } else {
+                imgEl.style.transform = 'scale(1)';
+                imgEl.style.cursor = 'zoom-in';
+                imgEl.style.maxWidth = '90vw';
+                imgEl.style.maxHeight = '90vh';
+            }
+        });
+
+        document.body.appendChild(layer);
+    }
+
+    private showImageContextMenu(event: MouseEvent, img: HTMLImageElement): void {
+        const menu = new Menu();
+        menu.addItem(item => item.setTitle('画像をコピー').setIcon('copy')
+            .onClick(async () => {
+                try {
+                    const blob = await (await fetch(img.src)).blob();
+                    await navigator.clipboard.write([
+                        new ClipboardItem({ [blob.type]: blob })
+                    ]);
+                    new Notice('画像をコピーしました');
+                } catch {
+                    new Notice('コピーに失敗しました');
+                }
+            }));
+        menu.addItem(item => item.setTitle('画像を拡大表示').setIcon('image')
+            .onClick(() => this.showImageModal(img.src)));
+        menu.showAtMouseEvent(event);
+    }
+
     private renderPostList(listEl: HTMLElement): void {
         const parent = listEl.parentElement;
         if (parent) {
@@ -714,19 +823,43 @@ export class TweetWidgetUI {
         }
         // Vault内画像のパスをgetResourcePathでURLに変換
         const vaultFiles = this.app.vault.getFiles();
+        // デバッグモード判定（なければfalse）
+        const debugLog = this.widget?.plugin?.settings?.debugLogging === true;
         replacedText = replacedText.replace(/!\[\[(.+?)\]\]/g, (match, p1) => {
-            const f = vaultFiles.find(f => f.name === p1 || f.path === p1);
+            let fileName = p1;
+            try {
+                const urlMatch = /([^\/\\]+?)(\?.*)?$/.exec(p1);
+                if (urlMatch) fileName = urlMatch[1];
+            } catch {}
+            if (debugLog) {
+                console.log('[tweetWidgetUI] 画像置換: p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
+            }
+            const f = vaultFiles.find(f => f.name === fileName || f.path === fileName || f.path === p1 || f.name === p1);
             if (f) {
+                if (debugLog) console.log('[tweetWidgetUI] マッチしたファイル:', f);
                 const url = this.app.vault.getResourcePath(f);
                 return `![](${url})`;
+            } else {
+                if (debugLog) console.warn('[tweetWidgetUI] 画像ファイルが見つかりません:', p1);
             }
             return match;
         });
         replacedText = replacedText.replace(/!\[\]\((.+?)\)/g, (match, p1) => {
-            const f = vaultFiles.find(f => f.name === p1 || f.path === p1);
+            let fileName = p1;
+            try {
+                const urlMatch = /([^\/\\]+?)(\?.*)?$/.exec(p1);
+                if (urlMatch) fileName = urlMatch[1];
+            } catch {}
+            if (debugLog) {
+                console.log('[tweetWidgetUI] 画像置換 (md): p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
+            }
+            const f = vaultFiles.find(f => f.name === fileName || f.path === fileName || f.path === p1 || f.name === p1);
             if (f) {
+                if (debugLog) console.log('[tweetWidgetUI] マッチしたファイル (md):', f);
                 const url = this.app.vault.getResourcePath(f);
                 return `![](${url})`;
+            } else {
+                if (debugLog) console.warn('[tweetWidgetUI] 画像ファイルが見つかりません (md):', p1);
             }
             return match;
         });
@@ -739,6 +872,10 @@ export class TweetWidgetUI {
             img.style.height = 'auto';
             img.style.maxWidth = '100%';
             img.style.display = 'block';
+            img.oncontextmenu = (e) => {
+                e.preventDefault();
+                this.showImageContextMenu(e, img);
+            };
         });
 
         if (post.quoteId) {
@@ -1237,6 +1374,7 @@ export class TweetWidgetUI {
         // モーダルで追加したグローバルイベントリスナーの解除
         // 例: showAvatarModalでkeydownを追加している
         window.removeEventListener('keydown', this._escHandlerForAvatarModal as any);
+        window.removeEventListener('keydown', this._escHandlerForImageModal as any);
         // 必要に応じて他のクリーンアップ処理をここに追加
     }
 
