@@ -35,18 +35,58 @@ mermaidの構造はリゾームにしなさい。同じものは複数回出現�
 1. Markdown コードブロック内にmermaidで出力する。
 2. 最初の行は **flowchart LR**。
 3. サブグラフ（subgraph）は 6〜8 個。  
-   - 名前は半角英数字と空白のみ。引用符は不要。
+   - 名前は日本語。引用符は不要。
 4. 各サブグラフ内のノードは  
    - 識別子: 半角英数字・アンダースコアのみ  
-   - ラベル: 半角のダブルクオーテーションで囲む（日本語可）  
+   - ラベル: 半角のダブルクオーテーションで囲む（日本語）  
    例: node1["表示名"]
 5. エッジはサブグラフ外にまとめて記述する。  
-   - 書式: nodeA -->|"ラベル"|nodeB  
-     **--> と 1 本目の |2 本目の | と終点識別子の間に空白を入れない**。
 6. **Analysis** というサブグラフを 1 つ必ず設け、AI 視点の考察ノードを配置する。
 7. 生成されるコードは Mermaid の公式構文に完全準拠し、パースエラーを発生させないこと。
 8. 以下の文字は使用しないでください。
   ！”＃＄％＆’（）＝＾〜｜￥１２３４５６７８９０＠｀「」｛｝；：＋＊＜＞、。・？＿
+
+#### few-shot(本番はmermaidコードブロックに入れてください)
+
+flowchart LR
+    id1["This is the (text) in the box"]
+
+
+flowchart LR
+    A["A double quote:#quot;"] --> B["A dec char:#9829;"]
+
+
+flowchart TB
+    c1-->a2
+    subgraph one
+        a1-->a2
+    end
+    subgraph two
+        b1-->b2
+    end
+    subgraph three
+        c1-->c2
+    end
+
+
+flowchart TB
+    c1-->a2
+    subgraph one
+        a1-->a2
+    end
+    subgraph two
+        b1-->b2
+    end
+    subgraph three
+        c1-->c2
+    end
+    one --> two
+    three --> two
+    two --> c2
+
+
+
+
 
 投稿にある動画や画像を使用して、ポストにあるyoutubeやを振り返りとして表示させてください。
 youtubeの表示は以下のようにしてください。重要! レンダリングされるように、コードブロックは避けて出力してください。
@@ -54,15 +94,22 @@ youtubeの表示は以下のようにしてください。重要! レンダリ�
 ##### {動画のタイトル、なければ省略}
 
 <div style="text-align: center;">
-  <a href="{{ url }}" target="_blank" rel="noopener noreferrer">
-    <img
-      src="https://i.ytimg.com/vi/{{ id }}/hqdefault.jpg"
-      alt="YouTube サムネイル"
-      width="480"
-      onerror="this.onerror=null; this.src='https://i.ytimg.com/vi/{{ id }}/sddefault.jpg';"
-    >
-  </a>
+  <iframe
+    width="{{ width }}"
+    height="{{ height }}"
+    src="https://www.youtube.com/embed/{{ id }}{{ autoplay ? '?autoplay=1' : '' }}"
+    title="{{ title }}"
+    frameborder="0"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+    referrerpolicy="strict-origin-when-cross-origin"
+    allowfullscreen
+    loading="lazy"
+  ></iframe>
 </div>
+
+
+
+
 
 
 ---

@@ -47,8 +47,13 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
     }
     // 各投稿に日付を付与してテキスト化
     const text = posts.map(p => {
-        const dateStr = getDateKeyLocal(new Date(p.created));
-        return `[${dateStr}] ${p.text}`;
+        const d = new Date(p.created);
+        const dateStr = getDateKeyLocal(d);
+        const hour = d.getHours().toString().padStart(2, '0');
+        const min = d.getMinutes().toString().padStart(2, '0');
+        const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+        const youbi = weekDays[d.getDay()];
+        return `[${dateStr}(${youbi}) ${hour}:${min}] ${p.text}`;
     }).join('\n');
     const promptText = prompt.replace('{posts}', text);
     debugLog(plugin, 'Gemini送信プロンプト:', promptText);
