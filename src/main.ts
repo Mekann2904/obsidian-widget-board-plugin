@@ -20,6 +20,8 @@ import { filterConsoleWarn } from './utils/consoleWarnFilter';
 import { Component, TFile } from 'obsidian';
 import { preloadChartJS } from './widgets/reflectionWidget/reflectionWidgetUI';
 import { getDateKey, getWeekRange } from './utils';
+import { McpManager } from './llm/mcp/mcpManager';
+import { spawn, ChildProcess } from 'child_process';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -37,6 +39,8 @@ export default class WidgetBoardPlugin extends Plugin {
     tweetChartDirty: boolean = true;
     tweetChartImageData: string | null = null;
     tweetChartCountsKey: string | null = null;
+    private mcpServerProcess: ChildProcess | null = null;
+    mcpManager: McpManager;
 
     /**
      * プラグインの初期化処理
@@ -47,6 +51,7 @@ export default class WidgetBoardPlugin extends Plugin {
         filterConsoleWarn(['[Violation]', '[Deprecation]']);
         this.llmManager = new LLMManager();
         this.llmManager.register(GeminiProvider);
+        this.mcpManager = new McpManager();
         // Preload Chart.js for ReflectionWidget without blocking startup
         setTimeout(() => preloadChartJS().catch(() => {}), 0);
         await this.loadSettings();
@@ -125,6 +130,13 @@ export default class WidgetBoardPlugin extends Plugin {
         );
         // プリウォーム処理を追加
         this.prewarmAllWidgetMarkdownCache();
+        // MCPサーバーをバックグラウンドで起動
+        const serverPath = process.cwd() + '/.obsidian/plugins/obsidian-widget-board-plugin/src/llm/mcp/mcpServer.ts';
+        this.mcpServerProcess = spawn('npx', ['ts-node', serverPath], {
+            stdio: 'ignore',
+            detached: true
+        });
+        if (this.mcpServerProcess) this.mcpServerProcess.unref();
         debugLog(this, 'Widget Board Plugin: Loaded.');
     }
 
@@ -132,11 +144,16 @@ export default class WidgetBoardPlugin extends Plugin {
      * プラグインのアンロード時処理
      * @override
      */
-    onunload(): void {
+    async onunload(): Promise<void> {
         this.widgetBoardModals.forEach(modal => {
             if (modal.isOpen) modal.close();
         });
         this.widgetBoardModals.clear();
+        // MCPサーバープロセスを停止
+        if (this.mcpServerProcess) {
+            this.mcpServerProcess.kill();
+            this.mcpServerProcess = null;
+        }
         debugLog(this, 'Widget Board Plugin: Unloaded.');
     }
 

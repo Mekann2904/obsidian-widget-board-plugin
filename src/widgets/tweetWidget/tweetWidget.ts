@@ -122,6 +122,33 @@ export class TweetWidget implements WidgetImplementation {
         const trimmedText = text.trim();
         if (!trimmedText && this.attachedFiles.length === 0) return;
 
+        // --- @コマンド検出・MCPサーバー呼び出し ---
+        const atCmdMatch = trimmedText.match(/^@(\w+)(?:\s+(.*))?$/);
+        if (atCmdMatch) {
+            const command = atCmdMatch[1];
+            const args = atCmdMatch[2] ? atCmdMatch[2].split(/\s+/) : [];
+            // MCPサーバー呼び出し（仮実装）
+            try {
+                const result = await this.callExternalToolViaMCP(command, args);
+                // 結果をつぶやきとして投稿
+                const replyText = `@${command} 実行結果: ${result && result.stdout ? result.stdout : JSON.stringify(result)}`;
+                const newPost = this.createNewPostObject(replyText);
+                this.store.addPost(newPost);
+                this.plugin.updateTweetPostCount(newPost.created, 1);
+                new Notice(`@${command} の実行結果を投稿しました`);
+            } catch (err: any) {
+                const errorText = `@${command} エラー: ${err && err.message ? err.message : err}`;
+                const newPost = this.createNewPostObject(errorText);
+                this.store.addPost(newPost);
+                this.plugin.updateTweetPostCount(newPost.created, 1);
+                new Notice(`@${command} の実行でエラーが発生しました`);
+            }
+            this.resetInputState();
+            this.saveDataDebounced();
+            this.ui.render();
+            return;
+        }
+
         if (this.editingPostId) {
             this.store.updatePost(this.editingPostId, {
                 text: trimmedText,
@@ -752,5 +779,14 @@ export class TweetWidget implements WidgetImplementation {
         if (!this.store.settings.scheduledPosts) this.store.settings.scheduledPosts = [];
         this.store.settings.scheduledPosts.push(sched);
         this.saveDataDebounced();
+    }
+
+    // --- MCPサーバー経由で外部ツールを呼び出す仮メソッド ---
+    private async callExternalToolViaMCP(command: string, args: string[]): Promise<any> {
+        // プラグイン本体にmcpManagerがあれば呼び出す
+        if (this.plugin && typeof (this.plugin as any).mcpManager === 'object' && typeof (this.plugin as any).mcpManager.executeTool === 'function') {
+            return await (this.plugin as any).mcpManager.executeTool(command, args);
+        }
+        throw new Error('MCPサーバー連携（mcpManager.executeTool）が未実装です');
     }
 }
