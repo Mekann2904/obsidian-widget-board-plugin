@@ -540,36 +540,92 @@ export class TweetWidgetUI {
     }
 
     private showImageModal(imgUrl: string): void {
-        const oldModal = document.querySelector('.tweet-image-modal-backdrop');
-        if (oldModal) oldModal.remove();
+        // 既存のレイヤーがあれば削除
+        const oldLayer = document.querySelector('.tweet-image-zoom-layer');
+        if (oldLayer) oldLayer.remove();
 
-        const backdrop = document.body.createDiv('tweet-image-modal-backdrop');
-        backdrop.onclick = (ev) => {
-            if (ev.target === backdrop) backdrop.remove();
-        };
+        // 独自のフルスクリーンレイヤーを作成
+        const layer = document.createElement('div');
+        layer.className = 'tweet-image-zoom-layer';
+        layer.style.position = 'fixed';
+        layer.style.top = '0';
+        layer.style.left = '0';
+        layer.style.width = '100vw';
+        layer.style.height = '100vh';
+        layer.style.background = 'rgba(0,0,0,0.7)';
+        layer.style.zIndex = '99999';
+        layer.style.display = 'flex';
+        layer.style.alignItems = 'center';
+        layer.style.justifyContent = 'center';
+        layer.style.userSelect = 'none';
 
-        const modal = backdrop.createDiv('tweet-image-modal-content');
-        const imgEl = modal.createEl('img', { attr: { src: imgUrl, alt: 'image-large' } });
-        let scale = 1;
-        const updateScale = () => {
-            imgEl.style.transform = `scale(${scale})`;
-        };
-        imgEl.onwheel = (e) => {
-            e.preventDefault();
-            scale *= e.deltaY < 0 ? 1.1 : 0.9;
-            if (scale < 0.1) scale = 0.1;
-            updateScale();
-        };
-        const closeBtn = modal.createEl('button', { text: '×' });
-        closeBtn.onclick = () => backdrop.remove();
+        // 画像本体
+        const imgEl = document.createElement('img');
+        imgEl.src = imgUrl;
+        imgEl.alt = 'image-large';
+        imgEl.style.transition = 'transform 0.2s';
+        imgEl.style.background = '#fff';
+        imgEl.style.boxShadow = '0 2px 24px rgba(0,0,0,0.25)';
+        imgEl.style.borderRadius = '8px';
+        imgEl.style.maxWidth = '90vw';
+        imgEl.style.maxHeight = '90vh';
+        imgEl.style.display = 'block';
+        imgEl.style.position = 'relative';
+        layer.appendChild(imgEl);
 
-        this._escHandlerForImageModal = (ev: KeyboardEvent) => {
+        // 閉じるボタン
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = '×';
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '32px';
+        closeBtn.style.right = '48px';
+        closeBtn.style.fontSize = '2.2em';
+        closeBtn.style.background = 'rgba(0,0,0,0.3)';
+        closeBtn.style.color = '#fff';
+        closeBtn.style.border = 'none';
+        closeBtn.style.borderRadius = '50%';
+        closeBtn.style.width = '48px';
+        closeBtn.style.height = '48px';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.style.zIndex = '100000';
+        closeBtn.onclick = () => layer.remove();
+        layer.appendChild(closeBtn);
+
+        // Escキーで閉じる
+        const escHandler = (ev: KeyboardEvent) => {
             if (ev.key === 'Escape') {
-                backdrop.remove();
-                window.removeEventListener('keydown', this._escHandlerForImageModal!);
+                layer.remove();
+                window.removeEventListener('keydown', escHandler);
             }
         };
-        window.addEventListener('keydown', this._escHandlerForImageModal);
+        window.addEventListener('keydown', escHandler);
+
+        // 背景クリックで閉じる
+        layer.addEventListener('click', (ev) => {
+            if (ev.target === layer) layer.remove();
+        });
+
+        // 拡大トグル（クリックで2倍、もう一度クリックで元に戻す）
+        let isZoomed = false;
+        imgEl.style.transform = 'scale(1)';
+        imgEl.style.cursor = 'zoom-in';
+        imgEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isZoomed = !isZoomed;
+            if (isZoomed) {
+                imgEl.style.transform = 'scale(2)';
+                imgEl.style.cursor = 'zoom-out';
+                imgEl.style.maxWidth = 'none';
+                imgEl.style.maxHeight = 'none';
+            } else {
+                imgEl.style.transform = 'scale(1)';
+                imgEl.style.cursor = 'zoom-in';
+                imgEl.style.maxWidth = '90vw';
+                imgEl.style.maxHeight = '90vh';
+            }
+        });
+
+        document.body.appendChild(layer);
     }
 
     private showImageContextMenu(event: MouseEvent, img: HTMLImageElement): void {
