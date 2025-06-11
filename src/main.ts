@@ -20,8 +20,8 @@ import { filterConsoleWarn } from './utils/consoleWarnFilter';
 import { Component, TFile } from 'obsidian';
 import { preloadChartJS } from './widgets/reflectionWidget/reflectionWidgetUI';
 import { getDateKey, getWeekRange } from './utils';
-import { McpManager } from './llm/mcp/mcpManager';
 import { spawn, ChildProcess } from 'child_process';
+import { MCPHttpClient } from './llm/mcp';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -40,7 +40,10 @@ export default class WidgetBoardPlugin extends Plugin {
     tweetChartImageData: string | null = null;
     tweetChartCountsKey: string | null = null;
     private mcpServerProcess: ChildProcess | null = null;
-    mcpManager: McpManager;
+    mcpManager: {
+        executeTool: (toolName: string, args: any) => Promise<any>;
+        isConnected: () => boolean;
+    } | null = null;
 
     /**
      * プラグインの初期化処理
@@ -51,7 +54,6 @@ export default class WidgetBoardPlugin extends Plugin {
         filterConsoleWarn(['[Violation]', '[Deprecation]']);
         this.llmManager = new LLMManager();
         this.llmManager.register(GeminiProvider);
-        this.mcpManager = new McpManager();
         // Preload Chart.js for ReflectionWidget without blocking startup
         setTimeout(() => preloadChartJS().catch(() => {}), 0);
         await this.loadSettings();
@@ -131,12 +133,31 @@ export default class WidgetBoardPlugin extends Plugin {
         // プリウォーム処理を追加
         this.prewarmAllWidgetMarkdownCache();
         // MCPサーバーをバックグラウンドで起動
-        const serverPath = process.cwd() + '/.obsidian/plugins/obsidian-widget-board-plugin/src/llm/mcp/mcpServer.ts';
-        this.mcpServerProcess = spawn('npx', ['ts-node', serverPath], {
-            stdio: 'ignore',
-            detached: true
+        const nodeCmd = process.platform === 'win32' ? 'node.exe' : 'node';
+        const serverPath = process.cwd() + '/.obsidian/plugins/obsidian-widget-board-plugin/src/llm/mcp/brave-search-mcp-server.js';
+        this.mcpServerProcess = spawn(nodeCmd, [serverPath], {
+            stdio: 'inherit',
+            // detached: true, // 一時的に外す
+            env: {
+                ...process.env,
+                PATH: process.env.PATH + ':/usr/local/bin',
+                BRAVE_API_KEY: this.settings.braveApiKey || ''
+            }
         });
         if (this.mcpServerProcess) this.mcpServerProcess.unref();
+        // MCPサーバ管理機能を初期化
+        this.mcpManager = {
+            executeTool: async (toolName, args) => {
+                const mcpServerPath = this.settings.mcpServerPath || '';
+                if (!mcpServerPath) throw new Error('MCPサーバのパスが設定されていません');
+                const client = new MCPHttpClient(mcpServerPath);
+                client.startServer();
+                return await client.callTool(toolName, args);
+            },
+            isConnected: () => {
+                return !!this.settings.mcpServerPath;
+            }
+        };
         debugLog(this, 'Widget Board Plugin: Loaded.');
     }
 
@@ -243,7 +264,17 @@ export default class WidgetBoardPlugin extends Plugin {
      */
     async loadSettings(): Promise<void> {
         const loadedData = await this.loadData();
-        if (loadedData && !loadedData.boards && loadedData.widgets) {
+        // Brave API Keyのbase64デコード
+        if (loadedData && loadedData.braveApiKey) {
+            try {
+                this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, loadedData);
+                this.settings.braveApiKey = decodeBase64(loadedData.braveApiKey);
+            } catch {
+                this.settings.braveApiKey = '';
+            }
+        } else if (loadedData && loadedData.boards) {
+            this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, loadedData);
+        } else if (loadedData && !loadedData.boards && loadedData.widgets) {
             // 旧形式からのマイグレーション
             const oldBoard: BoardConfiguration = {
                 id: DEFAULT_BOARD_CONFIGURATION.id,
@@ -256,8 +287,6 @@ export default class WidgetBoardPlugin extends Plugin {
                 lastOpenedBoardId: oldBoard.id,
                 defaultBoardIdForQuickOpen: oldBoard.id
             };
-        } else if (loadedData && loadedData.boards) {
-            this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, loadedData);
         } else {
             this.settings = cloneDeep(DEFAULT_PLUGIN_SETTINGS);
         }
@@ -291,7 +320,12 @@ export default class WidgetBoardPlugin extends Plugin {
         if (this.isSaving) return;
         this.isSaving = true;
         try {
-            await this.saveData(this.settings);
+            // Brave API Keyをbase64で保存
+            const saveData = { ...this.settings };
+            if (saveData.braveApiKey) {
+                saveData.braveApiKey = encodeBase64(saveData.braveApiKey);
+            }
+            await this.saveData(saveData);
             if (targetBoardId) {
                 const modal = this.widgetBoardModals.get(targetBoardId);
                 if (modal && modal.isOpen && modal.currentBoardConfig) {
@@ -551,4 +585,12 @@ class BoardPickerModal extends ObsidianModal {
     onClose() {
         this.contentEl.empty();
     }
+}
+
+// base64エンコード・デコード関数を追加
+function encodeBase64(str: string): string {
+    return Buffer.from(str, 'utf-8').toString('base64');
+}
+function decodeBase64(str: string): string {
+    return Buffer.from(str, 'base64').toString('utf-8');
 }

@@ -686,6 +686,35 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         this.boardGroupBodyEl = boardGroupAcc.body;
         this.renderBoardGroupManagementUI(this.boardGroupBodyEl);
 
+        // --- MCPサーバパス入力欄 ---
+        new Setting(containerEl)
+            .setName('MCPサーバパス')
+            .setDesc('MCPサーバ（PythonやNode.jsスクリプト）の絶対パスまたはVault相対パスを指定します。')
+            .addText(text => {
+                text.setPlaceholder('例: /path/to/mcp_server.py')
+                    .setValue(this.plugin.settings.mcpServerPath || '')
+                    .onChange(async (v) => {
+                        this.plugin.settings.mcpServerPath = v.trim();
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        // --- Brave Search API Key 入力欄 ---
+        new Setting(containerEl)
+            .setName('Brave Search API Key')
+            .setDesc('Brave Search APIを利用するためのAPIキーを入力してください。')
+            .addText(text => {
+                text.setPlaceholder('Brave API Key')
+                    .setValue(this.plugin.settings.braveApiKey || '')
+                    .onChange(async (v) => {
+                        // 入力途中は何もしない
+                    });
+                text.inputEl.addEventListener('blur', async () => {
+                    const v = text.inputEl.value.trim();
+                    this.plugin.settings.braveApiKey = v;
+                    await this.plugin.saveSettings();
+                });
+            });
 
     }
 

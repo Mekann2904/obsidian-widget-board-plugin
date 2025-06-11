@@ -1,5 +1,6 @@
 {
 	"name": "obsidian-widget-board-plugin",
+	"type": "module",
 	"version": "1.0.0",
 	"description": "Create customizable widget boards inside Obsidian.",
 	"main": "main.js",
@@ -18,7 +19,7 @@
 		"@types/jest": "^29.5.14",
 		"@types/lodash": "^4.17.17",
 		"@types/lodash.clonedeep": "^4.5.9",
-		"@types/node": "^16.11.6",
+		"@types/node": "^16.18.126",
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
 		"builtin-modules": "3.3.0",
@@ -28,10 +29,14 @@
 		"obsidian": "latest",
 		"ts-jest": "^29.3.4",
 		"tslib": "2.4.0",
-		"typescript": "4.7.4"
+		"tsx": "^4.20.0",
+		"typescript": "^4.7.4"
 	},
 	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.12.1",
 		"chart.js": "^4.4.9",
+		"cors": "^2.8.5",
+		"express": "^5.1.0",
 		"lodash": "^4.17.21",
 		"lodash.clonedeep": "^4.5.0"
 	}

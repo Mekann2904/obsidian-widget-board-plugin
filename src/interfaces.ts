@@ -115,6 +115,10 @@ export interface PluginGlobalSettings {
     userProfiles?: { userName: string; userId: string; avatarUrl: string }[];
     /** デバッグ用ログ出力（trueで詳細ログを出す） */
     debugLog?: boolean;
+    /** MCPサーバのパス（絶対パスまたはVault相対パス） */
+    mcpServerPath?: string;
+    /** Brave Search API Key（base64デコード済みの平文） */
+    braveApiKey?: string;
 }
 
 // 共通型があればここに記載
