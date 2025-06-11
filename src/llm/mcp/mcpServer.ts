@@ -1,7 +1,7 @@
 import { createServer } from 'http';
 import { exec } from 'child_process';
 
-const port = parseInt(process.env.MCP_SERVER_PORT || '3000', 10);
+const port = parseInt(process.env.MCP_SERVER_PORT || '3939', 10);
 
 // 許可するコマンドのホワイトリスト
 const allowedCommands = (process.env.MCP_ALLOWED_CMDS || 'echo,ls,date')

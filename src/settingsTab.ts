@@ -143,12 +143,12 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             .setName('MCPサーバーポート')
             .setDesc('MCPサーバーが待ち受けるポート番号')
             .addText(text => {
-                text.setPlaceholder('3000')
-                    .setValue(String(this.plugin.settings.mcpServerPort || 3000))
+                text.setPlaceholder('3939')
+                    .setValue(String(this.plugin.settings.mcpServerPort || 3939))
                     .onChange(() => {});
                 text.inputEl.addEventListener('blur', async () => {
                     const port = parseInt(text.inputEl.value.trim(), 10);
-                    this.plugin.settings.mcpServerPort = isNaN(port) ? 3000 : port;
+                    this.plugin.settings.mcpServerPort = isNaN(port) ? 3939 : port;
                     await this.plugin.saveSettings();
                 });
             });

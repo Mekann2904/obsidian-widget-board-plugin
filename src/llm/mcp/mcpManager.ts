@@ -1,6 +1,6 @@
 export class McpManager {
     private serverUrl: string;
-    constructor(serverUrl: string = `http://localhost:${process.env.MCP_SERVER_PORT || '3000'}`) {
+    constructor(serverUrl: string = `http://localhost:${process.env.MCP_SERVER_PORT || '3939'}`) {
         this.serverUrl = serverUrl;
     }
 

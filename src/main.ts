@@ -54,7 +54,7 @@ export default class WidgetBoardPlugin extends Plugin {
         // Preload Chart.js for ReflectionWidget without blocking startup
         setTimeout(() => preloadChartJS().catch(() => {}), 0);
         await this.loadSettings();
-        this.mcpManager = new McpManager(`http://localhost:${this.settings.mcpServerPort || 3000}`);
+        this.mcpManager = new McpManager(`http://localhost:${this.settings.mcpServerPort || 3939}`);
         await this.initTweetPostCountCache();
         this.registerAllBoardCommands();
         this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());
@@ -138,7 +138,7 @@ export default class WidgetBoardPlugin extends Plugin {
             ...process.env,
             MCP_ALLOWED_CMDS: (this.settings.mcpAllowedCommands || []).join(','),
             BRAVE_SEARCH_API_KEY: deobfuscate(this.settings.braveSearchApiKey || ''),
-            MCP_SERVER_PORT: String(this.settings.mcpServerPort || 3000)
+            MCP_SERVER_PORT: String(this.settings.mcpServerPort || 3939)
         };
         // ts-nodeに依存しないようNodeで直接実行する
         this.mcpServerProcess = spawn(process.execPath, [serverPath], {
