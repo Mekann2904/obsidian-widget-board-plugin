@@ -303,7 +303,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 const app = express();
-const port = process.env.PORT ? Number(process.env.PORT) : 3100;
+const args = process.argv.slice(2);
+const portArgIndex = args.indexOf("--port");
+const argPort =
+  portArgIndex !== -1 && args[portArgIndex + 1]
+    ? Number(args[portArgIndex + 1])
+    : undefined;
+const port = process.env.PORT ? Number(process.env.PORT) : argPort || 3100;
 const transport = new StreamableHTTPServerTransport({});
 
 app.use(cors());
