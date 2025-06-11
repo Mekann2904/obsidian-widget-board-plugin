@@ -19,7 +19,7 @@ import { debugLog } from './utils/logger';
 import { filterConsoleWarn } from './utils/consoleWarnFilter';
 import { Component, TFile } from 'obsidian';
 import { preloadChartJS } from './widgets/reflectionWidget/reflectionWidgetUI';
-import { getDateKey, getWeekRange } from './utils';
+import { getDateKey, getWeekRange, deobfuscate } from './utils';
 import { McpManager } from './llm/mcp/mcpManager';
 import { spawn, ChildProcess } from 'child_process';
 
@@ -137,7 +137,7 @@ export default class WidgetBoardPlugin extends Plugin {
         const env = {
             ...process.env,
             MCP_ALLOWED_CMDS: (this.settings.mcpAllowedCommands || []).join(','),
-            BRAVE_SEARCH_API_KEY: this.settings.braveSearchApiKey || '',
+            BRAVE_SEARCH_API_KEY: deobfuscate(this.settings.braveSearchApiKey || ''),
             MCP_SERVER_PORT: String(this.settings.mcpServerPort || 3000)
         };
         // ts-nodeに依存しないようNodeで直接実行する

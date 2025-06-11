@@ -113,7 +113,7 @@ export interface PluginGlobalSettings {
     mcpAllowedCommands?: string[];
     /** MCPサーバーのポート番号 */
     mcpServerPort?: number;
-    /** Brave Search APIキー */
+    /** Brave Search APIキー(Base64保存) */
     braveSearchApiKey?: string;
     /**
      * ユーザー一覧（グローバル）

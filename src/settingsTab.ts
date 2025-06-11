@@ -159,10 +159,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             .addText(text => {
                 text.inputEl.type = 'password';
                 text.setPlaceholder('bs-api-key')
-                    .setValue(this.plugin.settings.braveSearchApiKey || '')
+                    .setValue(deobfuscate(this.plugin.settings.braveSearchApiKey || ''))
                     .onChange(() => {});
                 text.inputEl.addEventListener('blur', async () => {
-                    this.plugin.settings.braveSearchApiKey = text.inputEl.value.trim();
+                    this.plugin.settings.braveSearchApiKey = obfuscate(text.inputEl.value.trim());
                     await this.plugin.saveSettings();
                 });
             });
