@@ -307,6 +307,46 @@ BRAT（Beta Reviewers Auto-update Tool）プラグインを使うと、より簡
 
 ---
 
+## Brave Search連携 (MCPサーバー利用)
+
+本プラグインでは [Model Context Protocol](https://github.com/modelcontext/protocol) に対応したツールを利用できます。Brave Search を使う場合は以下の手順でサーバーを起動してください。
+
+1. パッケージをインストール
+
+```bash
+npm install @modelcontextprotocol/server-brave-search
+```
+
+2. Brave Search APIキーを取得し、環境変数 `BRAVE_SEARCH_API_KEY` に設定します。
+3. 次のような最小コードで MCP サーバーを起動できます。
+
+```ts
+import { runServer } from '@modelcontextprotocol/server-brave-search'
+
+runServer({
+  apiKey: process.env.BRAVE_SEARCH_API_KEY,
+  port: 3939,
+})
+```
+
+4. MCP クライアントからは以下のように呼び出します。
+
+```ts
+import { Client } from '@modelcontextprotocol/sdk/client'
+import { HttpClientTransport } from '@modelcontextprotocol/sdk/client/http'
+
+const client = new Client({ name: 'test-client', version: '1.0.0' })
+await client.connect(new HttpClientTransport({ url: 'http://localhost:3939/executeTool' }))
+const result = await client.run({
+  model: 'brave-search',
+  messages: [{ role: 'user', content: '最新のAI技術を教えて' }],
+  stream: false,
+})
+console.log(result.choices[0].message.content)
+```
+
+---
+
 ## ライセンス
 
 MIT
