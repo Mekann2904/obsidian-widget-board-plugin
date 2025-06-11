@@ -87,12 +87,29 @@ function createReadableStreamFromString(input: string) {
 
 // APIキーなどの簡易難読化（Base64）
 export function obfuscate(str: string): string {
-  return Buffer.from(str, 'utf8').toString('base64');
+  if (!str) return '';
+  return `b64:${Buffer.from(str, 'utf8').toString('base64')}`;
 }
+
 export function deobfuscate(str: string): string {
-  try {
-    return Buffer.from(str, 'base64').toString('utf8');
-  } catch {
-    return '';
+  if (!str) return '';
+  if (str.startsWith('b64:')) {
+    try {
+      return Buffer.from(str.slice(4), 'base64').toString('utf8');
+    } catch {
+      return '';
+    }
   }
+  // Backward compatibility for values stored without prefix
+  try {
+    const buf = Buffer.from(str, 'base64');
+    const reencoded = buf.toString('base64').replace(/=+$/, '');
+    const normalizedInput = str.replace(/=+$/, '');
+    if (reencoded === normalizedInput) {
+      return buf.toString('utf8');
+    }
+  } catch {
+    /* ignore */
+  }
+  return str;
 }
