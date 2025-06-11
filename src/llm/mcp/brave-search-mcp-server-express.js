@@ -329,6 +329,16 @@ app.post("/mcp", async (req, res) => {
   await transport.handleRequest(req, res, req.body);
 });
 
-app.listen(port, () => {
-  console.log(`Brave Search MCP Server running on http://localhost:${port}/mcp (with CORS)`);
-}); 
+async function start() {
+  await server.connect(transport);
+  app.listen(port, () => {
+    console.log(
+      `Brave Search MCP Server running on http://localhost:${port}/mcp (with CORS)`
+    );
+  });
+}
+
+start().catch((error) => {
+  console.error("Fatal error running server:", error);
+  process.exit(1);
+});
