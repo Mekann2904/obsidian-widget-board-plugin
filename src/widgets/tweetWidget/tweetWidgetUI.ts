@@ -63,6 +63,10 @@ export class TweetWidgetUI {
         this.postsById = widget.postsById;
     }
 
+    public resetScroll(): void {
+        this.container.scrollTop = 0;
+    }
+
     public scheduleRender(): void {
         if (this.needsRender) return;
         this.needsRender = true;
