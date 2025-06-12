@@ -1675,7 +1675,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   justify-content: center;
 }
 .tweet-reply-modal {
-  position: absolute !important;
+  position: relative;
   min-width: 540px;
   max-width: 98vw;
   width: 700px;
@@ -1688,6 +1688,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
   align-items: stretch;
   z-index: 100000 !important;
   padding: 0 0 18px 0;
+  overflow-y: auto;
 }
 .tweet-reply-modal-header {
   display: flex;
@@ -1763,9 +1764,6 @@ body.wb-modal-open .workspace-leaf-resize-handle {
     min-width: 0;
     width: 98vw;
     padding: 0 0 8px 0;
-    left: 50% !important;
-    top: 4vh !important;
-    transform: translate(-50%, 0) !important;
   }
   .tweet-reply-modal-header, .tweet-reply-modal-tweet, .tweet-reply-modal-input {
     padding-left: 8px;
