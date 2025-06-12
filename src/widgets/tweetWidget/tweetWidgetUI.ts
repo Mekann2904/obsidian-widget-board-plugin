@@ -1066,10 +1066,31 @@ export class TweetWidgetUI {
         const modal = backdrop.createDiv('tweet-reply-modal');
         const widgetRect = this.container.getBoundingClientRect();
         modal.style.position = 'fixed';
-        modal.style.top = `${widgetRect.top + 50}px`;
         const modalWidth = Math.min(widgetRect.width - 40, 600);
         modal.style.width = `${modalWidth}px`;
-        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+        const viewportWidth  = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        setTimeout(() => {
+            const modalHeight = modal.offsetHeight;
+            let top = widgetRect.top + 30;
+            // 通常はウィジェット下+30px、ただし下にはみ出す場合のみ中央揃え
+            if (top + modalHeight > viewportHeight - 10) {
+                top = (viewportHeight - modalHeight) / 2;
+                if (top < 10) top = 10;
+                if (top + modalHeight > viewportHeight - 10) top = viewportHeight - modalHeight - 10;
+            } else {
+                if (top < 10) top = 10;
+            }
+            modal.style.top = `${top}px`;
+            let left = widgetRect.left + (widgetRect.width - modalWidth) / 2;
+            if (left < 10) {
+                left = 10;
+            }
+            if (left + modalWidth > viewportWidth - 10) {
+                left = viewportWidth - modalWidth - 10;
+            }
+            modal.style.left = `${left}px`;
+        }, 0);
 
         const header = modal.createDiv('tweet-reply-modal-header');
         header.createSpan({ text: '返信' });
@@ -1173,10 +1194,31 @@ export class TweetWidgetUI {
         const modal = backdrop.createDiv('tweet-reply-modal');
         const widgetRect = this.container.getBoundingClientRect();
         modal.style.position = 'fixed';
-        modal.style.top = `${widgetRect.top + 50}px`;
         const modalWidth = Math.min(widgetRect.width - 40, 600);
         modal.style.width = `${modalWidth}px`;
-        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+        const viewportWidth  = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        setTimeout(() => {
+            const modalHeight = modal.offsetHeight;
+            let top = widgetRect.top + 30;
+            // 通常はウィジェット下+30px、ただし下にはみ出す場合のみ中央揃え
+            if (top + modalHeight > viewportHeight - 10) {
+                top = (viewportHeight - modalHeight) / 2;
+                if (top < 10) top = 10;
+                if (top + modalHeight > viewportHeight - 10) top = viewportHeight - modalHeight - 10;
+            } else {
+                if (top < 10) top = 10;
+            }
+            modal.style.top = `${top}px`;
+            let left = widgetRect.left + (widgetRect.width - modalWidth) / 2;
+            if (left < 10) {
+                left = 10;
+            }
+            if (left + modalWidth > viewportWidth - 10) {
+                left = viewportWidth - modalWidth - 10;
+            }
+            modal.style.left = `${left}px`;
+        }, 0);
 
         const header = modal.createDiv('tweet-reply-modal-header');
         header.createSpan({ text: '引用リツイート' });
@@ -1276,10 +1318,31 @@ export class TweetWidgetUI {
         const modal = backdrop.createDiv('tweet-reply-modal');
         const widgetRect = this.container.getBoundingClientRect();
         modal.style.position = 'fixed';
-        modal.style.top = `${widgetRect.top + 50}px`;
         const modalWidth = Math.min(widgetRect.width - 40, 600);
         modal.style.width = `${modalWidth}px`;
-        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+        const viewportWidth  = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        setTimeout(() => {
+            const modalHeight = modal.offsetHeight;
+            let top = widgetRect.top + 30;
+            // 通常はウィジェット下+30px、ただし下にはみ出す場合のみ中央揃え
+            if (top + modalHeight > viewportHeight - 10) {
+                top = (viewportHeight - modalHeight) / 2;
+                if (top < 10) top = 10;
+                if (top + modalHeight > viewportHeight - 10) top = viewportHeight - modalHeight - 10;
+            } else {
+                if (top < 10) top = 10;
+            }
+            modal.style.top = `${top}px`;
+            let left = widgetRect.left + (widgetRect.width - modalWidth) / 2;
+            if (left < 10) {
+                left = 10;
+            }
+            if (left + modalWidth > viewportWidth - 10) {
+                left = viewportWidth - modalWidth - 10;
+            }
+            modal.style.left = `${left}px`;
+        }, 0);
 
         const header = modal.createDiv('tweet-reply-modal-header');
         header.createSpan({ text: '引用リツイート一覧' });
@@ -1317,10 +1380,31 @@ export class TweetWidgetUI {
         const modal = backdrop.createDiv('tweet-reply-modal');
         const widgetRect = this.container.getBoundingClientRect();
         modal.style.position = 'fixed';
-        modal.style.top = `${widgetRect.top + 50}px`;
         const modalWidth = Math.min(widgetRect.width - 40, 600);
         modal.style.width = `${modalWidth}px`;
-        modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
+        const viewportWidth  = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        setTimeout(() => {
+            const modalHeight = modal.offsetHeight;
+            let top = widgetRect.top + 30;
+            // 通常はウィジェット下+30px、ただし下にはみ出す場合のみ中央揃え
+            if (top + modalHeight > viewportHeight - 10) {
+                top = (viewportHeight - modalHeight) / 2;
+                if (top < 10) top = 10;
+                if (top + modalHeight > viewportHeight - 10) top = viewportHeight - modalHeight - 10;
+            } else {
+                if (top < 10) top = 10;
+            }
+            modal.style.top = `${top}px`;
+            let left = widgetRect.left + (widgetRect.width - modalWidth) / 2;
+            if (left < 10) {
+                left = 10;
+            }
+            if (left + modalWidth > viewportWidth - 10) {
+                left = viewportWidth - modalWidth - 10;
+            }
+            modal.style.left = `${left}px`;
+        }, 0);
 
         const header = modal.createDiv('tweet-reply-modal-header');
         header.createSpan({ text: 'つぶやきを編集' });
