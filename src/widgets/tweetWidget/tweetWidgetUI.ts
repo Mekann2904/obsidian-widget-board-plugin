@@ -1064,12 +1064,6 @@ export class TweetWidgetUI {
         };
 
         const modal = backdrop.createDiv('tweet-reply-modal');
-        // const widgetRect = this.container.getBoundingClientRect();
-        // modal.style.position = 'fixed';
-        // modal.style.top = `${widgetRect.top + 50}px`;
-        // const modalWidth = Math.min(widgetRect.width - 40, 600);
-        // modal.style.width = `${modalWidth}px`;
-        // modal.style.left = `${widgetRect.left + (widgetRect.width - modalWidth) / 2}px`;
 
         const header = modal.createDiv('tweet-reply-modal-header');
         header.createSpan({ text: '返信' });
