@@ -686,6 +686,10 @@ export class TweetWidgetUI {
     }
 
     private renderDetailView(container: HTMLElement, postId: string): void {
+        // スクロール位置をトップに戻す
+        const scrollContainer = this.container.closest('.widget-board-panel-custom');
+        if (scrollContainer) scrollContainer.scrollTop = 0;
+
         const target = this.postsById.get(postId);
         if (!target) return;
 
