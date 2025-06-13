@@ -120,6 +120,17 @@ describe('TweetWidget', () => {
     expect(widget.detailPostId).toBe(post.id);
   });
 
+  it('navigateToDetailでresetScrollが呼ばれる', async () => {
+    const widget = new TweetWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await new Promise(res => setTimeout(res, 0));
+    await widget.submitPost('scroll test');
+    const post = widget.currentSettings.posts[0];
+    const spy = jest.spyOn(widget['ui'], 'resetScroll');
+    widget.navigateToDetail(post.id);
+    expect(spy).toHaveBeenCalled();
+  });
+
   it('ファイル添付でattachedFilesが更新される', async () => {
     dummyApp.vault.createBinary = jest.fn();
     const widget = new TweetWidget();
