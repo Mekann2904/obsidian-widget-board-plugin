@@ -354,6 +354,9 @@ export class TweetWidget implements WidgetImplementation {
             this.plugin.updateTweetPostCount(post.created, deleted ? -1 : 1);
         }
         this.store.updatePost(postId, { deleted });
+        if (deleted && this.detailPostId === postId) {
+            this.detailPostId = post?.threadId ?? null;
+        }
         this.saveDataDebounced();
         this.ui.scheduleRender();
     }
@@ -364,6 +367,9 @@ export class TweetWidget implements WidgetImplementation {
         if (post && !post.deleted) {
             this.plugin.updateTweetPostCount(post.created, -1);
         }
+        if (this.detailPostId === postId) {
+            this.detailPostId = post?.threadId ?? null;
+        }
         this.saveDataDebounced();
         this.ui.render();
     }
@@ -371,11 +377,14 @@ export class TweetWidget implements WidgetImplementation {
     public async deleteThread(rootId: string) {
         const threadIds = this.store.collectThreadIds(rootId);
         const posts = threadIds.map(id => this.store.getPostById(id)).filter(Boolean) as TweetWidgetPost[];
+        const rootPost = this.store.getPostById(rootId);
         this.store.deleteThread(rootId);
         for (const p of posts) {
             if (!p.deleted) this.plugin.updateTweetPostCount(p.created, -1);
         }
-        this.detailPostId = null;
+        if (threadIds.includes(this.detailPostId ?? '')) {
+            this.detailPostId = rootPost?.threadId ?? null;
+        }
         this.saveDataDebounced();
         this.ui.render();
     }
