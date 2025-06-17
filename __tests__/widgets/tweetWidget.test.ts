@@ -182,6 +182,21 @@ describe('TweetWidget', () => {
     expect(widget.detailPostId).toBe(parentId);
   });
 
+  it('スレッド削除中に表示していた投稿が含まれる場合親にフォーカスが移る', async () => {
+    const widget = new TweetWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await new Promise(res => setTimeout(res, 0));
+    await widget.submitPost('grand');
+    const grandId = widget.currentSettings.posts[0].id;
+    await widget.submitReply('parent', grandId);
+    const parentId = widget.currentSettings.posts[0].id;
+    await widget.submitReply('child', parentId);
+    const childId = widget.currentSettings.posts[0].id;
+    widget.navigateToDetail(childId);
+    await widget.deleteThread(parentId);
+    expect(widget.detailPostId).toBe(grandId);
+  });
+
   it('updatePostPropertyで任意のプロパティが更新される', async () => {
     const widget = new TweetWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
