@@ -63,6 +63,12 @@ export class TweetWidgetUI {
         this.postsById = widget.postsById;
     }
 
+    public resetScroll(): void {
+        this.container.scrollTop = 0;
+        const panel = this.container.closest('.widget-board-panel-custom');
+        if (panel instanceof HTMLElement) panel.scrollTop = 0;
+    }
+
     public scheduleRender(): void {
         if (this.needsRender) return;
         this.needsRender = true;

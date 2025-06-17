@@ -120,6 +120,34 @@ describe('TweetWidget', () => {
     expect(widget.detailPostId).toBe(post.id);
   });
 
+  it('navigateToDetailでresetScrollが呼ばれる', async () => {
+    const widget = new TweetWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await new Promise(res => setTimeout(res, 0));
+    await widget.submitPost('scroll test');
+    const post = widget.currentSettings.posts[0];
+    const spy = jest.spyOn(widget['ui'], 'resetScroll');
+    widget.navigateToDetail(post.id);
+    expect(spy).toHaveBeenCalled();
+  });
+
+  it('navigateToDetailでボードパネルのscrollTopがリセットされる', async () => {
+    const widget = new TweetWidget();
+    const panel = document.createElement('div');
+    panel.className = 'widget-board-panel-custom';
+    document.body.appendChild(panel);
+    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    panel.appendChild(el);
+    await new Promise(res => setTimeout(res, 0));
+    await widget.submitPost('scroll test');
+    const post = widget.currentSettings.posts[0];
+    (widget as any)['ui'].container.scrollTop = 50;
+    panel.scrollTop = 50;
+    widget.navigateToDetail(post.id);
+    expect((widget as any)['ui'].container.scrollTop).toBe(0);
+    expect(panel.scrollTop).toBe(0);
+  });
+
   it('ファイル添付でattachedFilesが更新される', async () => {
     dummyApp.vault.createBinary = jest.fn();
     const widget = new TweetWidget();

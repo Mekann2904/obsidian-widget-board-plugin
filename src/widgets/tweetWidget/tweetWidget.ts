@@ -109,6 +109,7 @@ export class TweetWidget implements WidgetImplementation {
     public navigateToDetail(postId: string | null) {
         this.detailPostId = postId;
         this.currentTab = 'home';
+        this.ui.resetScroll();
         this.ui.render();
     }
     
