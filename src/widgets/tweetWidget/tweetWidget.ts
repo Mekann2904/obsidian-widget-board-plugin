@@ -354,6 +354,9 @@ export class TweetWidget implements WidgetImplementation {
             this.plugin.updateTweetPostCount(post.created, deleted ? -1 : 1);
         }
         this.store.updatePost(postId, { deleted });
+        if (deleted && this.detailPostId === postId) {
+            this.detailPostId = post?.threadId ?? null;
+        }
         this.saveDataDebounced();
         this.ui.scheduleRender();
     }
@@ -363,6 +366,9 @@ export class TweetWidget implements WidgetImplementation {
         this.store.deletePost(postId);
         if (post && !post.deleted) {
             this.plugin.updateTweetPostCount(post.created, -1);
+        }
+        if (this.detailPostId === postId) {
+            this.detailPostId = post?.threadId ?? null;
         }
         this.saveDataDebounced();
         this.ui.render();
