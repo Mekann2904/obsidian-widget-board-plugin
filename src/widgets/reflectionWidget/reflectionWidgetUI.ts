@@ -292,7 +292,7 @@ export class ReflectionWidgetUI {
             }
         } else {
             const todayKey = getDateKeyLocal(new Date());
-            const [weekStart, weekEnd] = getWeekRange();
+            const [weekStart, weekEnd] = getWeekRange(this.plugin.settings.weekStartDay);
             const weekKey = getDateKeyLocal(new Date(weekEnd));
             Promise.all([
                 loadReflectionSummaryShared('today', todayKey, this.app),
@@ -335,7 +335,7 @@ export class ReflectionWidgetUI {
                 (async () => {
                     const settings: ReflectionWidgetSettings = this.config.settings || {};
                     const todayKey = getDateKeyLocal(new Date());
-                    const [weekStart, weekEnd] = getWeekRange();
+                    const [weekStart, weekEnd] = getWeekRange(this.plugin.settings.weekStartDay);
                     const weekKey = getDateKeyLocal(new Date(weekEnd));
                     // 投稿データ読み込みを先行して開始
                     const dbPath = this.plugin.settings.baseFolder

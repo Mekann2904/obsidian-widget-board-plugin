@@ -14,7 +14,7 @@ describe('ReflectionWidget 詳細テスト', () => {
       settings: { period: 'today', aiSummaryAutoEnabled: true }
     };
     dummyApp = {};
-    dummyPlugin = {};
+    dummyPlugin = { settings: { weekStartDay: 1 } };
   });
 
   it('createでreflection-widgetクラスとUIインスタンスが生成される', () => {

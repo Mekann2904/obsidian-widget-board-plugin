@@ -66,6 +66,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     userTweetPrompt: '',
     tweetAiModel: 'gemini-1.5-flash-latest',
     reflectionAiModel: 'gemini-2.0-flash-exp',
+    weekStartDay: 1,
     debugLogging: false,
     userProfiles: [],
 };
