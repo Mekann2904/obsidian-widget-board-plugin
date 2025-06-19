@@ -1,4 +1,4 @@
-import { App, TFile, setIcon } from 'obsidian';
+import { App } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import moment from 'moment';

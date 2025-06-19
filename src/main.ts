@@ -1,5 +1,5 @@
 // src/main.ts
-import { Plugin, Notice, Modal as ObsidianModal, Hotkey, Modifier, Setting } from 'obsidian';
+import { Plugin, Notice, Modal as ObsidianModal, Hotkey, Modifier, Setting, App } from 'obsidian';
 import type { PluginGlobalSettings, BoardConfiguration, WidgetConfig } from './interfaces';
 import { DEFAULT_PLUGIN_SETTINGS, DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
 import { WidgetBoardModal } from './modal';
@@ -63,8 +63,8 @@ export default class WidgetBoardPlugin extends Plugin {
         // widget-boardコードブロックプロセッサ登録
         this.registerMarkdownCodeBlockProcessor(
             'widget-board',
-            async (source, element, context) => {
-                let config: any;
+            async (source, element) => {
+                let config: WidgetConfig | undefined;
                 try {
                     config = yaml.load(source);
                 } catch (e) {
@@ -182,7 +182,7 @@ export default class WidgetBoardPlugin extends Plugin {
             return;
         }
         const validModes = Object.values(WidgetBoardModal.MODES);
-        if (!validModes.includes(boardConfig.defaultMode as any)) {
+        if (!validModes.includes(boardConfig.defaultMode)) {
             boardConfig.defaultMode = WidgetBoardModal.MODES.RIGHT_THIRD;
         }
         // lastOpenedBoardIdやsaveSettingsは明示的な設定変更時のみ更新
@@ -312,9 +312,9 @@ export default class WidgetBoardPlugin extends Plugin {
      */
     registerAllBoardCommands(): void {
         // 既存のグループコマンドを一旦解除
-        if ((this.app as any).commands && typeof (this.app as any).commands.removeCommand === 'function') {
+        if (typeof this.removeCommand === 'function') {
             this.registeredGroupCommandIds.forEach(id => {
-                (this.app as any).commands.removeCommand(id);
+                this.removeCommand(id);
             });
         }
         this.registeredGroupCommandIds = [];
@@ -439,7 +439,7 @@ export default class WidgetBoardPlugin extends Plugin {
             fileViewFiles.splice(MAX_PREWARM_ENTRIES);
 
             // --- ReflectionWidget: AI要約（今日・今週） ---
-            async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: any): Promise<string | null> {
+            async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: App): Promise<string | null> {
                 const path = 'data.json';
                 try {
                     const raw = await app.vault.adapter.read(path);
@@ -447,7 +447,9 @@ export default class WidgetBoardPlugin extends Plugin {
                     if (data.reflectionSummaries && data.reflectionSummaries[type]?.date === dateKey) {
                         return data.reflectionSummaries[type].summary;
                     }
-                } catch {}
+                } catch {
+                    // ignore JSON parse errors or missing files
+                }
                 return null;
             }
             const todayKey = getDateKey(new Date());
@@ -461,13 +463,16 @@ export default class WidgetBoardPlugin extends Plugin {
             let reflectionIndex = 0;
             const reflectionSummaries = [todaySummary, weekSummary].filter(Boolean).slice(0, MAX_PREWARM_ENTRIES) as string[];
             const batchSize = 3;
-            const schedule = (cb: () => void) => {
-                if (typeof (window as any).requestIdleCallback === 'function') {
-                    (window as any).requestIdleCallback(cb);
-                } else {
-                    requestAnimationFrame(cb);
-                }
-            };
+                const schedule = (cb: () => void) => {
+                    const w = window as Window & {
+                        requestIdleCallback?: (callback: IdleRequestCallback) => number;
+                    };
+                    if (typeof w.requestIdleCallback === 'function') {
+                        w.requestIdleCallback(cb);
+                    } else {
+                        requestAnimationFrame(cb);
+                    }
+                };
             const processBatch = async () => {
                 // TweetWidget
                 const tweetEnd = Math.min(tweetIndex + batchSize, tweetPosts.length);
@@ -514,7 +519,7 @@ export default class WidgetBoardPlugin extends Plugin {
 
 class BoardPickerModal extends ObsidianModal {
     constructor(
-        app: any,
+        app: App,
         private boards: BoardConfiguration[],
         private onChoose: (boardId: string) => void
     ) {

@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { Buffer } from "buffer";
 
 // Obsidianプラグイン環境用 CORS回避fetchラッパー
 export async function safeFetch(url: string, options: RequestInit = {}): Promise<Response> {
@@ -12,11 +13,13 @@ export async function safeFetch(url: string, options: RequestInit = {}): Promise
       const newBody = JSON.parse(options.body ?? {});
       delete newBody["frequency_penalty"];
       options.body = JSON.stringify(newBody);
-    } catch {}
+    } catch {
+      /* ignore malformed JSON */
+    }
   }
 
   // ObsidianのrequestUrl APIを利用
-  // @ts-ignore
+  // @ts-expect-error requestUrl types may not allow method override
   const method = options.method?.toUpperCase() || "GET";
   const response = await requestUrl({
     url,
@@ -38,8 +41,11 @@ export async function safeFetch(url: string, options: RequestInit = {}): Promise
         errorJson = null;
       }
     }
-    const error = new Error(`Request failed, status ${response.status}`);
-    (error as any).json = errorJson;
+    interface ResponseError extends Error {
+      json?: unknown;
+    }
+    const error: ResponseError = new Error(`Request failed, status ${response.status}`);
+    error.json = errorJson;
     throw error;
   }
 

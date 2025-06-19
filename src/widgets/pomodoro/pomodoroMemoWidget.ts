@@ -1,5 +1,11 @@
-import { App, MarkdownRenderer, Notice, setIcon, Component } from 'obsidian';
+import { App, Notice, setIcon, Component } from 'obsidian';
 import { renderMarkdownBatch } from '../../utils/renderMarkdownBatch';
+
+declare global {
+    interface Window {
+        __WB_MEMO_EDITING__?: boolean;
+    }
+}
 
 export interface PomodoroMemoSettings {
     memoContent?: string;
@@ -100,7 +106,7 @@ export class PomodoroMemoWidget {
      */
     private enterMemoEditMode() {
         this.isEditingMemo = true;
-        (window as any).__WB_MEMO_EDITING__ = true;
+        window.__WB_MEMO_EDITING__ = true;
         this.updateMemoEditUI();
     }
 
@@ -110,7 +116,7 @@ export class PomodoroMemoWidget {
     private async saveMemoChanges() {
         const newMemo = this.memoEditAreaEl.value;
         this.isEditingMemo = false;
-        (window as any).__WB_MEMO_EDITING__ = false;
+        window.__WB_MEMO_EDITING__ = false;
         if (newMemo !== (this.settings.memoContent || '')) {
             this.settings.memoContent = newMemo;
             if (typeof this.onSave === 'function') {
@@ -131,7 +137,7 @@ export class PomodoroMemoWidget {
      */
     private cancelMemoEditMode() {
         this.isEditingMemo = false;
-        (window as any).__WB_MEMO_EDITING__ = false;
+        window.__WB_MEMO_EDITING__ = false;
         this.updateMemoEditUI();
     }
 

@@ -50,6 +50,14 @@ export class TimerStopwatchWidget implements WidgetImplementation {
     private timerSetRowEl!: HTMLElement;
     private modeSwitchContainer!: HTMLElement;
 
+    private _prevDisplay: {
+        isTimer?: boolean;
+        minVal?: string;
+        secVal?: string;
+        timeStr?: string;
+        running?: boolean;
+    } = {};
+
     // --- 音声関連プロパティ ---
     private audioContext: AudioContext | null = null;
     private currentAudioElement: HTMLAudioElement | null = null;
@@ -307,9 +315,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         const state = this.getInternalState();
         if (!state) { this.displayEl.textContent = 'Error'; return; }
 
-        // 差分更新用に前回値を保持
-        if (!(this as any)._prevDisplay) (this as any)._prevDisplay = {};
-        const prev = (this as any)._prevDisplay;
+        const prev = this._prevDisplay;
 
         // モード切替ボタン
         const isTimer = state.mode === 'timer';
@@ -385,10 +391,10 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         if (this.config && this.plugin.saveData) {
             this.config.settings = { ...this.currentSettings };
             // グローバル設定の該当ウィジェット設定も更新
-            const boards = (this.plugin.settings as any).boards;
-            const board = boards?.find((b: any) => b.widgets?.some((w: any) => w.id === this.config.id));
+            const boards = this.plugin.settings.boards;
+            const board = boards?.find(b => b.widgets?.some(w => w.id === this.config.id));
             if (board) {
-                const widget = board.widgets.find((w: any) => w.id === this.config.id);
+                const widget = board.widgets.find(w => w.id === this.config.id);
                 if (widget) {
                     widget.settings = { ...this.currentSettings };
                 }
@@ -441,8 +447,10 @@ export class TimerStopwatchWidget implements WidgetImplementation {
 
     // --- 通知音再生メソッド ---
     private playSoundNotification() {
-        const globalSound = (this.plugin.settings as any).timerStopwatchNotificationSound;
-        const globalVolume = (this.plugin.settings as any).timerStopwatchNotificationVolume;
+        const {
+            timerStopwatchNotificationSound: globalSound,
+            timerStopwatchNotificationVolume: globalVolume
+        } = this.plugin.settings;
         const soundType = globalSound ?? this.currentSettings.notificationSound ?? DEFAULT_TIMER_STOPWATCH_SETTINGS.notificationSound;
         const volume = (globalVolume !== undefined ? globalVolume : (this.currentSettings.notificationVolume ?? DEFAULT_TIMER_STOPWATCH_SETTINGS.notificationVolume ?? 0.5));
 
@@ -455,7 +463,10 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         }
         // AudioContextが再利用可能なら再利用、そうでなければ新規生成
         if (!this.audioContext || this.audioContext.state === 'closed') {
-            this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            this.audioContext = new (
+                window.AudioContext ||
+                (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+            )();
         }
         const ctx = this.audioContext;
         try {
@@ -501,7 +512,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
                     if (i === notes.length - 1) osc.onended = () => { ctx.close(); this.audioContext = null; };
                 });
             }
-        } catch (error) {
+        } catch {
             new Notice('通知音の再生中にエラーが発生しました。', 5000);
         }
     }
@@ -509,8 +520,8 @@ export class TimerStopwatchWidget implements WidgetImplementation {
     private openBoardIfClosed() {
         if (this.plugin && this.plugin.widgetBoardModals && Array.from(this.plugin.widgetBoardModals.values()).every(m => !m.isOpen)) {
             // このウィジェットが属するボードIDを特定
-            const boards = (this.plugin.settings as any).boards;
-            const board = boards?.find((b: any) => b.widgets?.some((w: any) => w.id === this.config.id));
+            const boards = this.plugin.settings.boards;
+            const board = boards?.find(b => b.widgets?.some(w => w.id === this.config.id));
             if (board) {
                 this.plugin.openWidgetBoardById(board.id);
                 new Notice('タイマー終了: ウィジェットボードを開きました。');
@@ -546,7 +557,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
      * すべてのインスタンスをクリーンアップ
      * @param plugin プラグイン本体
      */
-    public static cleanupAllPersistentInstances(plugin: WidgetBoardPlugin): void {
+    public static cleanupAllPersistentInstances(): void {
         this.widgetInstances.forEach(instance => {
             if (typeof instance.onunload === 'function') {
                 instance.onunload();

@@ -1,6 +1,9 @@
-export function debugLog(plugin: { settings?: { debugLogging?: boolean } } | undefined, ...args: any[]): void {
+export function debugLog(
+    plugin: { settings?: { debugLogging?: boolean } } | undefined,
+    ...args: unknown[]
+): void {
     if (plugin && plugin.settings?.debugLogging) {
          
-        console.log(...args);
+        console.log(...(args as Parameters<typeof console.log>));
     }
 }

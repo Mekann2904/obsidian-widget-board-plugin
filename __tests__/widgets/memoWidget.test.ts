@@ -107,7 +107,7 @@ describe('MemoWidget 詳細テスト', () => {
   it('removePersistentInstanceでインスタンスが削除される', () => {
     const widget = new MemoWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
-    MemoWidget.removePersistentInstance(dummyConfig.id, dummyPlugin);
+    MemoWidget.removePersistentInstance(dummyConfig.id);
     expect((MemoWidget as any).widgetInstances.has(dummyConfig.id)).toBe(false);
   });
 
@@ -116,7 +116,7 @@ describe('MemoWidget 詳細テスト', () => {
     const widget2 = new MemoWidget();
     widget1.create({ ...dummyConfig, id: 'id1' }, dummyApp, dummyPlugin);
     widget2.create({ ...dummyConfig, id: 'id2' }, dummyApp, dummyPlugin);
-    MemoWidget.cleanupAllPersistentInstances(dummyPlugin);
+    MemoWidget.cleanupAllPersistentInstances();
     expect((MemoWidget as any).widgetInstances.size).toBe(0);
   });
 

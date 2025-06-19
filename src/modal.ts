@@ -32,7 +32,7 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
         return item[0];
     }
 
-    async onChooseItem(item: [string, new () => WidgetImplementation], evt: MouseEvent | KeyboardEvent): Promise<void> {
+    async onChooseItem(item: [string, new () => WidgetImplementation]): Promise<void> {
         const widgetType = item[0];
         const board = this.plugin.settings.boards.find(b => b.id === this.boardId);
         if (!board) {
@@ -104,7 +104,7 @@ export class WidgetBoardModal {
         this.currentBoardConfig = cloneDeep(boardConfig);
         this.currentBoardId = boardConfig.id;
         const validModes = Object.values(WidgetBoardModal.MODES);
-        if (!validModes.includes(this.currentBoardConfig.defaultMode as any)) {
+        if (!validModes.includes(this.currentBoardConfig.defaultMode)) {
             this.currentMode = WidgetBoardModal.MODES.RIGHT_THIRD;
         } else {
             this.currentMode = this.currentBoardConfig.defaultMode;
@@ -131,7 +131,7 @@ export class WidgetBoardModal {
         this.currentBoardId = newBoardConfig.id;
         if (this.currentMode !== this.currentBoardConfig.defaultMode) {
             const validModes = Object.values(WidgetBoardModal.MODES);
-            if (validModes.includes(this.currentBoardConfig.defaultMode as any)) {
+            if (validModes.includes(this.currentBoardConfig.defaultMode)) {
                 this.currentMode = this.currentBoardConfig.defaultMode;
                 this.applyMode(this.currentMode);
             }
@@ -234,7 +234,7 @@ export class WidgetBoardModal {
                 });
             }
         };
-        const onMouseUpRight = async (e: MouseEvent) => {
+        const onMouseUpRight = async () => {
             if (!isResizingRight) return;
             isResizingRight = false;
             document.body.style.cursor = '';
@@ -286,7 +286,7 @@ export class WidgetBoardModal {
                 });
             }
         };
-        const onMouseUpLeft = async (e: MouseEvent) => {
+        const onMouseUpLeft = async () => {
             if (!isResizingLeft) return;
             isResizingLeft = false;
             document.body.style.cursor = '';
@@ -458,8 +458,9 @@ export class WidgetBoardModal {
         this.loadWidgets(widgetContainerEl);
 
         this.uiWidgetReferences.forEach((widgetInstance) => {
-            if (typeof (widgetInstance as any).handleShow === 'function') {
-                (widgetInstance as any).handleShow();
+            const maybeWidget = widgetInstance as unknown as { handleShow?: () => void };
+            if (typeof maybeWidget.handleShow === 'function') {
+                maybeWidget.handleShow();
             }
         });
 
@@ -469,7 +470,8 @@ export class WidgetBoardModal {
             const searchInput = this.contentEl.querySelector('.wb-page-search-bar-input') as HTMLInputElement | null;
             if (searchInput) {
                 searchInput.addEventListener('focus', (e) => {
-                    if ((window as any).__WB_MEMO_EDITING__) {
+                    const globalWindow = window as Window & { __WB_MEMO_EDITING__?: boolean };
+                    if (globalWindow.__WB_MEMO_EDITING__) {
                         e.preventDefault();
                         searchInput.blur();
                     }
@@ -501,7 +503,7 @@ export class WidgetBoardModal {
             this.lastWidgetOrder.every((id, i) => id === newOrder[i]) === false &&
             container.children.length === newOrder.length
         ) {
-            newOrder.forEach((id, idx) => {
+            newOrder.forEach(id => {
                 const node = Array.from(container.children).find(
                     el => (el as HTMLElement).dataset && (el as HTMLElement).dataset.widgetId === id
                 );
@@ -568,12 +570,13 @@ export class WidgetBoardModal {
                                 this.uiWidgetReferences.push(widgetInstance);
                                 wrapper.dataset.loaded = '1';
                                 obs.unobserve(wrapper);
-                            } catch (e: any) {
+                            } catch (e: unknown) {
                                 wrapper.empty();
                                 const errDiv = wrapper.createDiv({ cls: 'widget widget-error' });
                                 new Setting(errDiv).setName(`${widgetConfig.title || '(名称未設定)'} (ロードエラー)`).setHeading();
                                 errDiv.createEl('p', { text: 'このウィジェットの読み込み中にエラーが発生しました。' });
-                                errDiv.createEl('p', { text: e.message || '' });
+                                const errMessage = e instanceof Error ? e.message : String(e);
+                                errDiv.createEl('p', { text: errMessage });
                                 obs.unobserve(wrapper);
                             }
                         };
@@ -753,7 +756,7 @@ export class WidgetBoardModal {
         this.draggedElement = null;
     }
 
-    private handleDragEnd(e: DragEvent) {
+    private handleDragEnd() {
         if (this.draggedElement) {
             this.draggedElement.classList.remove('is-dragging');
             this.draggedElement = null;
@@ -856,8 +859,9 @@ export class WidgetBoardModal {
         this.isOpen = false;
         this.isClosing = false;
         this.uiWidgetReferences.forEach(widgetInstance => {
-            if (typeof (widgetInstance as any).handleHide === "function") {
-                (widgetInstance as any).handleHide();
+            const maybeWidget = widgetInstance as unknown as { handleHide?: () => void };
+            if (typeof maybeWidget.handleHide === "function") {
+                maybeWidget.handleHide();
             }
         });
         const { contentEl } = this;

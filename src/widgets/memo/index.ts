@@ -1,5 +1,5 @@
 // src/widgets/memoWidget.ts
-import { App, MarkdownRenderer, setIcon, Notice, Component } from 'obsidian';
+import { App, setIcon, Notice, Component } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main'; // main.ts の WidgetBoardPlugin クラスをインポート
 import { renderMarkdownBatch, renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
@@ -48,6 +48,13 @@ export class MemoWidget implements WidgetImplementation {
     private _memoEditAreaInputListener: (() => void) | null = null;
     private taskObserver: MutationObserver | null = null;
     private observerScheduled = false;
+
+    private _prevDisplay: {
+        isEditingMemo?: boolean;
+        memoContent?: string;
+        editAreaValue?: string;
+        memoHeightMode?: 'auto' | 'fixed';
+    } = {};
 
     // ウィジェットインスタンス管理のための静的マップ (前回から)
     private static widgetInstances: Map<string, MemoWidget> = new Map();
@@ -134,7 +141,7 @@ export class MemoWidget implements WidgetImplementation {
                 const frag = document.createRange().createContextualFragment(svg);
                 wrapper.appendChild(frag);
                 pre.replaceWith(wrapper);
-            } catch (e) {
+            } catch {
                 // エラー時はそのまま
             }
         }
@@ -142,7 +149,6 @@ export class MemoWidget implements WidgetImplementation {
 
     private applyContainerHeightStyles() {
         if (!this.memoContainerEl) return;
-        const widgetIdLog = `[${this.config?.id || 'MemoWidget'}]`;
 
         // Reset styles
         this.memoContainerEl.style.height = '';
@@ -231,13 +237,13 @@ export class MemoWidget implements WidgetImplementation {
         checkboxes.forEach(cb => {
             for (; lineIdx < lines.length; lineIdx++) {
                 if (/^\s*[-*]\s+\[[ xX]\]/.test(lines[lineIdx])) {
-                    (cb as any).dataset.lineIndex = String(lineIdx);
+                    cb.dataset.lineIndex = String(lineIdx);
                     lineIdx++;
                     break;
                 }
             }
             cb.addEventListener('change', () => {
-                const idx = parseInt((cb as any).dataset.lineIndex || '-1', 10);
+                const idx = parseInt(cb.dataset.lineIndex ?? '-1', 10);
                 if (idx < 0) return;
                 lines[idx] = lines[idx].replace(/\[[ xX]\]/, cb.checked ? '[x]' : '[ ]');
                 this.persistMemoContent(lines.join('\n'));
@@ -296,9 +302,7 @@ export class MemoWidget implements WidgetImplementation {
             console.error(`[${this.config?.id}] updateMemoEditUI: One or more UI elements are null.`);
             return;
         }
-        // 差分更新用に前回値を保持
-        if (!(this as any)._prevDisplay) (this as any)._prevDisplay = {};
-        const prev = (this as any)._prevDisplay;
+        const prev = this._prevDisplay;
 
         const hasMemoContent = this.currentSettings.memoContent && this.currentSettings.memoContent.trim() !== '';
         // 表示/非表示の切り替え
@@ -328,12 +332,12 @@ export class MemoWidget implements WidgetImplementation {
             if ('requestIdleCallback' in window) {
                 const idleRender = (deadline?: IdleDeadline) => {
                     if (deadline && deadline.timeRemaining() < 5 && !deadline.didTimeout) {
-                        (window as any).requestIdleCallback(idleRender);
+                        window.requestIdleCallback(idleRender);
                         return;
                     }
                     render();
                 };
-                (window as any).requestIdleCallback(idleRender);
+                window.requestIdleCallback(idleRender);
             } else {
                 setTimeout(render, 0);
             }
@@ -487,7 +491,9 @@ export class MemoWidget implements WidgetImplementation {
         this.widgetEl.style.display = 'flex';
         this.widgetEl.style.flexDirection = 'column';
         this.widgetEl.style.minHeight = '0'; // flexコンテナ内のアイテムとして縮小できるように
-        titleEl && (titleEl.textContent = (this.config.title && this.config.title.trim() !== "") ? this.config.title : "");
+        if (titleEl) {
+            titleEl.textContent = this.config.title && this.config.title.trim() !== '' ? this.config.title : '';
+        }
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
         // CSS で .widget-content に display:flex, flex-direction:column, flex-grow:1, min-height:0 が設定されている前提
@@ -539,9 +545,8 @@ export class MemoWidget implements WidgetImplementation {
      */
     public async updateExternalSettings(newSettings: Partial<MemoWidgetSettings>, widgetId?: string) {
         if (widgetId && this.config?.id !== widgetId) return;
-        const widgetIdLog = `[${this.config.id}]`;
-        // console.log(`${widgetIdLog} UPDATE_EXTERNAL_SETTINGS: Received new settings:`, JSON.parse(JSON.stringify(newSettings)));
-        // console.log(`${widgetIdLog} UPDATE_EXTERNAL_SETTINGS: Current settings BEFORE merge:`, JSON.parse(JSON.stringify(this.currentSettings)));
+        // console.log(`[${this.config.id}] UPDATE_EXTERNAL_SETTINGS: Received new settings:`, JSON.parse(JSON.stringify(newSettings)));
+        // console.log(`[${this.config.id}] UPDATE_EXTERNAL_SETTINGS: Current settings BEFORE merge:`, JSON.parse(JSON.stringify(this.currentSettings)));
 
         // インスタンスの作業用設定(currentSettings)を更新
         this.currentSettings = { ...this.currentSettings, ...newSettings };
@@ -554,7 +559,7 @@ export class MemoWidget implements WidgetImplementation {
         } else if (this.config) {
             this.config.settings = { ...this.currentSettings };
         }
-        // console.log(`${widgetIdLog} UPDATE_EXTERNAL_SETTINGS: Merged currentSettings AFTER merge:`, JSON.parse(JSON.stringify(this.currentSettings)));
+        // console.log(`[${this.config.id}] UPDATE_EXTERNAL_SETTINGS: Merged currentSettings AFTER merge:`, JSON.parse(JSON.stringify(this.currentSettings)));
 
         this.updateMemoEditUI(); // UIに新しい設定を反映
         this.setupTaskEventListeners();
@@ -568,8 +573,6 @@ export class MemoWidget implements WidgetImplementation {
      * ウィジェット破棄時のクリーンアップ
      */
     onunload(): void {
-        const widgetIdLog = `[${this.config?.id || 'MemoWidget'}]`;
-        // console.log(`${widgetIdLog} onunload: Removing instance from static map.`);
         this.removeMemoEditAreaAutoResizeListener();
         if (this.taskObserver) {
             this.taskObserver.disconnect();
@@ -585,7 +588,7 @@ export class MemoWidget implements WidgetImplementation {
     }
     
     // 静的メソッド
-    public static removePersistentInstance(widgetId: string, plugin: WidgetBoardPlugin): void {
+    public static removePersistentInstance(widgetId: string): void {
         const instance = MemoWidget.widgetInstances.get(widgetId);
         if (instance) {
             // instance.onunload(); // 必要に応じてインスタンス固有のクリーンアップを呼ぶことも検討
@@ -598,7 +601,7 @@ export class MemoWidget implements WidgetImplementation {
      * すべてのインスタンスをクリーンアップ
      * @param plugin プラグイン本体
      */
-    public static cleanupAllPersistentInstances(plugin: WidgetBoardPlugin): void {
+    public static cleanupAllPersistentInstances(): void {
         this.widgetInstances.forEach(instance => {
             if (typeof instance.onunload === 'function') {
                 instance.onunload();

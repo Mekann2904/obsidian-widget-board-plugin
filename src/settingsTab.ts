@@ -1,10 +1,15 @@
 // src/settingsTab.ts
-import { App, PluginSettingTab, Setting, Notice, DropdownComponent, SliderComponent, TextComponent, Modal, TFile, TFolder, FuzzySuggestModal } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, Modal, TFolder, FuzzySuggestModal } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import type { BoardConfiguration, WidgetConfig } from './interfaces';
 import { DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
 import { WidgetBoardModal } from './modal';
-import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings, PomodoroSoundType } from './widgets/pomodoro';
+import {
+    DEFAULT_POMODORO_SETTINGS,
+    PomodoroSettings,
+    PomodoroSoundType,
+    PomodoroExportFormat,
+} from './widgets/pomodoro';
 import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memo';
 import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';
 import type { CalendarWidgetSettings } from './widgets/calendar';
@@ -68,7 +73,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         baseFolderSetting.addText(text => {
             text.setPlaceholder('myfolder')
                 .setValue(this.plugin.settings.baseFolder || '')
-                .onChange(async (v) => {
+                .onChange(async () => {
                     // 入力途中は何もしない
                 });
             text.inputEl.addEventListener('blur', async () => {
@@ -228,8 +233,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 dropdown.addOption('json', 'JSON');
                 dropdown.addOption('markdown', 'Markdown');
                 dropdown.setValue(this.plugin.settings.pomodoroExportFormat || 'none')
-                    .onChange(async (value) => {
-                        this.plugin.settings.pomodoroExportFormat = value as any;
+                    .onChange(async (value: PomodoroExportFormat) => {
+                        this.plugin.settings.pomodoroExportFormat = value;
                         await this.plugin.saveSettings();
                     });
             });
@@ -290,7 +295,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 text.inputEl.type = 'password'; // マスキング
                 text.setPlaceholder('sk-...')
                     .setValue(deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''))
-                    .onChange(async (v) => { /* 入力途中は何もしない */ });
+                    .onChange(async () => { /* 入力途中は何もしない */ });
                 // 表示/非表示トグルボタン
                 const toggleBtn = document.createElement('button');
                 toggleBtn.type = 'button';
@@ -505,7 +510,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             .addText(text => {
                 text.setPlaceholder('https://example.com/avatar.png')
                     .setValue(this.plugin.settings.tweetWidgetAvatarUrl || '')
-                    .onChange(async (v) => {
+                    .onChange(async () => {
                         // 入力途中は何もしない
                     });
                 text.inputEl.addEventListener('blur', async () => {
@@ -659,7 +664,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             .addText(text => {
                 text.setPlaceholder('YYYY-MM-DD')
                     .setValue(this.plugin.settings.calendarDailyNoteFormat || 'YYYY-MM-DD')
-                    .onChange(async (v) => {
+                    .onChange(async () => {
                         // 入力途中は何もしない
                     });
                 text.inputEl.addEventListener('blur', async () => {
@@ -798,11 +803,11 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName('ボード名')
-            .addText(text => text
-                .setValue(board.name)
-                .onChange(async (value) => {
-                    // 入力途中は何もしない
-                })
+                .addText(text => text
+                    .setValue(board.name)
+                    .onChange(async () => {
+                        // 入力途中は何もしない
+                    })
                 .inputEl.addEventListener('blur', async () => {
                     const value = text.inputEl.value;
                     board.name = value;
@@ -836,8 +841,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 // カスタム
                 dropdown.addOption('custom-width', 'カスタム幅（vw）');
                 dropdown.setValue(board.defaultMode)
-                    .onChange(async (value) => {
-                        if (Object.values(WidgetBoardModal.MODES).includes(value as any) || value === 'custom-width') {
+                    .onChange(async (value: string) => {
+                        if ((Object.values(WidgetBoardModal.MODES) as string[]).includes(value) || value === 'custom-width') {
                             board.defaultMode = value;
                             await this.plugin.saveSettings(board.id);
                             // カスタム幅選択時は下の入力欄を表示
@@ -857,7 +862,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             .addText(text => {
                 text.setPlaceholder('例: 40')
                     .setValue(board.customWidth ? String(board.customWidth) : '')
-                    .onChange(async (v) => {
+                    .onChange(async () => {
                         // 入力途中は何もしない
                     });
                 text.inputEl.addEventListener('blur', async () => {
@@ -930,7 +935,11 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         const addWidgetButtonsContainer = containerEl.createDiv({ cls: 'widget-add-buttons' });
         const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list-for-board' }); // 先に定義
 
-        const createAddButtonToBoard = (buttonText: string, widgetType: string, defaultWidgetSettings: any) => {
+        const createAddButtonToBoard = (
+            buttonText: string,
+            widgetType: string,
+            defaultWidgetSettings: Record<string, unknown>
+        ) => {
             const settingItem = new Setting(addWidgetButtonsContainer);
             settingItem.addButton(button => button
                 .setButtonText(buttonText)
@@ -990,7 +999,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             titleSetting.addText(text => {
                 text.setPlaceholder('(ウィジェット名)')
                     .setValue(widget.title)
-                    .onChange(async (value) => {
+                    .onChange(async () => {
                         // 入力途中は何もしない
                     });
                 text.inputEl.addEventListener('blur', async () => {
@@ -1069,14 +1078,14 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         .addText(text => {
                             text.setPlaceholder(String(DEFAULT_POMODORO_SETTINGS[key]))
                                 .setValue(String(currentSettings[key]))
-                                .onChange(async (v) => {
+                                .onChange(async () => {
                                     // 入力途中は何もしない（バリデーションしない）
                                 });
                             text.inputEl.addEventListener('blur', async () => {
                                 const v = text.inputEl.value;
                                 const n = parseInt(v);
                                 if (!isNaN(n) && n > 0) {
-                                    (currentSettings as any)[key] = n;
+                                    (currentSettings as Record<string, unknown>)[key] = n;
                                     await this.plugin.saveSettings(board.id);
                                     this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
                                 } else {
@@ -1116,7 +1125,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .addTextArea(text => {
                         text.setPlaceholder('ここにメモを記述...')
                             .setValue(currentSettings.memoContent || '')
-                            .onChange(async (v) => {
+                            .onChange(async () => {
                                 // 入力途中は何もしない
                             });
                         text.inputEl.addEventListener('blur', async () => {
@@ -1152,7 +1161,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .addText(text => {
                         text.setPlaceholder('120')
                             .setValue(String(currentSettings.fixedHeightPx ?? 120))
-                            .onChange(async (v) => {
+                            .onChange(async () => {
                                 // 入力途中は何もしない
                             });
                         text.inputEl.addEventListener('blur', async () => {
@@ -1203,7 +1212,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .addText(text => {
                         text.setPlaceholder('200')
                             .setValue(String(currentSettings.fixedHeightPx ?? 200))
-                            .onChange(async (v) => {
+                            .onChange(async () => {
                                 // 入力途中は何もしない
                             });
                         text.inputEl.addEventListener('blur', async () => {
@@ -1232,7 +1241,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .addText(text => {
                         text.setPlaceholder('YYYY-MM-DD')
                             .setValue(widget.settings.dailyNoteFormat || 'YYYY-MM-DD')
-                            .onChange(async (v) => {
+                            .onChange(async () => {
                                 // 入力途中は何もしない
                             });
                         text.inputEl.addEventListener('blur', async () => {
@@ -1273,7 +1282,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .addText(text => {
                         text.setPlaceholder('-1')
                             .setValue(String(currentSettings.aiSummaryAutoIntervalHours ?? -1))
-                            .onChange(async (v) => {
+                            .onChange(async () => {
                                 // 入力途中は何もしない
                             });
                         text.inputEl.addEventListener('blur', async () => {
@@ -1299,10 +1308,17 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         });
     }
 
-    private notifyWidgetInstanceIfBoardOpen(boardId: string, widgetId: string, widgetType: string, newSettings: any) {
+    private notifyWidgetInstanceIfBoardOpen(
+        boardId: string,
+        widgetId: string,
+        widgetType: string,
+        newSettings: Record<string, unknown>
+    ) {
         const modal = this.plugin.widgetBoardModals?.get(boardId);
         if (modal && modal.isOpen) {
-            const widgetInstance = modal.uiWidgetReferences.find(w => (w as any).config?.id === widgetId);
+            const widgetInstance = modal.uiWidgetReferences.find(
+                w => (w as unknown as { config?: { id?: string } }).config?.id === widgetId
+            );
             if (widgetInstance && typeof widgetInstance.updateExternalSettings === 'function') {
                 widgetInstance.updateExternalSettings(newSettings, widgetId);
             }
@@ -1329,7 +1345,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     if (!confirm(`グループ「${group.name}」を削除しますか？`)) return;
                     this.plugin.settings.boardGroups = groups.filter((_, i) => i !== idx);
                     await this.plugin.saveSettings();
-                    (this.plugin as any).registerAllBoardCommands?.();
+                    this.plugin.registerAllBoardCommands?.();
                     this.renderBoardGroupManagementUI(containerEl);
                 }));
             groupDiv.createEl('div', { text: `ボード: ${group.boardIds.map(id => {
@@ -1357,19 +1373,24 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     }
 }
 
-function playTestNotificationSound(plugin: any, soundType: string, volume: number) {
+function playTestNotificationSound(plugin: WidgetBoardPlugin, soundType: string, volume: number) {
     try {
         if (soundType === 'off') return;
-        if ((window as any)._testTimerAudio) {
-            (window as any)._testTimerAudio.pause();
-            (window as any)._testTimerAudio = null;
+        const w = window as Window & {
+            _testTimerAudio?: HTMLAudioElement;
+            _testTimerAudioCtx?: AudioContext;
+            webkitAudioContext?: typeof AudioContext;
+        };
+        if (w._testTimerAudio) {
+            w._testTimerAudio.pause();
+            w._testTimerAudio = null;
         }
-        if ((window as any)._testTimerAudioCtx && (window as any)._testTimerAudioCtx.state !== 'closed') {
-            (window as any)._testTimerAudioCtx.close();
-            (window as any)._testTimerAudioCtx = null;
+        if (w._testTimerAudioCtx && w._testTimerAudioCtx.state !== 'closed') {
+            w._testTimerAudioCtx.close();
+            w._testTimerAudioCtx = null;
         }
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-        (window as any)._testTimerAudioCtx = ctx;
+        const ctx = new (window.AudioContext || w.webkitAudioContext!)();
+        w._testTimerAudioCtx = ctx;
         if (soundType === 'default_beep') {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
@@ -1412,7 +1433,7 @@ function playTestNotificationSound(plugin: any, soundType: string, volume: numbe
                 if (i === notes.length - 1) osc.onended = () => ctx.close();
             });
         }
-    } catch (e) { new Notice('音声の再生に失敗しました'); }
+    } catch { new Notice('音声の再生に失敗しました'); }
 }
 
 // --- グループ編集用モーダル ---
@@ -1495,7 +1516,7 @@ class BoardGroupEditModal extends Modal {
                     this.plugin.settings.boardGroups = [...(this.plugin.settings.boardGroups || []), newGroup];
                 }
                 await this.plugin.saveSettings();
-                (this.plugin as any).registerAllBoardCommands?.();
+                this.plugin.registerAllBoardCommands?.();
                 this.onSave();
                 this.close();
             }))

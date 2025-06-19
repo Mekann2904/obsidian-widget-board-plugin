@@ -4,7 +4,7 @@ let mermaidWorker: Worker | null = null;
 
 function getMermaidWorker(): Worker {
   if (!mermaidWorker) {
-    // @ts-ignore
+    // @ts-expect-error Worker with module type may not be recognized in all envs
     mermaidWorker = new Worker('src/utils/mermaidWorker.ts', { type: 'module' });
   }
   return mermaidWorker;

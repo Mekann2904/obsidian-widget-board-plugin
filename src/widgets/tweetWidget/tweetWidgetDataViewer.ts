@@ -46,7 +46,7 @@ export class TweetWidgetDataViewer {
         };
         const menuDropdown = menuGroup.createDiv({ cls: 'tweet-data-viewer-dropdown' });
         menuDropdown.style.display = 'none';
-        menuBtn.onclick = (e) => {
+        menuBtn.onclick = () => {
             menuDropdown.style.display = menuDropdown.style.display === 'none' ? '' : 'none';
         };
         ALL_COLUMNS.forEach(col => {
@@ -139,8 +139,8 @@ export class TweetWidgetDataViewer {
             return true;
         });
         this.filtered.sort((a, b) => {
-            let v1 = (a as any)[this.sortKey];
-            let v2 = (b as any)[this.sortKey];
+            let v1 = (a as Record<string, unknown>)[this.sortKey];
+            let v2 = (b as Record<string, unknown>)[this.sortKey];
             if (this.sortKey === 'userName') {
                 v1 = a.userName || a.userId;
                 v2 = b.userName || b.userId;
@@ -257,7 +257,7 @@ export class TweetWidgetDataViewer {
     private saveVisibleColumns() {
         try {
             localStorage.setItem('tweetWidgetDataViewer.visibleColumns', JSON.stringify(Array.from(this.visibleColumns)));
-        } catch {}
+        } catch { /* ignore */ }
     }
 
     private loadVisibleColumns() {
@@ -266,6 +266,6 @@ export class TweetWidgetDataViewer {
             if (saved) {
                 this.visibleColumns = new Set(JSON.parse(saved));
             }
-        } catch {}
+        } catch { /* ignore */ }
     }
 } 

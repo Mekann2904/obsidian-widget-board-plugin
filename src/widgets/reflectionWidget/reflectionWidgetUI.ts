@@ -1,5 +1,6 @@
 import type { WidgetConfig } from '../../interfaces';
-import { App, MarkdownRenderer, Component } from 'obsidian';
+import { App, Component } from 'obsidian';
+import type WidgetBoardPlugin from '../../main';
 import type { ReflectionWidget } from './reflectionWidget';
 import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 import { TweetRepository } from '../tweetWidget';
@@ -11,15 +12,17 @@ import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
 import { debugLog } from '../../utils/logger';
 import { renderMermaidInWorker } from '../../utils';
 
-let Chart: any;
-let chartModulePromise: Promise<any> | null = null;
+import type { Chart as ChartJS } from 'chart.js/auto';
+
+let Chart: typeof ChartJS | undefined;
+let chartModulePromise: Promise<typeof ChartJS> | null = null;
 
 // --- Mermaid SVGメモリキャッシュ ---
 const mermaidSvgCache = new Map<string, string>();
 // --- まとめHTMLキャッシュ ---
 const summaryHtmlCache = new Map<string, DocumentFragment>();
 
-export function preloadChartJS(): Promise<any> {
+export function preloadChartJS(): Promise<typeof ChartJS> {
     if (!chartModulePromise) {
         chartModulePromise = import('chart.js/auto')
             .then(m => {
@@ -43,7 +46,7 @@ function getLastNDays(n: number): string[] {
     }
     return days;
 }
-async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: any): Promise<string> {
+async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: WidgetBoardPlugin): Promise<string> {
     if (!plugin.llmManager) return 'LLM未初期化';
     const context = JSON.parse(JSON.stringify(plugin.settings.llm || {}));
     if (context.gemini && context.gemini.apiKey) {
@@ -63,7 +66,7 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
         const result = await plugin.llmManager.generateReplyWithDefault(promptText, context);
         debugLog(plugin, 'Gemini生成結果:', result);
         return result;
-    } catch (e) {
+    } catch {
         return '要約生成に失敗しました';
     }
 }
@@ -76,11 +79,13 @@ async function saveReflectionSummary(
     app: App
 ) {
     const path = 'data.json';
-    let data: any = {};
+    let data: Record<string, unknown> = {};
     try {
         const raw = await app.vault.adapter.read(path);
         data = JSON.parse(raw);
-    } catch {}
+    } catch {
+        // ignore
+    }
     if (!data.reflectionSummaries) data.reflectionSummaries = {};
     data.reflectionSummaries[type] = { date: dateKey, summary, html, postCount };
     await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
@@ -110,7 +115,9 @@ async function loadReflectionSummary(
                 postCount: data.reflectionSummaries[type].postCount ?? 0
             };
         }
-    } catch {}
+    } catch {
+        // ignore
+    }
     return { summary: null, html: null, postCount: 0 };
 }
 export async function loadReflectionSummaryShared(
@@ -130,9 +137,9 @@ export class ReflectionWidgetUI {
     private container: HTMLElement;
     private config: WidgetConfig;
     private app: App;
-    private plugin: any;
-    private autoTimer: any = null;
-    private chart: any | null = null;
+    private plugin: WidgetBoardPlugin;
+    private autoTimer: number | null = null;
+    private chart: ChartJS | null = null;
     private lastChartData: number[] | null = null;
     private lastTodaySummary: string | null = null;
     private lastWeekSummary: string | null = null;
@@ -147,7 +154,7 @@ export class ReflectionWidgetUI {
     private needsRender = false;
     private preloadBundle?: ReflectionWidgetPreloadBundle;
 
-    constructor(widget: ReflectionWidget, container: HTMLElement, config: WidgetConfig, app: App, plugin: any, preloadBundle?: ReflectionWidgetPreloadBundle) {
+    constructor(widget: ReflectionWidget, container: HTMLElement, config: WidgetConfig, app: App, plugin: WidgetBoardPlugin, preloadBundle?: ReflectionWidgetPreloadBundle) {
         this.widget = widget;
         this.container = container;
         this.config = config;
@@ -175,7 +182,6 @@ export class ReflectionWidgetUI {
                 this.chart.destroy();
                 this.chart = null;
             }
-            const settings: ReflectionWidgetSettings = this.config.settings || {};
             const title = document.createElement('div');
             title.className = 'widget-title';
             title.innerText = this.config.title || '振り返りレポート';
@@ -296,7 +302,7 @@ export class ReflectionWidgetUI {
             }
         } else {
             const todayKey = getDateKeyLocal(new Date());
-            const [weekStart, weekEnd] = getWeekRange(this.plugin.settings.weekStartDay);
+            const [, weekEnd] = getWeekRange(this.plugin.settings.weekStartDay);
             const weekKey = getDateKeyLocal(new Date(weekEnd));
             Promise.all([
                 loadReflectionSummaryShared('today', todayKey, this.app),
@@ -341,7 +347,6 @@ export class ReflectionWidgetUI {
             }, 600000)); // 10分
             await Promise.race([
                 (async () => {
-                    const settings: ReflectionWidgetSettings = this.config.settings || {};
                     const todayKey = getDateKeyLocal(new Date());
                     const [weekStart, weekEnd] = getWeekRange(this.plugin.settings.weekStartDay);
                     const weekKey = getDateKeyLocal(new Date(weekEnd));
@@ -465,7 +470,7 @@ export class ReflectionWidgetUI {
                 })(),
                 timeoutPromise
             ]);
-        } catch (e) {
+        } catch {
             if (this.manualBtnEl) {
                 this.manualBtnEl.innerText = timeoutOccured ? 'タイムアウトしました' : 'まとめ生成失敗';
                 setTimeout(() => {
@@ -531,7 +536,7 @@ export class ReflectionWidgetUI {
                 const frag = document.createRange().createContextualFragment(svg);
                 wrapper.appendChild(frag);
                 pre.replaceWith(wrapper);
-            } catch (e) {
+            } catch {
                 // エラー時はそのまま
             }
         }
@@ -552,7 +557,7 @@ export class ReflectionWidgetUI {
                 this.manualBtnEl!.innerText = '生成中...';
                 const trigger = () => this.runSummary(true);
                 if ('requestIdleCallback' in window) {
-                    (window as any).requestIdleCallback(trigger);
+                    (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(trigger);
                 } else {
                     setTimeout(trigger, 0);
                 }
@@ -564,19 +569,19 @@ export class ReflectionWidgetUI {
             if (this.autoTimer) clearInterval(this.autoTimer);
             this.autoTimer = setInterval(() => {
                 if ('requestIdleCallback' in window) {
-                    (window as any).requestIdleCallback(() => this.runSummary());
+                    (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(() => this.runSummary());
                 } else {
                     requestAnimationFrame(() => this.runSummary());
                 }
             }, autoInterval * 60 * 60 * 1000);
             if ('requestIdleCallback' in window) {
-                (window as any).requestIdleCallback(() => this.runSummary());
+                (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(() => this.runSummary());
             } else {
                 requestAnimationFrame(() => this.runSummary());
             }
         } else {
             if ('requestIdleCallback' in window) {
-                (window as any).requestIdleCallback(() => this.runSummary());
+                (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(() => this.runSummary());
             } else {
                 requestAnimationFrame(() => this.runSummary());
             }
