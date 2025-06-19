@@ -1,11 +1,9 @@
-import { App, setIcon, Notice } from 'obsidian';
+import { App, Notice } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
 
-export interface ThemeSwitcherWidgetSettings {
-    // 今後拡張用
-}
+export type ThemeSwitcherWidgetSettings = Record<string, never>;
 
 /**
  * テーマ切り替えウィジェット
@@ -57,21 +55,26 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
     private renderThemeSelector(container: HTMLElement) {
         container.empty();
         // テーマ一覧取得
-        const customCss = (this.app as any).customCss;
+        interface CustomCssManager {
+            themes: unknown;
+            theme?: string;
+            setTheme(id: string): void;
+        }
+        const customCss = (this.app as unknown as { customCss?: CustomCssManager }).customCss;
         if (!customCss) {
             container.createEl('p', { text: 'テーマ切り替えAPIが利用できません。' });
             return;
         }
-        const themesRaw = customCss.themes;
+        const themesRaw = customCss?.themes;
         let themes: string[] = [];
         if (Array.isArray(themesRaw)) {
-            themes = themesRaw;
+            themes = themesRaw as string[];
         } else if (themesRaw && typeof themesRaw === 'object') {
-            themes = Object.values(themesRaw)
-                .map((t: any) => typeof t === 'string' ? t : t.name)
-                .filter((name: any) => typeof name === 'string');
+            themes = Object.values(themesRaw as Record<string, { name: string } | string>)
+                .map(t => (typeof t === 'string' ? t : t.name))
+                .filter((name): name is string => typeof name === 'string');
         }
-        const currentTheme: string = customCss.theme || '';
+        const currentTheme: string = customCss?.theme || '';
 
         // --- デフォルトテーマを1つにまとめる ---
         const defaultTheme = { id: '', name: 'デフォルト（Obsidian）' };
@@ -94,9 +97,9 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
                     new Notice('すでにこのテーマが適用されています。');
                     return;
                 }
-                customCss.setTheme(theme.id);
+                customCss?.setTheme(theme.id);
                 // テーマ適用後は現在のテーマ名も更新する
-                (customCss as any).theme = theme.id;
+                if (customCss) customCss.theme = theme.id;
                 new Notice(`テーマ「${theme.name}」を適用しました。`);
                 // ここでactiveクラスだけ付け替える
                 liElements.forEach(li => li.classList.remove('active'));
