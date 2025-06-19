@@ -17,7 +17,6 @@ import { parseTags, parseLinks, formatTimeAgo, readFileAsDataUrl, wrapSelection 
 import { TweetWidgetUI } from './tweetWidgetUI';
 import { TweetRepository } from './TweetRepository';
 import { TweetStore } from './TweetStore';
-import { DEFAULT_TWEET_WIDGET_SETTINGS } from './constants';
 import { computeNextTime, ScheduleOptions } from './scheduleUtils';
 import type { ScheduledTweet } from './types';
 

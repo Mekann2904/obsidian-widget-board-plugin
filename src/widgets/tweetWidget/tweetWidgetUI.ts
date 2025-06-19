@@ -1,12 +1,8 @@
-import { App, Notice, setIcon, MarkdownRenderer, Menu, TFile, Component } from 'obsidian';
+import { App, Notice, setIcon, Menu, Component } from 'obsidian';
 import type { TweetWidget } from './tweetWidget';
-import type { TweetWidgetPost, TweetWidgetFile } from './types';
+import type { TweetWidgetPost } from './types';
 import { getFullThreadHistory } from './aiReply';
-import { geminiPrompt } from '../../llm/gemini/tweetReplyPrompt';
-import { GeminiProvider } from '../../llm/gemini/geminiApi';
-import { deobfuscate } from '../../utils';
-import { findLatestAiUserIdInThread, generateAiUserId } from './aiReply';
-import { parseLinks, parseTags, extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
+import { extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { renderMermaidInWorker } from '../../utils';
@@ -291,7 +287,6 @@ export class TweetWidgetUI {
                 placeholder: this.widget.replyingToParentId ? '返信をポスト' : 'いまどうしてる？' 
             }
         });
-        let scheduled = false;
         input.addEventListener('input', () => {
             scheduleBatchTweetResize(input);
         });
@@ -303,26 +298,20 @@ export class TweetWidgetUI {
         const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
         ytSuggest.style.display = 'none';
         ytSuggest.textContent = '';
-        let lastYtUrl = '';
-        let lastYtTitle = '';
         input.addEventListener('input', () => {
             const val = input.value;
             const url = extractYouTubeUrl(val);
             if (!url) {
                 ytSuggest.style.display = 'none';
                 ytSuggest.textContent = '';
-                lastYtUrl = '';
-                lastYtTitle = '';
                 return;
             }
             ytSuggest.textContent = '動画タイトル取得中...';
             ytSuggest.style.display = 'block';
-            lastYtUrl = url;
             const currentInput = val;
             fetchYouTubeTitle(url).then(title => {
                 if (input.value !== currentInput) return;
                 if (title) {
-                    lastYtTitle = title;
                     ytSuggest.textContent = `「${title}」を挿入 → クリック`;
                     ytSuggest.onclick = () => {
                         const insertText = `![${title}](${url})`;
@@ -934,7 +923,7 @@ export class TweetWidgetUI {
             const historyDiv = item.createDiv({ cls: 'tweet-ai-history-main' });
             historyDiv.createEl('div', { text: '会話履歴', cls: 'tweet-ai-history-title' });
             const thread = getFullThreadHistory(post, this.widget.currentSettings.posts);
-            thread.forEach((t, idx) => {
+            thread.forEach(t => {
                 const line = historyDiv.createDiv({ cls: 'tweet-ai-history-line' });
                 const who = t.userId && t.userId.startsWith('@ai-') ? 'AI' : (t.userName || t.userId || 'あなた');
                 line.createSpan({ text: `${who}: `, cls: 'tweet-ai-history-who' });
@@ -1134,26 +1123,20 @@ export class TweetWidgetUI {
         const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
         ytSuggest.style.display = 'none';
         ytSuggest.textContent = '';
-        let lastYtUrl = '';
-        let lastYtTitle = '';
         textarea.addEventListener('input', () => {
             const val = textarea.value;
             const url = extractYouTubeUrl(val);
             if (!url) {
                 ytSuggest.style.display = 'none';
                 ytSuggest.textContent = '';
-                lastYtUrl = '';
-                lastYtTitle = '';
                 return;
             }
             ytSuggest.textContent = '動画タイトル取得中...';
             ytSuggest.style.display = 'block';
-            lastYtUrl = url;
             const currentInput = val;
             fetchYouTubeTitle(url).then(title => {
                 if (textarea.value !== currentInput) return;
                 if (title) {
-                    lastYtTitle = title;
                     ytSuggest.textContent = `「${title}」を挿入 → クリック`;
                     ytSuggest.onclick = () => {
                         const insertText = `![${title}](${url})`;
@@ -1261,26 +1244,20 @@ export class TweetWidgetUI {
         const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
         ytSuggest.style.display = 'none';
         ytSuggest.textContent = '';
-        let lastYtUrl = '';
-        let lastYtTitle = '';
         textarea.addEventListener('input', () => {
             const val = textarea.value;
             const url = extractYouTubeUrl(val);
             if (!url) {
                 ytSuggest.style.display = 'none';
                 ytSuggest.textContent = '';
-                lastYtUrl = '';
-                lastYtTitle = '';
                 return;
             }
             ytSuggest.textContent = '動画タイトル取得中...';
             ytSuggest.style.display = 'block';
-            lastYtUrl = url;
             const currentInput = val;
             fetchYouTubeTitle(url).then(title => {
                 if (textarea.value !== currentInput) return;
                 if (title) {
-                    lastYtTitle = title;
                     ytSuggest.textContent = `「${title}」を挿入 → クリック`;
                     ytSuggest.onclick = () => {
                         const insertText = `![${title}](${url})`;
