@@ -56,7 +56,7 @@ export class RecentNotesWidget implements WidgetImplementation {
         this.renderNotesList(contentEl);
 
         // 追加: YAMLで大きさ指定があれば反映
-        applyWidgetSize(this.widgetEl, config.settings);
+        applyWidgetSize(this.widgetEl, config.settings as { width?: string; height?: string } | null);
 
         return this.widgetEl;
     }
@@ -87,10 +87,12 @@ export class RecentNotesWidget implements WidgetImplementation {
         if (files.length < VIRTUAL_THRESHOLD) {
             // 従来通り全件描画
             const listEl = container.createEl('ul', { cls: 'recent-notes-list' });
+            listEl.setAttribute('role', 'list');
             const fragment = document.createDocumentFragment();
             files.forEach(file => {
                 const itemEl = document.createElement('li');
                 itemEl.className = 'recent-note-item';
+                itemEl.setAttribute('role', 'listitem');
                 const linkEl = document.createElement('a');
                 linkEl.textContent = file.basename;
                 linkEl.href = '#';
@@ -119,6 +121,7 @@ export class RecentNotesWidget implements WidgetImplementation {
         listWrapper.style.overflowY = 'auto';
         listWrapper.style.maxHeight = '600px';
         const listEl = listWrapper.createEl('ul', { cls: 'recent-notes-list' });
+        listEl.setAttribute('role', 'list');
         listEl.style.position = 'absolute';
         listEl.style.top = '0';
         listEl.style.left = '0';
@@ -135,6 +138,7 @@ export class RecentNotesWidget implements WidgetImplementation {
                 const file = files[i];
                 const itemEl = document.createElement('li');
                 itemEl.className = 'recent-note-item';
+                itemEl.setAttribute('role', 'listitem');
                 itemEl.style.height = `${ROW_HEIGHT}px`;
                 const linkEl = document.createElement('a');
                 linkEl.textContent = file.basename;
