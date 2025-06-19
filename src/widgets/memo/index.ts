@@ -122,7 +122,8 @@ export class MemoWidget implements WidgetImplementation {
             if (mermaidSvgCache.has(code)) {
                 const svg = mermaidSvgCache.get(code)!;
                 const wrapper = document.createElement('div');
-                wrapper.innerHTML = svg;
+                const frag = document.createRange().createContextualFragment(svg);
+                wrapper.appendChild(frag);
                 pre.replaceWith(wrapper);
                 continue;
             }
@@ -130,7 +131,8 @@ export class MemoWidget implements WidgetImplementation {
                 const svg = await renderMermaidInWorker(code, id);
                 mermaidSvgCache.set(code, svg);
                 const wrapper = document.createElement('div');
-                wrapper.innerHTML = svg;
+                const frag = document.createRange().createContextualFragment(svg);
+                wrapper.appendChild(frag);
                 pre.replaceWith(wrapper);
             } catch (e) {
                 // エラー時はそのまま

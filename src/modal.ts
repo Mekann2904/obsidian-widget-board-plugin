@@ -1,5 +1,5 @@
 // src/modal.ts
-import { App, FuzzySuggestModal, Notice, setIcon } from 'obsidian';
+import { App, FuzzySuggestModal, Notice, setIcon, Setting } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import { registeredWidgetImplementations } from './widgetRegistry';
 import type { WidgetImplementation, BoardConfiguration, WidgetConfig } from './interfaces';
@@ -192,7 +192,7 @@ export class WidgetBoardModal {
 
         // --- ヘッダーと設定ボタン ---
         const headerEl = contentEl.createDiv({ cls: 'wb-panel-header' });
-        headerEl.createEl('h3', { text: `ウィジェットボード: ${this.currentBoardConfig.name}` });
+        new Setting(headerEl).setName(`ウィジェットボード: ${this.currentBoardConfig.name}`).setHeading();
 
         // ボタン群ラッパー
         const actionsWrapper = headerEl.createDiv({ cls: 'wb-panel-header-actions' });
@@ -350,7 +350,7 @@ export class WidgetBoardModal {
 
         // --- 表示設定アコーディオン内に本来のロジックを移動 ---
         const panelHeader = displayBody.createDiv({ cls: 'wb-settings-panel-header' });
-        panelHeader.createEl('h4', { text: 'ボード設定' });
+        new Setting(panelHeader).setName('ボード設定').setHeading();
         const doneBtn = panelHeader.createEl('button', { text: '完了' });
 
         const displayControlsContainer = displayBody.createDiv({ cls: 'wb-display-controls-container' });
@@ -571,7 +571,7 @@ export class WidgetBoardModal {
                             } catch (e: any) {
                                 wrapper.empty();
                                 const errDiv = wrapper.createDiv({ cls: 'widget widget-error' });
-                                errDiv.createEl('h4', { text: `${widgetConfig.title || '(名称未設定)'} (ロードエラー)` });
+                                new Setting(errDiv).setName(`${widgetConfig.title || '(名称未設定)'} (ロードエラー)`).setHeading();
                                 errDiv.createEl('p', { text: 'このウィジェットの読み込み中にエラーが発生しました。' });
                                 errDiv.createEl('p', { text: e.message || '' });
                                 obs.unobserve(wrapper);
@@ -585,7 +585,7 @@ export class WidgetBoardModal {
                     } else {
                         wrapper.empty();
                         const unknownDiv = wrapper.createDiv({ cls: 'widget widget-unknown' });
-                        unknownDiv.createEl('h4', { text: `${widgetConfig.title || '(名称未設定)'} (不明な種類)` });
+                        new Setting(unknownDiv).setName(`${widgetConfig.title || '(名称未設定)'} (不明な種類)`).setHeading();
                         unknownDiv.createEl('p', { text: `ウィジェットの種類 '${widgetConfig.type}' は登録されていません。` });
                         obs.unobserve(wrapper);
                     }

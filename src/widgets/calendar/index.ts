@@ -1,5 +1,5 @@
 // src/widgets/calendarWidget.ts
-import { App, setIcon, TFile, Modal } from 'obsidian';
+import { App, setIcon, TFile, Modal, Setting } from 'obsidian';
 import { DEFAULT_CALENDAR_SETTINGS } from '../../settingsDefaults';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
@@ -196,7 +196,7 @@ export class CalendarWidget implements WidgetImplementation {
     private showNotesForDate(dateStr: string) {
         if (!this.selectedDateInfoEl) return;
         this.selectedDateInfoEl.empty();
-        this.selectedDateInfoEl.createEl('h5', { text: `${dateStr} のノート一覧` });
+        new Setting(this.selectedDateInfoEl).setName(`${dateStr} のノート一覧`).setHeading();
 
         // --- デイリーノートのファイル名をグローバル設定で生成 ---
         const globalFormat = this.plugin?.settings?.calendarDailyNoteFormat || 'YYYY-MM-DD';

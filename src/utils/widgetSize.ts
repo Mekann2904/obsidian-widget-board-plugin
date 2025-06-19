@@ -17,9 +17,8 @@ export function createWidgetContainer(
     widgetEl.setAttribute('data-widget-id', config.id);
     let titleEl: HTMLElement | undefined;
     if (withTitle) {
-        titleEl = widgetEl.createEl('h4');
+        titleEl = widgetEl.createDiv({ cls: 'widget-title' });
         titleEl.textContent = config.title?.trim() || '';
-        titleEl.classList.add('widget-title');
     }
 
     return { widgetEl, titleEl };

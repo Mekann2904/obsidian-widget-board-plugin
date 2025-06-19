@@ -1,5 +1,5 @@
 // src/main.ts
-import { Plugin, Notice, Modal as ObsidianModal, Hotkey, Modifier } from 'obsidian';
+import { Plugin, Notice, Modal as ObsidianModal, Hotkey, Modifier, Setting } from 'obsidian';
 import type { PluginGlobalSettings, BoardConfiguration, WidgetConfig } from './interfaces';
 import { DEFAULT_PLUGIN_SETTINGS, DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
 import { WidgetBoardModal } from './modal';
@@ -523,7 +523,7 @@ class BoardPickerModal extends ObsidianModal {
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.createEl('h2', { text: 'ウィジェットボードを選択' });
+        new Setting(contentEl).setName('ウィジェットボードを選択').setHeading();
         const listEl = contentEl.createDiv({ cls: 'widget-board-picker-list' });
         this.boards.forEach(board => {
             const boardItemEl = listEl.createDiv({ cls: 'widget-board-picker-item' });
