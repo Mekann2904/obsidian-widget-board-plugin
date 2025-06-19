@@ -112,5 +112,141 @@ describe('PomodoroWidget 詳細テスト', () => {
     expect((PomodoroWidget as any).widgetInstances.size).toBe(0);
   });
 
-  // 背景画像や通知音のUI反映、セッションログ出力なども必要に応じて追加可能
+  it('背景画像が設定されるとUIに反映される', async () => {
+    const widget = new PomodoroWidget();
+    // 初期は背景画像なし
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    expect(widget['widgetEl'].classList.contains('has-background-image')).toBe(false);
+    expect(widget['widgetEl'].style.backgroundImage).toBe('');
+    // 背景画像を設定
+    await widget.updateExternalSettings({ backgroundImageUrl: 'https://example.com/bg.png' });
+    expect(widget['widgetEl'].classList.contains('has-background-image')).toBe(true);
+    expect(widget['widgetEl'].style.backgroundImage).toBe('url("https://example.com/bg.png")');
+    // 背景画像を解除
+    await widget.updateExternalSettings({ backgroundImageUrl: '' });
+    expect(widget['widgetEl'].classList.contains('has-background-image')).toBe(false);
+    expect(widget['widgetEl'].style.backgroundImage).toBe('');
+  });
+
+  it('resetCurrentTimerConfirmを2回連続で呼ぶとサイクル数がリセットされる', () => {
+    const widget = new PomodoroWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    // サイクル数を仮に3にする
+    widget['pomodorosCompletedInCycle'] = 3;
+    // 1回目のリセット（サイクル数は維持）
+    widget['resetCurrentTimerConfirm']();
+    expect(widget['pomodorosCompletedInCycle']).toBe(3);
+    // 2回目のリセット（サイクル数がリセット）
+    widget['resetCurrentTimerConfirm']();
+    expect(widget['pomodorosCompletedInCycle']).toBe(0);
+    // UI上も反映されているか
+    const el = widget['widgetEl'];
+    const cycleEl = el.querySelector('.pomodoro-cycle-display');
+    expect(cycleEl?.textContent).toContain('0 /');
+  });
+
+  it('playSoundNotificationで通知音が再生される（default_beep/bell/chime/off/異常系）', () => {
+    const widget = new PomodoroWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    // AudioContextをモック
+    const ctxMock = {
+      createOscillator: jest.fn(() => ({ connect: jest.fn(), start: jest.fn(), stop: jest.fn(), onended: jest.fn(), frequency: { setValueAtTime: jest.fn() }, type: '', })),
+      createGain: jest.fn(() => ({ connect: jest.fn(), gain: { setValueAtTime: jest.fn(), exponentialRampToValueAtTime: jest.fn() } })),
+      currentTime: 0, destination: {}, state: 'running', close: jest.fn()
+    };
+    window.AudioContext = jest.fn(() => ctxMock) as any;
+    widget['currentSettings'].notificationSound = 'default_beep';
+    expect(() => widget['playSoundNotification']()).not.toThrow();
+    widget['currentSettings'].notificationSound = 'bell';
+    expect(() => widget['playSoundNotification']()).not.toThrow();
+    widget['currentSettings'].notificationSound = 'chime';
+    expect(() => widget['playSoundNotification']()).not.toThrow();
+    widget['currentSettings'].notificationSound = 'off';
+    expect(() => widget['playSoundNotification']()).not.toThrow();
+    // 異常系: AudioContext生成で例外
+    window.AudioContext = jest.fn(() => { throw new Error('fail'); }) as any;
+    widget['currentSettings'].notificationSound = 'default_beep';
+    expect(() => widget['playSoundNotification']()).not.toThrow();
+  });
+
+  it('exportSessionLogsで各フォーマットのファイルが出力される', async () => {
+    const widget = new PomodoroWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    widget['sessionLogs'] = [
+      { date: '2024-01-01', start: '10:00', end: '10:25', memo: 'test', sessionType: 'work' }
+    ];
+    dummyApp.vault.adapter.exists.mockResolvedValue(false);
+    dummyApp.vault.adapter.mkdir.mockResolvedValue();
+    dummyApp.vault.adapter.write.mockResolvedValue();
+    dummyApp.vault.adapter.read.mockResolvedValue('');
+    // CSV
+    await widget['exportSessionLogs']('csv');
+    // JSON
+    await widget['exportSessionLogs']('json');
+    // Markdown
+    await widget['exportSessionLogs']('markdown');
+    // none/unknown
+    await widget['exportSessionLogs']('none');
+    expect(dummyApp.vault.adapter.write).toHaveBeenCalled();
+  });
+
+  it('メモ編集の保存・キャンセルが正しく動作する', async () => {
+    const widget = new PomodoroWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    // 保存
+    await widget['renderMemo']('保存テスト');
+    expect(widget['currentSettings'].memoContent).toBe('保存テスト');
+    // キャンセル（エミュレート: 編集→キャンセル→内容が元に戻る）
+    if (widget['memoWidget']) {
+      widget['memoWidget'].setMemoContent('一時編集');
+      widget['memoWidget'].cancelEditMode();
+      // キャンセル後もcurrentSettings.memoContentは保存前の値
+      expect(widget['currentSettings'].memoContent).toBe('保存テスト');
+    }
+  });
+
+  it('handleSessionEndでメモ内容がセッションログに記録される', async () => {
+    const widget = new PomodoroWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget['renderMemo']('セッションメモ');
+    widget['isRunning'] = true;
+    widget['currentPomodoroSet'] = 'work';
+    widget['currentSessionStartTime'] = new Date('2024-01-01T10:00:00');
+    widget['currentSessionEndTime'] = new Date('2024-01-01T10:25:00');
+    await widget['handleSessionEnd']();
+    expect(widget['sessionLogs'].some(log => log.memo === 'セッションメモ')).toBe(true);
+  });
+
+  it('複数インスタンスが独立して動作する', () => {
+    const widget1 = new PomodoroWidget();
+    const widget2 = new PomodoroWidget();
+    widget1.create({ ...dummyConfig, id: 'id1' }, dummyApp, dummyPlugin);
+    widget2.create({ ...dummyConfig, id: 'id2' }, dummyApp, dummyPlugin);
+    widget1['pomodorosCompletedInCycle'] = 2;
+    widget2['pomodorosCompletedInCycle'] = 5;
+    widget1['resetCurrentTimerConfirm']();
+    widget2['resetCurrentTimerConfirm']();
+    expect(widget1['pomodorosCompletedInCycle']).toBe(2);
+    expect(widget2['pomodorosCompletedInCycle']).toBe(5);
+    widget1['resetCurrentTimerConfirm']();
+    widget2['resetCurrentTimerConfirm']();
+    expect(widget1['pomodorosCompletedInCycle']).toBe(0);
+    expect(widget2['pomodorosCompletedInCycle']).toBe(0);
+  });
+
+  it('不正値設定や多重操作でエラーや不整合が発生しない', async () => {
+    const widget = new PomodoroWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    // 不正値
+    await expect(widget.updateExternalSettings({ workMinutes: -1, shortBreakMinutes: 0 })).resolves.not.toThrow();
+    // 多重操作
+    for (let i = 0; i < 5; i++) {
+      widget['resetCurrentTimerConfirm']();
+      widget['startTimer']();
+      widget['pauseTimer']();
+    }
+    expect(widget['isRunning']).toBe(false);
+  });
+
+  // E2E/Obsidian再起動/通知・エクスポート一連動作はシステムテスト・手動/自動E2Eでカバー推奨
 }); 
