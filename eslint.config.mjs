@@ -9,7 +9,7 @@ export default [
 
   {
     files: ['**/*.ts'],
-    ignores: ['node_modules', 'dist', 'logs'],
+    ignores: ['node_modules', 'dist', 'logs', 'main.js', 'src/llm/llmManager.d.ts'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
