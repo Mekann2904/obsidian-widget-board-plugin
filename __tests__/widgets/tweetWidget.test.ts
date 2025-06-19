@@ -287,4 +287,29 @@ describe('TweetWidget', () => {
     expect(widget.currentSettings.posts.some(p => p.text === 'ショートカット投稿テスト')).toBe(true);
     document.body.removeChild(el);
   });
+
+  it('詳細画面の返信欄でCommand+Enterで返信できる', async () => {
+    const widget = new TweetWidget();
+    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    document.body.appendChild(el);
+    await new Promise(res => setTimeout(res, 0));
+    // まず投稿を1件追加
+    await widget.submitPost('詳細画面テスト投稿');
+    const post = widget.currentSettings.posts[0];
+    // 詳細画面に遷移
+    widget.navigateToDetail(post.id);
+    await new Promise(res => setTimeout(res, 0));
+    // 返信欄のtextarea取得
+    const textarea = el.querySelector('.tweet-detail-reply-textarea') as HTMLTextAreaElement;
+    expect(textarea).toBeTruthy();
+    textarea.value = '詳細画面ショートカット返信';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    // Command+Enter（Mac）
+    const event = new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true });
+    textarea.dispatchEvent(event);
+    // 返信が追加されるまで待つ
+    await new Promise(res => setTimeout(res, 10));
+    expect(widget.currentSettings.posts.some(p => p.text === '詳細画面ショートカット返信')).toBe(true);
+    document.body.removeChild(el);
+  });
 }); 

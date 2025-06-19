@@ -754,6 +754,14 @@ export class TweetWidgetUI {
             textarea.value = '';
         };
 
+        // Cmd+EnterまたはCtrl+Enterで投稿
+        textarea.addEventListener('keydown', (e) => {
+            if ((e.key === 'Enter') && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                replyBtn.click();
+            }
+        });
+
         // --- 以下、renderDetailReplyInputのtextarea生成直後 ---
         textarea.addEventListener('paste', async (e: ClipboardEvent) => {
             if (!e.clipboardData) return;
