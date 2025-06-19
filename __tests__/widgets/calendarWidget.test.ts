@@ -38,7 +38,7 @@ describe('CalendarWidget', () => {
     const widget = new CalendarWidget();
     const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
     expect(el.classList.contains('calendar-widget')).toBe(true);
-    expect(el.querySelector('h4')?.textContent).toBe('テストカレンダー');
+    expect(el.querySelector('.widget-title')?.textContent).toBe('テストカレンダー');
   });
 
   it('曜日ヘッダーが正しく描画される', () => {

@@ -1500,7 +1500,8 @@ export class TweetWidgetUI {
             try {
                 const svg = await renderMermaidInWorker(code, id);
                 const wrapper = document.createElement('div');
-                wrapper.innerHTML = svg;
+                const frag = document.createRange().createContextualFragment(svg);
+                wrapper.appendChild(frag);
                 pre.replaceWith(wrapper);
             } catch (e) {
                 // エラー時はそのまま

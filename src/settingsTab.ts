@@ -60,7 +60,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl('h2', { text: 'ウィジェットボード設定' });
+        new Setting(containerEl).setName('ウィジェットボード設定').setHeading();
         // --- ベースフォルダ入力欄 ---
         const baseFolderSetting = new Setting(containerEl)
             .setName('ベースフォルダ（グローバル）')
@@ -281,7 +281,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
 
         // --- LLMグローバル設定 ---
         const llmAcc = createAccordion('LLM（グローバル設定）', false);
-        llmAcc.body.createEl('h4', { text: 'Gemini' });
+        new Setting(llmAcc.body).setName('Gemini').setHeading();
         // Gemini APIキー
         new Setting(llmAcc.body)
             .setName('Gemini APIキー')
@@ -395,7 +395,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         // --- つぶやき（グローバル設定） ---
         const tweetGlobalAcc = createAccordion('つぶやき（グローバル設定）', false);
         // ユーザー一覧セクション
-        tweetGlobalAcc.body.createEl('h4', { text: 'ユーザー一覧（グローバル）' });
+        new Setting(tweetGlobalAcc.body).setName('ユーザー一覧（グローバル）').setHeading();
         const userListDiv = tweetGlobalAcc.body.createDiv({ cls: 'tweet-user-list-table' });
         const renderUserList = () => {
             userListDiv.empty();
@@ -616,7 +616,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             const settings = await repo.load();
             const scheduledPosts = settings.scheduledPosts || [];
             const listDiv = tweetGlobalAcc.body.createDiv({ cls: 'scheduled-tweet-list' });
-            listDiv.createEl('h4', { text: '予約投稿一覧' });
+            new Setting(listDiv).setName('予約投稿一覧').setHeading();
             if (scheduledPosts.length === 0) {
                 listDiv.createEl('div', { text: '現在、予約投稿はありません。', cls: 'scheduled-tweet-empty' });
             } else {
@@ -926,7 +926,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     }
                 }));
 
-        containerEl.createEl('h4', { text: 'ウィジェット管理' });
+        new Setting(containerEl).setName('ウィジェット管理').setHeading();
         const addWidgetButtonsContainer = containerEl.createDiv({ cls: 'widget-add-buttons' });
         const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list-for-board' }); // 先に定義
 
@@ -1431,7 +1431,7 @@ class BoardGroupEditModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.createEl('h2', { text: this.group ? 'グループを編集' : '新しいグループを追加' });
+        new Setting(contentEl).setName(this.group ? 'グループを編集' : '新しいグループを追加').setHeading();
         let name = this.group?.name || '';
         let boardIds = this.group?.boardIds ? [...this.group.boardIds] : [];
         // グループ名
@@ -1518,7 +1518,7 @@ class ScheduleTweetModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        contentEl.createEl('h2', { text: this.sched ? '予約投稿を編集' : '予約投稿を追加' });
+        new Setting(contentEl).setName(this.sched ? '予約投稿を編集' : '予約投稿を追加').setHeading();
         let text = this.sched ? this.sched.text : '';
         let hour = this.sched ? this.sched.hour : 9;
         let minute = this.sched ? this.sched.minute : 0;

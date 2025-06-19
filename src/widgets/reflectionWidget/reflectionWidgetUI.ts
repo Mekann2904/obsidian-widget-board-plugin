@@ -17,7 +17,7 @@ let chartModulePromise: Promise<any> | null = null;
 // --- Mermaid SVGメモリキャッシュ ---
 const mermaidSvgCache = new Map<string, string>();
 // --- まとめHTMLキャッシュ ---
-const summaryHtmlCache = new Map<string, string>();
+const summaryHtmlCache = new Map<string, DocumentFragment>();
 
 export function preloadChartJS(): Promise<any> {
     if (!chartModulePromise) {
@@ -281,12 +281,16 @@ export class ReflectionWidgetUI {
         // --- ここから即時キャッシュ表示処理を追加（プリロードバンドル対応） ---
         if (this.preloadBundle && this.todaySummaryEl && this.weekSummaryEl) {
             if (this.preloadBundle.todaySummary.html) {
-                this.todaySummaryEl.innerHTML = this.preloadBundle.todaySummary.html;
+                const frag = document.createRange().createContextualFragment(this.preloadBundle.todaySummary.html);
+                this.todaySummaryEl.empty();
+                this.todaySummaryEl.appendChild(frag);
             } else {
                 this.todaySummaryEl.innerText = this.preloadBundle.todaySummary.summary || '本日の投稿がありません。';
             }
             if (this.preloadBundle.weekSummary.html) {
-                this.weekSummaryEl.innerHTML = this.preloadBundle.weekSummary.html;
+                const frag = document.createRange().createContextualFragment(this.preloadBundle.weekSummary.html);
+                this.weekSummaryEl.empty();
+                this.weekSummaryEl.appendChild(frag);
             } else {
                 this.weekSummaryEl.innerText = this.preloadBundle.weekSummary.summary || '今週の投稿がありません。';
             }
@@ -300,14 +304,18 @@ export class ReflectionWidgetUI {
             ]).then(([cachedToday, cachedWeek]) => {
                 if (this.todaySummaryEl) {
                     if (cachedToday.html) {
-                        this.todaySummaryEl.innerHTML = cachedToday.html;
+                        const frag = document.createRange().createContextualFragment(cachedToday.html);
+                        this.todaySummaryEl.empty();
+                        this.todaySummaryEl.appendChild(frag);
                     } else {
                         this.todaySummaryEl.innerText = cachedToday.summary || '本日の投稿がありません。';
                     }
                 }
                 if (this.weekSummaryEl) {
                     if (cachedWeek.html) {
-                        this.weekSummaryEl.innerHTML = cachedWeek.html;
+                        const frag = document.createRange().createContextualFragment(cachedWeek.html);
+                        this.weekSummaryEl.empty();
+                        this.weekSummaryEl.appendChild(frag);
                     } else {
                         this.weekSummaryEl.innerText = cachedWeek.summary || '今週の投稿がありません。';
                     }
@@ -480,18 +488,23 @@ export class ReflectionWidgetUI {
         setLast(text);
         // --- MermaidブロックをWorkerでSVG化して差し替え ---
         await this.replaceMermaidBlocksWithSVG(el);
-        return el.innerHTML;
+        return new XMLSerializer().serializeToString(el);
     }
 
     // Markdownレンダリング結果をキャッシュして返す
     private async renderMarkdownWithCache(el: HTMLElement, text: string, cacheKey: string) {
         if (summaryHtmlCache.has(cacheKey)) {
-            el.innerHTML = summaryHtmlCache.get(cacheKey)!;
+            el.empty();
+            el.appendChild(summaryHtmlCache.get(cacheKey)!.cloneNode(true));
             return;
         }
         el.empty();
         await renderMarkdownBatchWithCache(text, el, '', new Component());
-        summaryHtmlCache.set(cacheKey, el.innerHTML);
+        const frag = document.createDocumentFragment();
+        for (const node of Array.from(el.childNodes)) {
+            frag.appendChild(node.cloneNode(true));
+        }
+        summaryHtmlCache.set(cacheKey, frag);
     }
 
     // MermaidブロックをWorkerでSVG化して差し替える（キャッシュ利用）
@@ -506,7 +519,8 @@ export class ReflectionWidgetUI {
             if (mermaidSvgCache.has(code)) {
                 const svg = mermaidSvgCache.get(code)!;
                 const wrapper = document.createElement('div');
-                wrapper.innerHTML = svg;
+                const frag = document.createRange().createContextualFragment(svg);
+                wrapper.appendChild(frag);
                 pre.replaceWith(wrapper);
                 continue;
             }
@@ -514,7 +528,8 @@ export class ReflectionWidgetUI {
                 const svg = await renderMermaidInWorker(code, id);
                 mermaidSvgCache.set(code, svg);
                 const wrapper = document.createElement('div');
-                wrapper.innerHTML = svg;
+                const frag = document.createRange().createContextualFragment(svg);
+                wrapper.appendChild(frag);
                 pre.replaceWith(wrapper);
             } catch (e) {
                 // エラー時はそのまま
