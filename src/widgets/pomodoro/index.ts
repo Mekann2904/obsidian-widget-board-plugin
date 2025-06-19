@@ -1,8 +1,8 @@
 // src/widgets/pomodoroWidget.ts
-import { App, MarkdownRenderer, Notice, setIcon, TFolder } from 'obsidian';
+import { App, Notice, setIcon } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main'; // main.ts の WidgetBoardPlugin クラスをインポート
-import { PomodoroMemoWidget, PomodoroMemoSettings } from './pomodoroMemoWidget';
+import { PomodoroMemoWidget } from './pomodoroMemoWidget';
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer, pad2, getDateKeyLocal } from '../../utils';
 
@@ -33,6 +33,13 @@ export interface SessionLog {
     end: string;   // HH:mm
     memo: string;
     sessionType: 'work' | 'shortBreak' | 'longBreak';
+}
+
+interface PomodoroState extends PomodoroSettings {
+    isRunning: boolean;
+    remainingTime: number;
+    currentPomodoroSet: 'work' | 'shortBreak' | 'longBreak';
+    pomodorosCompletedInCycle: number;
 }
 
 // --- ポモドーロウィジェットデフォルト設定 ---
@@ -81,7 +88,7 @@ export class PomodoroWidget implements WidgetImplementation {
     private currentAudioElement: HTMLAudioElement | null = null;
 
     private static widgetInstances: Map<string, PomodoroWidget> = new Map();
-    private static widgetStates: Map<string, any> = new Map();
+    private static widgetStates: Map<string, PomodoroState> = new Map();
     private static globalIntervalId: number | null = null;
 
     private sessionLogs: SessionLog[] = [];
@@ -91,6 +98,13 @@ export class PomodoroWidget implements WidgetImplementation {
     private lastResetClickTime: number | null = null;
 
     private needsRender = false;
+
+    private _prevDisplay: {
+        timeStr?: string;
+        isRunning?: boolean;
+        statusText?: string;
+        cycleText?: string;
+    } = {};
 
     /**
      * インスタンス初期化
@@ -196,7 +210,7 @@ export class PomodoroWidget implements WidgetImplementation {
             inst.isRunning = state.isRunning;
             inst.currentPomodoroSet = state.currentPomodoroSet;
             inst.pomodorosCompletedInCycle = state.pomodorosCompletedInCycle;
-            inst.updateDisplay && inst.updateDisplay();
+            if (typeof inst.updateDisplay === 'function') inst.updateDisplay();
         }
     }
 
@@ -238,8 +252,8 @@ export class PomodoroWidget implements WidgetImplementation {
             inst.remainingTime = state.remainingTime;
             inst.currentPomodoroSet = state.currentPomodoroSet;
             inst.pomodorosCompletedInCycle = state.pomodorosCompletedInCycle;
-            inst.updateDisplay && inst.updateDisplay();
-            inst.playSoundNotification && inst.playSoundNotification();
+            if (typeof inst.updateDisplay === 'function') inst.updateDisplay();
+            if (typeof inst.playSoundNotification === 'function') inst.playSoundNotification();
             // サイクル終了時にポップアップ
             if (cycleEnded) {
                 new Notice('おつかれさまでした', 8000);
@@ -290,7 +304,7 @@ export class PomodoroWidget implements WidgetImplementation {
             this.pomodorosCompletedInCycle = config.settings.pomodorosCompletedInCycle;
         }
         if (config.settings && typeof config.settings.currentPomodoroSet === 'string') {
-            this.currentPomodoroSet = config.settings.currentPomodoroSet as any;
+            this.currentPomodoroSet = config.settings.currentPomodoroSet as 'work' | 'shortBreak' | 'longBreak';
         }
         config.settings = this.currentSettings;
 
@@ -385,9 +399,7 @@ export class PomodoroWidget implements WidgetImplementation {
     private updateDisplay() {
         if (!this.widgetEl || !this.timeDisplayEl || !this.startPauseButton || !this.resetButton || !this.nextButton || !this.statusDisplayEl || !this.cycleDisplayEl) return;
 
-        // 差分更新用に前回値を保持
-        if (!(this as any)._prevDisplay) (this as any)._prevDisplay = {};
-        const prev = (this as any)._prevDisplay;
+        const prev = this._prevDisplay;
         const timeStr = this.formatTime(this.remainingTime);
         if (prev.timeStr !== timeStr) {
             this.timeDisplayEl.textContent = timeStr;
@@ -510,7 +522,8 @@ export class PomodoroWidget implements WidgetImplementation {
         }
         // AudioContextが再利用可能なら再利用、そうでなければ新規生成
         if (!this.audioContext || this.audioContext.state === 'closed') {
-            this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+            this.audioContext = new Ctor();
         }
         const ctx = this.audioContext;
         try {
@@ -638,8 +651,8 @@ export class PomodoroWidget implements WidgetImplementation {
         }
         // --- 追加: ポモドーロ終了時に該当ボードを自動で開く ---
         if (this.plugin.settings.openBoardOnPomodoroEnd) {
-            const boards = (this.plugin.settings as any).boards;
-            const board = boards?.find((b: any) => b.widgets?.some((w: any) => w.id === this.config.id));
+            const boards = this.plugin.settings.boards;
+            const board = boards?.find(b => b.widgets?.some(w => w.id === this.config.id));
             if (board) {
                 this.plugin.openWidgetBoardById(board.id);
                 new Notice('ポモドーロ終了: ウィジェットボードを開きました。');
@@ -809,7 +822,7 @@ export class PomodoroWidget implements WidgetImplementation {
         }
     }
 
-    public static removePersistentInstance(widgetId: string, plugin: WidgetBoardPlugin): void {
+    public static removePersistentInstance(widgetId: string): void {
         const instance = PomodoroWidget.widgetInstances.get(widgetId);
         if (instance) {
             PomodoroWidget.widgetInstances.delete(widgetId);
@@ -820,7 +833,7 @@ export class PomodoroWidget implements WidgetImplementation {
      * すべてのインスタンスをクリーンアップ
      * @param plugin プラグイン本体
      */
-    public static cleanupAllPersistentInstances(plugin: WidgetBoardPlugin): void {
+    public static cleanupAllPersistentInstances(): void {
         // すべてのインスタンスでonunloadを呼ぶ
         this.widgetInstances.forEach(instance => {
             if (typeof instance.onunload === 'function') {

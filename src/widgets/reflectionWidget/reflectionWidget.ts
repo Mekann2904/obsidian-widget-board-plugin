@@ -1,18 +1,14 @@
-import { App, MarkdownRenderer } from 'obsidian';
+import { App } from 'obsidian';
+import type WidgetBoardPlugin from '../../main';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
-import { TweetRepository } from '../tweetWidget';
-import type { TweetWidgetPost, TweetWidgetSettings } from '../tweetWidget/types';
-import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../tweetWidget/constants';
-import { LLMManager } from '../../llm/llmManager';
+import type { TweetWidgetPost } from '../tweetWidget/types';
 import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
-import { geminiSummaryPromptToday, geminiSummaryPromptWeek } from '../../llm/gemini/summaryPrompts';
 import { deobfuscate, getDateKey, getDateKeyLocal } from '../../utils';
 import { debugLog } from '../../utils/logger';
 import { ReflectionWidgetUI } from './reflectionWidgetUI';
 
-let Chart: any;
 
-function getTweetDbPath(plugin: any): string {
+function getTweetDbPath(plugin: { settings: { baseFolder?: string } }): string {
     const { baseFolder } = plugin.settings;
     if (baseFolder) {
         const folder = baseFolder.endsWith('/') ? baseFolder.slice(0, -1) : baseFolder;
@@ -34,7 +30,7 @@ function getLastNDays(n: number): string[] {
 }
 
 
-async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: any): Promise<string> {
+async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: WidgetBoardPlugin): Promise<string> {
     if (!plugin.llmManager) return 'LLM未初期化';
     // LLM設定をコピー
     const context = JSON.parse(JSON.stringify(plugin.settings.llm || {}));
@@ -66,11 +62,13 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
 // AI要約の一時保存・取得・クリア
 async function saveReflectionSummary(type: 'today' | 'week', dateKey: string, summary: string, app: App) {
     const path = 'data.json';
-    let data: any = {};
+    let data: Record<string, unknown> = {};
     try {
         const raw = await app.vault.adapter.read(path);
         data = JSON.parse(raw);
-    } catch {}
+    } catch {
+        // ignore
+    }
     if (!data.reflectionSummaries) data.reflectionSummaries = {};
     data.reflectionSummaries[type] = { date: dateKey, summary };
     await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
@@ -80,11 +78,13 @@ async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, ap
     const path = 'data.json';
     try {
         const raw = await app.vault.adapter.read(path);
-        const data = JSON.parse(raw);
+        const data: Record<string, unknown> = JSON.parse(raw);
         if (data.reflectionSummaries && data.reflectionSummaries[type]?.date === dateKey) {
             return data.reflectionSummaries[type].summary;
         }
-    } catch {}
+    } catch {
+        // ignore
+    }
     return null;
 }
 
@@ -102,30 +102,32 @@ async function clearOldReflectionSummaries(app: App) {
             }
             await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
         }
-    } catch {}
+    } catch {
+        // ignore
+    }
 }
 
 // プリロードバンドル型を定義
 export interface ReflectionWidgetPreloadBundle {
-    chartModule: any;
+    chartModule: unknown;
     todaySummary: { summary: string|null, html: string|null, postCount: number };
     weekSummary: { summary: string|null, html: string|null, postCount: number };
 }
 
 export class ReflectionWidget implements WidgetImplementation {
     id = 'reflection-widget';
-    private autoTimer: any = null;
-    private chart: any | null = null;
+    private autoTimer: number | null = null;
+    private chart: unknown | null = null;
     private lastChartData: number[] | null = null;
     private lastTodaySummary: string | null = null;
     private lastWeekSummary: string | null = null;
     private ui: ReflectionWidgetUI | null = null;
     public config!: WidgetConfig;
     public app!: App;
-    public plugin: any;
+    public plugin!: WidgetBoardPlugin;
 
     // プリロードバンドルを受け取れるように拡張
-    create(config: WidgetConfig, app: App, plugin: any, preloadBundle?: ReflectionWidgetPreloadBundle): HTMLElement {
+    create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin, preloadBundle?: ReflectionWidgetPreloadBundle): HTMLElement {
         this.config = config;
         this.app = app;
         this.plugin = plugin;

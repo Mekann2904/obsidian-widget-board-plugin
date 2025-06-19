@@ -99,7 +99,7 @@ describe('PomodoroWidget 詳細テスト', () => {
   it('removePersistentInstanceでインスタンスが削除される', () => {
     const widget = new PomodoroWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
-    PomodoroWidget.removePersistentInstance(dummyConfig.id, dummyPlugin);
+    PomodoroWidget.removePersistentInstance(dummyConfig.id);
     expect((PomodoroWidget as any).widgetInstances.has(dummyConfig.id)).toBe(false);
   });
 
@@ -108,7 +108,7 @@ describe('PomodoroWidget 詳細テスト', () => {
     const widget2 = new PomodoroWidget();
     widget1.create({ ...dummyConfig, id: 'id1' }, dummyApp, dummyPlugin);
     widget2.create({ ...dummyConfig, id: 'id2' }, dummyApp, dummyPlugin);
-    PomodoroWidget.cleanupAllPersistentInstances(dummyPlugin);
+    PomodoroWidget.cleanupAllPersistentInstances();
     expect((PomodoroWidget as any).widgetInstances.size).toBe(0);
   });
 
