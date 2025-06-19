@@ -1,6 +1,6 @@
 export function filterConsoleWarn(patterns: (string | RegExp)[]): void {
     const originalWarn = console.warn;
-    console.warn = (...args: any[]): void => {
+    console.warn = (...args: unknown[]): void => {
         if (args.length > 0) {
             const msg = String(args[0]);
             for (const pattern of patterns) {
@@ -15,6 +15,6 @@ export function filterConsoleWarn(patterns: (string | RegExp)[]): void {
                 }
             }
         }
-        originalWarn.apply(console, args as any);
+        originalWarn.apply(console, args as Parameters<typeof console.warn>);
     };
 }

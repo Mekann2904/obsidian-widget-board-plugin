@@ -1,6 +1,9 @@
 import type { WidgetConfig } from '../interfaces';
 
-export function applyWidgetSize(widgetEl: HTMLElement, settings: any): void {
+export function applyWidgetSize(
+    widgetEl: HTMLElement,
+    settings: { width?: string; height?: string } | null
+): void {
     if (!widgetEl || !settings) return;
     if (settings.width) widgetEl.style.width = settings.width;
     if (settings.height) widgetEl.style.height = settings.height;

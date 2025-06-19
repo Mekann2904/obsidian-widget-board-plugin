@@ -1,8 +1,14 @@
-import { App, TFile, Notice, FuzzySuggestModal, MarkdownRenderer, Component } from 'obsidian';
+import { App, TFile, FuzzySuggestModal, Component } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
+
+interface FileViewWidgetSettings {
+  fileName?: string;
+  heightMode?: 'auto' | 'fixed';
+  fixedHeightPx?: number;
+}
 
 // ファイルサジェスト用モーダル
 class FileSuggestModal extends FuzzySuggestModal<TFile> {
@@ -38,16 +44,18 @@ export class FileViewWidget implements WidgetImplementation {
   private titleEl: HTMLElement | undefined;
   // 高さモード: 'auto' or 'fixed'
   private heightMode: 'auto' | 'fixed' = 'auto';
-  private fixedHeightPx: number = 200;
+  private fixedHeightPx = 200;
 
   create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
     this.config = config;
     this.app = app;
     this.plugin = plugin;
 
+    const settings = (this.config.settings || {}) as FileViewWidgetSettings;
+    this.config.settings = settings;
     // 設定から高さモード・値を初期化
-    this.heightMode = (this.config.settings?.heightMode === 'fixed') ? 'fixed' : 'auto';
-    this.fixedHeightPx = typeof this.config.settings?.fixedHeightPx === 'number' ? this.config.settings.fixedHeightPx : 200;
+    this.heightMode = settings.heightMode === 'fixed' ? 'fixed' : 'auto';
+    this.fixedHeightPx = typeof settings.fixedHeightPx === 'number' ? settings.fixedHeightPx : 200;
 
     // --- カード型ウィジェット本体 ---
     const { widgetEl, titleEl } = createWidgetContainer(config, 'file-view-widget');
@@ -163,7 +171,7 @@ export class FileViewWidget implements WidgetImplementation {
     // クリーンアップ処理（必要なら）
   }
 
-  updateExternalSettings(newSettings: any, widgetId?: string) {
+  updateExternalSettings(newSettings: Partial<FileViewWidgetSettings>): void {
     // 設定をインスタンスにも反映
     if (newSettings?.heightMode) {
       this.heightMode = newSettings.heightMode;

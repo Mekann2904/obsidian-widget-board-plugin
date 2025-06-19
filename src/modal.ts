@@ -32,7 +32,7 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
         return item[0];
     }
 
-    async onChooseItem(item: [string, new () => WidgetImplementation], evt: MouseEvent | KeyboardEvent): Promise<void> {
+    async onChooseItem(item: [string, new () => WidgetImplementation]): Promise<void> {
         const widgetType = item[0];
         const board = this.plugin.settings.boards.find(b => b.id === this.boardId);
         if (!board) {
@@ -234,7 +234,7 @@ export class WidgetBoardModal {
                 });
             }
         };
-        const onMouseUpRight = async (e: MouseEvent) => {
+        const onMouseUpRight = async () => {
             if (!isResizingRight) return;
             isResizingRight = false;
             document.body.style.cursor = '';
@@ -286,7 +286,7 @@ export class WidgetBoardModal {
                 });
             }
         };
-        const onMouseUpLeft = async (e: MouseEvent) => {
+        const onMouseUpLeft = async () => {
             if (!isResizingLeft) return;
             isResizingLeft = false;
             document.body.style.cursor = '';
@@ -503,7 +503,7 @@ export class WidgetBoardModal {
             this.lastWidgetOrder.every((id, i) => id === newOrder[i]) === false &&
             container.children.length === newOrder.length
         ) {
-            newOrder.forEach((id, idx) => {
+            newOrder.forEach(id => {
                 const node = Array.from(container.children).find(
                     el => (el as HTMLElement).dataset && (el as HTMLElement).dataset.widgetId === id
                 );
@@ -756,7 +756,7 @@ export class WidgetBoardModal {
         this.draggedElement = null;
     }
 
-    private handleDragEnd(e: DragEvent) {
+    private handleDragEnd() {
         if (this.draggedElement) {
             this.draggedElement.classList.remove('is-dragging');
             this.draggedElement = null;
