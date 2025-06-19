@@ -8,7 +8,7 @@ import { debugLog } from '../../utils/logger';
 import { ReflectionWidgetUI } from './reflectionWidgetUI';
 
 
-function getTweetDbPath(plugin: { settings: { baseFolder?: string } }): string {
+function _getTweetDbPath(plugin: { settings: { baseFolder?: string } }): string {
     const { baseFolder } = plugin.settings;
     if (baseFolder) {
         const folder = baseFolder.endsWith('/') ? baseFolder.slice(0, -1) : baseFolder;
@@ -19,7 +19,7 @@ function getTweetDbPath(plugin: { settings: { baseFolder?: string } }): string {
 }
 
 
-function getLastNDays(n: number): string[] {
+function _getLastNDays(n: number): string[] {
     const days: string[] = [];
     const now = new Date();
     for (let i = n - 1; i >= 0; i--) {
@@ -30,7 +30,7 @@ function getLastNDays(n: number): string[] {
 }
 
 
-async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: WidgetBoardPlugin): Promise<string> {
+async function _generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: WidgetBoardPlugin): Promise<string> {
     if (!plugin.llmManager) return 'LLM未初期化';
     // LLM設定をコピー
     const context = JSON.parse(JSON.stringify(plugin.settings.llm || {}));
@@ -60,7 +60,7 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
 }
 
 // AI要約の一時保存・取得・クリア
-async function saveReflectionSummary(type: 'today' | 'week', dateKey: string, summary: string, app: App) {
+async function _saveReflectionSummary(type: 'today' | 'week', dateKey: string, summary: string, app: App) {
     const path = 'data.json';
     let data: Record<string, unknown> = {};
     try {
@@ -74,7 +74,7 @@ async function saveReflectionSummary(type: 'today' | 'week', dateKey: string, su
     await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
 }
 
-async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: App): Promise<string | null> {
+async function _loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: App): Promise<string | null> {
     const path = 'data.json';
     try {
         const raw = await app.vault.adapter.read(path);
@@ -88,7 +88,7 @@ async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, ap
     return null;
 }
 
-async function clearOldReflectionSummaries(app: App) {
+async function _clearOldReflectionSummaries(app: App) {
     const path = 'data.json';
     try {
         const raw = await app.vault.adapter.read(path);
@@ -139,7 +139,7 @@ export class ReflectionWidget implements WidgetImplementation {
     }
 
     // 外部から設定変更時に呼ばれる
-    public updateExternalSettings(newSettings: Partial<ReflectionWidgetSettings>, widgetId?: string) {
+    public updateExternalSettings(newSettings: Partial<ReflectionWidgetSettings>, _widgetId?: string) {
         Object.assign(this.config.settings, newSettings);
         this.refresh();
     }

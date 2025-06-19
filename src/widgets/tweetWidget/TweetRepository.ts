@@ -1,5 +1,5 @@
 import { App, Notice } from 'obsidian';
-import type { TweetWidgetSettings, TweetWidgetPost } from './types'; // types.ts から型をインポート
+import type { TweetWidgetSettings } from './types'; // types.ts から型をインポート
 import { validatePost } from './tweetWidgetUtils'; // tweetWidgetUtils.ts からユーティリティをインポート
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from './constants'; // constants.ts から定数をインポート
 
@@ -53,7 +53,7 @@ export class TweetRepository {
             
             // posts 配列の検証と各投稿のバリデーション
             if (loadedSettings && Array.isArray(loadedSettings.posts)) {
-                loadedSettings.posts = loadedSettings.posts.map((t: any) => validatePost(t));
+                loadedSettings.posts = loadedSettings.posts.map((t: unknown) => validatePost(t));
             } else {
                 // posts がない、または配列でない場合は空配列で初期化
                 loadedSettings.posts = [];

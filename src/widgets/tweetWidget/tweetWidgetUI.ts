@@ -197,7 +197,8 @@ export class TweetWidgetUI {
         });
         filterSelect.value = this.widget.currentFilter;
         filterSelect.onchange = () => {
-            this.widget.setFilter(filterSelect.value as any);
+            const v = filterSelect.value as 'all' | 'active' | 'deleted' | 'bookmark';
+            this.widget.setFilter(v);
         };
         const periodSelect = filterBar.createEl('select', { cls: 'tweet-period-select' });
         [
@@ -496,7 +497,11 @@ export class TweetWidgetUI {
     private renderInputIcons(iconBar: HTMLElement, input: HTMLTextAreaElement, filePreviewArea: HTMLElement): void {
         const imageBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main', attr: { title: '画像を添付' }});
         setIcon(imageBtn, 'image');
-        const imageInput = createEl('input', { type: 'file', attr: { accept: 'image/*', multiple: true, style: 'display: none;' }});
+        const imageInput = document.createElement('input');
+        imageInput.type = 'file';
+        imageInput.accept = 'image/*';
+        imageInput.multiple = true;
+        imageInput.style.display = 'none';
         imageBtn.onclick = () => imageInput.click();
         iconBar.appendChild(imageInput);
         imageInput.onchange = async () => {
@@ -651,7 +656,7 @@ export class TweetWidgetUI {
                         new ClipboardItem({ [blob.type]: blob })
                     ]);
                     new Notice('画像をコピーしました');
-                } catch {
+                } catch { /* ignore copy error */
                     new Notice('コピーに失敗しました');
                 }
             }));
@@ -821,7 +826,7 @@ export class TweetWidgetUI {
         try {
             const parsed = JSON.parse(displayText);
             if (parsed && typeof parsed.reply === 'string') displayText = parsed.reply;
-        } catch {}
+        } catch { /* ignore parse errors */ }
         if (post.quoteId) {
             displayText = displayText
                 .split('\n')
@@ -849,9 +854,9 @@ export class TweetWidgetUI {
         replacedText = replacedText.replace(/!\[\[(.+?)\]\]/g, (match, p1) => {
             let fileName = p1;
             try {
-                const urlMatch = /([^\/\\]+?)(\?.*)?$/.exec(p1);
+                const urlMatch = /([^/\\]+?)(\?.*)?$/.exec(p1);
                 if (urlMatch) fileName = urlMatch[1];
-            } catch {}
+            } catch { /* ignore parse errors */ }
             if (debugLog) {
                 console.log('[tweetWidgetUI] 画像置換: p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
             }
@@ -868,9 +873,9 @@ export class TweetWidgetUI {
         replacedText = replacedText.replace(/!\[\]\((.+?)\)/g, (match, p1) => {
             let fileName = p1;
             try {
-                const urlMatch = /([^\/\\]+?)(\?.*)?$/.exec(p1);
+                const urlMatch = /([^/\\]+?)(\?.*)?$/.exec(p1);
                 if (urlMatch) fileName = urlMatch[1];
-            } catch {}
+            } catch { /* ignore parse errors */ }
             if (debugLog) {
                 console.log('[tweetWidgetUI] 画像置換 (md): p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
             }
@@ -1478,8 +1483,12 @@ export class TweetWidgetUI {
     public onunload(): void {
         // モーダルで追加したグローバルイベントリスナーの解除
         // 例: showAvatarModalでkeydownを追加している
-        window.removeEventListener('keydown', this._escHandlerForAvatarModal as any);
-        window.removeEventListener('keydown', this._escHandlerForImageModal as any);
+        if (this._escHandlerForAvatarModal) {
+            window.removeEventListener('keydown', this._escHandlerForAvatarModal);
+        }
+        if (this._escHandlerForImageModal) {
+            window.removeEventListener('keydown', this._escHandlerForImageModal);
+        }
         // 必要に応じて他のクリーンアップ処理をここに追加
     }
 
@@ -1503,7 +1512,7 @@ export class TweetWidgetUI {
                 const frag = document.createRange().createContextualFragment(svg);
                 wrapper.appendChild(frag);
                 pre.replaceWith(wrapper);
-            } catch (e) {
+            } catch {
                 // エラー時はそのまま
             }
         }

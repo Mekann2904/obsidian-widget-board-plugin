@@ -1,4 +1,4 @@
-import type { TweetWidgetPost } from './types';
+import type { TweetWidgetPost, TweetWidgetFile } from './types';
 import { safeFetch } from '../../utils';
 
 export function parseTags(text: string): string[] {
@@ -45,32 +45,33 @@ export function wrapSelection(input: HTMLTextAreaElement, wrapper: string) {
 }
 
 // TweetWidgetPost型のバリデーション関数
-export function validatePost(raw: any): TweetWidgetPost {
+export function validatePost(raw: unknown): TweetWidgetPost {
+    const data = raw as Partial<TweetWidgetPost> | undefined;
     return {
-        id: raw.id || 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
-        text: typeof raw.text === 'string' ? raw.text : '',
-        created: typeof raw.created === 'number' ? raw.created : Date.now(),
-        updated: typeof raw.updated === 'number' ? raw.updated : Date.now(),
-        files: Array.isArray(raw.files) ? raw.files : [],
-        like: typeof raw.like === 'number' ? raw.like : 0,
-        liked: !!raw.liked,
-        retweet: typeof raw.retweet === 'number' ? raw.retweet : 0,
-        retweeted: !!raw.retweeted,
-        edited: !!raw.edited,
-        replyCount: typeof raw.replyCount === 'number' ? raw.replyCount : 0,
-        quoteId: typeof raw.quoteId === 'string' ? raw.quoteId : null,
-        deleted: !!raw.deleted,
-        bookmark: !!raw.bookmark,
-        contextNote: typeof raw.contextNote === 'string' ? raw.contextNote : null,
-        threadId: typeof raw.threadId === 'string' ? raw.threadId : null,
-        visibility: raw.visibility || 'public',
-        noteQuality: raw.noteQuality || 'fleeting',
-        taskStatus: raw.taskStatus || null,
-        tags: Array.isArray(raw.tags) ? raw.tags : [],
-        links: Array.isArray(raw.links) ? raw.links : [],
-        userId: typeof raw.userId === 'string' ? raw.userId : '@you',
-        userName: typeof raw.userName === 'string' ? raw.userName : 'あなた',
-        verified: !!raw.verified
+        id: data?.id || 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+        text: typeof data?.text === 'string' ? data.text : '',
+        created: typeof data?.created === 'number' ? data.created! : Date.now(),
+        updated: typeof data?.updated === 'number' ? data.updated! : Date.now(),
+        files: Array.isArray(data?.files) ? data.files as TweetWidgetFile[] : [],
+        like: typeof data?.like === 'number' ? data.like! : 0,
+        liked: !!data?.liked,
+        retweet: typeof data?.retweet === 'number' ? data.retweet! : 0,
+        retweeted: !!data?.retweeted,
+        edited: !!data?.edited,
+        replyCount: typeof data?.replyCount === 'number' ? data.replyCount! : 0,
+        quoteId: typeof data?.quoteId === 'string' ? data.quoteId : null,
+        deleted: !!data?.deleted,
+        bookmark: !!data?.bookmark,
+        contextNote: typeof data?.contextNote === 'string' ? data.contextNote : null,
+        threadId: typeof data?.threadId === 'string' ? data.threadId : null,
+        visibility: (data as TweetWidgetPost | undefined)?.visibility || 'public',
+        noteQuality: (data as TweetWidgetPost | undefined)?.noteQuality || 'fleeting',
+        taskStatus: (data as TweetWidgetPost | undefined)?.taskStatus || null,
+        tags: Array.isArray(data?.tags) ? data.tags as string[] : [],
+        links: Array.isArray(data?.links) ? data.links as string[] : [],
+        userId: typeof data?.userId === 'string' ? data.userId : '@you',
+        userName: typeof data?.userName === 'string' ? data.userName : 'あなた',
+        verified: !!data?.verified
     };
 }
 

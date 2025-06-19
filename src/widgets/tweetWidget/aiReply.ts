@@ -134,7 +134,7 @@ export async function generateAiReply({
     saveReply: (reply: TweetWidgetPost) => Promise<void>,
     parseTags: (text: string) => string[],
     parseLinks: (text: string) => string[],
-    onError?: (err: any) => void,
+    onError?: (err: unknown) => void,
     settings: PluginGlobalSettings,
     delay: boolean,
 }) {
@@ -185,7 +185,7 @@ export async function generateAiReply({
             if (parsed && typeof parsed.reply === 'string') {
                 replyText = parsed.reply;
             }
-        } catch {} // JSONパース失敗時はそのままのテキストを使用
+        } catch { /* ignore parse errors */ } // JSONパース失敗時はそのままのテキストを使用
 
         const aiReply: TweetWidgetPost = {
             id: 'tw-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),

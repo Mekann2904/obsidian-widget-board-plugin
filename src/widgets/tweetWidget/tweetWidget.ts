@@ -390,7 +390,7 @@ export class TweetWidget implements WidgetImplementation {
         this.ui.render();
     }
 
-    public async updatePostProperty(postId: string, key: keyof TweetWidgetPost, value: any) {
+    public async updatePostProperty<K extends keyof TweetWidgetPost>(postId: string, key: K, value: TweetWidgetPost[K]) {
         const post = this.store.getPostById(postId);
         if(post && post[key] !== value) {
             if (key === 'deleted') {
@@ -406,7 +406,7 @@ export class TweetWidget implements WidgetImplementation {
         let notePath = post.contextNote;
         if (!notePath) {
             const date = new Date(post.created).toISOString().split('T')[0];
-            const sanitizedText = post.text.slice(0, 30).replace(/[\\/:*?"<>|#\[\]]/g, '').trim();
+            const sanitizedText = post.text.slice(0, 30).replace(/[\\/:*?"<>|#[\]]/g, '').trim();
             const contextFolder = this.plugin.settings.baseFolder ? `${this.plugin.settings.baseFolder}/ContextNotes` : 'ContextNotes';
             
             if (!await this.app.vault.adapter.exists(contextFolder)) {
@@ -475,7 +475,7 @@ export class TweetWidget implements WidgetImplementation {
             try {
                 const parsed = JSON.parse(replyText);
                 if (parsed?.reply) replyText = parsed.reply;
-            } catch {}
+            } catch { /* ignore parse errors */ }
 
             const aiUserId = findLatestAiUserIdInThread(post, this.store.settings.posts) || generateAiUserId();
             const aiReply = this.createNewPostObject(replyText, post.id);
@@ -652,7 +652,7 @@ export class TweetWidget implements WidgetImplementation {
                 let aiPrompt = s.aiPrompt;
                 if (aiPrompt) {
                     // 投稿一覧取得用の関数（{postDate}形式で日付を付与）
-                    const getPostsText = (filterFn: (p: any) => boolean) => {
+                    const getPostsText = (filterFn: (p: TweetWidgetPost) => boolean) => {
                         return this.store.settings.posts
                             .filter(filterFn)
                             .map(p => {
@@ -706,7 +706,7 @@ export class TweetWidget implements WidgetImplementation {
                         try {
                             const parsed = JSON.parse(aiResult);
                             if (parsed && typeof parsed.reply === 'string') aiText = parsed.reply;
-                        } catch {}
+                        } catch { /* ignore parse errors */ }
                         // デバッグモードでも通常と同じく{{ai}}に埋め込む
                         postText = s.text.replace('{{ai}}', aiText);
                         if (this.plugin.settings.debugLogging) {
