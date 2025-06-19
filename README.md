@@ -1,4 +1,3 @@
-
 # Obsidian Widget Board Plugin
 
 [note記事 Obsidianプラグイン「obsidian-widget-board-plugin」リリースしました](https://note.com/mekann/n/ne05f32922b9e?sub_rt=share_sb)  
@@ -251,6 +250,27 @@ LLM（AI）を使った要約やAIリプライのプロンプト（指示文）�
 - 開発フロー、WidgetImplementation実装例、パフォーマンス設計チェックリスト、FAQなどを網羅しています。
 - パフォーマンス最適化（バッチ化・仮想リスト・contain・read→write分離等）は全ウィジェットで必須です。
 - 開発・レビュー時はパフォーマンスガイドのチェックリストを必ず確認し、DevTools等でreflow・描画コストも計測してください。
+
+### コード品質チェック（ESLint）
+
+本リポジトリでは [ESLint](https://eslint.org/) を利用してTypeScriptコードの静的解析・品質チェックを行っています。
+
+#### 基本的な使い方
+
+```bash
+# src配下の.tsファイルをチェック
+eslint ./src --ext .ts
+```
+
+#### デバッグモード
+
+ESLintの詳細な動作ログを確認したい場合は `--debug` オプションを付与してください。
+
+```bash
+eslint ./src --ext .ts --debug
+```
+
+- ルールや設定の詳細、トラブルシューティングは [docs/ESLINT_GUIDE.md](docs/ESLINT_GUIDE.md) を参照してください。
 
 ### テスト実行方法
 
