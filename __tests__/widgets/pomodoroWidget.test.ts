@@ -146,27 +146,65 @@ describe('PomodoroWidget 詳細テスト', () => {
   });
 
   it('playSoundNotificationで通知音が再生される（default_beep/bell/chime/off/異常系）', () => {
-    const widget = new PomodoroWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
-    // AudioContextをモック
-    const ctxMock = {
-      createOscillator: jest.fn(() => ({ connect: jest.fn(), start: jest.fn(), stop: jest.fn(), onended: jest.fn(), frequency: { setValueAtTime: jest.fn() }, type: '', })),
-      createGain: jest.fn(() => ({ connect: jest.fn(), gain: { setValueAtTime: jest.fn(), exponentialRampToValueAtTime: jest.fn() } })),
-      currentTime: 0, destination: {}, state: 'running', close: jest.fn()
-    };
-    window.AudioContext = jest.fn(() => ctxMock) as any;
-    widget['currentSettings'].notificationSound = 'default_beep';
-    expect(() => widget['playSoundNotification']()).not.toThrow();
-    widget['currentSettings'].notificationSound = 'bell';
-    expect(() => widget['playSoundNotification']()).not.toThrow();
-    widget['currentSettings'].notificationSound = 'chime';
-    expect(() => widget['playSoundNotification']()).not.toThrow();
-    widget['currentSettings'].notificationSound = 'off';
-    expect(() => widget['playSoundNotification']()).not.toThrow();
-    // 異常系: AudioContext生成で例外
-    window.AudioContext = jest.fn(() => { throw new Error('fail'); }) as any;
-    widget['currentSettings'].notificationSound = 'default_beep';
-    expect(() => widget['playSoundNotification']()).not.toThrow();
+    const originalError = console.error;
+    console.error = jest.fn(); // エラー出力を抑制
+    try {
+      const widget = new PomodoroWidget();
+      widget.create(dummyConfig, dummyApp, dummyPlugin);
+      // AudioContextを完全にモック
+      const oscMock = {
+        connect: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(),
+        onended: jest.fn(),
+        frequency: { setValueAtTime: jest.fn() },
+        type: '',
+      };
+      const gainMock = {
+        connect: jest.fn(),
+        gain: { setValueAtTime: jest.fn(), exponentialRampToValueAtTime: jest.fn() },
+      };
+      const ctxMock = {
+        createOscillator: jest.fn(() => oscMock),
+        createGain: jest.fn(() => gainMock),
+        currentTime: 0,
+        destination: {},
+        state: 'running',
+        close: jest.fn(),
+      };
+      (widget as any).audioContext = ctxMock;
+      // default_beep
+      (widget as any).currentSettings.notificationSound = 'default_beep';
+      expect(() => (widget as any).playSoundNotification()).not.toThrow();
+      // bell/chime
+      global.HTMLAudioElement = jest.fn(() => ({ play: jest.fn(), pause: jest.fn(), currentTime: 0 })) as any;
+      (widget as any).currentSettings.notificationSound = 'bell';
+      expect(() => (widget as any).playSoundNotification()).not.toThrow();
+      (widget as any).currentSettings.notificationSound = 'chime';
+      expect(() => (widget as any).playSoundNotification()).not.toThrow();
+      // off
+      (widget as any).currentSettings.notificationSound = 'off';
+      expect(() => (widget as any).playSoundNotification()).not.toThrow();
+      // 異常系: ctx.createOscillatorが例外をthrow
+      ctxMock.createOscillator = jest.fn(() => { throw new Error('fail'); });
+      (widget as any).currentSettings.notificationSound = 'default_beep';
+      expect(() => (widget as any).playSoundNotification()).not.toThrow();
+      // 異常系: ctx.createOscillatorがundefinedを返す
+      ctxMock.createOscillator = jest.fn(() => undefined) as any;
+      expect(() => (widget as any).playSoundNotification()).not.toThrow();
+      // 異常系: osc.frequencyがundefined
+      ctxMock.createOscillator = jest.fn(() => ({
+        connect: jest.fn(),
+        start: jest.fn(),
+        stop: jest.fn(),
+        onended: jest.fn(),
+        // frequency: undefined intentionally omitted
+        type: '',
+      })) as any;
+      expect(() => (widget as any).playSoundNotification()).not.toThrow();
+    } finally {
+      console.error = originalError;
+    }
   });
 
   it('exportSessionLogsで各フォーマットのファイルが出力される', async () => {
