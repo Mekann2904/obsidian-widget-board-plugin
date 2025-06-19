@@ -91,7 +91,9 @@ export class CalendarWidget implements WidgetImplementation {
         nextButton.onClickEvent(() => this.changeMonth(1));
 
         const table = this.calendarContentEl.createEl('table', { cls: 'calendar-table' });
-        const weekdays = ['日', '月', '火', '水', '木', '金', '土']; // 日本語曜日
+        const weekStart = this.plugin.settings.weekStartDay ?? 1;
+        const baseWeekdays = ['日', '月', '火', '水', '木', '金', '土']; // 日本語曜日
+        const weekdays = baseWeekdays.slice(weekStart).concat(baseWeekdays.slice(0, weekStart));
         const thead = table.createEl('thead');
         const trHead = thead.createEl('tr');
         const thFragment = document.createDocumentFragment();
@@ -103,10 +105,11 @@ export class CalendarWidget implements WidgetImplementation {
 
         const tbody = table.createEl('tbody');
         const firstDayOfMonth = new Date(year, month, 1);
-        
-        // カレンダーの開始日を計算 (月の最初の日の曜日から逆算して日曜日にする)
+
+        // カレンダーの開始日を計算
         const startDate = new Date(firstDayOfMonth);
-        startDate.setDate(startDate.getDate() - firstDayOfMonth.getDay()); // getDay()は日曜日が0
+        const offset = (firstDayOfMonth.getDay() - weekStart + 7) % 7;
+        startDate.setDate(startDate.getDate() - offset);
 
         const today = new Date();
         today.setHours(0,0,0,0); // 時間情報をリセットして日付のみで比較

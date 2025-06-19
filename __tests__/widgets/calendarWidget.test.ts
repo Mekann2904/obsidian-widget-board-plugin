@@ -45,7 +45,7 @@ describe('CalendarWidget', () => {
     const widget = new CalendarWidget();
     const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
     const ths = el.querySelectorAll('th');
-    expect(Array.from(ths).map(th => th.textContent)).toEqual(['日','月','火','水','木','金','土']);
+    expect(Array.from(ths).map(th => th.textContent)).toEqual(['月','火','水','木','金','土','日']);
   });
 
   it('前月・次月ボタンで月が変わる', () => {

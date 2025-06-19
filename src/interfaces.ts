@@ -107,6 +107,10 @@ export interface PluginGlobalSettings {
      * カレンダーウィジェットのデイリーノートファイル名フォーマット（グローバル設定）
      */
     calendarDailyNoteFormat?: string;
+    /**
+     * 週の開始曜日 (0=日曜, 1=月曜 ... 6=土曜)
+     */
+    weekStartDay?: number;
     /** デバッグログ出力を有効にする */
     debugLogging?: boolean;
     /**

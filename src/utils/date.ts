@@ -14,10 +14,12 @@ export function getDateKeyLocal(date: Date): string {
     ].join('-');
 }
 
-export function getWeekRange(): [string, string] {
+export function getWeekRange(weekStartDay: number = 0): [string, string] {
     const now = new Date();
-    const day = now.getDay();
-    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day);
-    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - day));
+    const currentDay = now.getDay();
+    const offsetToStart = (currentDay - weekStartDay + 7) % 7;
+    const offsetToEnd = 6 - offsetToStart;
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offsetToStart);
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetToEnd);
     return [getDateKey(start), getDateKey(end)];
 }

@@ -668,6 +668,18 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 });
             });
+        new Setting(calendarAcc.body)
+            .setName('週の開始曜日')
+            .setDesc('カレンダーや要約の週範囲に使用する開始曜日です。')
+            .addDropdown(drop => {
+                const labels = ['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
+                labels.forEach((l, i) => drop.addOption(String(i), l));
+                drop.setValue(String(this.plugin.settings.weekStartDay ?? 1));
+                drop.onChange(async value => {
+                    this.plugin.settings.weekStartDay = parseInt(value, 10);
+                    await this.plugin.saveSettings();
+                });
+            });
 
         // --- ボード管理セクション ---
         const boardManagementAcc = createAccordion('ボード管理', false); // デフォルトで閉じる

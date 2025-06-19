@@ -684,7 +684,7 @@ export class TweetWidget implements WidgetImplementation {
                     }
                     // 今週の投稿一覧
                     if (aiPrompt.includes('{{week}}')) {
-                        const [weekStart, weekEnd] = getWeekRange();
+                        const [weekStart, weekEnd] = getWeekRange(this.plugin.settings.weekStartDay);
                         const weekStartStr = weekStart.replace(/-/g, '-');
                         const weekEndStr = weekEnd.replace(/-/g, '-');
                         const weekPostsText = getPostsText(p => {

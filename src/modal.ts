@@ -523,7 +523,7 @@ export class WidgetBoardModal {
         if (widgetsToLoad.some(w => w.type === 'reflection-widget')) {
             const chartModule = await preloadChartJS();
             const todayKey = getDateKeyLocal(new Date());
-            const [, weekKey] = getWeekRange();
+            const [, weekKey] = getWeekRange(this.plugin.settings.weekStartDay);
             const [todaySummary, weekSummary] = await Promise.all([
                 loadReflectionSummaryShared('today', todayKey, this.plugin.app),
                 loadReflectionSummaryShared('week', weekKey, this.plugin.app)

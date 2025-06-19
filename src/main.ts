@@ -244,6 +244,9 @@ export default class WidgetBoardPlugin extends Plugin {
         } else {
             this.settings = cloneDeep(DEFAULT_PLUGIN_SETTINGS);
         }
+        if (this.settings.weekStartDay === undefined) {
+            this.settings.weekStartDay = DEFAULT_PLUGIN_SETTINGS.weekStartDay;
+        }
         if (!this.settings.boards || !Array.isArray(this.settings.boards)) {
             this.settings.boards = [cloneDeep(DEFAULT_BOARD_CONFIGURATION)];
         }
@@ -448,7 +451,7 @@ export default class WidgetBoardPlugin extends Plugin {
                 return null;
             }
             const todayKey = getDateKey(new Date());
-            const [, weekEnd] = getWeekRange();
+            const [, weekEnd] = getWeekRange(this.settings.weekStartDay);
             const weekKey = weekEnd;
             const todaySummary = await loadReflectionSummary('today', todayKey, this.app);
             const weekSummary = await loadReflectionSummary('week', weekKey, this.app);
