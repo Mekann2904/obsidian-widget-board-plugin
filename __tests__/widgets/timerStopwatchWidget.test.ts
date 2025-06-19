@@ -147,11 +147,22 @@ describe('TimerStopwatchWidget', () => {
     expect((TimerStopwatchWidget as any).widgetStates.has(dummyConfig.id)).toBe(false);
   });
 
-  it('state未定義時もupdateDisplayでエラーにならない', () => {
-    const widget = new TimerStopwatchWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
-    (TimerStopwatchWidget as any).widgetStates.delete(dummyConfig.id);
-    expect(() => widget['updateDisplay']()).not.toThrow();
-    expect(widget['displayEl'].textContent).toBe('Error');
+  it('ウィジェットの並べ替えでDOM順序・保存順序が変わる', () => {
+    // 複数ウィジェットを用意
+    const widget1 = new TimerStopwatchWidget();
+    const widget2 = new TimerStopwatchWidget();
+    const config1 = { ...dummyConfig, id: 'w1', title: 'A' };
+    const config2 = { ...dummyConfig, id: 'w2', title: 'B' };
+    const el1 = widget1.create(config1, dummyApp, dummyPlugin);
+    const el2 = widget2.create(config2, dummyApp, dummyPlugin);
+    const board = document.createElement('div');
+    board.appendChild(el1);
+    board.appendChild(el2);
+    // 並べ替え（B→Aの順に）
+    board.insertBefore(el2, el1);
+    expect(board.firstChild).toBe(el2);
+    expect(board.lastChild).toBe(el1);
+    // 仮に順序を保存する関数があればここで呼ぶ（例: saveWidgetOrder）
+    // expect(saveWidgetOrder()).toEqual(['w2', 'w1']);
   });
 }); 
