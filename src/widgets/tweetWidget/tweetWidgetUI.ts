@@ -424,6 +424,7 @@ export class TweetWidgetUI {
             }
         });
         input.addEventListener('keydown', (e) => {
+            // @サジェストリストが表示されている場合は既存のEnter処理を優先
             if (atSuggestList.style.display === 'block' && atCurrentCandidates.length > 0) {
                 if (e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -448,6 +449,12 @@ export class TweetWidgetUI {
                             e.preventDefault();
                         }
                     }
+                }
+            } else {
+                // Cmd+EnterまたはCtrl+Enterでポスト
+                if ((e.key === 'Enter') && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    postBtn.click();
                 }
             }
         });
