@@ -239,4 +239,24 @@ describe('TweetWidget', () => {
     widget['store'] = undefined as any;
     expect(() => widget.getFilteredPosts()).toThrow();
   });
+
+  it('Command+Enterで投稿できる', async () => {
+    const widget = new TweetWidget();
+    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    document.body.appendChild(el);
+    await new Promise(res => setTimeout(res, 0));
+    // textarea取得
+    const textarea = el.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
+    expect(textarea).toBeTruthy();
+    textarea.value = 'ショートカット投稿テスト';
+    // inputイベントでUIの状態を更新
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    // Command+Enter（Mac）
+    const event = new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true });
+    textarea.dispatchEvent(event);
+    // 投稿が追加されるまで待つ
+    await new Promise(res => setTimeout(res, 10));
+    expect(widget.currentSettings.posts.some(p => p.text === 'ショートカット投稿テスト')).toBe(true);
+    document.body.removeChild(el);
+  });
 }); 
