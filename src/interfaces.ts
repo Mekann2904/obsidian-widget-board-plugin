@@ -7,15 +7,20 @@ export interface WidgetConfig {
     id: string;
     type: string; // 例: 'pomodoro', 'memo', 'tweet-widget', 'reflection-widget' など
     title: string;
-    settings?: any; // TweetWidgetSettings, ReflectionWidgetSettings なども含む
+    settings?: unknown; // TweetWidgetSettings, ReflectionWidgetSettings なども含む
 }
 
 // --- ウィジェット実装のインターフェース ---
 export interface WidgetImplementation {
     id: string;
-    create(config: WidgetConfig, app: App, plugin: any, preloadBundle?: any): HTMLElement;
+    create(
+        config: WidgetConfig,
+        app: App,
+        plugin: WidgetBoardPlugin,
+        preloadBundle?: unknown
+    ): HTMLElement;
     onunload?(): void;
-    updateExternalSettings?(newSettings: any, widgetId?: string): void;
+    updateExternalSettings?(newSettings: unknown, widgetId?: string): void;
     /** Optionally refresh the widget's internal state */
     refresh?(): void;
 }
