@@ -83,6 +83,7 @@ obsidian-widget-board-plugin/
 │   │   └── types.ts
 │   ├── main.ts
 │   ├── modal.ts
+│   ├── defaultWidgetSettings.ts
 │   ├── settingsDefaults.ts
 │   ├── settingsTab.ts
 │   └── widgetRegistry.ts
@@ -209,6 +210,7 @@ obsidian-widget-board-plugin/
 │   │   └── types.ts
 │   ├── main.ts
 │   ├── modal.ts
+│   ├── defaultWidgetSettings.ts
 │   ├── settingsDefaults.ts
 │   ├── settingsTab.ts
 │   └── widgetRegistry.ts

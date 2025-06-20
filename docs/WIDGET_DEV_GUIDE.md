@@ -34,7 +34,7 @@ Obsidian Widget Board Pluginは、Obsidian上で多様なウィジェットを�
 ### 全体構成
 - プラグイン本体（main.ts）
 - ウィジェット本体（src/widgets/xxxWidget.ts）
-- 登録・管理機構（widgetRegistry.ts, settingsDefaults.ts など）
+ - 登録・管理機構（widgetRegistry.ts, defaultWidgetSettings.ts など）
 - UI・設定タブ（settingsTab.ts, modal.ts）
 - 型定義（interfaces.ts）
 
@@ -84,7 +84,7 @@ Obsidian Widget Board Pluginは、Obsidian上で多様なウィジェットを�
     - `registeredWidgetImplementations.set('my-widget', MyWidget);`
     - 登録漏れに注意
 5. **デフォルト設定の追加（必要に応じて）**
-    - `settingsDefaults.ts`でデフォルト設定を定義
+    - `defaultWidgetSettings.ts`でウィジェットのデフォルトを定義
 6. **スタイル追加**
     - `styles.css`にウィジェット用クラスを追加
     - **contain, will-change, isolation等のパフォーマンス系CSSも検討**
@@ -296,8 +296,8 @@ private static widgetStates: Map<string, any> = new Map();
 - **widgetRegistry.ts**
   - ウィジェットの一覧・登録。Mapによる一元管理。
   - パフォーマンス要件を満たすウィジェットのみ登録すること。
-- **settingsDefaults.ts**
-  - 各ウィジェットのデフォルト設定定義。
+ - **defaultWidgetSettings.ts**
+   - 各ウィジェットのデフォルト設定をまとめたファイル。
 - **modal.ts**
   - ウィジェットボードのモーダルUI、ウィジェット追加モーダル。
   - リスト描画・UI更新時は仮想リスト・バッチ化・contain等を検討。

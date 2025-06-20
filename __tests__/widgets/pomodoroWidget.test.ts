@@ -1,4 +1,5 @@
-import { PomodoroWidget, DEFAULT_POMODORO_SETTINGS } from '../../src/widgets/pomodoro';
+import { PomodoroWidget } from '../../src/widgets/pomodoro';
+import { DEFAULT_POMODORO_SETTINGS } from '../../src/settings/defaultWidgetSettings';
 import type { WidgetConfig } from '../../src/interfaces';
 
 describe('PomodoroWidget 詳細テスト', () => {

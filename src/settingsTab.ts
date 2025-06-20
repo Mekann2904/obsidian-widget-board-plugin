@@ -2,15 +2,25 @@
 import { App, PluginSettingTab, Setting, Notice, Modal, TFolder, FuzzySuggestModal } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import { WidgetBoardModal } from './modal';
-import {
-    DEFAULT_POMODORO_SETTINGS,
+import type {
     PomodoroSettings,
     PomodoroSoundType,
     PomodoroExportFormat,
 } from './widgets/pomodoro';
-import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memo';
-import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';
+import type { MemoWidgetSettings } from './widgets/memo';
 import type { CalendarWidgetSettings } from './widgets/calendar';
+import {
+    DEFAULT_POMODORO_SETTINGS,
+    DEFAULT_MEMO_SETTINGS,
+    DEFAULT_CALENDAR_SETTINGS,
+    DEFAULT_RECENT_NOTES_SETTINGS,
+    DEFAULT_TIMER_STOPWATCH_SETTINGS,
+    DEFAULT_TWEET_WIDGET_SETTINGS,
+    REFLECTION_WIDGET_DEFAULT_SETTINGS,
+} from './settings/defaultWidgetSettings';
+import { TweetRepository } from './widgets/tweetWidget';
+import { computeNextTime, ScheduleOptions } from './widgets/tweetWidget/scheduleUtils';
+import type { ScheduledTweet } from './widgets/tweetWidget/types';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recent-notes';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timer-stopwatch';
 import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';

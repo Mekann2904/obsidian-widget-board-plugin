@@ -4,6 +4,15 @@ import type { PluginGlobalSettings, BoardConfiguration, WidgetConfig } from './i
 import { DEFAULT_PLUGIN_SETTINGS, DEFAULT_BOARD_CONFIGURATION } from './settingsDefaults';
 import { WidgetBoardSettingTab } from './settingsTab';
 import { registeredWidgetImplementations } from './widgetRegistry';
+import {
+    DEFAULT_POMODORO_SETTINGS,
+    DEFAULT_MEMO_SETTINGS,
+    DEFAULT_CALENDAR_SETTINGS,
+    DEFAULT_TIMER_STOPWATCH_SETTINGS,
+} from './settings/defaultWidgetSettings';
+import type { PomodoroSettings } from './widgets/pomodoro';
+import type { MemoWidgetSettings } from './widgets/memo';
+import type { TimerStopwatchWidgetSettings } from './widgets/timer-stopwatch';
 import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings } from './widgets/pomodoro';
 import { DEFAULT_MEMO_SETTINGS } from './widgets/memo';
 import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';

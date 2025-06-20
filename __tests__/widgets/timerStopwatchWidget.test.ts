@@ -1,4 +1,5 @@
-import { TimerStopwatchWidget, DEFAULT_TIMER_STOPWATCH_SETTINGS } from '../../src/widgets/timer-stopwatch';
+import { TimerStopwatchWidget } from '../../src/widgets/timer-stopwatch';
+import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from '../../src/settings/defaultWidgetSettings';
 import type { WidgetConfig } from '../../src/interfaces';
 
 describe('TimerStopwatchWidget', () => {
