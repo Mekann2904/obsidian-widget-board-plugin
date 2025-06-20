@@ -2,7 +2,7 @@ jest.mock('../../src/llm/gemini/geminiApi.ts', () => ({
   GeminiProvider: { generateReply: jest.fn() },
 }));
 
-const { App } = require('obsidian');
+import { App } from 'obsidian';
 
 import type { TweetWidgetPost } from '../../src/widgets/tweetWidget/types';
 import type { WidgetConfig } from '../../src/interfaces';
@@ -69,6 +69,8 @@ describe('AI prompt integration', () => {
   });
 
   test('generateAiReply invokes onError on failure', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
     const { generateAiReply } = require('../../src/widgets/tweetWidget/aiReply');
     const { GeminiProvider } = require('../../src/llm/gemini/geminiApi.ts');
     const tweet: TweetWidgetPost = {
@@ -113,6 +115,7 @@ describe('AI prompt integration', () => {
     });
 
     expect(onError).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   test('ReflectionWidget uses custom prompt and model', async () => {
