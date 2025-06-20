@@ -6,6 +6,7 @@ if (typeof HTMLElement !== 'undefined') {
   }
   if (!HTMLElement.prototype.createDiv) {
     HTMLElement.prototype.createDiv = function (opts = {}) {
+      if (typeof opts === 'string') opts = { cls: opts };
       const el = document.createElement('div');
       if (opts.cls) el.className = opts.cls;
       if (opts.text) el.textContent = opts.text;
