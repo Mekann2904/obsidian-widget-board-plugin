@@ -197,8 +197,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // --- ポモドーロ終了時に該当ボードを自動で開く ---
         new Setting(pomoAcc.body)
-            .setName(t(lang, 'pomodoroEndOpenBoard'))
-            .setDesc(t(lang, 'pomodoroEndOpenBoardDesc'))
+            .setName(t(lang, 'openBoardOnPomodoroEnd'))
+            .setDesc(t(lang, 'openBoardOnPomodoroEndDesc'))
             .addToggle(toggle => {
                 toggle.setValue(this.plugin.settings.openBoardOnPomodoroEnd ?? false)
                     .onChange(async (value) => {
@@ -208,8 +208,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // --- ポモドーロ終了時に自動で次のセッションを開始 ---
         new Setting(pomoAcc.body)
-            .setName(t(lang, 'pomodoroEndAutoNext'))
-            .setDesc(t(lang, 'pomodoroEndAutoNextDesc'))
+            .setName(t(lang, 'autoStartNextPomodoroSession'))
+            .setDesc(t(lang, 'autoStartNextPomodoroSessionDesc'))
             .addToggle(toggle => {
                 toggle.setValue(this.plugin.settings.autoStartNextPomodoroSession ?? false)
                     .onChange(async (value) => {
