@@ -1343,9 +1343,41 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     }
 
     private renderScheduledTweetList(containerEl: HTMLElement) {
-        // TODO: ここに予約投稿リストの描画ロジックを実装する
+        const lang = (this.plugin.settings.language || 'ja') as Language;
         containerEl.empty();
-        containerEl.createEl('p', { text: '（予約投稿リストはここに表示されます）' });
+        const scheduledPosts = this.plugin.settings.scheduledPosts || [];
+        new Setting(containerEl).setName(t(lang, 'scheduledPostList')).setHeading();
+        if (scheduledPosts.length === 0) {
+            containerEl.createEl('div', { text: t(lang, 'noScheduledPosts'), cls: 'scheduled-tweet-empty' });
+            return;
+        }
+        const daysOfWeekKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'] as const;
+        scheduledPosts.forEach((sched, idx) => {
+            const item = containerEl.createDiv({ cls: 'scheduled-tweet-item' });
+            const main = item.createDiv({ cls: 'scheduled-tweet-item-main' });
+            main.createEl('div', { text: sched.text, cls: 'scheduled-tweet-text' });
+            let info = `${t(lang, 'time')}: ${sched.hour.toString().padStart(2,'0')}:${sched.minute.toString().padStart(2,'0')}`;
+            if (sched.daysOfWeek && sched.daysOfWeek.length > 0) {
+                info += `  ${t(lang, 'daysOfWeek')}: ${sched.daysOfWeek.map(d => t(lang, daysOfWeekKeys[d])).join(',')}`;
+            }
+            if (sched.startDate) info += `  ${t(lang, 'startDate')}: ${sched.startDate}`;
+            if (sched.endDate) info += `  ${t(lang, 'endDate')}: ${sched.endDate}`;
+            main.createEl('div', { text: info, cls: 'scheduled-tweet-info' });
+            const actions = item.createDiv({ cls: 'scheduled-tweet-actions' });
+            const editBtn = actions.createEl('button', { text: t(lang, 'edit'), cls: 'scheduled-tweet-edit-btn' });
+            editBtn.onclick = () => {
+                this.openScheduleTweetModal(sched, idx);
+            };
+            const delBtn = actions.createEl('button', { text: t(lang, 'delete'), cls: 'scheduled-tweet-delete-btn' });
+            delBtn.onclick = async () => {
+                if (!confirm(t(lang, 'deleteScheduledPostConfirm'))) return;
+                scheduledPosts.splice(idx, 1);
+                this.plugin.settings.scheduledPosts = scheduledPosts;
+                await this.plugin.saveSettings();
+                new Notice(t(lang, 'scheduledPostDeleted'));
+                this.renderScheduledTweetList(containerEl);
+            };
+        });
     }
 
     private renderCalendarSettings(containerEl: HTMLElement, lang: Language) {
