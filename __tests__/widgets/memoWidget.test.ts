@@ -1,25 +1,50 @@
 import { MemoWidget, DEFAULT_MEMO_SETTINGS } from '../../src/widgets/memo';
 import type { WidgetConfig } from '../../src/interfaces';
+import { MarkdownRenderer } from 'obsidian';
+
+jest.mock('obsidian');
+
+let dummyConfig: WidgetConfig;
+let dummyApp: any;
+let dummyPlugin: any;
+
+const renderMarkdownStub = (md: string, el: HTMLElement) => {
+  const html = md
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^- \[ \] (.+)$/gm, '<li><input type="checkbox"> $1</li>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+  el.innerHTML = html;
+  return Promise.resolve();
+};
+
+beforeAll(() => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterAll(() => {
+  (console.error as jest.Mock).mockRestore();
+});
+
+beforeEach(() => {
+  dummyConfig = {
+    id: 'test-memo',
+    type: 'memo',
+    title: 'テストメモ',
+    settings: { ...DEFAULT_MEMO_SETTINGS }
+  };
+  dummyApp = {};
+  dummyPlugin = { settings: { boards: [] }, saveSettings: jest.fn() };
+  (MarkdownRenderer.renderMarkdown as jest.Mock).mockImplementation(renderMarkdownStub);
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
+});
 
 describe('MemoWidget 詳細テスト', () => {
-  let dummyConfig: WidgetConfig;
-  let dummyApp: any;
-  let dummyPlugin: any;
-
-  beforeAll(() => {
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
-  beforeEach(() => {
-    dummyConfig = {
-      id: 'test-memo',
-      type: 'memo',
-      title: 'テストメモ',
-      settings: { ...DEFAULT_MEMO_SETTINGS }
-    };
-    dummyApp = {};
-    dummyPlugin = { settings: { boards: [] }, saveSettings: jest.fn() };
-  });
 
   it('createでmemo-widgetクラスとUI要素が生成される', () => {
     const widget = new MemoWidget();
@@ -125,65 +150,30 @@ describe('MemoWidget 詳細テスト', () => {
 
 describe('追加テストケース', () => {
   // No.12 Markdown多様記法のレンダリング検証
-  it('多様なMarkdown記法が正しくHTML化される', () => {
-    // 目的: チェックボックス・リスト・リンク・画像・コード等のMarkdownが正しくHTML化されるか
-    // 期待結果: 各Markdown記法が正しくHTML化される
-    // TODO: 実装
-  });
-
-  // No.13 長文・大量データ時のパフォーマンステスト
-  it('長文・大量データでも遅延やクラッシュが発生しない', () => {
-    // 目的: 1万文字以上の長文や大量データでも遅延・クラッシュが発生しないか
-    // 期待結果: 遅延やクラッシュが発生しない
-    // TODO: 実装
-  });
-
-  // No.14 編集・保存時のエラー処理
-  it('保存時にエラーが発生した場合に適切にハンドリングされる', () => {
-    // 目的: 保存時に例外やエラーが発生した場合のハンドリング
-    // 期待結果: エラーメッセージ表示やロールバック等の適切な処理
-    // TODO: 実装
-  });
-
-  // No.15 他ウィジェットとの同時利用
-  it('他ウィジェットと同時利用時に干渉や不具合が発生しない', () => {
-    // 目的: 他ウィジェットと同時利用時の干渉有無
-    // 期待結果: 干渉や不具合が発生しない
-    // TODO: 実装
-  });
-
-  // No.16 テーマ切替時のUI変化
-  it('テーマ切替時にUIが正しく変化する', () => {
-    // 目的: ダーク/ライトテーマ切替時にUIが正しく変化するか
-    // 期待結果: MemoWidgetのUIがテーマに応じて変化
-    // TODO: 実装
-  });
-
-  // No.17 設定ファイル破損時のリカバリ
-  it('設定ファイルが壊れている場合に復旧動作が行われる', () => {
-    // 目的: 設定ファイルが壊れている場合の復旧動作
-    // 期待結果: エラー表示やデフォルト復元等の適切な処理
-    // TODO: 実装
-  });
-
-  // No.18 UAT: メモ作成～編集～保存の一連体験
-  it('ユーザーがメモ作成～編集～保存～再編集できる', () => {
-    // 目的: ユーザーが新規作成・編集・保存・再編集できるか
-    // 期待結果: すべての操作が正常に完了
-    // TODO: 実装
-  });
-
-  // No.19 UAT: 誤操作時のリカバリ
-  it('編集中にキャンセルや閉じる操作をしてもデータ消失が起きない', () => {
-    // 目的: 編集中にキャンセルや閉じる操作をしてもデータ消失が起きないか
-    // 期待結果: データが消失しない、警告等が表示される
-    // TODO: 実装
-  });
-
-  // No.20 UAT: モバイル・アクセシビリティ
-  it('モバイル画面やキーボード・リーダー操作でも正常に利用できる', () => {
-    // 目的: モバイル画面やキーボード操作、スクリーンリーダーでの利用体験
-    // 期待結果: レスポンシブ表示、キーボード・リーダー操作が正常
-    // TODO: 実装
+  it('多様なMarkdown記法が正しくHTML化される', async () => {
+    const md = [
+      '# 見出し',
+      '- [ ] タスク',
+      '- 項目',
+      '[リンク](https://example.com)',
+      '![img](https://example.com/img.png)',
+      '`code`'
+    ].join('\n');
+    const widget = new MemoWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.updateExternalSettings({ memoContent: md });
+    await new Promise(res => setTimeout(res, 0));
+    const html = widget['memoDisplayEl'].innerHTML;
+    expect(MarkdownRenderer.renderMarkdown as jest.Mock).toHaveBeenCalledWith(
+      md,
+      expect.any(HTMLElement),
+      dummyConfig.id,
+      expect.any(Object),
+    );
+    expect(html).toContain('<h1');
+    expect(html).toContain('<li');
+    expect(html).toContain('<a href="https://example.com"');
+    expect(html).toContain('<img src="https://example.com/img.png"');
+    expect(html).toContain('<code>');
   });
 }); 
