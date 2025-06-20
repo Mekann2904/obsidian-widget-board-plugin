@@ -1,5 +1,5 @@
 // src/widgets/calendarWidget.ts
-import { App, setIcon, Setting, createEl } from 'obsidian';
+import { App, setIcon, Setting } from 'obsidian';
 import { DEFAULT_CALENDAR_SETTINGS } from '../../settingsDefaults';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
@@ -61,7 +61,7 @@ export class CalendarWidget implements WidgetImplementation {
         this.renderCalendar();
 
         // 追加: YAMLで大きさ指定があれば反映
-        applyWidgetSize(this.widgetEl, config.settings);
+        applyWidgetSize(this.widgetEl, config.settings as { width?: string; height?: string } | null);
 
         return this.widgetEl;
     }
@@ -98,7 +98,8 @@ export class CalendarWidget implements WidgetImplementation {
         const trHead = thead.createEl('tr');
         const thFragment = document.createDocumentFragment();
         weekdays.forEach(day => {
-            const th = createEl('th', { text: day });
+            const th = document.createElement('th');
+            th.textContent = day;
             thFragment.appendChild(th);
         });
         trHead.appendChild(thFragment);

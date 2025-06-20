@@ -6,8 +6,8 @@ export const GeminiProvider: LLMProvider = {
   id: 'gemini',
   name: 'Gemini',
   async generateReply(prompt, context) {
-    const apiKey = context.apiKey;
-    const model = context.model || 'gemini-2.0-flash-exp';
+    const apiKey = context.apiKey as string;
+    const model = (context.model as string) || 'gemini-2.0-flash-exp';
     const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/';
     const url = `${baseUrl}${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
     let contents;
@@ -21,11 +21,11 @@ export const GeminiProvider: LLMProvider = {
       }));
       contents.push({
         role: 'user',
-        parts: [{ text: geminiPrompt.replace('{tweet}', context.tweetText) }]
+        parts: [{ text: geminiPrompt.replace('{tweet}', context.tweetText as string) }]
       });
     } else {
       contents = [
-        { parts: [{ text: geminiPrompt.replace('{tweet}', context.tweetText) }] }
+        { parts: [{ text: geminiPrompt.replace('{tweet}', context.tweetText as string) }] }
       ];
     }
     const body = { contents };

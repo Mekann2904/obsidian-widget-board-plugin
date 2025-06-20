@@ -19,7 +19,6 @@ self.onmessage = async (e) => {
   try {
     // mermaidAPI.renderはコールバック形式なのでPromise化
     const svg = await new Promise<string>((resolve) => {
-      // @ts-expect-error mermaid global is injected via importScripts
       mermaid.mermaidAPI.render(id, code, (svgCode: string) => {
         resolve(svgCode);
       }, document.createElement('div'));

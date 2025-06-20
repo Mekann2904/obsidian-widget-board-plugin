@@ -104,6 +104,7 @@ export class PomodoroWidget implements WidgetImplementation {
         isRunning?: boolean;
         statusText?: string;
         cycleText?: string;
+        resetIconSet?: boolean;
     } = {};
 
     /**
@@ -300,11 +301,11 @@ export class PomodoroWidget implements WidgetImplementation {
             const newSettingsFromConfig = config.settings as Partial<PomodoroSettings> || {};
             this.currentSettings = { ...this.currentSettings, ...newSettingsFromConfig };
         }
-        if (config.settings && typeof config.settings.pomodorosCompletedInCycle === 'number') {
-            this.pomodorosCompletedInCycle = config.settings.pomodorosCompletedInCycle;
+        if (config.settings && typeof (config.settings as PomodoroSettings).pomodorosCompletedInCycle === 'number') {
+            this.pomodorosCompletedInCycle = (config.settings as PomodoroSettings).pomodorosCompletedInCycle ?? 0;
         }
-        if (config.settings && typeof config.settings.currentPomodoroSet === 'string') {
-            this.currentPomodoroSet = config.settings.currentPomodoroSet as 'work' | 'shortBreak' | 'longBreak';
+        if (config.settings && typeof (config.settings as PomodoroSettings).currentPomodoroSet === 'string') {
+            this.currentPomodoroSet = (config.settings as PomodoroSettings).currentPomodoroSet as 'work' | 'shortBreak' | 'longBreak';
         }
         config.settings = this.currentSettings;
 
@@ -338,7 +339,7 @@ export class PomodoroWidget implements WidgetImplementation {
         this.memoWidget = new PomodoroMemoWidget(app, contentEl, { memoContent: this.currentSettings.memoContent }, async (newMemo: string) => {
             this.currentSettings.memoContent = newMemo;
             if (this.config && this.config.settings) {
-                this.config.settings.memoContent = newMemo;
+                (this.config.settings as PomodoroSettings).memoContent = newMemo;
             }
             // グローバル設定（plugin.settings）にも反映
             if (this.plugin && this.plugin.settings && Array.isArray(this.plugin.settings.boards)) {
@@ -346,7 +347,7 @@ export class PomodoroWidget implements WidgetImplementation {
                 if (board) {
                     const widget = board.widgets.find(w => w.id === this.config.id);
                     if (widget && widget.settings) {
-                        widget.settings.memoContent = newMemo;
+                        (widget.settings as PomodoroSettings).memoContent = newMemo;
                     }
                 }
             }
@@ -382,7 +383,7 @@ export class PomodoroWidget implements WidgetImplementation {
         this.lastConfiguredId = newConfigId;
 
         // 追加: YAMLで大きさ指定があれば反映
-        applyWidgetSize(this.widgetEl, config.settings);
+        applyWidgetSize(this.widgetEl, config.settings as { width?: string; height?: string } | null);
 
         return this.widgetEl;
     }

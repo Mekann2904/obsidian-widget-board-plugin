@@ -521,7 +521,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     this.plugin.settings.boards.forEach(board => {
                         board.widgets.filter(w => w.type === 'tweet-widget').forEach(w => {
                             if (!w.settings) w.settings = {};
-                            w.settings.avatarUrl = v;
+                            (w.settings as Record<string, unknown>).avatarUrl = v;
                         });
                     });
                 });
@@ -963,15 +963,15 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             settingItem.settingEl.addClass('widget-add-button-setting-item');
             settingItem.nameEl.remove(); settingItem.descEl.remove();
         };
-        createAddButtonToBoard("ポモドーロ追加", "pomodoro", DEFAULT_POMODORO_SETTINGS);
-        createAddButtonToBoard("メモ追加", "memo", DEFAULT_MEMO_SETTINGS);
-        createAddButtonToBoard("カレンダー追加", "calendar", DEFAULT_CALENDAR_SETTINGS);
-        createAddButtonToBoard("最近編集したノート", "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS);
+        createAddButtonToBoard("ポモドーロ追加", "pomodoro", DEFAULT_POMODORO_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard("メモ追加", "memo", DEFAULT_MEMO_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard("カレンダー追加", "calendar", DEFAULT_CALENDAR_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard("最近編集したノート", "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS as unknown as Record<string, unknown>);
         createAddButtonToBoard("テーマ切り替え", "theme-switcher", {});
-        createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS });
-        createAddButtonToBoard("ファイルビューア追加", "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 });
-        createAddButtonToBoard("つぶやき追加", "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS);
-        createAddButtonToBoard("振り返りレポート", "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS);
+        createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS } as unknown as Record<string, unknown>);
+        createAddButtonToBoard("ファイルビューア追加", "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 } as unknown as Record<string, unknown>);
+        createAddButtonToBoard("つぶやき追加", "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard("振り返りレポート", "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS as unknown as Record<string, unknown>);
 
         this.renderWidgetListForBoard(widgetListEl, board);
     }
@@ -1009,7 +1009,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     // タイトル変更時も同様のロジックで表示名を更新
                     const updatedDisplayName = widget.title || `(名称未設定 ${widgetTypeName})`;
                     titleSetting.setName(updatedDisplayName);
-                    this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
+                    this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
                 });
             });
 
@@ -1067,9 +1067,11 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 return { acc, header, body };
             };
 
+            // Ensure widget.settings is properly typed before use
+            // (No global cast; only cast in each widget type branch)
 
             if (widget.type === 'pomodoro') {
-                widget.settings = { ...DEFAULT_POMODORO_SETTINGS, ...(widget.settings || {}) } as PomodoroSettings;
+                widget.settings = { ...DEFAULT_POMODORO_SETTINGS, ...(widget.settings as Partial<PomodoroSettings> || {}) } as PomodoroSettings;
                 const currentSettings = widget.settings as PomodoroSettings;
                 const { body: pomoDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
 
@@ -1085,9 +1087,9 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                 const v = text.inputEl.value;
                                 const n = parseInt(v);
                                 if (!isNaN(n) && n > 0) {
-                                    (currentSettings as Record<string, unknown>)[key] = n;
+                                    (currentSettings as unknown as Record<string, unknown>)[key] = n;
                                     await this.plugin.saveSettings(board.id);
-                                    this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                    this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                                 } else {
                                     new Notice('1以上の半角数値を入力してください。');
                                     text.setValue(String(currentSettings[key]));
@@ -1107,7 +1109,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         .onChange(async (v) => {
                             currentSettings.backgroundImageUrl = v.trim();
                             await this.plugin.saveSettings(board.id);
-                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                         }));
 
                 // --- 通知音・エクスポート形式はグローバル設定が適用される旨を表示 ---
@@ -1117,7 +1119,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .setDisabled(true);
 
             } else if (widget.type === 'memo') {
-                widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) } as MemoWidgetSettings;
+                widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings as Partial<MemoWidgetSettings> || {}) } as MemoWidgetSettings;
                 const currentSettings = widget.settings as MemoWidgetSettings;
                 const { body: memoDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
 
@@ -1130,9 +1132,9 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             });
                         text.inputEl.addEventListener('blur', async () => {
                             const v = text.inputEl.value;
-                            if(widget.settings) widget.settings.memoContent = v;
+                            if((widget.settings as MemoWidgetSettings)) (widget.settings as MemoWidgetSettings).memoContent = v;
                             await this.plugin.saveSettings(board.id);
-                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
                         });
                     });
 
@@ -1148,7 +1150,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             .onChange(async (value) => {
                                 currentSettings.memoHeightMode = value as 'auto' | 'fixed';
                                 await this.plugin.saveSettings(board.id);
-                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                                 if (fixedHeightSettingEl) {
                                     fixedHeightSettingEl.style.display = (value === 'fixed') ? '' : 'none';
                                 }
@@ -1170,7 +1172,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             if (!isNaN(n) && n > 0) {
                                 currentSettings.fixedHeightPx = n;
                                 await this.plugin.saveSettings(board.id);
-                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             } else {
                                 new Notice('1以上の半角数値を入力してください。');
                                 text.setValue(String(currentSettings.fixedHeightPx ?? 120));
@@ -1184,7 +1186,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
 
             } else if (widget.type === 'file-view-widget') {
                 // FileViewWidgetの高さ設定
-                const currentSettings = widget.settings || {};
+                const currentSettings = widget.settings as { heightMode?: string; fixedHeightPx?: number };
                 const { body: fileViewDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
 
                 let fixedHeightSettingEl: HTMLElement | null = null;
@@ -1199,7 +1201,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             .onChange(async (value) => {
                                 currentSettings.heightMode = value;
                                 await this.plugin.saveSettings(board.id);
-                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                                 if (fixedHeightSettingEl) {
                                     fixedHeightSettingEl.style.display = (value === 'fixed') ? '' : 'none';
                                 }
@@ -1221,7 +1223,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             if (!isNaN(n) && n > 0) {
                                 currentSettings.fixedHeightPx = n;
                                 await this.plugin.saveSettings(board.id);
-                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             } else {
                                 new Notice('1以上の半角数値を入力してください。');
                                 text.setValue(String(currentSettings.fixedHeightPx ?? 200));
@@ -1233,27 +1235,27 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     fixedHeightSettingEl.style.display = 'none';
                 }
             } else if (widget.type === 'calendar') {
-                widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings || {}) } as CalendarWidgetSettings;
+                widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings as Partial<CalendarWidgetSettings> || {}) } as CalendarWidgetSettings;
                 const { body: calendarDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
                 new Setting(calendarDetailBody)
                     .setName('デイリーノートファイル名フォーマット')
                     .setDesc('例: YYYY-MM-DD, YYYY-MM-DD.md など。YYYY, MM, DDが日付に置換されます。Moment.jsのフォーマットリファレンス（https://momentjs.com/docs/#/displaying/format/）に準拠。')
                     .addText(text => {
                         text.setPlaceholder('YYYY-MM-DD')
-                            .setValue(widget.settings.dailyNoteFormat || 'YYYY-MM-DD')
+                            .setValue((widget.settings as CalendarWidgetSettings).dailyNoteFormat || 'YYYY-MM-DD')
                             .onChange(async () => {
                                 // 入力途中は何もしない
                             });
                         text.inputEl.addEventListener('blur', async () => {
                             const v = text.inputEl.value.trim();
-                            widget.settings.dailyNoteFormat = v || 'YYYY-MM-DD';
+                            (widget.settings as CalendarWidgetSettings).dailyNoteFormat = v || 'YYYY-MM-DD';
                             await this.plugin.saveSettings(board.id);
-                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
                         });
                     });
 
             } else if (widget.type === 'timer-stopwatch') {
-                widget.settings = { ...DEFAULT_TIMER_STOPWATCH_SETTINGS, ...(widget.settings || {}) };
+                widget.settings = { ...DEFAULT_TIMER_STOPWATCH_SETTINGS, ...(widget.settings as Partial<typeof DEFAULT_TIMER_STOPWATCH_SETTINGS> || {}) };
                 const { body: timerStopwatchDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
 
                 new Setting(timerStopwatchDetailBody)
@@ -1261,8 +1263,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .setDesc('このウィジェットの通知音・音量は「タイマー／ストップウォッチ通知音（全体設定）」が使われます。')
                     .setDisabled(true);
             } else if (widget.type === 'reflection-widget') {
-                widget.settings = { ...REFLECTION_WIDGET_DEFAULT_SETTINGS, ...(widget.settings || {}) };
-                const currentSettings = widget.settings;
+                widget.settings = { ...REFLECTION_WIDGET_DEFAULT_SETTINGS, ...(widget.settings as Partial<typeof REFLECTION_WIDGET_DEFAULT_SETTINGS> || {}) };
+                const currentSettings = widget.settings as typeof REFLECTION_WIDGET_DEFAULT_SETTINGS;
                 const { body: reflectionDetailBody } = createWidgetAccordion(settingsEl, 'AIまとめ詳細設定');
 
                 new Setting(reflectionDetailBody)
@@ -1273,7 +1275,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             .onChange(async (value) => {
                                 currentSettings.aiSummaryAutoEnabled = value;
                                 await this.plugin.saveSettings(board.id);
-                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             });
                     });
                 new Setting(reflectionDetailBody)
@@ -1290,7 +1292,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             if (isNaN(n)) n = -1;
                             currentSettings.aiSummaryAutoIntervalHours = n;
                             await this.plugin.saveSettings(board.id);
-                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                            this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                         });
                     });
                 new Setting(reflectionDetailBody)
@@ -1301,7 +1303,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                             .onChange(async (value) => {
                                 currentSettings.aiSummaryManualEnabled = value;
                                 await this.plugin.saveSettings(board.id);
-                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings);
+                                this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             });
                     });
             }
@@ -1383,11 +1385,11 @@ function playTestNotificationSound(plugin: WidgetBoardPlugin, soundType: string,
         };
         if (w._testTimerAudio) {
             w._testTimerAudio.pause();
-            w._testTimerAudio = null;
+            w._testTimerAudio = undefined;
         }
         if (w._testTimerAudioCtx && w._testTimerAudioCtx.state !== 'closed') {
             w._testTimerAudioCtx.close();
-            w._testTimerAudioCtx = null;
+            w._testTimerAudioCtx = undefined;
         }
         const ctx = new (window.AudioContext || w.webkitAudioContext!)();
         w._testTimerAudioCtx = ctx;

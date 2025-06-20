@@ -139,16 +139,18 @@ export class TweetWidgetDataViewer {
             return true;
         });
         this.filtered.sort((a, b) => {
-            let v1 = (a as Record<string, unknown>)[this.sortKey];
-            let v2 = (b as Record<string, unknown>)[this.sortKey];
+            let v1 = (a as unknown as Record<string, unknown>)[this.sortKey];
+            let v2 = (b as unknown as Record<string, unknown>)[this.sortKey];
             if (this.sortKey === 'userName') {
                 v1 = a.userName || a.userId;
                 v2 = b.userName || b.userId;
             }
             if (v1 === undefined) v1 = '';
             if (v2 === undefined) v2 = '';
-            if (v1 < v2) return this.sortDesc ? 1 : -1;
-            if (v1 > v2) return this.sortDesc ? -1 : 1;
+            const v1str = String(v1);
+            const v2str = String(v2);
+            if (v1str < v2str) return this.sortDesc ? 1 : -1;
+            if (v1str > v2str) return this.sortDesc ? -1 : 1;
             return 0;
         });
         this.renderTable();

@@ -44,7 +44,7 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
         this.renderThemeSelector(contentEl);
 
         // 追加: YAMLで大きさ指定があれば反映
-        applyWidgetSize(this.widgetEl, config.settings);
+        applyWidgetSize(this.widgetEl, config.settings as { width?: string; height?: string } | null);
 
         return this.widgetEl;
     }

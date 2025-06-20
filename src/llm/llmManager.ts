@@ -18,6 +18,6 @@ export class LLMManager {
   async generateReplyWithDefault(prompt: string, context: unknown) {
     const defaultProvider = this.providers['gemini']; // 設定で切替も可
     if (!defaultProvider) throw new Error('LLM provider not found');
-    return defaultProvider.generateReply(prompt, context);
+    return defaultProvider.generateReply(prompt, context as Record<string, unknown>);
   }
 } 

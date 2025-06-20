@@ -11,22 +11,24 @@ import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
 import { debugLog } from '../../utils/logger';
 import { renderMermaidInWorker } from '../../utils';
-
-import type { Chart as ChartJS } from 'chart.js/auto';
-
-let Chart: typeof ChartJS | undefined;
-let chartModulePromise: Promise<typeof ChartJS> | null = null;
+// Chart.js型importはESM/CJS問題回避のためやめる
 
 // --- Mermaid SVGメモリキャッシュ ---
 const mermaidSvgCache = new Map<string, string>();
 // --- まとめHTMLキャッシュ ---
 const summaryHtmlCache = new Map<string, DocumentFragment>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Chart: any = undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let chartModulePromise: Promise<any> | null = null;
 
-export function preloadChartJS(): Promise<typeof ChartJS> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function preloadChartJS(): Promise<any> {
     if (!chartModulePromise) {
         chartModulePromise = import('chart.js/auto')
             .then(m => {
-                Chart = m.default;
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                Chart = m.default as any;
                 return Chart;
             })
             .catch(e => {
@@ -86,8 +88,9 @@ async function saveReflectionSummary(
     } catch {
         // ignore
     }
-    if (!data.reflectionSummaries) data.reflectionSummaries = {};
-    data.reflectionSummaries[type] = { date: dateKey, summary, html, postCount };
+    const dataObj = data as { reflectionSummaries?: Record<string, unknown> };
+    if (!dataObj.reflectionSummaries) dataObj.reflectionSummaries = {};
+    dataObj.reflectionSummaries[type] = { date: dateKey, summary, html, postCount };
     await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
     aiSummaryMemoryCache[`${type}:${dateKey}`] = Promise.resolve({
         summary,
@@ -138,8 +141,9 @@ export class ReflectionWidgetUI {
     private config: WidgetConfig;
     private app: App;
     private plugin: WidgetBoardPlugin;
-    private autoTimer: number | null = null;
-    private chart: ChartJS | null = null;
+    private autoTimer: ReturnType<typeof setInterval> | null = null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private chart: any = null;
     private lastChartData: number[] | null = null;
     private lastTodaySummary: string | null = null;
     private lastWeekSummary: string | null = null;
@@ -166,7 +170,8 @@ export class ReflectionWidgetUI {
     public async render() {
         // Chart.jsの動的import（初回のみ）
         if (this.preloadBundle && this.preloadBundle.chartModule) {
-            Chart = this.preloadBundle.chartModule;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            Chart = this.preloadBundle.chartModule as any;
         } else if (!Chart) {
             preloadChartJS(); // awaitしないでバックグラウンドでロード
         }
@@ -433,33 +438,35 @@ export class ReflectionWidgetUI {
                         if (this.chartImgEl) this.chartImgEl.style.display = 'none';
                         const ctx = this.canvasEl.getContext('2d');
                         if (ctx) {
-                            this.chart = new Chart(ctx, {
-                                type: 'line',
-                                data: {
-                                    labels: days.map(d => d.slice(5)),
-                                    datasets: [{
-                                        label: '投稿数',
-                                        data: counts,
-                                        borderColor: '#4a90e2',
-                                        backgroundColor: 'rgba(74,144,226,0.15)',
-                                        fill: true,
-                                        tension: 0.3,
-                                        pointRadius: 3,
-                                    }]
-                                },
-                                options: {
-                                    responsive: false,
-                                    animation: false,
-                                    plugins: { legend: { display: false } },
-                                    scales: {
-                                        x: {
-                                            grid: { display: false },
-                                            ticks: { maxTicksLimit: 5 }
-                                        },
-                                        y: { beginAtZero: true, grid: { color: '#eee' } }
+                            if (Chart) {
+                                this.chart = new Chart(ctx, {
+                                    type: 'line',
+                                    data: {
+                                        labels: days.map(d => d.slice(5)),
+                                        datasets: [{
+                                            label: '投稿数',
+                                            data: counts,
+                                            borderColor: '#4a90e2',
+                                            backgroundColor: 'rgba(74,144,226,0.15)',
+                                            fill: true,
+                                            tension: 0.3,
+                                            pointRadius: 3,
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: false,
+                                        animation: false,
+                                        plugins: { legend: { display: false } },
+                                        scales: {
+                                            x: {
+                                                grid: { display: false },
+                                                ticks: { maxTicksLimit: 5 }
+                                            },
+                                            y: { beginAtZero: true, grid: { color: '#eee' } }
+                                        }
                                     }
-                                }
-                            });
+                                });
+                            }
                             await new Promise(r => requestAnimationFrame(r));
                             this.plugin.tweetChartImageData = this.canvasEl.toDataURL();
                             this.plugin.tweetChartCountsKey = key;

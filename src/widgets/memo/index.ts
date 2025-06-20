@@ -289,7 +289,7 @@ export class MemoWidget implements WidgetImplementation {
         const widgetInGlobalSettings = boardInGlobalSettings.widgets.find(w => w.id === this.config.id);
         if (!widgetInGlobalSettings) return;
         if (!widgetInGlobalSettings.settings) widgetInGlobalSettings.settings = { ...DEFAULT_MEMO_SETTINGS };
-        widgetInGlobalSettings.settings.memoContent = newContent;
+        (widgetInGlobalSettings.settings as MemoWidgetSettings).memoContent = newContent;
         await this.plugin.saveSettings(currentModalBoardId);
         this.updateMemoEditUI();
     }
@@ -433,7 +433,7 @@ export class MemoWidget implements WidgetImplementation {
                         widgetInGlobalSettings.settings = { ...DEFAULT_MEMO_SETTINGS };
                     }
                     // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: memoContent in global store (BEFORE update): "${widgetInGlobalSettings.settings.memoContent}"`);
-                    widgetInGlobalSettings.settings.memoContent = newMemo; // ★★★ 実際のグローバル設定オブジェクトを更新
+                    (widgetInGlobalSettings.settings as MemoWidgetSettings).memoContent = newMemo; // ★★★ 実際のグローバル設定オブジェクトを更新
                     settingsUpdatedInGlobalStore = true;
                     // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: memoContent in global store (AFTER update): "${widgetInGlobalSettings.settings.memoContent}"`);
                 } else {
@@ -533,7 +533,7 @@ export class MemoWidget implements WidgetImplementation {
         this.scheduleRender(); // 初期UI状態設定（これがrenderMemoとapplyContainerHeightStylesを呼ぶ）
         
         // 追加: YAMLで大きさ指定があれば反映
-        applyWidgetSize(this.widgetEl, config.settings);
+        applyWidgetSize(this.widgetEl, config.settings as { width?: string; height?: string } | null);
 
         return this.widgetEl;
     }

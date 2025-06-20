@@ -19,7 +19,6 @@ export async function safeFetch(url: string, options: RequestInit = {}): Promise
   }
 
   // ObsidianのrequestUrl APIを利用
-  // @ts-expect-error requestUrl types may not allow method override
   const method = options.method?.toUpperCase() || "GET";
   const response = await requestUrl({
     url,
