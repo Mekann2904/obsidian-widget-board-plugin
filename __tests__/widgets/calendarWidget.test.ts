@@ -1,6 +1,6 @@
 import { CalendarWidget } from '../../src/widgets/calendar';
 import type { WidgetConfig } from '../../src/interfaces';
-import { DEFAULT_CALENDAR_SETTINGS } from '../../src/settingsDefaults';
+import { DEFAULT_CALENDAR_SETTINGS } from '../../src/settings/defaultWidgetSettings';
 import type { TFile } from 'obsidian';
 
 describe('CalendarWidget', () => {

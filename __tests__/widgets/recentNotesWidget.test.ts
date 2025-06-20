@@ -1,4 +1,5 @@
-import { RecentNotesWidget, DEFAULT_RECENT_NOTES_SETTINGS, type RecentNotesWidgetSettings } from '../../src/widgets/recent-notes';
+import { RecentNotesWidget, type RecentNotesWidgetSettings } from '../../src/widgets/recent-notes';
+import { DEFAULT_RECENT_NOTES_SETTINGS } from '../../src/settings/defaultWidgetSettings';
 import type { WidgetConfig } from '../../src/interfaces';
 
 describe('RecentNotesWidget 詳細テスト', () => {

@@ -74,6 +74,3 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
 };
 
 // カレンダーウィジェットのデフォルト設定
-export const DEFAULT_CALENDAR_SETTINGS = {
-    dailyNoteFormat: 'YYYY-MM-DD',
-};

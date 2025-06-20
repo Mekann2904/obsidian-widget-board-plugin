@@ -1,6 +1,6 @@
 // src/widgets/calendarWidget.ts
 import { App, setIcon, Setting } from 'obsidian';
-import { DEFAULT_CALENDAR_SETTINGS } from '../../settingsDefaults';
+import { DEFAULT_CALENDAR_SETTINGS } from '../../settings/defaultWidgetSettings';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { debugLog } from '../../utils/logger';

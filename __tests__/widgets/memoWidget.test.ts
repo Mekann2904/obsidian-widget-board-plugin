@@ -1,4 +1,5 @@
-import { MemoWidget, DEFAULT_MEMO_SETTINGS } from '../../src/widgets/memo';
+import { MemoWidget } from '../../src/widgets/memo';
+import { DEFAULT_MEMO_SETTINGS } from '../../src/settings/defaultWidgetSettings';
 import type { WidgetConfig } from '../../src/interfaces';
 import { MarkdownRenderer } from 'obsidian';
 

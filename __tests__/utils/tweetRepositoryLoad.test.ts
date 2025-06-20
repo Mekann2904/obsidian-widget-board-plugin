@@ -1,4 +1,4 @@
-import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../../src/widgets/tweetWidget/constants';
+import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../../src/settings/defaultWidgetSettings';
 const { TweetRepository } = require('../../src/widgets/tweetWidget');
 
 jest.mock('obsidian', () => ({ App: class {}, Notice: jest.fn() }), { virtual: true });
