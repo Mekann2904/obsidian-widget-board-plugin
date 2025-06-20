@@ -312,4 +312,70 @@ describe('TweetWidget', () => {
     expect(widget.currentSettings.posts.some(p => p.text === '詳細画面ショートカット返信')).toBe(true);
     document.body.removeChild(el);
   });
+
+  it('ファイル書き込み失敗時にクラッシュしない', async () => {
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    (dummyApp.vault.adapter.write as jest.Mock).mockRejectedValueOnce(new Error('Disk full'));
+
+    const widget = new TweetWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await new Promise(res => setTimeout(res, 0));
+
+    await expect(widget.submitPost('投稿テスト')).resolves.not.toThrow();
+    // TweetWidget側でエラーをcatchしてconsole.errorに出力することを期待
+    expect(consoleErrorSpy).toHaveBeenCalled();
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('Escキーで編集モードがキャンセルされる', async () => {
+    const widget = new TweetWidget();
+    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    document.body.appendChild(el);
+    await new Promise(res => setTimeout(res, 0));
+    await widget.submitPost('編集キャンセルテスト');
+    const post = widget.currentSettings.posts[0];
+
+    widget.startEdit(post);
+    expect(widget.editingPostId).toBe(post.id);
+
+    // Escキーイベントを発火
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+    el.dispatchEvent(event);
+
+    await new Promise(res => setTimeout(res, 10)); // UI更新を待つ
+
+    expect(widget.editingPostId).toBeNull();
+    document.body.removeChild(el);
+  });
+
+  it('Escキーで詳細表示がキャンセルされる', async () => {
+    const widget = new TweetWidget();
+    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    document.body.appendChild(el);
+    await new Promise(res => setTimeout(res, 0));
+    await widget.submitPost('詳細キャンセルテスト');
+    const post = widget.currentSettings.posts[0];
+    
+    widget.navigateToDetail(post.id);
+    expect(widget.detailPostId).toBe(post.id);
+
+    // Escキーイベントを発火
+    const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
+    el.dispatchEvent(event);
+
+    await new Promise(res => setTimeout(res, 10)); // UI更新を待つ
+
+    expect(widget.detailPostId).toBeNull();
+    document.body.removeChild(el);
+  });
+
+  it('Markdown特殊文字を含む投稿がエラーなく処理される', async () => {
+    const widget = new TweetWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await new Promise(res => setTimeout(res, 0));
+    const markdownText = '# heading\n* list\n[link](http://example.com)';
+    await expect(widget.submitPost(markdownText)).resolves.not.toThrow();
+    expect(widget.currentSettings.posts[0].text).toBe(markdownText);
+  });
 }); 

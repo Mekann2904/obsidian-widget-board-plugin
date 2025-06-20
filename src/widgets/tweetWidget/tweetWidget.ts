@@ -65,7 +65,7 @@ export class TweetWidget implements WidgetImplementation {
         this.widgetEl = widgetEl;
 
         // 追加: YAMLで大きさ指定があれば反映
-        applyWidgetSize(this.widgetEl, config.settings);
+        applyWidgetSize(this.widgetEl, config.settings as { width?: string, height?: string } | null);
 
         // デフォルト期間をsettingsから反映
         this.currentPeriod = this.plugin.settings.defaultTweetPeriod || 'all';
@@ -85,8 +85,29 @@ export class TweetWidget implements WidgetImplementation {
             this.startScheduleLoop();
         });
 
+        this.widgetEl.addEventListener('keydown', this.handleKeyDown);
+
         // 初期化中は空のUIを返す
         return this.widgetEl;
+    }
+
+    private handleKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
+            let stateChanged = false;
+            if (this.editingPostId) {
+                this.editingPostId = null;
+                stateChanged = true;
+            }
+            if (this.detailPostId) {
+                this.detailPostId = null;
+                stateChanged = true;
+            }
+
+            if (stateChanged) {
+                this.ui.render();
+                event.stopPropagation();
+            }
+        }
     }
 
     private saveDataDebounced() {
@@ -625,10 +646,13 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     onunload(): void {
-        if (this.scheduleCheckId) {
-            clearInterval(this.scheduleCheckId);
-            this.scheduleCheckId = null;
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
         }
+        if (this.scheduleCheckId) {
+            window.clearInterval(this.scheduleCheckId);
+        }
+        this.widgetEl.removeEventListener('keydown', this.handleKeyDown);
         if (this.ui && typeof this.ui.onunload === 'function') {
             this.ui.onunload();
         }
