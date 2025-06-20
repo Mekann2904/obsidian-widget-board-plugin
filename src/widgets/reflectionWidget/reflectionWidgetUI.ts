@@ -12,23 +12,20 @@ import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
 import { debugLog } from '../../utils/logger';
 import { renderMermaidInWorker } from '../../utils';
 // Chart.js型importはESM/CJS問題回避のためやめる
+import type { Chart } from 'chart.js/auto';
 
 // --- Mermaid SVGメモリキャッシュ ---
 const mermaidSvgCache = new Map<string, string>();
 // --- まとめHTMLキャッシュ ---
 const summaryHtmlCache = new Map<string, DocumentFragment>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let Chart: any = undefined;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let chartModulePromise: Promise<any> | null = null;
+let Chart: typeof import('chart.js/auto').Chart | undefined = undefined;
+let chartModulePromise: Promise<typeof import('chart.js/auto').Chart> | null = null;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function preloadChartJS(): Promise<any> {
+export function preloadChartJS(): Promise<typeof import('chart.js/auto').Chart> {
     if (!chartModulePromise) {
         chartModulePromise = import('chart.js/auto')
             .then(m => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                Chart = m.default as any;
+                Chart = m.default;
                 return Chart;
             })
             .catch(e => {
@@ -142,8 +139,7 @@ export class ReflectionWidgetUI {
     private app: App;
     private plugin: WidgetBoardPlugin;
     private autoTimer: ReturnType<typeof setInterval> | null = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private chart: any = null;
+    private chart: Chart | null = null;
     private lastChartData: number[] | null = null;
     private lastTodaySummary: string | null = null;
     private lastWeekSummary: string | null = null;
@@ -170,8 +166,7 @@ export class ReflectionWidgetUI {
     public async render() {
         // Chart.jsの動的import（初回のみ）
         if (this.preloadBundle && this.preloadBundle.chartModule) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            Chart = this.preloadBundle.chartModule as any;
+            Chart = this.preloadBundle.chartModule as typeof import('chart.js/auto');
         } else if (!Chart) {
             preloadChartJS(); // awaitしないでバックグラウンドでロード
         }
