@@ -22,6 +22,10 @@ beforeAll(() => {
   jest.spyOn(console, 'error').mockImplementation(() => {});
 });
 
+afterAll(() => {
+  (console.error as jest.Mock).mockRestore();
+});
+
 beforeEach(() => {
   dummyConfig = {
     id: 'test-memo',
@@ -32,6 +36,10 @@ beforeEach(() => {
   dummyApp = {};
   dummyPlugin = { settings: { boards: [] }, saveSettings: jest.fn() };
   MarkdownRenderer.renderMarkdown.mockImplementation(renderMarkdownStub);
+});
+
+afterEach(() => {
+  jest.clearAllMocks();
 });
 
 describe('MemoWidget 詳細テスト', () => {
@@ -154,6 +162,12 @@ describe('追加テストケース', () => {
     await widget.updateExternalSettings({ memoContent: md });
     await new Promise(res => setTimeout(res, 0));
     const html = widget['memoDisplayEl'].innerHTML;
+    expect(MarkdownRenderer.renderMarkdown).toHaveBeenCalledWith(
+      md,
+      expect.any(HTMLElement),
+      expect.any(String),
+      expect.any(Object)
+    );
     expect(html).toContain('<h1');
     expect(html).toContain('<li');
     expect(html).toContain('<a href="https://example.com"');
