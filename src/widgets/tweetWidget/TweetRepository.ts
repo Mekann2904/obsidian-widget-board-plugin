@@ -79,12 +79,15 @@ export class TweetRepository {
      */
     async save(settings: TweetWidgetSettings): Promise<void> {
         try {
+            const sanitizedSettings = this.ensureSettingsSchema(settings);
             const lastSlash = this.dbPath.lastIndexOf('/');
             const folder = lastSlash !== -1 ? this.dbPath.substring(0, lastSlash) : '';
+
             if (folder) {
                 await this.ensureFolderExists(folder);
             }
-            const dataToSave = JSON.stringify(settings, null, 2);
+
+            const dataToSave = JSON.stringify(sanitizedSettings, null, 2);
             await this.app.vault.adapter.write(this.dbPath, dataToSave);
         } catch (e) {
             console.error("Error saving tweet data:", e);
@@ -92,19 +95,26 @@ export class TweetRepository {
         }
     }
 
-    /**
-     * 指定したフォルダが存在しない場合、親フォルダも含めて再帰的に作成する。
-     * @param folder 作成するフォルダパス
-     */
-    private async ensureFolderExists(folder: string): Promise<void> {
-        const parts = folder.split('/');
-        let current = '';
-        for (const part of parts) {
-            current = current ? `${current}/${part}` : part;
-            if (!await this.app.vault.adapter.exists(current)) {
-                await this.app.vault.adapter.mkdir(current);
+    private async ensureFolderExists(folder: string) {
+        const folders = folder.split('/');
+        let currentPath = '';
+        for (const f of folders) {
+            currentPath = currentPath ? `${currentPath}/${f}` : f;
+            if (!(await this.app.vault.adapter.exists(currentPath))) {
+                await this.app.vault.adapter.mkdir(currentPath);
             }
         }
+    }
+
+    private ensureSettingsSchema(settings: any): TweetWidgetSettings {
+        const sanitized = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...settings };
+        if (!Array.isArray(sanitized.posts)) {
+            sanitized.posts = [];
+        }
+        if (!Array.isArray(sanitized.scheduledPosts)) {
+            sanitized.scheduledPosts = [];
+        }
+        return sanitized;
     }
 
     /**

@@ -59,6 +59,12 @@ describe('safeFetch', () => {
       json: { message: 'not found' },
     });
   });
+
+  test('handles network errors gracefully', async () => {
+    (obsidian.requestUrl as jest.Mock).mockRejectedValue(new Error('Network request failed'));
+
+    await expect(safeFetch('https://example.com')).rejects.toThrow('Network request failed');
+  });
 });
 
 describe('obfuscate / deobfuscate', () => {
