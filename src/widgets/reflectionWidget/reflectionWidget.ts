@@ -26,7 +26,7 @@ export class ReflectionWidget implements WidgetImplementation {
     public plugin!: WidgetBoardPlugin;
 
     // プリロードバンドルを受け取れるように拡張
-    create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin, preloadBundle?: unknown): HTMLElement {
+    create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin, preloadBundle?: ReflectionWidgetPreloadBundle | undefined): HTMLElement {
         const initialConfig = config || {
             id: `reflection-widget-${Date.now()}`,
             type: 'reflection-widget',
@@ -47,7 +47,7 @@ export class ReflectionWidget implements WidgetImplementation {
         this.plugin = plugin;
         const el = document.createElement('div');
         el.className = 'widget reflection-widget';
-        this.ui = new ReflectionWidgetUI(this, el, this.config, app, plugin, preloadBundle as any);
+        this.ui = new ReflectionWidgetUI(this, el, this.config, app, plugin, preloadBundle as ReflectionWidgetPreloadBundle | undefined);
         this.ui.render();
         return el;
     }

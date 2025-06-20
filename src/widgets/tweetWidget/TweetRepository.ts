@@ -106,7 +106,7 @@ export class TweetRepository {
         }
     }
 
-    private ensureSettingsSchema(settings: any): TweetWidgetSettings {
+    private ensureSettingsSchema(settings: Partial<TweetWidgetSettings>): TweetWidgetSettings {
         const sanitized = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...settings };
         if (!Array.isArray(sanitized.posts)) {
             sanitized.posts = [];

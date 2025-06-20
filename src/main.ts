@@ -5,10 +5,10 @@ import { DEFAULT_PLUGIN_SETTINGS, DEFAULT_BOARD_CONFIGURATION } from './settings
 import { WidgetBoardModal } from './modal';
 import { WidgetBoardSettingTab } from './settingsTab';
 import { registeredWidgetImplementations } from './widgetRegistry';
-import { DEFAULT_POMODORO_SETTINGS } from './widgets/pomodoro';
-import { DEFAULT_MEMO_SETTINGS } from './widgets/memo';
+import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings } from './widgets/pomodoro';
+import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from './widgets/memo';
 import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';
-import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timer-stopwatch';
+import { DEFAULT_TIMER_STOPWATCH_SETTINGS, TimerStopwatchWidgetSettings } from './widgets/timer-stopwatch';
 import cloneDeep from 'lodash.clonedeep';
 import { LLMManager } from './llm/llmManager';
 import { GeminiProvider } from './llm/gemini/geminiApi';
@@ -20,6 +20,9 @@ import { filterConsoleWarn } from './utils/consoleWarnFilter';
 import { Component, TFile } from 'obsidian';
 import { preloadChartJS } from './widgets/reflectionWidget/reflectionWidgetUI';
 import { getDateKey, getWeekRange } from './utils';
+import { FileViewWidgetSettings } from './widgets/file-view';
+import { TweetWidgetSettings } from './widgets/tweetWidget/types';
+import { ReflectionWidgetSettings } from './widgets/reflectionWidget/reflectionWidgetTypes';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -89,23 +92,23 @@ export default class WidgetBoardPlugin extends Plugin {
                         pomodoroNotificationSound: this.settings.pomodoroNotificationSound,
                         pomodoroNotificationVolume: this.settings.pomodoroNotificationVolume,
                         pomodoroExportFormat: this.settings.pomodoroExportFormat,
-                        ...(config.settings as any),
+                        ...(config.settings as Partial<PomodoroSettings>),
                     };
                 } else if (config.type === 'timer-stopwatch') {
                     config.settings = {
                         ...DEFAULT_TIMER_STOPWATCH_SETTINGS,
                         timerStopwatchNotificationSound: this.settings.timerStopwatchNotificationSound,
                         timerStopwatchNotificationVolume: this.settings.timerStopwatchNotificationVolume,
-                        ...(config.settings as any),
+                        ...(config.settings as Partial<TimerStopwatchWidgetSettings>),
                     };
                 } else if (config.type === 'tweet-widget') {
                     config.settings = {
                         ...(this.settings.tweetWidgetAvatarUrl ? { avatarUrl: this.settings.tweetWidgetAvatarUrl } : {}),
-                        ...(config.settings as any),
+                        ...(config.settings as Partial<TweetWidgetSettings>),
                     };
                 } else if (config.type === 'reflection-widget') {
                     config.settings = {
-                        ...(config.settings as any),
+                        ...(config.settings as Partial<ReflectionWidgetSettings>),
                     };
                 }
                 // typeに対応するWidgetImplementationを呼び出し
@@ -427,11 +430,17 @@ export default class WidgetBoardPlugin extends Plugin {
             const fileViewFiles: string[] = [];
             for (const board of this.settings.boards) {
                 for (const widget of board.widgets) {
-                    if (widget.type === 'memo' && (widget.settings as any)?.memoContent) {
-                        memoContents.push((widget.settings as any).memoContent);
+                    if (widget.type === 'memo') {
+                        const settings = widget.settings as MemoWidgetSettings;
+                        if (settings?.memoContent) {
+                            memoContents.push(settings.memoContent);
+                        }
                     }
-                    if (widget.type === 'file-view-widget' && (widget.settings as any)?.fileName) {
-                        fileViewFiles.push((widget.settings as any).fileName);
+                    if (widget.type === 'file-view-widget') {
+                        const settings = widget.settings as FileViewWidgetSettings;
+                        if (settings?.fileName) {
+                            fileViewFiles.push(settings.fileName);
+                        }
                     }
                 }
             }

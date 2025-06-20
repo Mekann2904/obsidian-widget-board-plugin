@@ -4,7 +4,7 @@ import type WidgetBoardPlugin from '../../main';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
 
-interface FileViewWidgetSettings {
+export interface FileViewWidgetSettings {
   fileName?: string;
   heightMode?: 'auto' | 'fixed';
   fixedHeightPx?: number;
@@ -79,7 +79,7 @@ export class FileViewWidget implements WidgetImplementation {
     this.fileNameInput = document.createElement('input');
     this.fileNameInput.type = 'text';
     this.fileNameInput.placeholder = 'ファイルパス';
-    this.fileNameInput.value = this.config.settings?.fileName || '';
+    this.fileNameInput.value = (this.config.settings as FileViewWidgetSettings)?.fileName || '';
     this.fileNameInput.style.display = '';
     controlsEl.appendChild(this.fileNameInput);
 
@@ -108,7 +108,7 @@ export class FileViewWidget implements WidgetImplementation {
     this.loadFile();
 
     // 追加: YAMLで大きさ指定があれば反映
-    applyWidgetSize(this.widgetEl, config.settings);
+    applyWidgetSize(this.widgetEl, config.settings as { width?: string, height?: string } | null);
 
     return this.widgetEl;
   }
@@ -119,7 +119,7 @@ export class FileViewWidget implements WidgetImplementation {
     new FileSuggestModal(this.app, files, async (file) => {
       this.fileNameInput.value = file.path;
       this.config.settings = this.config.settings || {};
-      this.config.settings.fileName = file.path;
+      (this.config.settings as FileViewWidgetSettings).fileName = file.path;
       await this.plugin.saveSettings();
       this.loadFile();
       this.updateTitle();
@@ -128,7 +128,7 @@ export class FileViewWidget implements WidgetImplementation {
 
   // ファイル内容をレンダリング
   private async loadFile() {
-    const rawInput = this.config.settings?.fileName?.trim() || '';
+    const rawInput = (this.config.settings as FileViewWidgetSettings)?.fileName?.trim() || '';
     const fileName = rawInput;
     this.updateTitle();
     if (!fileName) {
@@ -175,18 +175,18 @@ export class FileViewWidget implements WidgetImplementation {
     // 設定をインスタンスにも反映
     if (newSettings?.heightMode) {
       this.heightMode = newSettings.heightMode;
-      this.config.settings.heightMode = newSettings.heightMode;
+      (this.config.settings as FileViewWidgetSettings).heightMode = newSettings.heightMode;
     }
     if (typeof newSettings?.fixedHeightPx === 'number') {
       this.fixedHeightPx = newSettings.fixedHeightPx;
-      this.config.settings.fixedHeightPx = newSettings.fixedHeightPx;
+      (this.config.settings as FileViewWidgetSettings).fixedHeightPx = newSettings.fixedHeightPx;
     }
     this.applyContentHeightStyles();
   }
 
   // タイトルをファイル名に自動更新
   private updateTitle() {
-    const fileName = this.config.settings?.fileName;
+    const fileName = (this.config.settings as FileViewWidgetSettings)?.fileName;
     if (this.titleEl) {
       if (fileName && fileName.trim() !== '') {
         const name = fileName.split(/[\\/]/).pop();
