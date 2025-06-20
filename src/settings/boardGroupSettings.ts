@@ -4,17 +4,17 @@ import type { BoardConfiguration, BoardGroup, WidgetConfig } from '../interfaces
 import { DEFAULT_BOARD_CONFIGURATION } from '../settingsDefaults';
 import { WidgetBoardModal } from '../modal';
 import {
+    DEFAULT_CALENDAR_SETTINGS,
+    DEFAULT_MEMO_SETTINGS,
     DEFAULT_POMODORO_SETTINGS,
-    PomodoroSettings,
-    PomodoroExportFormat,
-} from '../widgets/pomodoro';
-import { DEFAULT_MEMO_SETTINGS, MemoWidgetSettings } from '../widgets/memo';
-import { DEFAULT_CALENDAR_SETTINGS } from '../settingsDefaults';
+    DEFAULT_RECENT_NOTES_SETTINGS,
+    DEFAULT_TIMER_STOPWATCH_SETTINGS,
+    DEFAULT_TWEET_WIDGET_SETTINGS,
+    REFLECTION_WIDGET_DEFAULT_SETTINGS
+} from './defaultWidgetSettings';
+import type { PomodoroSettings } from '../widgets/pomodoro';
+import type { MemoWidgetSettings } from '../widgets/memo';
 import type { CalendarWidgetSettings } from '../widgets/calendar';
-import { DEFAULT_RECENT_NOTES_SETTINGS } from '../widgets/recent-notes';
-import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from '../widgets/timer-stopwatch';
-import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../widgets/tweetWidget/constants';
-import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from '../widgets/reflectionWidget/constants';
 import { widgetTypeName, t } from '../i18n';
 import type { Language } from '../i18n';
 import { createAccordion } from '../utils/uiHelpers';
@@ -644,13 +644,13 @@ export function notifyWidgetInstanceIfBoardOpen(tab: WidgetBoardSettingTab,
         widgetType: string,
         newSettings: Record<string, unknown>
     ) {
-        const modal = tab.plugin.widgetBoardModals?.get(boardId);
+        const modal = tab.plugin.boardManager.widgetBoardModals.get(boardId);
         if (modal && modal.isOpen) {
             const widgetInstance = modal.uiWidgetReferences.find(
-                w => (w as unknown as { config?: { id?: string } }).config?.id === widgetId
+                w => (w as any).config?.id === widgetId
             );
-            if (widgetInstance && typeof widgetInstance.updateExternalSettings === 'function') {
-                widgetInstance.updateExternalSettings(newSettings, widgetId);
+            if (widgetInstance && widgetInstance.updateExternalSettings) {
+                widgetInstance.updateExternalSettings(newSettings);
             }
         }
     }

@@ -13,10 +13,7 @@ import {
 import type { PomodoroSettings } from './widgets/pomodoro';
 import type { MemoWidgetSettings } from './widgets/memo';
 import type { TimerStopwatchWidgetSettings } from './widgets/timer-stopwatch';
-import { DEFAULT_POMODORO_SETTINGS, PomodoroSettings } from './widgets/pomodoro';
-import { DEFAULT_MEMO_SETTINGS } from './widgets/memo';
-import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';
-import { DEFAULT_TIMER_STOPWATCH_SETTINGS, TimerStopwatchWidgetSettings } from './widgets/timer-stopwatch';
+import type { CalendarWidgetSettings } from './widgets/calendar';
 import cloneDeep from 'lodash.clonedeep';
 import { LLMManager } from './llm/llmManager';
 import { GeminiProvider } from './llm/gemini/geminiApi';
@@ -210,6 +207,8 @@ export default class WidgetBoardPlugin extends Plugin {
                     widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings || {}) };
                 } else if (widget.type === 'calendar') {
                     widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings || {}) };
+                } else if (widget.type === 'timer-stopwatch') {
+                    widget.settings = { ...DEFAULT_TIMER_STOPWATCH_SETTINGS, ...(widget.settings || {}) };
                 }
             });
         });
