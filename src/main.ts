@@ -81,32 +81,32 @@ export default class WidgetBoardPlugin extends Plugin {
                 // settingsがなければグローバル設定から補完
                 if (!config.settings) {
                     config.settings = {};
-                    // typeごとにグローバル設定値を補完
-                    if (config.type === 'pomodoro') {
-                        config.settings = {
-                            ...DEFAULT_POMODORO_SETTINGS,
-                            pomodoroNotificationSound: this.settings.pomodoroNotificationSound,
-                            pomodoroNotificationVolume: this.settings.pomodoroNotificationVolume,
-                            pomodoroExportFormat: this.settings.pomodoroExportFormat,
-                            ...config.settings
-                        };
-                    } else if (config.type === 'timer-stopwatch') {
-                        config.settings = {
-                            ...DEFAULT_TIMER_STOPWATCH_SETTINGS,
-                            timerStopwatchNotificationSound: this.settings.timerStopwatchNotificationSound,
-                            timerStopwatchNotificationVolume: this.settings.timerStopwatchNotificationVolume,
-                            ...config.settings
-                        };
-                    } else if (config.type === 'tweet-widget') {
-                        config.settings = {
-                            ...this.settings.tweetWidgetAvatarUrl ? { avatarUrl: this.settings.tweetWidgetAvatarUrl } : {},
-                            ...config.settings
-                        };
-                    } else if (config.type === 'reflection-widget') {
-                        config.settings = {
-                            ...config.settings
-                        };
-                    }
+                }
+                // typeごとにグローバル設定値を補完
+                if (config.type === 'pomodoro') {
+                    config.settings = {
+                        ...DEFAULT_POMODORO_SETTINGS,
+                        pomodoroNotificationSound: this.settings.pomodoroNotificationSound,
+                        pomodoroNotificationVolume: this.settings.pomodoroNotificationVolume,
+                        pomodoroExportFormat: this.settings.pomodoroExportFormat,
+                        ...(config.settings as any),
+                    };
+                } else if (config.type === 'timer-stopwatch') {
+                    config.settings = {
+                        ...DEFAULT_TIMER_STOPWATCH_SETTINGS,
+                        timerStopwatchNotificationSound: this.settings.timerStopwatchNotificationSound,
+                        timerStopwatchNotificationVolume: this.settings.timerStopwatchNotificationVolume,
+                        ...(config.settings as any),
+                    };
+                } else if (config.type === 'tweet-widget') {
+                    config.settings = {
+                        ...(this.settings.tweetWidgetAvatarUrl ? { avatarUrl: this.settings.tweetWidgetAvatarUrl } : {}),
+                        ...(config.settings as any),
+                    };
+                } else if (config.type === 'reflection-widget') {
+                    config.settings = {
+                        ...(config.settings as any),
+                    };
                 }
                 // typeに対応するWidgetImplementationを呼び出し
                 const WidgetClass = registeredWidgetImplementations.get(config.type);
@@ -181,7 +181,7 @@ export default class WidgetBoardPlugin extends Plugin {
             new Notice(`ID '${boardId}' のウィジェットボードが見つかりません。`);
             return;
         }
-        const validModes = Object.values(WidgetBoardModal.MODES);
+        const validModes: string[] = Object.values(WidgetBoardModal.MODES);
         if (!validModes.includes(boardConfig.defaultMode)) {
             boardConfig.defaultMode = WidgetBoardModal.MODES.RIGHT_THIRD;
         }
@@ -427,11 +427,11 @@ export default class WidgetBoardPlugin extends Plugin {
             const fileViewFiles: string[] = [];
             for (const board of this.settings.boards) {
                 for (const widget of board.widgets) {
-                    if (widget.type === 'memo' && widget.settings?.memoContent) {
-                        memoContents.push(widget.settings.memoContent);
+                    if (widget.type === 'memo' && (widget.settings as any)?.memoContent) {
+                        memoContents.push((widget.settings as any).memoContent);
                     }
-                    if (widget.type === 'file-view-widget' && widget.settings?.fileName) {
-                        fileViewFiles.push(widget.settings.fileName);
+                    if (widget.type === 'file-view-widget' && (widget.settings as any)?.fileName) {
+                        fileViewFiles.push((widget.settings as any).fileName);
                     }
                 }
             }

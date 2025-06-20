@@ -4,6 +4,17 @@ const { TweetRepository } = require('../../src/widgets/tweetWidget');
 jest.mock('obsidian', () => ({ App: class {}, Notice: jest.fn() }), { virtual: true });
 
 describe('TweetRepository.load', () => {
+  let consoleErrorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    // hide console.error spam
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   test('returns defaults and backs up when JSON parse fails', async () => {
     const exists = jest.fn().mockResolvedValue(true);
     const read = jest.fn().mockResolvedValue('{bad json');
