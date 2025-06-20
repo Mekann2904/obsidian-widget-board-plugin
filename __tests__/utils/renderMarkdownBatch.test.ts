@@ -12,7 +12,7 @@ jest.mock('obsidian', () => {
 }, { virtual: true });
 
 import { Component } from 'obsidian';
-const { renderMarkdownBatch } = require('../../src/utils/renderMarkdownBatch.ts');
+import { renderMarkdownBatch } from '../../src/utils/renderMarkdownBatch';
 
 describe('renderMarkdownBatch', () => {
   beforeEach(() => {
