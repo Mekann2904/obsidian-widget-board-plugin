@@ -104,10 +104,10 @@ export class WidgetBoardModal {
         this.currentBoardConfig = cloneDeep(boardConfig);
         this.currentBoardId = boardConfig.id;
         const validModes = Object.values(WidgetBoardModal.MODES);
-        if (!validModes.includes(this.currentBoardConfig.defaultMode)) {
+        if (!validModes.includes(this.currentBoardConfig.defaultMode as typeof WidgetBoardModal.MODES[keyof typeof WidgetBoardModal.MODES])) {
             this.currentMode = WidgetBoardModal.MODES.RIGHT_THIRD;
         } else {
-            this.currentMode = this.currentBoardConfig.defaultMode;
+            this.currentMode = this.currentBoardConfig.defaultMode as typeof WidgetBoardModal.MODES[keyof typeof WidgetBoardModal.MODES];
         }
         this.modalEl = document.createElement('div');
         this.modalEl.classList.add('widget-board-panel-custom');
@@ -131,8 +131,8 @@ export class WidgetBoardModal {
         this.currentBoardId = newBoardConfig.id;
         if (this.currentMode !== this.currentBoardConfig.defaultMode) {
             const validModes = Object.values(WidgetBoardModal.MODES);
-            if (validModes.includes(this.currentBoardConfig.defaultMode)) {
-                this.currentMode = this.currentBoardConfig.defaultMode;
+            if (validModes.includes(this.currentBoardConfig.defaultMode as typeof WidgetBoardModal.MODES[keyof typeof WidgetBoardModal.MODES])) {
+                this.currentMode = this.currentBoardConfig.defaultMode as typeof WidgetBoardModal.MODES[keyof typeof WidgetBoardModal.MODES];
                 this.applyMode(this.currentMode);
             }
         }

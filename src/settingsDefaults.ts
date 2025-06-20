@@ -10,6 +10,7 @@ export const DEFAULT_BOARD_CONFIGURATION: BoardConfiguration = {
     id: initialDefaultBoardId,
     name: 'マイウィジェットボード',
     defaultMode: 'mode-center-half',
+    viewMode: 'center',
     widgets: [
         {
             id: 'default-pomodoro-' + Date.now(),
