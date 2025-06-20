@@ -28,9 +28,9 @@ import { renderTweetWidgetSettings } from './settings/tweetSettings';
  */
 export class WidgetBoardSettingTab extends PluginSettingTab {
     plugin: WidgetBoardPlugin;
-    private selectedBoardId: string | null = null;
-    private boardDropdownEl: HTMLSelectElement | null = null;
-    private boardGroupBodyEl: HTMLElement | null = null;
+    selectedBoardId: string | null = null;
+    boardDropdownEl: HTMLSelectElement | null = null;
+    boardGroupBodyEl: HTMLElement | null = null;
 
     /**
      * 設定タブの初期化
@@ -389,8 +389,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
     }
 
-
-
     private renderCalendarSettings(containerEl: HTMLElement, lang: Language) {
         const calendarAcc = createAccordion(containerEl, t(lang, 'calendarGlobalSetting'), false); // デフォルトで閉じる
         new Setting(calendarAcc.body)
@@ -414,8 +412,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     ) {
         externalNotify(this, boardId, widgetId, widgetType, newSettings);
     }
-    }
-
 }
 
 function playTestNotificationSound(plugin: WidgetBoardPlugin, soundType: string, volume: number) {

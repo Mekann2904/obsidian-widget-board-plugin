@@ -22,11 +22,11 @@ import type { WidgetBoardSettingTab } from '../settingsTab';
 
 export function renderBoardManagementSection(tab: WidgetBoardSettingTab, containerEl: HTMLElement, lang: Language) {
         const boardManagementAcc = createAccordion(containerEl, t(lang, 'boardManagement'), false); // デフォルトで閉じる
-        tab.renderBoardManagementUI(boardManagementAcc.body, lang); // langを渡す
+        renderBoardManagementUI(boardManagementAcc.body, tab, lang); // langを渡す
         // --- 選択されたボードの詳細設定をボード管理アコーディオン内に表示 ---
         const boardDetailContainer = boardManagementAcc.body.createDiv({ cls: 'selected-board-settings-section' });
         if (tab.selectedBoardId) {
-            tab.renderSelectedBoardSettingsUI(boardDetailContainer, lang);
+            renderSelectedBoardSettingsUI(boardDetailContainer, tab, lang);
         } else {
             const msg = tab.plugin.settings.boards.length === 0 ? t(lang, 'noBoards') : t(lang, 'selectBoardToConfig');
             boardDetailContainer.createEl('p', { text: msg });
@@ -36,7 +36,7 @@ export function renderBoardManagementSection(tab: WidgetBoardSettingTab, contain
 export function renderBoardGroupSection(tab: WidgetBoardSettingTab, containerEl: HTMLElement, lang: Language) {
         const boardGroupAcc = createAccordion(containerEl, t(lang, 'boardGroupManagement'), false);
         tab.boardGroupBodyEl = boardGroupAcc.body;
-        tab.renderBoardGroupManagementUI(tab.boardGroupBodyEl, lang); // langを渡す
+        renderBoardGroupManagementUI(tab.boardGroupBodyEl, tab, lang); // langを渡す
     }
 
     /**
@@ -44,7 +44,7 @@ export function renderBoardGroupSection(tab: WidgetBoardSettingTab, containerEl:
      * @param containerEl 描画先要素
      * @param lang 表示言語
      */
-export function renderBoardManagementUI(tab: WidgetBoardSettingTab, containerEl: HTMLElement, lang: import('../i18n').Language) { // langを受け取る
+export function renderBoardManagementUI(containerEl: HTMLElement, tab: WidgetBoardSettingTab, lang: import('../i18n').Language) { // langを受け取る
         containerEl.empty();
 
         new Setting(containerEl)
@@ -69,7 +69,7 @@ export function renderBoardManagementUI(tab: WidgetBoardSettingTab, containerEl:
                     // ボード詳細設定セクションの内容を更新
                     const selectedBoardSettingsContainer = tab.containerEl.querySelector('.selected-board-settings-section');
                     if (selectedBoardSettingsContainer) {
-                        tab.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement, lang); // langを渡す
+                        renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement, tab, lang); // langを渡す
                     }
                     // ボード詳細設定アコーディオンを自動で開かない
                 });
@@ -102,11 +102,12 @@ export function renderBoardManagementUI(tab: WidgetBoardSettingTab, containerEl:
                     // ボード詳細設定セクションだけ再描画
                     const selectedBoardSettingsContainer = tab.containerEl.querySelector('.selected-board-settings-section');
                     if (selectedBoardSettingsContainer) {
-                        tab.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement, tab.plugin.settings.language || 'ja');
+                        renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement, tab, tab.plugin.settings.language || 'ja');
                     }
-                    tab.renderBoardManagementUI(containerEl, lang); // UIを再描画
-                    tab.renderSelectedBoardSettingsUI(
+                    renderBoardManagementUI(containerEl, tab, lang); // UIを再描画
+                    renderSelectedBoardSettingsUI(
                         tab.containerEl.querySelector('.selected-board-settings-section') as HTMLElement,
+                        tab,
                         lang
                     );
                 }));
@@ -116,7 +117,7 @@ export function renderBoardManagementUI(tab: WidgetBoardSettingTab, containerEl:
      * 選択中ボードの詳細設定UIを描画
      * @param containerEl 描画先要素
      */
-export function renderSelectedBoardSettingsUI(tab: WidgetBoardSettingTab, containerEl: HTMLElement, lang: import('../i18n').Language) {
+export function renderSelectedBoardSettingsUI(containerEl: HTMLElement, tab: WidgetBoardSettingTab, lang: import('../i18n').Language) {
         containerEl.empty();
         const board = tab.plugin.settings.boards.find(b => b.id === tab.selectedBoardId);
         if (!board) {
@@ -251,7 +252,7 @@ export function renderSelectedBoardSettingsUI(tab: WidgetBoardSettingTab, contai
                     // ボード詳細設定セクションだけ再描画
                     const selectedBoardSettingsContainer = tab.containerEl.querySelector('.selected-board-settings-section');
                     if (selectedBoardSettingsContainer) {
-                        tab.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement, tab.plugin.settings.language || 'ja');
+                        renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement, tab, tab.plugin.settings.language || 'ja');
                     }
                 }));
 
@@ -282,7 +283,7 @@ export function renderSelectedBoardSettingsUI(tab: WidgetBoardSettingTab, contai
                     };
                     currentBoard.widgets.push(newWidget);
                     await tab.plugin.saveSettings(currentBoard.id);
-                    tab.renderWidgetListForBoard(widgetListEl, currentBoard, lang); // widgetListEl は既に定義済み
+                    renderWidgetListForBoard(widgetListEl, tab, currentBoard, lang); // widgetListEl は既に定義済み
                     const widgetDisplayName = widgetTypeName(tab.plugin.settings.language || 'ja', widgetType); // 通知用にも表示名を使用
                     new Notice(`「${widgetDisplayName}」ウィジェットがボード「${currentBoard.name}」に追加されました。`);
                 }));
@@ -300,10 +301,10 @@ export function renderSelectedBoardSettingsUI(tab: WidgetBoardSettingTab, contai
         createAddButtonToBoard(t(lang, 'addTweetWidget'), "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS as unknown as Record<string, unknown>, lang);
         createAddButtonToBoard(t(lang, 'addReflectionWidget'), "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS as unknown as Record<string, unknown>, lang);
 
-        tab.renderWidgetListForBoard(widgetListEl, board, lang);
+        renderWidgetListForBoard(widgetListEl, tab, board, lang);
     }
 
-export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl: HTMLElement, board: BoardConfiguration, lang: import('../i18n').Language) {
+export function renderWidgetListForBoard(containerEl: HTMLElement, tab: WidgetBoardSettingTab, board: BoardConfiguration, lang: import('../i18n').Language) {
         containerEl.empty();
         const widgets = board.widgets;
         if (widgets.length === 0) {
@@ -336,7 +337,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                     // タイトル変更時も同様のロジックで表示名を更新
                     const updatedDisplayName = widget.title || t(lang, 'untitledWidget').replace('{type}', typeName);
                     titleSetting.setName(updatedDisplayName);
-                    tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
+                    notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
                 });
             });
 
@@ -347,7 +348,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             const item = board.widgets.splice(index, 1)[0];
                             board.widgets.splice(index - 1, 0, item);
                             await tab.plugin.saveSettings(board.id);
-                            tab.renderWidgetListForBoard(containerEl, board, lang);
+                            renderWidgetListForBoard(containerEl, tab, board, lang);
                         }
                     }))
                 .addExtraButton(cb => cb.setIcon('arrow-down').setTooltip(t(lang, 'moveDown')).setDisabled(index === widgets.length - 1)
@@ -356,7 +357,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             const item = board.widgets.splice(index, 1)[0];
                             board.widgets.splice(index + 1, 0, item);
                             await tab.plugin.saveSettings(board.id);
-                            tab.renderWidgetListForBoard(containerEl, board, lang);
+                            renderWidgetListForBoard(containerEl, tab, board, lang);
                         }
                     }))
                 .addButton(button => button.setIcon("trash").setTooltip(t(lang, 'deleteWidget')).setWarning()
@@ -366,7 +367,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                         const oldTitle = widget.title || t(lang, 'untitledWidget').replace('{type}', oldWidgetTypeName);
                         board.widgets.splice(index, 1);
                         await tab.plugin.saveSettings(board.id);
-                        tab.renderWidgetListForBoard(containerEl, board, lang);
+                        renderWidgetListForBoard(containerEl, tab, board, lang);
                         new Notice(t(lang, 'widgetDeletedFromBoard').replace('{widgetName}', oldTitle).replace('{boardName}', board.name));
                     }));
 
@@ -416,7 +417,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                                 if (!isNaN(n) && n > 0) {
                                     (currentSettings as unknown as Record<string, unknown>)[key] = n;
                                     await tab.plugin.saveSettings(board.id);
-                                    tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
+                                    notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                                 } else {
                                     new Notice(t(lang, 'enterPositiveNumber'));
                                     text.setValue(String(currentSettings[key]));
@@ -436,7 +437,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                         .onChange(async (v) => {
                             currentSettings.backgroundImageUrl = v.trim();
                             await tab.plugin.saveSettings(board.id);
-                            tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
+                            notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                         }));
 
                 // --- 通知音・エクスポート形式はグローバル設定が適用される旨を表示 ---
@@ -461,7 +462,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             const v = text.inputEl.value;
                             if((widget.settings as MemoWidgetSettings)) (widget.settings as MemoWidgetSettings).memoContent = v;
                             await tab.plugin.saveSettings(board.id);
-                            tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
+                            notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
                         });
                     });
 
@@ -477,7 +478,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             .onChange(async (value) => {
                                 currentSettings.memoHeightMode = value as 'auto' | 'fixed';
                                 await tab.plugin.saveSettings(board.id);
-                                tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
+                                notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                                 if (fixedHeightSettingEl) {
                                     fixedHeightSettingEl.style.display = (value === 'fixed') ? '' : 'none';
                                 }
@@ -499,7 +500,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             if (!isNaN(n) && n > 0) {
                                 currentSettings.fixedHeightPx = n;
                                 await tab.plugin.saveSettings(board.id);
-                                tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
+                                notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             } else {
                                 new Notice(t(lang, 'enterPositiveNumber'));
                                 text.setValue(String(currentSettings.fixedHeightPx ?? 120));
@@ -528,7 +529,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             .onChange(async (value) => {
                                 currentSettings.heightMode = value;
                                 await tab.plugin.saveSettings(board.id);
-                                tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
+                                notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                                 if (fixedHeightSettingEl) {
                                     fixedHeightSettingEl.style.display = (value === 'fixed') ? '' : 'none';
                                 }
@@ -550,7 +551,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             if (!isNaN(n) && n > 0) {
                                 currentSettings.fixedHeightPx = n;
                                 await tab.plugin.saveSettings(board.id);
-                                tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
+                                notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             } else {
                                 new Notice(t(lang, 'enterPositiveNumber'));
                                 text.setValue(String(currentSettings.fixedHeightPx ?? 200));
@@ -577,7 +578,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             const v = text.inputEl.value.trim();
                             (widget.settings as CalendarWidgetSettings).dailyNoteFormat = v || 'YYYY-MM-DD';
                             await tab.plugin.saveSettings(board.id);
-                            tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
+                            notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
                         });
                     });
 
@@ -602,7 +603,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             .onChange(async (value) => {
                                 currentSettings.aiSummaryAutoEnabled = value;
                                 await tab.plugin.saveSettings(board.id);
-                                tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
+                                notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             });
                     });
                 new Setting(reflectionDetailBody)
@@ -619,7 +620,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             if (isNaN(n)) n = -1;
                             currentSettings.aiSummaryAutoIntervalHours = n;
                             await tab.plugin.saveSettings(board.id);
-                            tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
+                            notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                         });
                     });
                 new Setting(reflectionDetailBody)
@@ -630,7 +631,7 @@ export function renderWidgetListForBoard(tab: WidgetBoardSettingTab, containerEl
                             .onChange(async (value) => {
                                 currentSettings.aiSummaryManualEnabled = value;
                                 await tab.plugin.saveSettings(board.id);
-                                tab.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
+                                notifyWidgetInstanceIfBoardOpen(tab, board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             });
                     });
             }
@@ -659,7 +660,7 @@ export function notifyWidgetInstanceIfBoardOpen(tab: WidgetBoardSettingTab,
      * @param containerEl 描画先
      * @param lang 表示言語
      */
-export function renderBoardGroupManagementUI(tab: WidgetBoardSettingTab, containerEl: HTMLElement, lang: import('../i18n').Language) {
+export function renderBoardGroupManagementUI(containerEl: HTMLElement, tab: WidgetBoardSettingTab, lang: import('../i18n').Language) {
         containerEl.empty();
         new Setting(containerEl)
             .setName(t(lang, 'boardGroupManagement'))
@@ -668,7 +669,7 @@ export function renderBoardGroupManagementUI(tab: WidgetBoardSettingTab, contain
                 .setButtonText(t(lang, 'addNewGroup'))
                 .setCta()
                 .onClick(() => {
-                    tab.openBoardGroupEditModal(lang, undefined, undefined); // langを渡す
+                    openBoardGroupEditModal(tab, lang, undefined, undefined); // langを渡す
                 }));
 
         const listEl = containerEl.createDiv({ cls: 'wb-board-group-list' });
@@ -685,13 +686,13 @@ export function renderBoardGroupManagementUI(tab: WidgetBoardSettingTab, contain
 
             new Setting(controlsEl)
                 .addButton(btn => btn.setIcon('pencil').setTooltip(t(lang, 'editGroup')).onClick(() => {
-                    tab.openBoardGroupEditModal(lang, group, index); // langを渡す
+                    openBoardGroupEditModal(tab, lang, group, index); // langを渡す
                 }))
                 .addButton(btn => btn.setIcon('trash').setTooltip(t(lang, 'deleteGroup')).setWarning().onClick(async () => {
                     if (!confirm(t(lang, 'deleteGroupConfirm').replace('{name}', group.name))) return;
                     tab.plugin.settings.boardGroups.splice(index, 1);
                     await tab.plugin.saveSettings();
-                    tab.renderBoardGroupManagementUI(containerEl, lang); // langを渡す
+                    renderBoardGroupManagementUI(containerEl, tab, lang); // langを渡す
                     tab.plugin.registerAllBoardCommands?.();
                 }));
         });
@@ -700,10 +701,10 @@ export function renderBoardGroupManagementUI(tab: WidgetBoardSettingTab, contain
 export function openBoardGroupEditModal(tab: WidgetBoardSettingTab, lang: import('../i18n').Language, group?: import('../interfaces').BoardGroup, editIdx?: number) {
         const onSave = () => {
             if (tab.boardGroupBodyEl) {
-                tab.renderBoardGroupManagementUI(tab.boardGroupBodyEl, lang); // langを渡す
+                renderBoardGroupManagementUI(tab.boardGroupBodyEl, tab, lang); // langを渡す
             }
         };
-        new BoardGroupEditModal(tab.app, tab.plugin, onSave, group, editIdx).open();
+        new BoardGroupEditModal(tab.plugin.app, tab.plugin, onSave, group, editIdx).open();
     }
 export class BoardGroupEditModal extends Modal {
     plugin: WidgetBoardPlugin;
