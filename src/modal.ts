@@ -118,7 +118,7 @@ export class WidgetBoardModal {
         // CSS containmentを適用してレイアウト計算の影響範囲を限定
         this.modalEl.style.contain = 'layout style paint';
         // Style recalculation対策として不可視要素はスキップ
-        this.modalEl.style.contentVisibility = 'auto';
+        (this.modalEl.style as CSSStyleDeclaration & { contentVisibility?: string }).contentVisibility = 'auto';
     }
 
     /**
