@@ -6,6 +6,7 @@ import { extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { renderMermaidInWorker } from '../../utils';
+import { debugLog } from '../../utils/logger';
 
 // --- ユーティリティ関数 ---
 function escapeRegExp(str: string): string {
@@ -839,23 +840,23 @@ export class TweetWidgetUI {
         // Vault内画像のパスをgetResourcePathでURLに変換
         const vaultFiles = this.app.vault.getFiles();
         // デバッグモード判定（なければfalse）
-        const debugLog = this.widget?.plugin?.settings?.debugLogging === true;
+        const debugLogging = this.widget?.plugin?.settings?.debugLogging === true;
         replacedText = replacedText.replace(/!\[\[(.+?)\]\]/g, (match, p1) => {
             let fileName = p1;
             try {
                 const urlMatch = /([^/\\]+?)(\?.*)?$/.exec(p1);
                 if (urlMatch) fileName = urlMatch[1];
             } catch { /* ignore parse errors */ }
-            if (debugLog) {
-                console.log('[tweetWidgetUI] 画像置換: p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
+            if (debugLogging) {
+                debugLog(this.widget?.plugin, '[tweetWidgetUI] 画像置換: p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
             }
             const f = vaultFiles.find(f => f.name === fileName || f.path === fileName || f.path === p1 || f.name === p1);
             if (f) {
-                if (debugLog) console.log('[tweetWidgetUI] マッチしたファイル:', f);
+                if (debugLogging) debugLog(this.widget?.plugin, '[tweetWidgetUI] マッチしたファイル:', f);
                 const url = this.app.vault.getResourcePath(f);
                 return `![](${url})`;
             } else {
-                if (debugLog) console.warn('[tweetWidgetUI] 画像ファイルが見つかりません:', p1);
+                if (debugLogging) debugLog(this.widget?.plugin, '[tweetWidgetUI] 画像ファイルが見つかりません:', p1);
             }
             return match;
         });
@@ -865,16 +866,16 @@ export class TweetWidgetUI {
                 const urlMatch = /([^/\\]+?)(\?.*)?$/.exec(p1);
                 if (urlMatch) fileName = urlMatch[1];
             } catch { /* ignore parse errors */ }
-            if (debugLog) {
-                console.log('[tweetWidgetUI] 画像置換 (md): p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
+            if (debugLogging) {
+                debugLog(this.widget?.plugin, '[tweetWidgetUI] 画像置換 (md): p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
             }
             const f = vaultFiles.find(f => f.name === fileName || f.path === fileName || f.path === p1 || f.name === p1);
             if (f) {
-                if (debugLog) console.log('[tweetWidgetUI] マッチしたファイル (md):', f);
+                if (debugLogging) debugLog(this.widget?.plugin, '[tweetWidgetUI] マッチしたファイル (md):', f);
                 const url = this.app.vault.getResourcePath(f);
                 return `![](${url})`;
             } else {
-                if (debugLog) console.warn('[tweetWidgetUI] 画像ファイルが見つかりません (md):', p1);
+                if (debugLogging) debugLog(this.widget?.plugin, '[tweetWidgetUI] 画像ファイルが見つかりません (md):', p1);
             }
             return match;
         });

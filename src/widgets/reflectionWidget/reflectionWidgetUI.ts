@@ -11,24 +11,22 @@ import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
 import { debugLog } from '../../utils/logger';
 import { renderMermaidInWorker } from '../../utils';
+import type ChartInstance from 'chart.js/auto';
+type ChartConstructor = new (ctx: CanvasRenderingContext2D, config: unknown) => ChartInstance;
 // Chart.js型importはESM/CJS問題回避のためやめる
 
 // --- Mermaid SVGメモリキャッシュ ---
 const mermaidSvgCache = new Map<string, string>();
 // --- まとめHTMLキャッシュ ---
 const summaryHtmlCache = new Map<string, DocumentFragment>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let Chart: any = undefined;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let chartModulePromise: Promise<any> | null = null;
+let Chart: ChartConstructor | undefined = undefined;
+let chartModulePromise: Promise<ChartConstructor> | null = null;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function preloadChartJS(): Promise<any> {
+export function preloadChartJS(): Promise<ChartConstructor> {
     if (!chartModulePromise) {
         chartModulePromise = import('chart.js/auto')
             .then(m => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                Chart = m.default as any;
+                Chart = m.default;
                 return Chart;
             })
             .catch(e => {
@@ -142,8 +140,7 @@ export class ReflectionWidgetUI {
     private app: App;
     private plugin: WidgetBoardPlugin;
     private autoTimer: ReturnType<typeof setInterval> | null = null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private chart: any = null;
+    private chart: ChartInstance | null = null;
     private lastChartData: number[] | null = null;
     private lastTodaySummary: string | null = null;
     private lastWeekSummary: string | null = null;
@@ -170,8 +167,7 @@ export class ReflectionWidgetUI {
     public async render() {
         // Chart.jsの動的import（初回のみ）
         if (this.preloadBundle && this.preloadBundle.chartModule) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            Chart = this.preloadBundle.chartModule as any;
+            Chart = this.preloadBundle.chartModule as ChartConstructor;
         } else if (!Chart) {
             preloadChartJS(); // awaitしないでバックグラウンドでロード
         }
