@@ -23,6 +23,7 @@ describe('TweetWidgetUI', () => {
       setCustomPeriodDays: jest.fn(),
       submitReply: jest.fn(),
       navigateToDetail: jest.fn(),
+      getFilteredPosts: () => [],
     };
     // requestAnimationFrameはテスト用にタイマーで即座に実行
     (global as any).requestAnimationFrame = (cb: FrameRequestCallback) => {
@@ -77,5 +78,19 @@ describe('TweetWidgetUI', () => {
     expect(countEl.textContent).toBe('10 / 140');
     (ui as any).updateCharCount(countEl, 200);
     expect(countEl.classList.contains('tweet-char-over')).toBe(true);
+  });
+
+  it('YouTubeタイトル取得失敗でエラーメッセージが表示される', async () => {
+    const utils = require('../../src/widgets/tweetWidget/tweetWidgetUtils');
+    jest.spyOn(utils, 'fetchYouTubeTitle').mockResolvedValue(null);
+
+    const ui = new TweetWidgetUI(widget, container);
+    ui.render();
+    const textarea = container.querySelector('.tweet-textarea-main') as HTMLTextAreaElement;
+    const suggest = container.querySelector('.tweet-youtube-suggest') as HTMLElement;
+    textarea.value = 'https://youtu.be/abcdefghijk';
+    textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    await Promise.resolve();
+    expect(suggest.textContent).toBe('動画タイトル取得失敗');
   });
 });

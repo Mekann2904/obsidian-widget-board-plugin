@@ -72,6 +72,16 @@ describe('TweetWidget', () => {
     expect(widget.currentSettings.posts[0].liked).toBe(true);
   });
 
+  it('存在しないIDのtoggleLikeで状態が変わらない', async () => {
+    const widget = new TweetWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await new Promise(res => setTimeout(res, 0));
+    await widget.submitPost('test');
+    const before = widget.currentSettings.posts[0].liked;
+    await expect(widget.toggleLike('nope')).resolves.toBeUndefined();
+    expect(widget.currentSettings.posts[0].liked).toBe(before);
+  });
+
   it('tweet-widgetクラスとタイトルが付与される', () => {
     const widget = new TweetWidget();
     const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
