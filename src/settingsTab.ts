@@ -15,26 +15,16 @@ import { DEFAULT_CALENDAR_SETTINGS } from './settingsDefaults';
 import type { CalendarWidgetSettings } from './widgets/calendar';
 import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recent-notes';
 import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timer-stopwatch';
-import { DEFAULT_TWEET_WIDGET_SETTINGS } from 'src/widgets/tweetWidget/constants';
+import { DEFAULT_TWEET_WIDGET_SETTINGS } from './widgets/tweetWidget/constants';
 import { TweetRepository } from './widgets/tweetWidget';
 import { computeNextTime, ScheduleOptions } from './widgets/tweetWidget/scheduleUtils';
 import type { ScheduledTweet } from './widgets/tweetWidget/types';
 import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 import { obfuscate, deobfuscate } from './utils';
+import { widgetTypeName, t, LANGUAGE_NAMES } from './i18n/index';
+import type { Language } from './i18n/index';
+import { createAccordion } from './utils/uiHelpers';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
-
-// ウィジェットタイプに対応する表示名のマッピング
-const WIDGET_TYPE_DISPLAY_NAMES: { [key: string]: string } = {
-    'pomodoro': 'ポモドーロタイマー',
-    'memo': 'メモ',
-    'timer-stopwatch': 'タイマー/ストップウォッチ',
-    'calendar': 'カレンダー',
-    'recent-notes': '最近編集したノート',
-    'theme-switcher': 'テーマ切り替え',
-    'file-view': 'ファイルビューア',
-    'tweet-widget': 'つぶやき',
-    'reflection-widget': '振り返りレポート',
-};
 
 /**
  * プラグインの「ウィジェットボード設定」タブを管理するクラス
@@ -65,13 +55,16 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        new Setting(containerEl).setName('ウィジェットボード設定').setHeading();
+        const lang: Language = (['ja', 'en'] as const).includes(this.plugin.settings.language as Language)
+            ? (this.plugin.settings.language as Language)
+            : 'ja';
+        new Setting(containerEl).setName(t(lang, 'settingTabHeading')).setHeading();
         // --- ベースフォルダ入力欄 ---
         const baseFolderSetting = new Setting(containerEl)
-            .setName('ベースフォルダ（グローバル）')
-            .setDesc('全ウィジェット共通のデータ保存先となるVault内のフォルダを指定します（例: myfolder）。\nこのフォルダ配下に各ウィジェットのデータやノートが保存されます。');
+            .setName(t(lang, 'baseFolderGlobal'))
+            .setDesc(t(lang, 'baseFolderGlobalDesc'));
         baseFolderSetting.addText(text => {
-            text.setPlaceholder('myfolder')
+            text.setPlaceholder(t(lang, 'myfolderPlaceholder'))
                 .setValue(this.plugin.settings.baseFolder || '')
                 .onChange(async () => {
                     // 入力途中は何もしない
@@ -79,7 +72,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             text.inputEl.addEventListener('blur', async () => {
                 let v = text.inputEl.value.trim();
                 if (v.startsWith('/') || v.match(/^([A-Za-z]:\\|\\|~)/)) {
-                    new Notice('Vault内の相対パスのみ指定できます。絶対パスやVault外は不可です。');
+                    new Notice(t(lang, 'vaultRelativePathOnly'));
                     text.setValue(this.plugin.settings.baseFolder || '');
                     return;
                 }
@@ -118,10 +111,24 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         });
 
+        // 言語設定
+        new Setting(containerEl)
+            .setName(t(lang, 'languageSetting'))
+            .addDropdown(drop => {
+                Object.entries(LANGUAGE_NAMES).forEach(([value, label]) => {
+                    drop.addOption(value, label);
+                });
+                drop.setValue(this.plugin.settings.language || 'ja')
+                    .onChange(async (value) => {
+                        this.plugin.settings.language = value as Language;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    });
+            });
 
         new Setting(containerEl)
-            .setName('デバッグログを有効にする')
-            .setDesc('コンソールに開発用のデバッグ情報を出力します。')
+            .setName(t(lang, 'debugLog'))
+            .setDesc(t(lang, 'debugLogDesc'))
             .addToggle(toggle => {
                 toggle.setValue(this.plugin.settings.debugLogging ?? false)
                     .onChange(async (value) => {
@@ -130,43 +137,30 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
 
-        // --- アコーディオン生成ヘルパー (トップレベル用) ---
-        const createAccordion = (title: string, defaultOpen: boolean = false) => {
-            const acc = containerEl.createDiv({ cls: 'wb-accordion' + (defaultOpen ? ' wb-accordion-open' : '') });
-            const header = acc.createDiv({ cls: 'wb-accordion-header' });
-            const icon = header.createSpan({ cls: 'wb-accordion-icon' });
-            icon.setText('▶');
-            header.appendText(title);
-            const body = acc.createDiv({ cls: 'wb-accordion-body' });
-
-            if (defaultOpen) {
-                header.addClass('wb-accordion-open');
-                // icon.setText('▼'); // アイコンを開いた状態にする場合
-            } else {
-                body.style.display = 'none'; // 初期状態で閉じていればbodyも非表示
-            }
-
-            header.addEventListener('click', (event) => {
-                // ヘッダー自身がクリックされた場合のみ開閉
-                if (event.currentTarget !== event.target) return;
-                const isOpen = acc.classList.toggle('wb-accordion-open');
-                header.classList.toggle('wb-accordion-open');
-                // icon.setText(isOpen ? '▼' : '▶'); // アイコン切り替え
-                body.style.display = isOpen ? '' : 'none';
-            });
-            return { acc, header, body };
-        };
-
         // --- ポモドーロ（グローバル設定） ---
-        const pomoAcc = createAccordion('ポモドーロ（グローバル設定）', false); // デフォルトで閉じる
+        this.renderPomodoroSettings(containerEl, lang);
+        // --- タイマー／ストップウォッチ通知音（全体設定） ---
+        this.renderTimerSettings(containerEl, lang);
+        // --- LLMグローバル設定 ---
+        this.renderLLMSettings(containerEl, lang);
+        // --- つぶやき（グローバル設定） ---
+        this.renderTweetWidgetSettings(containerEl, lang);
+        // --- カレンダー（グローバル設定） ---
+        this.renderCalendarSettings(containerEl, lang);
+        this.renderBoardManagementSection(containerEl, lang);
+        this.renderBoardGroupSection(containerEl, lang);
+    }
+
+    private renderPomodoroSettings(containerEl: HTMLElement, lang: Language) {
+        const pomoAcc = createAccordion(containerEl, t(lang, 'pomoGlobalSetting'), false); // デフォルトで閉じる
         new Setting(pomoAcc.body)
-            .setName('通知音')
-            .setDesc('全てのポモドーロタイマーで使う通知音（個別設定より優先）')
+            .setName(t(lang, 'notificationSound'))
+            .setDesc(t(lang, 'pomodoroNotificationSoundDesc'))
             .addDropdown(dropdown => {
-                dropdown.addOption('off', 'なし');
-                dropdown.addOption('default_beep', 'ビープ音');
-                dropdown.addOption('bell', 'ベル');
-                dropdown.addOption('chime', 'チャイム');
+                dropdown.addOption('off', t(lang, 'off'));
+                dropdown.addOption('default_beep', t(lang, 'beep'));
+                dropdown.addOption('bell', t(lang, 'bell'));
+                dropdown.addOption('chime', t(lang, 'chime'));
                 dropdown.setValue(this.plugin.settings.pomodoroNotificationSound || 'default_beep')
                     .onChange(async (value) => {
                         this.plugin.settings.pomodoroNotificationSound = value as PomodoroSoundType;
@@ -175,7 +169,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             })
             .addExtraButton(btn => {
                 btn.setIcon('play');
-                btn.setTooltip('音を聞く');
+                btn.setTooltip(t(lang, 'playSound'));
                 btn.onClick(() => {
                     playTestNotificationSound(
                         this.plugin,
@@ -185,8 +179,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 });
             });
         new Setting(pomoAcc.body)
-            .setName('通知音量')
-            .setDesc('通知音の音量（0.0〜1.0）')
+            .setName(t(lang, 'notificationVolume'))
+            .setDesc(t(lang, 'notificationVolumeDesc'))
             .addSlider(slider => {
                 slider.setLimits(0, 1, 0.01)
                     .setValue(this.plugin.settings.pomodoroNotificationVolume ?? 0.2);
@@ -203,8 +197,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // --- ポモドーロ終了時に該当ボードを自動で開く ---
         new Setting(pomoAcc.body)
-            .setName('ポモドーロ終了時に該当ボードを自動で開く')
-            .setDesc('ONにすると、ポモドーロが終了したときにこのウィジェットが属するボードを自動で開きます。')
+            .setName(t(lang, 'openBoardOnPomodoroEnd'))
+            .setDesc(t(lang, 'openBoardOnPomodoroEndDesc'))
             .addToggle(toggle => {
                 toggle.setValue(this.plugin.settings.openBoardOnPomodoroEnd ?? false)
                     .onChange(async (value) => {
@@ -214,8 +208,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // --- ポモドーロ終了時に自動で次のセッションを開始 ---
         new Setting(pomoAcc.body)
-            .setName('ポモドーロ終了時に自動で次のセッションを開始')
-            .setDesc('ONにすると、ポモドーロが終了したときに自動で次のセッションを開始します。')
+            .setName(t(lang, 'autoStartNextPomodoroSession'))
+            .setDesc(t(lang, 'autoStartNextPomodoroSessionDesc'))
             .addToggle(toggle => {
                 toggle.setValue(this.plugin.settings.autoStartNextPomodoroSession ?? false)
                     .onChange(async (value) => {
@@ -225,10 +219,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // --- エクスポート形式（グローバル設定） ---
         new Setting(pomoAcc.body)
-            .setName('エクスポート形式')
-            .setDesc('全てのポモドーロタイマーで使うログ記録形式（個別設定より優先）')
+            .setName(t(lang, 'exportFormat'))
+            .setDesc(t(lang, 'exportFormatDesc'))
             .addDropdown(dropdown => {
-                dropdown.addOption('none', '保存しない');
+                dropdown.addOption('none', t(lang, 'notSave'));
                 dropdown.addOption('csv', 'CSV');
                 dropdown.addOption('json', 'JSON');
                 dropdown.addOption('markdown', 'Markdown');
@@ -238,17 +232,18 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+    }
 
-        // --- タイマー／ストップウォッチ通知音（全体設定） ---
-        const timerAcc = createAccordion('タイマー／ストップウォッチ（グローバル設定）', false); // デフォルトで閉じる
+    private renderTimerSettings(containerEl: HTMLElement, lang: Language) {
+        const timerAcc = createAccordion(containerEl, t(lang, 'timerGlobalSetting'), false); // デフォルトで閉じる
         new Setting(timerAcc.body)
-            .setName('通知音')
-            .setDesc('全てのタイマー／ストップウォッチで使う通知音（個別設定より優先）')
+            .setName(t(lang, 'notificationSound'))
+            .setDesc(t(lang, 'timerNotificationSoundDesc'))
             .addDropdown(dropdown => {
-                dropdown.addOption('off', 'なし');
-                dropdown.addOption('default_beep', 'ビープ音');
-                dropdown.addOption('bell', 'ベル');
-                dropdown.addOption('chime', 'チャイム');
+                dropdown.addOption('off', t(lang, 'off'));
+                dropdown.addOption('default_beep', t(lang, 'beep'));
+                dropdown.addOption('bell', t(lang, 'bell'));
+                dropdown.addOption('chime', t(lang, 'chime'));
                 dropdown.setValue(this.plugin.settings.timerStopwatchNotificationSound || 'default_beep')
                     .onChange(async (value) => {
                         this.plugin.settings.timerStopwatchNotificationSound = value as import("./widgets/timer-stopwatch").TimerSoundType;
@@ -257,7 +252,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             })
             .addExtraButton(btn => {
                 btn.setIcon('play');
-                btn.setTooltip('音を聞く');
+                btn.setTooltip(t(lang, 'playSound'));
                 btn.onClick(() => {
                     playTestNotificationSound(
                         this.plugin,
@@ -267,8 +262,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 });
             });
         new Setting(timerAcc.body)
-            .setName('通知音量')
-            .setDesc('通知音の音量（0.0〜1.0）')
+            .setName(t(lang, 'notificationVolume'))
+            .setDesc(t(lang, 'notificationVolumeDesc'))
             .addSlider(slider => {
                 slider.setLimits(0, 1, 0.01)
                     .setValue(this.plugin.settings.timerStopwatchNotificationVolume ?? 0.5);
@@ -283,14 +278,15 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 });
             });
+    }
 
-        // --- LLMグローバル設定 ---
-        const llmAcc = createAccordion('LLM（グローバル設定）', false);
+    private renderLLMSettings(containerEl: HTMLElement, lang: Language) {
+        const llmAcc = createAccordion(containerEl, t(lang, 'llmGlobalSetting'), false);
         new Setting(llmAcc.body).setName('Gemini').setHeading();
         // Gemini APIキー
         new Setting(llmAcc.body)
-            .setName('Gemini APIキー')
-            .setDesc('Google Gemini APIのキーを入力してください。')
+            .setName(t(lang, 'geminiApiKey'))
+            .setDesc(t(lang, 'geminiApiKeyDesc'))
             .addText(text => {
                 text.inputEl.type = 'password'; // マスキング
                 text.setPlaceholder('sk-...')
@@ -299,15 +295,15 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 // 表示/非表示トグルボタン
                 const toggleBtn = document.createElement('button');
                 toggleBtn.type = 'button';
-                toggleBtn.textContent = '表示';
+                toggleBtn.textContent = t(lang, 'show');
                 toggleBtn.style.marginLeft = '8px';
                 toggleBtn.onclick = () => {
                     if (text.inputEl.type === 'password') {
                         text.inputEl.type = 'text';
-                        toggleBtn.textContent = '非表示';
+                        toggleBtn.textContent = t(lang, 'hide');
                     } else {
                         text.inputEl.type = 'password';
-                        toggleBtn.textContent = '表示';
+                        toggleBtn.textContent = t(lang, 'show');
                     }
                 };
                 text.inputEl.parentElement?.appendChild(toggleBtn);
@@ -325,8 +321,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // Gemini モデル名
         new Setting(llmAcc.body)
-            .setName('モデル名')
-            .setDesc('例: gemini-2.0-flash-exp')
+            .setName(t(lang, 'llmModelName'))
+            .setDesc(t(lang, 'llmModelNameExample'))
             .addText(text => {
                 text.setValue(this.plugin.settings.llm?.gemini?.model || 'gemini-2.0-flash-exp')
                     .onChange(async (v) => {
@@ -337,8 +333,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // つぶやきAI返信用モデル名
         new Setting(llmAcc.body)
-            .setName('つぶやきAI返信用モデル名')
-            .setDesc('空欄の場合は上記モデル名を使用')
+            .setName(t(lang, 'tweetAiModelName'))
+            .setDesc(t(lang, 'tweetAiModelNameDesc'))
             .addText(text => {
                 text.setPlaceholder('例: gemini-1.5-flash-latest')
                     .setValue(this.plugin.settings.tweetAiModel || '')
@@ -349,8 +345,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // 振り返りAI要約用モデル名
         new Setting(llmAcc.body)
-            .setName('振り返りAI要約用モデル名')
-            .setDesc('空欄の場合は上記モデル名を使用')
+            .setName(t(lang, 'reflectionAiModelName'))
+            .setDesc(t(lang, 'reflectionAiModelNameDesc'))
             .addText(text => {
                 text.setPlaceholder('例: gemini-2.0-flash-exp')
                     .setValue(this.plugin.settings.reflectionAiModel || '')
@@ -359,13 +355,12 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
-
         // --- ユーザプロンプト（今日用） ---
         new Setting(llmAcc.body)
-            .setName('ユーザプロンプト（振り返りレポート 今日用）')
-            .setDesc('AI要約で使うカスタムプロンプト（今日のまとめ）。{posts}が投稿一覧に置換されます。空欄の場合はデフォルトプロンプトが使われます。')
+            .setName(t(lang, 'userSummaryPromptToday'))
+            .setDesc(t(lang, 'userSummaryPromptTodayDesc'))
             .addTextArea(text => {
-                text.setPlaceholder('カスタムプロンプトを入力')
+                text.setPlaceholder(t(lang, 'enterCustomPrompt'))
                     .setValue(this.plugin.settings.userSummaryPromptToday || '')
                     .onChange(async (v) => {
                         this.plugin.settings.userSummaryPromptToday = v;
@@ -374,10 +369,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // --- ユーザプロンプト（今週用） ---
         new Setting(llmAcc.body)
-            .setName('ユーザプロンプト（振り返りレポート 今週用）')
-            .setDesc('AI要約で使うカスタムプロンプト（今週のまとめ）。{posts}が投稿一覧に置換されます。空欄の場合はデフォルトプロンプトが使われます。')
+            .setName(t(lang, 'userSummaryPromptWeek'))
+            .setDesc(t(lang, 'userSummaryPromptWeekDesc'))
             .addTextArea(text => {
-                text.setPlaceholder('カスタムプロンプトを入力')
+                text.setPlaceholder(t(lang, 'enterCustomPrompt'))
                     .setValue(this.plugin.settings.userSummaryPromptWeek || '')
                     .onChange(async (v) => {
                         this.plugin.settings.userSummaryPromptWeek = v;
@@ -386,25 +381,25 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // --- ユーザプロンプト（つぶやき用） ---
         new Setting(llmAcc.body)
-            .setName('ユーザプロンプト（つぶやき用）')
-            .setDesc('つぶやきウィジェットのAI返信で使うカスタムプロンプト。{tweet}や{postDate}が投稿内容・日時に置換されます。空欄の場合はデフォルトプロンプトが使われます。')
+            .setName(t(lang, 'userTweetPrompt'))
+            .setDesc(t(lang, 'userTweetPromptDesc'))
             .addTextArea(text => {
-                text.setPlaceholder('カスタムプロンプトを入力')
+                text.setPlaceholder(t(lang, 'enterCustomPrompt'))
                     .setValue(this.plugin.settings.userTweetPrompt || '')
                     .onChange(async (v) => {
                         this.plugin.settings.userTweetPrompt = v;
                         await this.plugin.saveSettings();
                     });
             });
+    }
 
-        // --- つぶやき（グローバル設定） ---
-        const tweetGlobalAcc = createAccordion('つぶやき（グローバル設定）', false);
-        // ユーザー一覧セクション
-        new Setting(tweetGlobalAcc.body).setName('ユーザー一覧（グローバル）').setHeading();
+    private renderTweetWidgetSettings(containerEl: HTMLElement, lang: Language) {
+        const tweetGlobalAcc = createAccordion(containerEl, t(lang, 'tweetWidgetGlobalSettings'), false);
+        // ユーザー一覧セクションのみ先に切り出し
+        new Setting(tweetGlobalAcc.body).setName(t(lang, 'userListGlobal')).setHeading();
         const userListDiv = tweetGlobalAcc.body.createDiv({ cls: 'tweet-user-list-table' });
         const renderUserList = () => {
             userListDiv.empty();
-            // '@you'ユーザーがいなければ必ず先頭に追加
             if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
             if (!this.plugin.settings.userProfiles.some(p => p.userId === '@you')) {
                 this.plugin.settings.userProfiles.unshift({ userName: 'あなた', userId: '@you', avatarUrl: '' });
@@ -412,12 +407,11 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             const table = userListDiv.createEl('table', { cls: 'tweet-user-table' });
             const thead = table.createEl('thead');
             const headerRow = thead.createEl('tr');
-            ['ユーザー名', 'ユーザーID', 'アバターURL', ''].forEach(h => headerRow.createEl('th', { text: h }));
+            [t(lang, 'userName'), t(lang, 'userId'), t(lang, 'avatarUrl'), ''].forEach(h => headerRow.createEl('th', { text: h }));
             const tbody = table.createEl('tbody');
             (this.plugin.settings.userProfiles || []).forEach((profile, idx) => {
                 const isSelf = profile.userId === '@you';
                 const row = tbody.createEl('tr');
-                // ユーザー名
                 const nameTd = row.createEl('td');
                 const nameInput = nameTd.createEl('input', { type: 'text', value: profile.userName || '', placeholder: '例: あなた' });
                 nameInput.onchange = async () => {
@@ -425,7 +419,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     this.plugin.settings.userProfiles[idx].userName = nameInput.value;
                     await this.plugin.saveSettings();
                 };
-                // ユーザーID
                 const idTd = row.createEl('td');
                 const idInput = idTd.createEl('input', { type: 'text', value: profile.userId || '', placeholder: '例: @you' });
                 if (isSelf) idInput.disabled = true;
@@ -434,7 +427,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     this.plugin.settings.userProfiles[idx].userId = idInput.value;
                     await this.plugin.saveSettings();
                 };
-                // アバターURL
                 const avatarTd = row.createEl('td');
                 const avatarInput = avatarTd.createEl('input', { type: 'text', value: profile.avatarUrl || '', placeholder: 'https://example.com/avatar.png' });
                 avatarInput.onchange = async () => {
@@ -442,10 +434,9 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     this.plugin.settings.userProfiles[idx].avatarUrl = avatarInput.value;
                     await this.plugin.saveSettings();
                 };
-                // 削除ボタン
                 const delTd = row.createEl('td');
                 if (!isSelf) {
-                    const delBtn = delTd.createEl('button', { text: '削除', cls: 'mod-warning' });
+                    const delBtn = delTd.createEl('button', { text: t(lang, 'delete'), cls: 'mod-warning' });
                     delBtn.onclick = async () => {
                         if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
                         this.plugin.settings.userProfiles.splice(idx, 1);
@@ -454,10 +445,9 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     };
                 }
             });
-            // 追加ボタン
             const addTr = tbody.createEl('tr');
             addTr.createEl('td', { attr: { colspan: 4 } });
-            const addBtn = addTr.createEl('button', { text: '＋ ユーザーを追加', cls: 'mod-cta' });
+            const addBtn = addTr.createEl('button', { text: t(lang, 'addUser'), cls: 'mod-cta' });
             addBtn.onclick = async () => {
                 if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
                 this.plugin.settings.userProfiles.push({ userName: '', userId: '', avatarUrl: '' });
@@ -466,9 +456,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             };
         };
         renderUserList();
+
         // --- AIリプライ発火上限設定 ---
         new Setting(tweetGlobalAcc.body)
-            .setName('AIリプライをトリガーワードなしでも自動発火させる')
+            .setName(t(lang, 'aiReplyTriggerless'))
             .setDesc('ONにすると「@ai」や「#ai-reply」などのトリガーワードがなくても、全ての投稿がAIリプライ候補になります。')
             .addToggle(toggle => {
                 toggle.setValue(this.plugin.settings.aiReplyTriggerless ?? false)
@@ -478,8 +469,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
         new Setting(tweetGlobalAcc.body)
-            .setName('AIリプライの1分あたり発火上限（RPM）')
-            .setDesc('-1で無制限。0は発火しません。')
+            .setName(t(lang, 'aiReplyRpm'))
+            .setDesc(t(lang, 'aiReplyRpmDesc'))
             .addText(text => {
                 text.setPlaceholder('-1（無制限）')
                     .setValue(String(this.plugin.settings.aiReplyRpm ?? 2))
@@ -491,8 +482,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
         new Setting(tweetGlobalAcc.body)
-            .setName('AIリプライの1日あたり発火上限（RPD）')
-            .setDesc('-1で無制限。0は発火しません。')
+            .setName(t(lang, 'aiReplyRpd'))
+            .setDesc(t(lang, 'aiReplyRpdDesc'))
             .addText(text => {
                 text.setPlaceholder('-1（無制限）')
                     .setValue(String(this.plugin.settings.aiReplyRpd ?? 10))
@@ -505,8 +496,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // ユーザーアイコンURL
         new Setting(tweetGlobalAcc.body)
-            .setName('ユーザーアイコンURL')
-            .setDesc('つぶやきウィジェットで使うアバター画像のURLを指定してください（例: https://.../avatar.png）')
+            .setName(t(lang, 'userIconUrl'))
+            .setDesc(t(lang, 'userIconUrlDesc'))
             .addText(text => {
                 text.setPlaceholder('https://example.com/avatar.png')
                     .setValue(this.plugin.settings.tweetWidgetAvatarUrl || '')
@@ -517,7 +508,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     const v = text.inputEl.value.trim();
                     this.plugin.settings.tweetWidgetAvatarUrl = v;
                     await this.plugin.saveSettings();
-                    // すべてのtweet-widgetインスタンスに反映
                     this.plugin.settings.boards.forEach(board => {
                         board.widgets.filter(w => w.type === 'tweet-widget').forEach(w => {
                             if (!w.settings) w.settings = {};
@@ -528,8 +518,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // AIの会話履歴を表示
         new Setting(tweetGlobalAcc.body)
-            .setName('AIの会話履歴を表示')
-            .setDesc('AIリプライの下に会話履歴を表示する（デフォルト: オフ）')
+            .setName(t(lang, 'showAiHistory'))
+            .setDesc(t(lang, 'showAiHistoryDesc'))
             .addToggle(toggle => {
                 toggle.setValue(this.plugin.settings.showAiHistory ?? false)
                     .onChange(async (value) => {
@@ -539,8 +529,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // AIアバター画像URLリスト
         new Setting(tweetGlobalAcc.body)
-            .setName('AIアバター画像URLリスト')
-            .setDesc('AIごとに使い分けるアバター画像のURLをカンマ区切りで指定（例: https://.../ai1.png, https://.../ai2.png）')
+            .setName(t(lang, 'aiAvatarUrls'))
+            .setDesc(t(lang, 'aiAvatarUrlsDesc'))
             .addTextArea(text => {
                 text.setPlaceholder('https://example.com/ai1.png, https://example.com/ai2.png')
                     .setValue(this.plugin.settings.aiAvatarUrls || '')
@@ -551,8 +541,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // --- AIリプライ遅延設定 ---
         new Setting(tweetGlobalAcc.body)
-            .setName('AIリプライの最小遅延（ms）')
-            .setDesc('AIリプライを送るまでの最小待機時間（ミリ秒）。例: 1500 = 1.5秒')
+            .setName(t(lang, 'aiReplyDelayMin'))
+            .setDesc(t(lang, 'aiReplyDelayMinDesc'))
             .addText(text => {
                 text.setPlaceholder('1500')
                     .setValue(String(this.plugin.settings.aiReplyDelayMinMs ?? 1500))
@@ -564,8 +554,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
         new Setting(tweetGlobalAcc.body)
-            .setName('AIリプライの最大遅延（ms）')
-            .setDesc('AIリプライを送るまでの最大待機時間（ミリ秒）。例: 7000 = 7秒')
+            .setName(t(lang, 'aiReplyDelayMax'))
+            .setDesc(t(lang, 'aiReplyDelayMaxDesc'))
             .addText(text => {
                 text.setPlaceholder('7000')
                     .setValue(String(this.plugin.settings.aiReplyDelayMaxMs ?? 7000))
@@ -578,16 +568,16 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
         // --- つぶやきウィジェットのデフォルト表示期間 ---
         new Setting(tweetGlobalAcc.body)
-            .setName('つぶやきウィジェットのデフォルト表示期間')
-            .setDesc('つぶやきウィジェットを開いたときに最初に表示される期間を選択できます。')
+            .setName(t(lang, 'tweetDefaultPeriod'))
+            .setDesc(t(lang, 'tweetDefaultPeriodDesc'))
             .addDropdown(dropdown => {
-                dropdown.addOption('all', '全期間');
-                dropdown.addOption('today', '今日');
-                dropdown.addOption('1d', '1日');
-                dropdown.addOption('3d', '3日');
-                dropdown.addOption('7d', '1週間');
-                dropdown.addOption('30d', '1ヶ月');
-                dropdown.addOption('custom', 'カスタム');
+                dropdown.addOption('all', t(lang, 'allTime'));
+                dropdown.addOption('today', t(lang, 'today'));
+                dropdown.addOption('1d', t(lang, 'oneDay'));
+                dropdown.addOption('3d', t(lang, 'threeDays'));
+                dropdown.addOption('7d', t(lang, 'oneWeek'));
+                dropdown.addOption('30d', t(lang, 'oneMonth'));
+                dropdown.addOption('custom', t(lang, 'custom'));
                 dropdown.setValue(this.plugin.settings.defaultTweetPeriod || 'all')
                     .onChange(async (value) => {
                         this.plugin.settings.defaultTweetPeriod = value;
@@ -595,8 +585,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
         new Setting(tweetGlobalAcc.body)
-            .setName('つぶやきウィジェットのカスタム期間（日数）')
-            .setDesc('デフォルト期間が「カスタム」の場合に使われます。')
+            .setName(t(lang, 'tweetDefaultCustomDays'))
+            .setDesc(t(lang, 'tweetDefaultCustomDaysDesc'))
             .addText(text => {
                 text.setPlaceholder('1')
                     .setValue(String(this.plugin.settings.defaultTweetCustomDays ?? 1))
@@ -609,9 +599,9 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             });
 
         new Setting(tweetGlobalAcc.body)
-            .setName('予約投稿を追加')
-            .setDesc('指定した日時に自動投稿するメッセージを登録します')
-            .addButton(btn => btn.setButtonText('追加').setCta().onClick(() => {
+            .setName(t(lang, 'addScheduledTweet'))
+            .setDesc(t(lang, 'addScheduledTweetDesc'))
+            .addButton(btn => btn.setButtonText(t(lang, 'add')).setCta().onClick(() => {
                 this.openScheduleTweetModal();
             }));
 
@@ -621,104 +611,74 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             const settings = await repo.load();
             const scheduledPosts = settings.scheduledPosts || [];
             const listDiv = tweetGlobalAcc.body.createDiv({ cls: 'scheduled-tweet-list' });
-            new Setting(listDiv).setName('予約投稿一覧').setHeading();
+            new Setting(listDiv).setName(t(lang, 'scheduledPostList')).setHeading();
             if (scheduledPosts.length === 0) {
-                listDiv.createEl('div', { text: '現在、予約投稿はありません。', cls: 'scheduled-tweet-empty' });
+                listDiv.createEl('div', { text: t(lang, 'noScheduledPosts'), cls: 'scheduled-tweet-empty' });
             } else {
+                const daysOfWeekKeys = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'] as const;
                 scheduledPosts.forEach((sched, idx) => {
                     const item = listDiv.createDiv({ cls: 'scheduled-tweet-item' });
                     const main = item.createDiv({ cls: 'scheduled-tweet-item-main' });
                     main.createEl('div', { text: sched.text, cls: 'scheduled-tweet-text' });
-                    let info = `時刻: ${sched.hour.toString().padStart(2, '0')}:${sched.minute.toString().padStart(2, '0')}`;
+                    let info = `${t(lang, 'time')}: ${sched.hour.toString().padStart(2, '0')}:${sched.minute.toString().padStart(2, '0')}`;
                     if (sched.daysOfWeek && sched.daysOfWeek.length > 0) {
-                        info += `  曜日: ${sched.daysOfWeek.map(d => ['日','月','火','水','木','金','土'][d]).join(',')}`;
+                        info += `  ${t(lang, 'daysOfWeek')}: ${sched.daysOfWeek.map(d => t(lang, daysOfWeekKeys[d])).join(',')}`;
                     }
-                    if (sched.startDate) info += `  開始: ${sched.startDate}`;
-                    if (sched.endDate) info += `  終了: ${sched.endDate}`;
+                    if (sched.startDate) info += `  ${t(lang, 'startDate')}: ${sched.startDate}`;
+                    if (sched.endDate) info += `  ${t(lang, 'endDate')}: ${sched.endDate}`;
                     main.createEl('div', { text: info, cls: 'scheduled-tweet-info' });
-                    // ボタン横並び
                     const actions = item.createDiv({ cls: 'scheduled-tweet-actions' });
-                    const editBtn = actions.createEl('button', { text: '編集', cls: 'scheduled-tweet-edit-btn' });
+                    const editBtn = actions.createEl('button', { text: t(lang, 'edit'), cls: 'scheduled-tweet-edit-btn' });
                     editBtn.onclick = () => {
                         this.openScheduleTweetModal(sched, idx);
                     };
-                    const delBtn = actions.createEl('button', { text: '削除', cls: 'scheduled-tweet-delete-btn' });
+                    const delBtn = actions.createEl('button', { text: t(lang, 'delete'), cls: 'scheduled-tweet-delete-btn' });
                     delBtn.onclick = async () => {
-                        if (!confirm('この予約投稿を削除しますか？')) return;
+                        if (!confirm(t(lang, 'deleteScheduledPostConfirm'))) return;
                         scheduledPosts.splice(idx, 1);
                         await repo.save({ ...settings, scheduledPosts });
-                        new Notice('予約投稿を削除しました');
+                        new Notice(t(lang, 'scheduledPostDeleted'));
                         listDiv.remove();
-                        // 再描画
                         this.display();
                     };
                 });
             }
         })();
+    }
 
-        // --- カレンダー（グローバル設定） ---
-        const calendarAcc = createAccordion('カレンダー（グローバル設定）', false);
-        new Setting(calendarAcc.body)
-            .setName('デイリーノートファイル名フォーマット（全体）')
-            .setDesc('例: YYYY-MM-DD, YYYY-MM-DD.md など。YYYY, MM, DDが日付に置換されます。カレンダーウィジェットのデフォルト値になります。Moment.jsのフォーマットリファレンス（https://momentjs.com/docs/#/displaying/format/）に準拠。')
-            .addText(text => {
-                text.setPlaceholder('YYYY-MM-DD')
-                    .setValue(this.plugin.settings.calendarDailyNoteFormat || 'YYYY-MM-DD')
-                    .onChange(async () => {
-                        // 入力途中は何もしない
-                    });
-                text.inputEl.addEventListener('blur', async () => {
-                    const v = text.inputEl.value.trim();
-                    this.plugin.settings.calendarDailyNoteFormat = v || 'YYYY-MM-DD';
-                    await this.plugin.saveSettings();
-                });
-            });
-        new Setting(calendarAcc.body)
-            .setName('週の開始曜日')
-            .setDesc('カレンダーや要約の週範囲に使用する開始曜日です。')
-            .addDropdown(drop => {
-                const labels = ['日曜日','月曜日','火曜日','水曜日','木曜日','金曜日','土曜日'];
-                labels.forEach((l, i) => drop.addOption(String(i), l));
-                drop.setValue(String(this.plugin.settings.weekStartDay ?? 1));
-                drop.onChange(async value => {
-                    this.plugin.settings.weekStartDay = parseInt(value, 10);
-                    await this.plugin.saveSettings();
-                });
-            });
-
-        // --- ボード管理セクション ---
-        const boardManagementAcc = createAccordion('ボード管理', false); // デフォルトで閉じる
-        this.renderBoardManagementUI(boardManagementAcc.body);
+    private renderBoardManagementSection(containerEl: HTMLElement, lang: Language) {
+        const boardManagementAcc = createAccordion(containerEl, t(lang, 'boardManagement'), false); // デフォルトで閉じる
+        this.renderBoardManagementUI(boardManagementAcc.body, lang); // langを渡す
         // --- 選択されたボードの詳細設定をボード管理アコーディオン内に表示 ---
         const boardDetailContainer = boardManagementAcc.body.createDiv({ cls: 'selected-board-settings-section' });
         if (this.selectedBoardId) {
-            this.renderSelectedBoardSettingsUI(boardDetailContainer);
+            this.renderSelectedBoardSettingsUI(boardDetailContainer, lang);
         } else {
-            const msg = this.plugin.settings.boards.length === 0 ? '利用可能なボードがありません。「ボード管理」から新しいボードを追加してください。' : '設定するボードを「ボード管理」から選択してください。';
+            const msg = this.plugin.settings.boards.length === 0 ? t(lang, 'noBoards') : t(lang, 'selectBoardToConfig');
             boardDetailContainer.createEl('p', { text: msg });
         }
+    }
 
-        // --- ボードグループ管理セクション ---
-        const boardGroupAcc = createAccordion('ボードグループ管理', false);
+    private renderBoardGroupSection(containerEl: HTMLElement, lang: Language) {
+        const boardGroupAcc = createAccordion(containerEl, t(lang, 'boardGroupManagement'), false);
         this.boardGroupBodyEl = boardGroupAcc.body;
-        this.renderBoardGroupManagementUI(this.boardGroupBodyEl);
-
-
+        this.renderBoardGroupManagementUI(this.boardGroupBodyEl, lang); // langを渡す
     }
 
     /**
      * ボード管理セクションのUIを描画
      * @param containerEl 描画先要素
+     * @param lang 表示言語
      */
-    private renderBoardManagementUI(containerEl: HTMLElement) {
+    private renderBoardManagementUI(containerEl: HTMLElement, lang: import('./i18n').Language) { // langを受け取る
         containerEl.empty();
 
         new Setting(containerEl)
-            .setName('ボード選択')
-            .setDesc('設定を編集するウィジェットボードを選択してください。')
+            .setName(t(lang, 'boardSelect'))
+            .setDesc(t(lang, 'boardSelectDesc'))
             .addDropdown(dropdown => {
                 if (this.plugin.settings.boards.length === 0) {
-                    dropdown.addOption('', '利用可能なボードがありません'); // ダミーオプション
+                    dropdown.addOption('', t(lang, 'noBoardsAvailable')); // ダミーオプション
                     dropdown.setDisabled(true);
                 } else {
                     this.plugin.settings.boards.forEach(board => {
@@ -735,15 +695,15 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     // ボード詳細設定セクションの内容を更新
                     const selectedBoardSettingsContainer = this.containerEl.querySelector('.selected-board-settings-section');
                     if (selectedBoardSettingsContainer) {
-                        this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement);
+                        this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement, lang); // langを渡す
                     }
                     // ボード詳細設定アコーディオンを自動で開かない
                 });
             });
 
         new Setting(containerEl)
-            .addButton(button => button
-                .setButtonText('新しいボードを追加')
+            .addButton(btn => btn
+                .setButtonText(t(lang, 'addNewBoard'))
                 .setCta()
                 .onClick(async () => {
                     const newBoardId = 'board-' + Date.now();
@@ -768,8 +728,13 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     // ボード詳細設定セクションだけ再描画
                     const selectedBoardSettingsContainer = this.containerEl.querySelector('.selected-board-settings-section');
                     if (selectedBoardSettingsContainer) {
-                        this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement);
+                        this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement, this.plugin.settings.language || 'ja');
                     }
+                    this.renderBoardManagementUI(containerEl, lang); // UIを再描画
+                    this.renderSelectedBoardSettingsUI(
+                        this.containerEl.querySelector('.selected-board-settings-section') as HTMLElement,
+                        lang
+                    );
                 }));
     }
 
@@ -777,32 +742,17 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
      * 選択中ボードの詳細設定UIを描画
      * @param containerEl 描画先要素
      */
-    private renderSelectedBoardSettingsUI(containerEl: HTMLElement) {
-        const parent = containerEl.parentElement;
-        if (parent) {
-            const newContainer = containerEl.cloneNode(false) as HTMLElement;
-            parent.replaceChild(newContainer, containerEl);
-            containerEl = newContainer;
-        }
+    private renderSelectedBoardSettingsUI(containerEl: HTMLElement, lang: import('./i18n').Language) {
         containerEl.empty();
-        if (!this.selectedBoardId) {
-            const msg = this.plugin.settings.boards.length === 0 ? '利用可能なボードがありません。「ボード管理」から新しいボードを追加してください。' : '設定するボードを「ボード管理」から選択してください。';
-            containerEl.createEl('p', { text: msg });
-            return;
-        }
         const board = this.plugin.settings.boards.find(b => b.id === this.selectedBoardId);
         if (!board) {
-            containerEl.createEl('p', { text: '選択されたボードが見つかりません。' });
-            this.selectedBoardId = null; // 選択を解除
-            this.plugin.settings.lastOpenedBoardId = undefined;
-            this.plugin.saveSettings();
-            // ここで display() を呼ぶと再帰や無限ループのリスクがあるので、
-            // ボード選択ドロップダウンの表示更新は display() の再実行に任せる。
+            const msg = this.plugin.settings.boards.length === 0 ? t(lang, 'noBoards') : t(lang, 'selectBoardToConfig');
+            containerEl.createEl('p', { text: msg });
             return;
         }
 
         new Setting(containerEl)
-            .setName('ボード名')
+            .setName(t(lang, 'boardName'))
                 .addText(text => text
                     .setValue(board.name)
                     .onChange(async () => {
@@ -822,45 +772,45 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     }
                 }));
         new Setting(containerEl)
-            .setName('デフォルト表示モード')
-            .setDesc('このボードを開いたときの初期表示モード。')
+            .setName(t(lang, 'defaultViewMode'))
+            .setDesc(t(lang, 'defaultViewModeDesc'))
             .addDropdown(dropdown => {
                 // 左パネル
-                dropdown.addOption(WidgetBoardModal.MODES.LEFT_THIRD, '左パネル（33vw）');
-                dropdown.addOption(WidgetBoardModal.MODES.LEFT_HALF, '左パネル（50vw）');
-                dropdown.addOption(WidgetBoardModal.MODES.LEFT_TWO_THIRD, '左パネル（66vw）');
-                dropdown.addOption(WidgetBoardModal.MODES.LEFT_OUTER, '左スプリット外（32vw）'); // 追加
+                dropdown.addOption(WidgetBoardModal.MODES.LEFT_THIRD, t(lang, 'leftPanel33'));
+                dropdown.addOption(WidgetBoardModal.MODES.LEFT_HALF, t(lang, 'leftPanel50'));
+                dropdown.addOption(WidgetBoardModal.MODES.LEFT_TWO_THIRD, t(lang, 'leftPanel66'));
+                dropdown.addOption(WidgetBoardModal.MODES.LEFT_OUTER, t(lang, 'leftSplitOuter')); // 追加
                 // 中央パネル
-                dropdown.addOption(WidgetBoardModal.MODES.CENTER_THIRD, '中央パネル（33vw）');
-                dropdown.addOption(WidgetBoardModal.MODES.CENTER_HALF, '中央パネル（50vw）');
+                dropdown.addOption(WidgetBoardModal.MODES.CENTER_THIRD, t(lang, 'centerPanel33'));
+                dropdown.addOption(WidgetBoardModal.MODES.CENTER_HALF, t(lang, 'centerPanel50'));
                 // 右パネル
-                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_THIRD, '右パネル（33vw）');
-                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, '右パネル（50vw）');
-                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_TWO_THIRD, '右パネル（66vw）');
-                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_OUTER, '右スプリット外（32vw）'); // 追加
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_THIRD, t(lang, 'rightPanel33'));
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_HALF, t(lang, 'rightPanel50'));
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_TWO_THIRD, t(lang, 'rightPanel66'));
+                dropdown.addOption(WidgetBoardModal.MODES.RIGHT_OUTER, t(lang, 'rightSplitOuter')); // 追加
                 // カスタム
-                dropdown.addOption('custom-width', 'カスタム幅（vw）');
-                dropdown.setValue(board.defaultMode)
-                    .onChange(async (value: string) => {
-                        if ((Object.values(WidgetBoardModal.MODES) as string[]).includes(value) || value === 'custom-width') {
-                            board.defaultMode = value;
-                            await this.plugin.saveSettings(board.id);
-                            // カスタム幅選択時は下の入力欄を表示
-                            if (value === 'custom-width' && customWidthSettingEl) {
-                                customWidthSettingEl.style.display = '';
-                            } else if (customWidthSettingEl) {
-                                customWidthSettingEl.style.display = 'none';
-                            }
+                dropdown.addOption('custom-width', t(lang, 'customWidthVw'));
+                dropdown.setValue(board.viewMode || WidgetBoardModal.MODES.RIGHT_OUTER);
+                dropdown.onChange(async (value) => {
+                    if ((Object.values(WidgetBoardModal.MODES) as string[]).includes(value) || value === 'custom-width') {
+                        board.viewMode = value;
+                        await this.plugin.saveSettings(board.id);
+                        // カスタム幅選択時は下の入力欄を表示
+                        if (value === 'custom-width' && customWidthSettingEl) {
+                            customWidthSettingEl.style.display = '';
+                        } else if (customWidthSettingEl) {
+                            customWidthSettingEl.style.display = 'none';
                         }
-                    });
+                    }
+                });
             });
         // カスタム幅入力欄
         let customWidthSettingEl: HTMLElement | null = null;
         const customWidthSetting = new Setting(containerEl)
-            .setName('カスタム幅（vw）')
-            .setDesc('パネルの幅をvw単位で指定します（例: 40）')
+            .setName(t(lang, 'customWidth'))
+            .setDesc(t(lang, 'customWidthDesc'))
             .addText(text => {
-                text.setPlaceholder('例: 40')
+                text.setPlaceholder(t(lang, 'customWidthPlaceholder'))
                     .setValue(board.customWidth ? String(board.customWidth) : '')
                     .onChange(async () => {
                         // 入力途中は何もしない
@@ -872,10 +822,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         board.customWidth = n;
                         await this.plugin.saveSettings(board.id);
                         if (n <= 0 || n > 100) {
-                            new Notice('1〜100の範囲でvwを指定することを推奨します。');
+                            new Notice(t(lang, 'rangeWarning'));
                         }
                     } else {
-                        new Notice('数値を入力してください（vw単位）');
+                        new Notice(t(lang, 'invalidNumber'));
                     }
                 });
             });
@@ -883,33 +833,33 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         // カスタム幅基準位置ドロップダウン
         let customWidthAnchorSettingEl: HTMLElement | null = null;
         const customWidthAnchorSetting = new Setting(containerEl)
-            .setName('カスタム幅の基準位置')
-            .setDesc('カスタム幅パネルの表示基準（左・中央・右）')
+            .setName(t(lang, 'customWidthAnchor'))
+            .setDesc(t(lang, 'customWidthAnchorDesc'))
             .addDropdown(dropdown => {
-                dropdown.addOption('right', '右（デフォルト）');
-                dropdown.addOption('center', '中央');
-                dropdown.addOption('left', '左');
-                dropdown.setValue(board.customWidthAnchor || 'right')
-                    .onChange(async (value) => {
-                        board.customWidthAnchor = value as 'left' | 'center' | 'right';
-                        await this.plugin.saveSettings(board.id);
-                    });
+                dropdown.addOption('left', t(lang, 'left'));
+                dropdown.addOption('center', t(lang, 'center'));
+                dropdown.addOption('right', t(lang, 'right'));
+                dropdown.setValue(board.customWidthAnchor || 'left');
+                dropdown.onChange(async (value) => {
+                    board.customWidthAnchor = value as 'left' | 'center' | 'right';
+                    await this.plugin.saveSettings(board.id);
+                });
             });
         customWidthAnchorSettingEl = customWidthAnchorSetting.settingEl;
         // 初期表示制御
-        if (board.defaultMode !== 'custom-width' && customWidthSettingEl) {
+        if (board.viewMode !== 'custom-width' && customWidthSettingEl) {
             customWidthSettingEl.style.display = 'none';
         }
-        if (board.defaultMode !== 'custom-width' && customWidthAnchorSettingEl) {
+        if (board.viewMode !== 'custom-width' && customWidthAnchorSettingEl) {
             customWidthAnchorSettingEl.style.display = 'none';
         }
         new Setting(containerEl)
             .addButton(button => button
-                .setButtonText('このボードを削除')
+                .setButtonText(t(lang, 'deleteThisBoard'))
                 .setWarning()
                 .setDisabled(this.plugin.settings.boards.length <= 1)
                 .onClick(async () => {
-                    if (!confirm(`ボード「${board.name}」を本当に削除しますか？`)) return;
+                    if (!confirm(t(lang, 'deleteBoardConfirm').replace('{name}', board.name))) return;
                     this.plugin.settings.boards = this.plugin.settings.boards.filter(b => b.id !== this.selectedBoardId);
                     const newSelectedBoardId = this.plugin.settings.boards.length > 0 ? this.plugin.settings.boards[0].id : null;
                     this.selectedBoardId = newSelectedBoardId;
@@ -927,18 +877,20 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     // ボード詳細設定セクションだけ再描画
                     const selectedBoardSettingsContainer = this.containerEl.querySelector('.selected-board-settings-section');
                     if (selectedBoardSettingsContainer) {
-                        this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement);
+                        this.renderSelectedBoardSettingsUI(selectedBoardSettingsContainer as HTMLElement, this.plugin.settings.language || 'ja');
                     }
                 }));
 
-        new Setting(containerEl).setName('ウィジェット管理').setHeading();
+        new Setting(containerEl).setName(t(lang, 'widgetManagement')).setHeading();
         const addWidgetButtonsContainer = containerEl.createDiv({ cls: 'widget-add-buttons' });
         const widgetListEl = containerEl.createDiv({ cls: 'widget-settings-list-for-board' }); // 先に定義
 
+        // createAddButtonToBoardの定義を修正
         const createAddButtonToBoard = (
             buttonText: string,
             widgetType: string,
-            defaultWidgetSettings: Record<string, unknown>
+            defaultWidgetSettings: Record<string, unknown>,
+            lang: import('./i18n').Language
         ) => {
             const settingItem = new Setting(addWidgetButtonsContainer);
             settingItem.addButton(button => button
@@ -956,48 +908,49 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     };
                     currentBoard.widgets.push(newWidget);
                     await this.plugin.saveSettings(currentBoard.id);
-                    this.renderWidgetListForBoard(widgetListEl, currentBoard); // widgetListEl は既に定義済み
-                    const widgetDisplayName = WIDGET_TYPE_DISPLAY_NAMES[widgetType] || widgetType; // 通知用にも表示名を使用
+                    this.renderWidgetListForBoard(widgetListEl, currentBoard, lang); // widgetListEl は既に定義済み
+                    const widgetDisplayName = widgetTypeName(this.plugin.settings.language || 'ja', widgetType); // 通知用にも表示名を使用
                     new Notice(`「${widgetDisplayName}」ウィジェットがボード「${currentBoard.name}」に追加されました。`);
                 }));
             settingItem.settingEl.addClass('widget-add-button-setting-item');
             settingItem.nameEl.remove(); settingItem.descEl.remove();
         };
-        createAddButtonToBoard("ポモドーロ追加", "pomodoro", DEFAULT_POMODORO_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("メモ追加", "memo", DEFAULT_MEMO_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("カレンダー追加", "calendar", DEFAULT_CALENDAR_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("最近編集したノート", "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("テーマ切り替え", "theme-switcher", {});
-        createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS } as unknown as Record<string, unknown>);
-        createAddButtonToBoard("ファイルビューア追加", "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 } as unknown as Record<string, unknown>);
-        createAddButtonToBoard("つぶやき追加", "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("振り返りレポート", "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS as unknown as Record<string, unknown>);
+        // 呼び出し時にlangを渡す
+        createAddButtonToBoard(t(lang, 'addPomodoro'), "pomodoro", DEFAULT_POMODORO_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard(t(lang, 'addMemo'), "memo", DEFAULT_MEMO_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard(t(lang, 'addCalendar'), "calendar", DEFAULT_CALENDAR_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard(t(lang, 'addRecentNotes'), "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard(t(lang, 'addThemeSwitcher'), "theme-switcher", {}, lang);
+        createAddButtonToBoard(t(lang, 'addTimerStopwatch'), "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS } as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard(t(lang, 'addFileView'), "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 } as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard(t(lang, 'addTweetWidget'), "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard(t(lang, 'addReflectionWidget'), "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS as unknown as Record<string, unknown>, lang);
 
-        this.renderWidgetListForBoard(widgetListEl, board);
+        this.renderWidgetListForBoard(widgetListEl, board, lang);
     }
 
-    private renderWidgetListForBoard(containerEl: HTMLElement, board: BoardConfiguration) {
+    private renderWidgetListForBoard(containerEl: HTMLElement, board: BoardConfiguration, lang: import('./i18n').Language) {
         containerEl.empty();
         const widgets = board.widgets;
         if (widgets.length === 0) {
-            containerEl.createEl('p', { text: 'このボードにはウィジェットがありません。「追加」ボタンで作成できます。' });
+            containerEl.createEl('p', { text: t(lang, 'noWidgets') });
             return;
         }
 
         widgets.forEach((widget, index) => {
             const widgetSettingContainer = containerEl.createDiv({cls: 'widget-setting-container'});
 
-            // ウィジェットタイプに応じた日本語表示名を取得
-            const widgetTypeName = WIDGET_TYPE_DISPLAY_NAMES[widget.type] || widget.type;
+            // ウィジェットタイプに応じた表示名を取得
+            const typeName = widgetTypeName(lang, widget.type);
             // タイトルが未設定の場合は「(名称未設定 <ウィジェット日本語名>)」とする
-            const displayName = widget.title || `(名称未設定 ${widgetTypeName})`;
+            const displayName = widget.title || t(lang, 'untitledWidget').replace('{type}', typeName);
 
             const titleSetting = new Setting(widgetSettingContainer)
                 .setName(displayName)
-                .setDesc(`種類: ${widget.type} | ID: ${widget.id.substring(0,8)}...`);
+                .setDesc(`${t(lang, 'widgetType')}: ${widget.type} | ${t(lang, 'widgetId')}: ${widget.id.substring(0,8)}...`);
 
             titleSetting.addText(text => {
-                text.setPlaceholder('(ウィジェット名)')
+                text.setPlaceholder(t(lang, 'widgetNamePlaceholder'))
                     .setValue(widget.title)
                     .onChange(async () => {
                         // 入力途中は何もしない
@@ -1007,53 +960,53 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     widget.title = value.trim();
                     await this.plugin.saveSettings(board.id);
                     // タイトル変更時も同様のロジックで表示名を更新
-                    const updatedDisplayName = widget.title || `(名称未設定 ${widgetTypeName})`;
+                    const updatedDisplayName = widget.title || t(lang, 'untitledWidget').replace('{type}', typeName);
                     titleSetting.setName(updatedDisplayName);
                     this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
                 });
             });
 
             titleSetting
-                .addExtraButton(cb => cb.setIcon('arrow-up').setTooltip('上に移動').setDisabled(index === 0)
+                .addExtraButton(cb => cb.setIcon('arrow-up').setTooltip(t(lang, 'moveUp')).setDisabled(index === 0)
                     .onClick(async () => {
                         if (index > 0) {
                             const item = board.widgets.splice(index, 1)[0];
                             board.widgets.splice(index - 1, 0, item);
                             await this.plugin.saveSettings(board.id);
-                            this.renderWidgetListForBoard(containerEl, board);
+                            this.renderWidgetListForBoard(containerEl, board, lang);
                         }
                     }))
-                .addExtraButton(cb => cb.setIcon('arrow-down').setTooltip('下に移動').setDisabled(index === widgets.length - 1)
+                .addExtraButton(cb => cb.setIcon('arrow-down').setTooltip(t(lang, 'moveDown')).setDisabled(index === widgets.length - 1)
                     .onClick(async () => {
                         if (index < board.widgets.length - 1) {
                             const item = board.widgets.splice(index, 1)[0];
                             board.widgets.splice(index + 1, 0, item);
                             await this.plugin.saveSettings(board.id);
-                            this.renderWidgetListForBoard(containerEl, board);
+                            this.renderWidgetListForBoard(containerEl, board, lang);
                         }
                     }))
-                .addButton(button => button.setIcon("trash").setTooltip("このウィジェットを削除").setWarning()
+                .addButton(button => button.setIcon("trash").setTooltip(t(lang, 'deleteWidget')).setWarning()
                     .onClick(async () => {
                         // 削除時の通知メッセージも同様のロジックで表示名を生成
-                        const oldWidgetTypeName = WIDGET_TYPE_DISPLAY_NAMES[widget.type] || widget.type;
-                        const oldTitle = widget.title || `(名称未設定 ${oldWidgetTypeName})`;
+                        const oldWidgetTypeName = widgetTypeName(this.plugin.settings.language || 'ja', widget.type);
+                        const oldTitle = widget.title || t(lang, 'untitledWidget').replace('{type}', oldWidgetTypeName);
                         board.widgets.splice(index, 1);
                         await this.plugin.saveSettings(board.id);
-                        this.renderWidgetListForBoard(containerEl, board);
-                        new Notice(`ウィジェット「${oldTitle}」をボード「${board.name}」から削除しました。`);
+                        this.renderWidgetListForBoard(containerEl, board, lang);
+                        new Notice(t(lang, 'widgetDeletedFromBoard').replace('{widgetName}', oldTitle).replace('{boardName}', board.name));
                     }));
 
             // 詳細設定用のアコーディオンコンテナ (titleSetting の下に配置)
             const settingsEl = widgetSettingContainer.createDiv({cls: 'widget-specific-settings'});
 
             // --- ウィジェット個別設定のアコーディオン生成関数 ---
-            const createWidgetAccordion = (parentEl: HTMLElement, title: string = '詳細設定') => {
-                const acc = parentEl.createDiv({ cls: 'wb-accordion' });
-                const header = acc.createDiv({ cls: 'wb-accordion-header' });
-                const icon = header.createSpan({ cls: 'wb-accordion-icon' });
+            const createWidgetAccordion = (parentEl: HTMLElement, title: string = t(lang, 'detailedSettings')) => {
+                const acc = parentEl.createDiv({ cls: 'widget-detail-accordion' });
+                const header = acc.createDiv({ cls: 'widget-detail-accordion-header' });
+                const icon = header.createSpan({ cls: 'widget-detail-accordion-icon' });
                 icon.setText('▶');
                 header.appendText(title);
-                const body = acc.createDiv({ cls: 'wb-accordion-body' });
+                const body = acc.createDiv({ cls: 'widget-detail-accordion-body' });
                 body.style.display = 'none';
 
                 header.addEventListener('click', (event) => {
@@ -1073,7 +1026,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             if (widget.type === 'pomodoro') {
                 widget.settings = { ...DEFAULT_POMODORO_SETTINGS, ...(widget.settings as Partial<PomodoroSettings> || {}) } as PomodoroSettings;
                 const currentSettings = widget.settings as PomodoroSettings;
-                const { body: pomoDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+                const { body: pomoDetailBody } = createWidgetAccordion(settingsEl, t(lang, 'detailedSettings'));
 
                 const createNumInput = (parent: HTMLElement, label: string, desc: string, key: keyof Omit<PomodoroSettings, 'backgroundImageUrl' | 'memoContent'>) => {
                     new Setting(parent).setName(label).setDesc(desc).setClass('pomodoro-setting-item')
@@ -1091,20 +1044,20 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                     await this.plugin.saveSettings(board.id);
                                     this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                                 } else {
-                                    new Notice('1以上の半角数値を入力してください。');
+                                    new Notice(t(lang, 'enterPositiveNumber'));
                                     text.setValue(String(currentSettings[key]));
                                 }
                             });
                         });
                 };
-                createNumInput(pomoDetailBody, '作業時間 (分)', 'ポモドーロの作業フェーズの時間。', 'workMinutes');
-                createNumInput(pomoDetailBody, '短い休憩 (分)', '短い休憩フェーズの時間。', 'shortBreakMinutes');
-                createNumInput(pomoDetailBody, '長い休憩 (分)', '長い休憩フェーズの時間。', 'longBreakMinutes');
-                createNumInput(pomoDetailBody, 'サイクル数', '長い休憩までの作業ポモドーロ回数。', 'pomodorosUntilLongBreak');
+                createNumInput(pomoDetailBody, t(lang, 'workMinutes'), t(lang, 'workMinutesDesc'), 'workMinutes');
+                createNumInput(pomoDetailBody, t(lang, 'shortBreakMinutes'), t(lang, 'shortBreakMinutesDesc'), 'shortBreakMinutes');
+                createNumInput(pomoDetailBody, t(lang, 'longBreakMinutes'), t(lang, 'longBreakMinutesDesc'), 'longBreakMinutes');
+                createNumInput(pomoDetailBody, t(lang, 'pomodorosUntilLongBreak'), t(lang, 'pomodorosUntilLongBreakDesc'), 'pomodorosUntilLongBreak');
 
-                new Setting(pomoDetailBody).setName('背景画像URL').setDesc('タイマーの背景として表示する画像のURL。').setClass('pomodoro-setting-item')
+                new Setting(pomoDetailBody).setName(t(lang, 'backgroundImageUrl')).setDesc(t(lang, 'backgroundImageUrlDesc')).setClass('pomodoro-setting-item')
                     .addText(text => text
-                        .setPlaceholder('例: https://example.com/image.jpg')
+                        .setPlaceholder(t(lang, 'backgroundImageUrlPlaceholder'))
                         .setValue(currentSettings.backgroundImageUrl || '')
                         .onChange(async (v) => {
                             currentSettings.backgroundImageUrl = v.trim();
@@ -1114,18 +1067,18 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
 
                 // --- 通知音・エクスポート形式はグローバル設定が適用される旨を表示 ---
                 new Setting(pomoDetailBody)
-                    .setName('通知音・エクスポート形式')
-                    .setDesc('このウィジェットの通知音・エクスポート形式は「ポモドーロ（グローバル設定）」が適用されます。')
+                    .setName(t(lang, 'notificationAndExport'))
+                    .setDesc(t(lang, 'notificationAndExportDesc'))
                     .setDisabled(true);
 
             } else if (widget.type === 'memo') {
                 widget.settings = { ...DEFAULT_MEMO_SETTINGS, ...(widget.settings as Partial<MemoWidgetSettings> || {}) } as MemoWidgetSettings;
                 const currentSettings = widget.settings as MemoWidgetSettings;
-                const { body: memoDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+                const { body: memoDetailBody } = createWidgetAccordion(settingsEl, t(lang, 'detailedSettings'));
 
-                new Setting(memoDetailBody).setName('メモ内容 (Markdown)').setDesc('メモウィジェットに表示する内容。ウィジェット内でも編集できます。').setClass('pomodoro-setting-item')
+                new Setting(memoDetailBody).setName(t(lang, 'memoContent')).setDesc(t(lang, 'memoContentDesc')).setClass('pomodoro-setting-item')
                     .addTextArea(text => {
-                        text.setPlaceholder('ここにメモを記述...')
+                        text.setPlaceholder(t(lang, 'memoContentPlaceholder'))
                             .setValue(currentSettings.memoContent || '')
                             .onChange(async () => {
                                 // 入力途中は何もしない
@@ -1144,8 +1097,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     .setName('メモエリアの高さモード')
                     .setDesc('自動調整（内容にfit）または固定高さを選択')
                     .addDropdown(dropdown => {
-                        dropdown.addOption('auto', '自動（内容にfit）');
-                        dropdown.addOption('fixed', '固定');
+                        dropdown.addOption('auto', t(lang, 'auto'));
+                        dropdown.addOption('fixed', t(lang, 'fixed'));
                         dropdown.setValue(currentSettings.memoHeightMode || 'auto')
                             .onChange(async (value) => {
                                 currentSettings.memoHeightMode = value as 'auto' | 'fixed';
@@ -1174,7 +1127,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                 await this.plugin.saveSettings(board.id);
                                 this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             } else {
-                                new Notice('1以上の半角数値を入力してください。');
+                                new Notice(t(lang, 'enterPositiveNumber'));
                                 text.setValue(String(currentSettings.fixedHeightPx ?? 120));
                             }
                         });
@@ -1187,7 +1140,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             } else if (widget.type === 'file-view-widget') {
                 // FileViewWidgetの高さ設定
                 const currentSettings = widget.settings as { heightMode?: string; fixedHeightPx?: number };
-                const { body: fileViewDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+                const { body: fileViewDetailBody } = createWidgetAccordion(settingsEl, t(lang, 'detailedSettings'));
 
                 let fixedHeightSettingEl: HTMLElement | null = null;
 
@@ -1225,7 +1178,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                                 await this.plugin.saveSettings(board.id);
                                 this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, currentSettings as unknown as Record<string, unknown>);
                             } else {
-                                new Notice('1以上の半角数値を入力してください。');
+                                new Notice(t(lang, 'enterPositiveNumber'));
                                 text.setValue(String(currentSettings.fixedHeightPx ?? 200));
                             }
                         });
@@ -1236,7 +1189,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 }
             } else if (widget.type === 'calendar') {
                 widget.settings = { ...DEFAULT_CALENDAR_SETTINGS, ...(widget.settings as Partial<CalendarWidgetSettings> || {}) } as CalendarWidgetSettings;
-                const { body: calendarDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+                const { body: calendarDetailBody } = createWidgetAccordion(settingsEl, t(lang, 'detailedSettings'));
                 new Setting(calendarDetailBody)
                     .setName('デイリーノートファイル名フォーマット')
                     .setDesc('例: YYYY-MM-DD, YYYY-MM-DD.md など。YYYY, MM, DDが日付に置換されます。Moment.jsのフォーマットリファレンス（https://momentjs.com/docs/#/displaying/format/）に準拠。')
@@ -1256,7 +1209,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
 
             } else if (widget.type === 'timer-stopwatch') {
                 widget.settings = { ...DEFAULT_TIMER_STOPWATCH_SETTINGS, ...(widget.settings as Partial<typeof DEFAULT_TIMER_STOPWATCH_SETTINGS> || {}) };
-                const { body: timerStopwatchDetailBody } = createWidgetAccordion(settingsEl, '詳細設定');
+                const { body: timerStopwatchDetailBody } = createWidgetAccordion(settingsEl, t(lang, 'detailedSettings'));
 
                 new Setting(timerStopwatchDetailBody)
                     .setName('通知音（全体設定が適用されます）')
@@ -1265,7 +1218,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             } else if (widget.type === 'reflection-widget') {
                 widget.settings = { ...REFLECTION_WIDGET_DEFAULT_SETTINGS, ...(widget.settings as Partial<typeof REFLECTION_WIDGET_DEFAULT_SETTINGS> || {}) };
                 const currentSettings = widget.settings as typeof REFLECTION_WIDGET_DEFAULT_SETTINGS;
-                const { body: reflectionDetailBody } = createWidgetAccordion(settingsEl, 'AIまとめ詳細設定');
+                const { body: reflectionDetailBody } = createWidgetAccordion(settingsEl, t(lang, 'detailedSettings'));
 
                 new Setting(reflectionDetailBody)
                     .setName('AIまとめ自動発火を有効にする')
@@ -1328,50 +1281,87 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     }
 
     /**
-     * ボードグループ管理セクションのUIを描画
-     * @param containerEl 描画先要素
+     * ボードグループ管理UIを描画
+     * @param containerEl 描画先
+     * @param lang 表示言語
      */
-    private renderBoardGroupManagementUI(containerEl: HTMLElement) {
+    private renderBoardGroupManagementUI(containerEl: HTMLElement, lang: import('./i18n').Language) {
         containerEl.empty();
-        const groups = this.plugin.settings.boardGroups || [];
-        // グループ一覧
-        groups.forEach((group, idx) => {
-            const groupDiv = containerEl.createDiv({ cls: 'board-group-setting' });
-            new Setting(groupDiv)
-                .setName(group.name)
-                .setDesc(`ID: ${group.id}`)
-                .addButton(btn => btn.setIcon('pencil').setTooltip('編集').onClick(() => {
-                    this.openBoardGroupEditModal(group, idx);
-                }))
-                .addButton(btn => btn.setIcon('trash').setTooltip('削除').setWarning().onClick(async () => {
-                    if (!confirm(`グループ「${group.name}」を削除しますか？`)) return;
-                    this.plugin.settings.boardGroups = groups.filter((_, i) => i !== idx);
-                    await this.plugin.saveSettings();
-                    this.plugin.registerAllBoardCommands?.();
-                    this.renderBoardGroupManagementUI(containerEl);
-                }));
-            groupDiv.createEl('div', { text: `ボード: ${group.boardIds.map(id => {
-                const b = this.plugin.settings.boards.find(b => b.id === id);
-                return b ? b.name : id;
-            }).join(', ')}` });
-            groupDiv.createEl('div', { text: `ホットキー: ${group.hotkey || '(未設定)'}` });
-        });
-        // 追加ボタン
         new Setting(containerEl)
-            .addButton(btn => btn.setButtonText('新しいグループを追加').setCta().onClick(() => {
-                this.openBoardGroupEditModal();
-            }));
+            .setName(t(lang, 'boardGroupManagement'))
+            .setDesc(t(lang, 'boardGroupManagementDesc'))
+            .addButton(btn => btn
+                .setButtonText(t(lang, 'addNewGroup'))
+                .setCta()
+                .onClick(() => {
+                    this.openBoardGroupEditModal(lang, undefined, undefined); // langを渡す
+                }));
+
+        const listEl = containerEl.createDiv({ cls: 'wb-board-group-list' });
+        const groups = this.plugin.settings.boardGroups;
+        if (!groups || groups.length === 0) {
+            listEl.createEl('p', { text: t(lang, 'noGroups') });
+            return;
+        }
+
+        groups.forEach((group, index) => {
+            const itemEl = listEl.createDiv({ cls: 'wb-board-group-item' });
+            itemEl.createEl('span', { text: group.name, cls: 'wb-board-group-name' });
+            const controlsEl = itemEl.createDiv({ cls: 'wb-board-group-controls' });
+
+            new Setting(controlsEl)
+                .addButton(btn => btn.setIcon('pencil').setTooltip(t(lang, 'editGroup')).onClick(() => {
+                    this.openBoardGroupEditModal(lang, group, index); // langを渡す
+                }))
+                .addButton(btn => btn.setIcon('trash').setTooltip(t(lang, 'deleteGroup')).setWarning().onClick(async () => {
+                    if (!confirm(t(lang, 'deleteGroupConfirm').replace('{name}', group.name))) return;
+                    this.plugin.settings.boardGroups.splice(index, 1);
+                    await this.plugin.saveSettings();
+                    this.renderBoardGroupManagementUI(containerEl, lang); // langを渡す
+                    this.plugin.registerAllBoardCommands?.();
+                }));
+        });
     }
 
-    private openBoardGroupEditModal(group?: import('./interfaces').BoardGroup, editIdx?: number) {
-        new BoardGroupEditModal(this.app, this.plugin, () => {
-            // 保存後に必ず正しいbodyを再描画
-            if (this.boardGroupBodyEl) this.renderBoardGroupManagementUI(this.boardGroupBodyEl);
-        }, group, editIdx).open();
+    private openBoardGroupEditModal(lang: import('./i18n').Language, group?: import('./interfaces').BoardGroup, editIdx?: number) {
+        const onSave = () => {
+            if (this.boardGroupBodyEl) {
+                this.renderBoardGroupManagementUI(this.boardGroupBodyEl, lang); // langを渡す
+            }
+        };
+        new BoardGroupEditModal(this.app, this.plugin, onSave, group, editIdx).open();
     }
 
     private openScheduleTweetModal(sched?: ScheduledTweet, idx?: number) {
-        new ScheduleTweetModal(this.app, this.plugin, sched, idx).open();
+        const onSave = () => {
+            const scheduledListDiv = this.containerEl.querySelector('.scheduled-tweet-list') as HTMLElement;
+            if (scheduledListDiv) {
+                this.renderScheduledTweetList(scheduledListDiv);
+            }
+        };
+        new ScheduleTweetModal(this.app, this.plugin, onSave, sched, idx).open();
+    }
+
+    private renderScheduledTweetList(containerEl: HTMLElement) {
+        // TODO: ここに予約投稿リストの描画ロジックを実装する
+        containerEl.empty();
+        containerEl.createEl('p', { text: '（予約投稿リストはここに表示されます）' });
+    }
+
+    private renderCalendarSettings(containerEl: HTMLElement, lang: Language) {
+        const calendarAcc = createAccordion(containerEl, t(lang, 'calendarGlobalSetting'), false); // デフォルトで閉じる
+        new Setting(calendarAcc.body)
+            .setName(t(lang, 'weekStartDay'))
+            .setDesc(t(lang, 'weekStartDayDesc'))
+            .addDropdown(drop => {
+                const labels = [t(lang, 'sunday'),t(lang, 'monday'),t(lang, 'tuesday'),t(lang, 'wednesday'),t(lang, 'thursday'),t(lang, 'friday'),t(lang, 'saturday')];
+                labels.forEach((l, i) => drop.addOption(String(i), l));
+                drop.setValue(String(this.plugin.settings.weekStartDay ?? 1));
+                drop.onChange(async value => {
+                    this.plugin.settings.weekStartDay = parseInt(value, 10);
+                    await this.plugin.saveSettings();
+                });
+            });
     }
 }
 
@@ -1454,21 +1444,28 @@ class BoardGroupEditModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        new Setting(contentEl).setName(this.group ? 'グループを編集' : '新しいグループを追加').setHeading();
+        const lang = (this.plugin.settings.language || 'ja') as import('./i18n').Language;
+        new Setting(contentEl).setName(this.group ? t(lang, 'editGroup') : t(lang, 'addNewGroup')).setHeading();
         let name = this.group?.name || '';
-        let boardIds = this.group?.boardIds ? [...this.group.boardIds] : [];
-        // グループ名
+        let boardIds = new Set(this.group?.boardIds || []);
+
         new Setting(contentEl)
-            .setName('グループ名')
-            .addText(text => text.setValue(name).onChange(v => { name = v; }));
-        // ボード選択
-        contentEl.createEl('div', { text: 'グループに含めるボードを選択', cls: 'board-group-boardlist-label', attr: { style: 'margin-top:16px;margin-bottom:8px;font-weight:bold;' } });
-        const boardListDiv = contentEl.createDiv({ cls: 'board-group-boardlist', attr: { style: 'display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;' } });
+            .setName(t(lang, 'groupName'))
+            .setDesc(t(lang, 'groupNameDesc'))
+            .addText(text => {
+                text.setPlaceholder(t(lang, 'groupNamePlaceholder'))
+                    .setValue(name)
+                    .onChange(v => { name = v; });
+            });
+
+        new Setting(contentEl).setName(t(lang, 'selectBoards')).setDesc(t(lang, 'selectBoardsDesc'));
+        const boardButtonsEl = contentEl.createDiv({ cls: 'wb-board-buttons-container' });
+
         const renderBoardButtons = () => {
-            boardListDiv.empty();
+            boardButtonsEl.empty();
             this.plugin.settings.boards.forEach(b => {
-                const isSelected = boardIds.includes(b.id);
-                const btn = boardListDiv.createEl('button', {
+                const isSelected = boardIds.has(b.id);
+                const btn = boardButtonsEl.createEl('button', {
                     cls: isSelected ? 'selected is-active' : '',
                 });
                 btn.classList.add('mod-cta');
@@ -1483,33 +1480,32 @@ class BoardGroupEditModal extends Modal {
                 btn.setText(b.name);
                 btn.onclick = () => {
                     if (isSelected) {
-                        boardIds = boardIds.filter(x => x !== b.id);
+                        boardIds.delete(b.id);
                     } else {
-                        boardIds.push(b.id);
+                        boardIds.add(b.id);
                     }
                     renderBoardButtons();
                 };
             });
         };
         renderBoardButtons();
-        // ホットキー欄は削除し、説明文を追加
-        contentEl.createEl('div', { text: '※グループのホットキー設定はObsidianの「設定 → ホットキー」画面で行ってください。', cls: 'board-group-hotkey-desc', attr: { style: 'margin-top:12px;margin-bottom:8px;font-size:0.95em;color:var(--text-faint);' } });
-        // 保存・キャンセルボタン横並び
+
         const btnRow = contentEl.createDiv({ cls: 'modal-button-row', attr: { style: 'display:flex;justify-content:flex-end;gap:12px;margin-top:24px;' } });
+
         new Setting(btnRow)
-            .addButton(btn => btn.setButtonText('保存').setCta().onClick(async () => {
+            .addButton(btn => btn.setButtonText(t(lang, 'save')).setCta().onClick(async () => {
                 if (!name.trim()) {
-                    new Notice('グループ名を入力してください');
+                    new Notice(t(lang, 'enterGroupName'));
                     return;
                 }
-                if (boardIds.length === 0) {
-                    new Notice('1つ以上のボードを選択してください');
+                if (boardIds.size === 0) {
+                    new Notice(t(lang, 'selectOneBoardAtLeast'));
                     return;
                 }
                 const newGroup = {
                     id: this.group?.id || 'group-' + Date.now(),
                     name: name.trim(),
-                    boardIds,
+                    boardIds: Array.from(boardIds),
                     hotkey: this.group?.hotkey // 既存値は維持（UIからは編集不可）
                 };
                 if (this.editIdx !== undefined) {
@@ -1522,7 +1518,7 @@ class BoardGroupEditModal extends Modal {
                 this.onSave();
                 this.close();
             }))
-            .addButton(btn => btn.setButtonText('キャンセル').onClick(() => this.close()));
+            .addButton(btn => btn.setButtonText(t(lang, 'cancel')).onClick(() => this.close()));
     }
 }
 
@@ -1531,17 +1527,22 @@ class ScheduleTweetModal extends Modal {
     repo: TweetRepository;
     sched?: ScheduledTweet;
     idx?: number;
-    constructor(app: App, plugin: WidgetBoardPlugin, sched?: ScheduledTweet, idx?: number) {
+    onSave: () => void;
+
+    constructor(app: App, plugin: WidgetBoardPlugin, onSave: () => void, sched?: ScheduledTweet, idx?: number) {
         super(app);
         this.plugin = plugin;
-        this.repo = new TweetRepository(app, getTweetDbPath(plugin));
+        this.repo = new TweetRepository(app, getTweetDbPath(plugin)); // 引数を修正
         this.sched = sched;
         this.idx = idx;
+        this.onSave = onSave;
     }
+
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        new Setting(contentEl).setName(this.sched ? '予約投稿を編集' : '予約投稿を追加').setHeading();
+        const lang = (this.plugin.settings.language || 'ja') as import('./i18n').Language;
+        new Setting(contentEl).setName(this.sched ? t(lang, 'editScheduledTweet') : t(lang, 'addScheduledTweet')).setHeading();
         let text = this.sched ? this.sched.text : '';
         let hour = this.sched ? this.sched.hour : 9;
         let minute = this.sched ? this.sched.minute : 0;
@@ -1553,15 +1554,15 @@ class ScheduleTweetModal extends Modal {
         let aiModel = this.sched && this.sched.aiModel ? this.sched.aiModel : (this.plugin.settings.tweetAiModel || 'gemini-1.5-flash-latest');
         // 内容入力欄（テキストエリア）
         new Setting(contentEl)
-        .setName('内容')
+        .setName(t(lang, 'content'))
         .addTextArea(t => {
             t.setValue(text);
             t.onChange(v => { text = v; });
         });
         // ユーザーID（ドロップダウン選択に変更）
         new Setting(contentEl)
-            .setName('ユーザーID')
-            .setDesc('グローバル設定で登録したユーザーから選択')
+            .setName(t(lang, 'userId'))
+            .setDesc(t(lang, 'userIdSelectDesc'))
             .addDropdown(drop => {
                 const profiles = this.plugin.settings.userProfiles || [];
                 profiles.forEach(p => {
@@ -1573,83 +1574,81 @@ class ScheduleTweetModal extends Modal {
         // 時刻入力欄（時:分 形式のテキスト入力）
         let timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         new Setting(contentEl)
-            .setName('時刻')
-            .setDesc('例: 09:00（24時間表記）')
-            .addText(t => {
-                t.setPlaceholder('09:00');
-                t.setValue(timeStr);
-                t.onChange(v => { timeStr = v; });
-                t.inputEl.addEventListener('blur', () => {
+            .setName(t(lang, 'time'))
+            .setDesc(t(lang, 'timeDesc'))
+            .addText(text => { // 't' を 'text' に変更
+                text.setPlaceholder('09:00');
+                text.setValue(timeStr);
+                text.onChange(v => { timeStr = v; });
+                text.inputEl.addEventListener('blur', () => {
                     const match = timeStr.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
                     if (match) {
                         hour = parseInt(match[1], 10);
                         minute = parseInt(match[2], 10);
                         // 正常
-                        t.setValue(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                        text.setValue(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
                     } else {
                         // 不正な場合は直前の値に戻す
-                        t.setValue(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
-                        new Notice('時刻は00:00〜23:59の形式で入力してください');
+                        text.setValue(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
+                        new Notice(t(lang, 'invalidTimeFormat'));
                     }
                 });
             });
-        // 曜日チェックボックス
+
+        // 曜日選択
         new Setting(contentEl)
-            .setName('曜日')
-            .setDesc('複数選択可')
-            .addExtraButton(btn => {
-                const daysLabel = ['日','月','火','水','木','金','土'];
-                const container = btn.extraSettingsEl.parentElement;
-                if (!container) return;
-                daysLabel.forEach((label, idx) => {
-                    const cb = document.createElement('input');
-                    cb.type = 'checkbox';
-                    cb.id = 'weekday-' + idx;
-                    cb.style.marginLeft = '8px';
-                    cb.checked = daysArr.includes(idx);
-                    cb.onchange = () => {
-                        if (cb.checked) {
-                            if (!daysArr.includes(idx)) daysArr.push(idx);
-                        } else {
-                            daysArr = daysArr.filter(d => d !== idx);
-                        }
-                    };
-                    const lbl = document.createElement('label');
-                    lbl.htmlFor = cb.id;
-                    lbl.textContent = label;
-                    lbl.style.marginRight = '4px';
-                    container.appendChild(cb);
-                    container.appendChild(lbl);
-                });
-            });
-        // 開始日 date picker
+            .setName(t(lang, 'daysOfWeek'))
+            .setDesc(t(lang, 'daysOfWeekDesc'));
+        const dayChecksEl = contentEl.createDiv({cls: 'day-checkboxes'});
+        const dayLabels = [t(lang, 'sunday'),t(lang, 'monday'),t(lang, 'tuesday'),t(lang, 'wednesday'),t(lang, 'thursday'),t(lang, 'friday'),t(lang, 'saturday')];
+        dayLabels.forEach((label, i) => {
+            const labelEl = dayChecksEl.createEl('label');
+            const cb = labelEl.createEl('input', { type: 'checkbox' });
+            cb.id = 'weekday-' + i;
+            cb.checked = daysArr.includes(i);
+            cb.onchange = () => {
+                if (cb.checked) {
+                    if (!daysArr.includes(i)) daysArr.push(i);
+                } else {
+                    daysArr = daysArr.filter(d => d !== i);
+                }
+            };
+            labelEl.textContent = label;
+            labelEl.style.marginLeft = '8px';
+            dayChecksEl.appendChild(labelEl);
+        });
+
+        // 開始日
         new Setting(contentEl)
-            .setName('開始日')
-            .setDesc('YYYY-MM-DD')
+            .setName(t(lang, 'startDate'))
+            .setDesc(t(lang, 'startDateDesc'))
             .addText(t => {
+                t.setPlaceholder('YYYY-MM-DD');
                 t.inputEl.type = 'date';
                 t.onChange(v => { start = v; });
             });
-        // 終了日 date picker
+        // 終了日
         new Setting(contentEl)
-            .setName('終了日')
-            .setDesc('YYYY-MM-DD')
+            .setName(t(lang, 'endDate'))
+            .setDesc(t(lang, 'endDateDesc'))
             .addText(t => {
+                t.setPlaceholder('YYYY-MM-DD');
                 t.inputEl.type = 'date';
                 t.onChange(v => { end = v; });
             });
+
         // AIプロンプト入力欄
         new Setting(contentEl)
-            .setName('AIプロンプト')
-            .setDesc('投稿時にAIで内容を自動生成したい場合にプロンプトを記入。{{ai}}で内容欄に埋め込まれます。')
+            .setName(t(lang, 'aiPrompt'))
+            .setDesc(t(lang, 'aiPromptDesc'))
             .addTextArea(t => {
                 t.setValue(aiPrompt);
                 t.onChange(v => { aiPrompt = v; });
             });
         // AIモデル選択欄
         new Setting(contentEl)
-            .setName('AIモデル')
-            .setDesc('AIプロンプト実行時に使うモデル。空欄でグローバル設定のつぶやき返信用モデルを使用')
+            .setName(t(lang, 'aiModel'))
+            .setDesc(t(lang, 'aiModelDesc'))
             .addText(t => {
                 t.setPlaceholder('例: gemini-1.5-flash-latest');
                 t.setValue(aiModel);
@@ -1658,14 +1657,14 @@ class ScheduleTweetModal extends Modal {
 
         const btnRow = contentEl.createDiv({ cls: 'modal-button-row', attr: { style: 'display:flex;justify-content:flex-end;gap:12px;margin-top:24px;' } });
         new Setting(btnRow)
-            .addButton(btn => btn.setButtonText(this.sched ? '更新' : '追加').setCta().onClick(async () => {
-                if (!text.trim()) { new Notice('内容を入力してください'); return; }
+            .addButton(btn => btn.setButtonText(this.sched ? t(lang, 'update') : t(lang, 'add')).setCta().onClick(async () => {
+                if (!text.trim()) { new Notice(t(lang, 'enterContent')); return; }
                 const opts: ScheduleOptions = { hour, minute };
                 if (daysArr.length > 0) opts.daysOfWeek = daysArr;
                 if (start.trim()) opts.startDate = start.trim();
                 if (end.trim()) opts.endDate = end.trim();
                 const next = computeNextTime(opts);
-                if (next === null) { new Notice('次の投稿日時が計算できません'); return; }
+                if (next === null) { new Notice(t(lang, 'cannotCalculateNextPost')); return; }
                 const sched: ScheduledTweet = {
                     id: this.sched ? this.sched.id : 'sch-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
                     text: text.trim(),
@@ -1682,15 +1681,18 @@ class ScheduleTweetModal extends Modal {
                 const settings = await this.repo.load();
                 if (!Array.isArray(settings.scheduledPosts)) settings.scheduledPosts = [];
                 if (this.sched) {
+                    if (!settings.scheduledPosts) settings.scheduledPosts = [];
                     settings.scheduledPosts[this.idx!] = sched;
                 } else {
+                    if (!settings.scheduledPosts) settings.scheduledPosts = [];
                     settings.scheduledPosts.push(sched);
                 }
                 await this.repo.save(settings);
-                new Notice(this.sched ? '予約投稿を更新しました' : '予約投稿を追加しました');
+                new Notice(this.sched ? t(lang, 'scheduledTweetUpdated') : t(lang, 'scheduledTweetAdded'));
+                this.onSave();
                 this.close();
             }))
-            .addButton(btn => btn.setButtonText('キャンセル').onClick(() => this.close()));
+            .addButton(btn => btn.setButtonText(t(lang, 'cancel')).onClick(() => this.close()));
     }
 }
 

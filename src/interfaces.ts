@@ -31,6 +31,7 @@ export interface BoardConfiguration {
     name: string;
     defaultMode: string;
     widgets: WidgetConfig[];
+    viewMode: string;
     customWidth?: number;
     customWidthAnchor?: 'left' | 'center' | 'right';
 }
@@ -67,7 +68,7 @@ export interface PluginGlobalSettings {
     timerStopwatchNotificationSound?: import("./widgets/timer-stopwatch").TimerSoundType;
     timerStopwatchNotificationVolume?: number;
     pomodoroExportFormat?: import("./widgets/pomodoro").PomodoroExportFormat;
-    boardGroups?: BoardGroup[];
+    boardGroups: BoardGroup[];
     openBoardOnPomodoroEnd?: boolean;
     autoStartNextPomodoroSession?: boolean;
     tweetWidgetAvatarUrl?: string;
@@ -124,6 +125,8 @@ export interface PluginGlobalSettings {
     userProfiles?: { userName: string; userId: string; avatarUrl: string }[];
     /** デバッグ用ログ出力（trueで詳細ログを出す） */
     debugLog?: boolean;
+    /** 表示言語 */
+    language?: import('./i18n').Language;
 }
 
 // 共通型があればここに記載
