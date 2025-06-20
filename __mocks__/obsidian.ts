@@ -1,6 +1,18 @@
 export class App {}
 export class Component {}
-export class TFile { path = ''; basename = ''; extension = ''; stat = { mtime: 0 }; }
+export class TFile {
+  path: string;
+  name: string;
+  basename: string;
+  extension: string;
+
+  constructor(path = 'test.md') {
+    this.path = path;
+    this.name = path.split('/').pop() || '';
+    this.basename = this.name.replace(/\.md$/, '');
+    this.extension = 'md';
+  }
+}
 export class TFolder { path = ''; }
 export class Modal {}
 export class Notice { constructor(public message?: string) {} }
