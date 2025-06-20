@@ -3,6 +3,8 @@
 [note記事 Obsidianプラグイン「obsidian-widget-board-plugin」リリースしました](https://note.com/mekann/n/ne05f32922b9e?sub_rt=share_sb)  
 [obsidian-widget-board-plugin 導入方法を簡単にまとめる](https://note.com/mekann/n/n7c593c276d5b)
 
+[English README is available here.](README.en.md)
+
 ## 目次
 
 1. [概要](#概要)
