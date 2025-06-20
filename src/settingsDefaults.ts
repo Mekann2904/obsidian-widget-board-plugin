@@ -69,6 +69,7 @@ export const DEFAULT_PLUGIN_SETTINGS: PluginGlobalSettings = {
     weekStartDay: 1,
     debugLogging: false,
     userProfiles: [],
+    language: 'ja',
 };
 
 // カレンダーウィジェットのデフォルト設定

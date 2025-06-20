@@ -21,20 +21,8 @@ import { computeNextTime, ScheduleOptions } from './widgets/tweetWidget/schedule
 import type { ScheduledTweet } from './widgets/tweetWidget/types';
 import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 import { obfuscate, deobfuscate } from './utils';
+import { widgetTypeName, t, LANGUAGE_NAMES } from './i18n';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
-
-// ウィジェットタイプに対応する表示名のマッピング
-const WIDGET_TYPE_DISPLAY_NAMES: { [key: string]: string } = {
-    'pomodoro': 'ポモドーロタイマー',
-    'memo': 'メモ',
-    'timer-stopwatch': 'タイマー/ストップウォッチ',
-    'calendar': 'カレンダー',
-    'recent-notes': '最近編集したノート',
-    'theme-switcher': 'テーマ切り替え',
-    'file-view': 'ファイルビューア',
-    'tweet-widget': 'つぶやき',
-    'reflection-widget': '振り返りレポート',
-};
 
 /**
  * プラグインの「ウィジェットボード設定」タブを管理するクラス
@@ -65,7 +53,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        new Setting(containerEl).setName('ウィジェットボード設定').setHeading();
+        const lang = this.plugin.settings.language || 'ja';
+        new Setting(containerEl).setName(t(lang, 'settingTabHeading')).setHeading();
         // --- ベースフォルダ入力欄 ---
         const baseFolderSetting = new Setting(containerEl)
             .setName('ベースフォルダ（グローバル）')
@@ -117,6 +106,21 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 });
             });
         });
+
+        // 言語設定
+        new Setting(containerEl)
+            .setName(t(lang, 'languageSetting'))
+            .addDropdown(drop => {
+                Object.entries(LANGUAGE_NAMES).forEach(([value, label]) => {
+                    drop.addOption(value, label);
+                });
+                drop.setValue(this.plugin.settings.language || 'ja')
+                    .onChange(async (value) => {
+                        this.plugin.settings.language = value as any;
+                        await this.plugin.saveSettings();
+                        this.display();
+                    });
+            });
 
 
         new Setting(containerEl)
@@ -957,21 +961,21 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     currentBoard.widgets.push(newWidget);
                     await this.plugin.saveSettings(currentBoard.id);
                     this.renderWidgetListForBoard(widgetListEl, currentBoard); // widgetListEl は既に定義済み
-                    const widgetDisplayName = WIDGET_TYPE_DISPLAY_NAMES[widgetType] || widgetType; // 通知用にも表示名を使用
+                    const widgetDisplayName = widgetTypeName(this.plugin.settings.language || 'ja', widgetType); // 通知用にも表示名を使用
                     new Notice(`「${widgetDisplayName}」ウィジェットがボード「${currentBoard.name}」に追加されました。`);
                 }));
             settingItem.settingEl.addClass('widget-add-button-setting-item');
             settingItem.nameEl.remove(); settingItem.descEl.remove();
         };
-        createAddButtonToBoard("ポモドーロ追加", "pomodoro", DEFAULT_POMODORO_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("メモ追加", "memo", DEFAULT_MEMO_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("カレンダー追加", "calendar", DEFAULT_CALENDAR_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("最近編集したノート", "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("テーマ切り替え", "theme-switcher", {});
-        createAddButtonToBoard("タイマー／ストップウォッチ", "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS } as unknown as Record<string, unknown>);
-        createAddButtonToBoard("ファイルビューア追加", "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 } as unknown as Record<string, unknown>);
-        createAddButtonToBoard("つぶやき追加", "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS as unknown as Record<string, unknown>);
-        createAddButtonToBoard("振り返りレポート", "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard(t(lang, 'addPomodoro'), "pomodoro", DEFAULT_POMODORO_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard(t(lang, 'addMemo'), "memo", DEFAULT_MEMO_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard(t(lang, 'addCalendar'), "calendar", DEFAULT_CALENDAR_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard(t(lang, 'addRecentNotes'), "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard(t(lang, 'addThemeSwitcher'), "theme-switcher", {});
+        createAddButtonToBoard(t(lang, 'addTimerStopwatch'), "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS } as unknown as Record<string, unknown>);
+        createAddButtonToBoard(t(lang, 'addFileView'), "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 } as unknown as Record<string, unknown>);
+        createAddButtonToBoard(t(lang, 'addTweetWidget'), "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS as unknown as Record<string, unknown>);
+        createAddButtonToBoard(t(lang, 'addReflectionWidget'), "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS as unknown as Record<string, unknown>);
 
         this.renderWidgetListForBoard(widgetListEl, board);
     }
@@ -987,10 +991,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         widgets.forEach((widget, index) => {
             const widgetSettingContainer = containerEl.createDiv({cls: 'widget-setting-container'});
 
-            // ウィジェットタイプに応じた日本語表示名を取得
-            const widgetTypeName = WIDGET_TYPE_DISPLAY_NAMES[widget.type] || widget.type;
+            // ウィジェットタイプに応じた表示名を取得
+            const typeName = widgetTypeName(this.plugin.settings.language || 'ja', widget.type);
             // タイトルが未設定の場合は「(名称未設定 <ウィジェット日本語名>)」とする
-            const displayName = widget.title || `(名称未設定 ${widgetTypeName})`;
+            const displayName = widget.title || `(名称未設定 ${typeName})`;
 
             const titleSetting = new Setting(widgetSettingContainer)
                 .setName(displayName)
@@ -1007,7 +1011,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     widget.title = value.trim();
                     await this.plugin.saveSettings(board.id);
                     // タイトル変更時も同様のロジックで表示名を更新
-                    const updatedDisplayName = widget.title || `(名称未設定 ${widgetTypeName})`;
+                    const updatedDisplayName = widget.title || `(名称未設定 ${typeName})`;
                     titleSetting.setName(updatedDisplayName);
                     this.notifyWidgetInstanceIfBoardOpen(board.id, widget.id, widget.type, widget.settings as unknown as Record<string, unknown>);
                 });
@@ -1035,7 +1039,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 .addButton(button => button.setIcon("trash").setTooltip("このウィジェットを削除").setWarning()
                     .onClick(async () => {
                         // 削除時の通知メッセージも同様のロジックで表示名を生成
-                        const oldWidgetTypeName = WIDGET_TYPE_DISPLAY_NAMES[widget.type] || widget.type;
+                        const oldWidgetTypeName = widgetTypeName(this.plugin.settings.language || 'ja', widget.type);
                         const oldTitle = widget.title || `(名称未設定 ${oldWidgetTypeName})`;
                         board.widgets.splice(index, 1);
                         await this.plugin.saveSettings(board.id);
