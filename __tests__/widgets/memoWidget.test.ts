@@ -1,5 +1,6 @@
 import { MemoWidget, DEFAULT_MEMO_SETTINGS } from '../../src/widgets/memo';
 import type { WidgetConfig } from '../../src/interfaces';
+import { MarkdownRenderer } from 'obsidian';
 
 describe('MemoWidget 詳細テスト', () => {
   let dummyConfig: WidgetConfig;
@@ -19,6 +20,17 @@ describe('MemoWidget 詳細テスト', () => {
     };
     dummyApp = {};
     dummyPlugin = { settings: { boards: [] }, saveSettings: jest.fn() };
+    MarkdownRenderer.renderMarkdown.mockImplementation((md: string, el: HTMLElement) => {
+      let html = md
+        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+        .replace(/^- \[ \] (.+)$/gm, '<li><input type="checkbox"> $1</li>')
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+      el.innerHTML = html;
+      return Promise.resolve();
+    });
   });
 
   it('createでmemo-widgetクラスとUI要素が生成される', () => {
@@ -124,11 +136,51 @@ describe('MemoWidget 詳細テスト', () => {
 });
 
 describe('追加テストケース', () => {
+  let dummyConfig: WidgetConfig;
+  let dummyApp: any;
+  let dummyPlugin: any;
+
+  beforeEach(() => {
+    dummyConfig = {
+      id: 'test-memo',
+      type: 'memo',
+      title: 'テストメモ',
+      settings: { ...DEFAULT_MEMO_SETTINGS }
+    };
+    dummyApp = {};
+    dummyPlugin = { settings: { boards: [] }, saveSettings: jest.fn() };
+    MarkdownRenderer.renderMarkdown.mockImplementation((md: string, el: HTMLElement) => {
+      let html = md
+        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+        .replace(/^- \[ \] (.+)$/gm, '<li><input type="checkbox"> $1</li>')
+        .replace(/^- (.+)$/gm, '<li>$1</li>')
+        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+      el.innerHTML = html;
+      return Promise.resolve();
+    });
+  });
   // No.12 Markdown多様記法のレンダリング検証
-  it('多様なMarkdown記法が正しくHTML化される', () => {
-    // 目的: チェックボックス・リスト・リンク・画像・コード等のMarkdownが正しくHTML化されるか
-    // 期待結果: 各Markdown記法が正しくHTML化される
-    // TODO: 実装
+  it('多様なMarkdown記法が正しくHTML化される', async () => {
+    const md = [
+      '# 見出し',
+      '- [ ] タスク',
+      '- 項目',
+      '[リンク](https://example.com)',
+      '![img](https://example.com/img.png)',
+      '`code`'
+    ].join('\n');
+    const widget = new MemoWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.updateExternalSettings({ memoContent: md });
+    await new Promise(res => setTimeout(res, 0));
+    const html = widget['memoDisplayEl'].innerHTML;
+    expect(html).toContain('<h1');
+    expect(html).toContain('<li');
+    expect(html).toContain('<a href="https://example.com"');
+    expect(html).toContain('<img src="https://example.com/img.png"');
+    expect(html).toContain('<code>');
   });
 
   // No.13 長文・大量データ時のパフォーマンステスト
