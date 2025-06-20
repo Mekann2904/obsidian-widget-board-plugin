@@ -235,12 +235,14 @@ export default class WidgetBoardPlugin extends Plugin {
                 id: DEFAULT_BOARD_CONFIGURATION.id,
                 name: 'マイウィジェットボード (旧設定)',
                 defaultMode: loadedData.defaultMode || DEFAULT_BOARD_CONFIGURATION.defaultMode,
-                widgets: loadedData.widgets || []
+                widgets: loadedData.widgets || [],
+                viewMode: 'center'
             };
             this.settings = {
                 boards: [oldBoard],
                 lastOpenedBoardId: oldBoard.id,
-                defaultBoardIdForQuickOpen: oldBoard.id
+                defaultBoardIdForQuickOpen: oldBoard.id,
+                boardGroups: []
             };
         } else if (loadedData && loadedData.boards) {
             this.settings = Object.assign({}, DEFAULT_PLUGIN_SETTINGS, loadedData);

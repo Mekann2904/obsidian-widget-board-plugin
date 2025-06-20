@@ -31,6 +31,7 @@ export interface BoardConfiguration {
     name: string;
     defaultMode: string;
     widgets: WidgetConfig[];
+    viewMode: string;
     customWidth?: number;
     customWidthAnchor?: 'left' | 'center' | 'right';
 }
@@ -67,7 +68,7 @@ export interface PluginGlobalSettings {
     timerStopwatchNotificationSound?: import("./widgets/timer-stopwatch").TimerSoundType;
     timerStopwatchNotificationVolume?: number;
     pomodoroExportFormat?: import("./widgets/pomodoro").PomodoroExportFormat;
-    boardGroups?: BoardGroup[];
+    boardGroups: BoardGroup[];
     openBoardOnPomodoroEnd?: boolean;
     autoStartNextPomodoroSession?: boolean;
     tweetWidgetAvatarUrl?: string;
