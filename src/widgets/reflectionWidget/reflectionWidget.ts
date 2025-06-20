@@ -4,6 +4,7 @@ import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 // Utility functions are provided by the UI module
 import { ReflectionWidgetUI } from './reflectionWidgetUI';
+import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './constants';
 
 // プリロードバンドル型を定義
 export interface ReflectionWidgetPreloadBundle {
@@ -25,13 +26,28 @@ export class ReflectionWidget implements WidgetImplementation {
     public plugin!: WidgetBoardPlugin;
 
     // プリロードバンドルを受け取れるように拡張
-    create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin, preloadBundle?: ReflectionWidgetPreloadBundle): HTMLElement {
-        this.config = config;
+    create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin, preloadBundle?: unknown): HTMLElement {
+        const initialConfig = config || {
+            id: `reflection-widget-${Date.now()}`,
+            type: 'reflection-widget',
+            title: 'リフレクション',
+            settings: {},
+        };
+
+        // デフォルト設定と渡された設定をマージして、最終的な設定を決定します
+        this.config = {
+            ...initialConfig,
+            settings: {
+                ...REFLECTION_WIDGET_DEFAULT_SETTINGS,
+                ...(initialConfig.settings as ReflectionWidgetSettings || {}),
+            },
+        };
+
         this.app = app;
         this.plugin = plugin;
         const el = document.createElement('div');
         el.className = 'widget reflection-widget';
-        this.ui = new ReflectionWidgetUI(this, el, config, app, plugin, preloadBundle);
+        this.ui = new ReflectionWidgetUI(this, el, this.config, app, plugin, preloadBundle as any);
         this.ui.render();
         return el;
     }
@@ -40,8 +56,10 @@ export class ReflectionWidget implements WidgetImplementation {
     // _widgetId is required by the interface but unused here
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public updateExternalSettings(newSettings: Partial<ReflectionWidgetSettings>, _widgetId?: string) {
-        Object.assign(this.config.settings, newSettings);
-        this.refresh();
+        if (this.config && this.config.settings) {
+            Object.assign(this.config.settings, newSettings);
+            this.refresh();
+        }
     }
 
     // 状態変化時にUIを再描画
