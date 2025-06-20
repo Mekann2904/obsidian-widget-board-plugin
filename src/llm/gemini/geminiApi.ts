@@ -1,6 +1,7 @@
 import { safeFetch } from '../../utils/safeFetch';
 import { LLMProvider } from '../llmManager';
 import { geminiPrompt } from './tweetReplyPrompt';
+import { debugLog } from '../../utils/logger';
 
 export const GeminiProvider: LLMProvider = {
   id: 'gemini',
@@ -29,13 +30,22 @@ export const GeminiProvider: LLMProvider = {
       ];
     }
     const body = { contents };
-    const res = await safeFetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    const json = await res.json();
-    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? 'リプライ生成に失敗しました';
-    return text;
+    try {
+      const res = await safeFetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const json = await res.json();
+      const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        debugLog((context as any).plugin, 'GeminiProvider: missing text', json);
+        return 'リプライ生成に失敗しました';
+      }
+      return text;
+    } catch (e) {
+      debugLog((context as any).plugin, 'GeminiProvider error', e);
+      return 'リプライ生成に失敗しました';
+    }
   }
-}; 
+};
