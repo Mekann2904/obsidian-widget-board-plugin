@@ -172,7 +172,7 @@ describe('PomodoroWidget 詳細テスト', () => {
         state: 'running',
         close: jest.fn(),
       };
-      (widget as any).audioContext = ctxMock;
+      (widget as any).soundPlayer.audioContext = ctxMock;
       // default_beep
       (widget as any).currentSettings.notificationSound = 'default_beep';
       expect(() => (widget as any).playSoundNotification()).not.toThrow();
