@@ -21,5 +21,5 @@ export function getWeekRange(weekStartDay: number = 0): [string, string] {
     const offsetToEnd = 6 - offsetToStart;
     const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - offsetToStart);
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offsetToEnd);
-    return [getDateKey(start), getDateKey(end)];
+    return [getDateKeyLocal(start), getDateKeyLocal(end)];
 }
