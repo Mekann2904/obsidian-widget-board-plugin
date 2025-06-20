@@ -733,7 +733,7 @@ export class TweetWidget implements WidgetImplementation {
                         // デバッグモードでも通常と同じく{{ai}}に埋め込む
                         postText = s.text.replace('{{ai}}', aiText);
                         if (this.plugin.settings.debugLogging) {
-                            console.log('[予約投稿AIデバッグ] AI生成結果:', aiText);
+                            debugLog(this.plugin, '[予約投稿AIデバッグ] AI生成結果:', aiText);
                         }
                     } catch (e) {
                         postText = s.text.replace('{{ai}}', '[AI生成失敗]');
