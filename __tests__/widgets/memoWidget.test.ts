@@ -2,36 +2,39 @@ import { MemoWidget, DEFAULT_MEMO_SETTINGS } from '../../src/widgets/memo';
 import type { WidgetConfig } from '../../src/interfaces';
 import { MarkdownRenderer } from 'obsidian';
 
+let dummyConfig: WidgetConfig;
+let dummyApp: any;
+let dummyPlugin: any;
+
+const renderMarkdownStub = (md: string, el: HTMLElement) => {
+  const html = md
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/^- \[ \] (.+)$/gm, '<li><input type="checkbox"> $1</li>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>');
+  el.innerHTML = html;
+  return Promise.resolve();
+};
+
+beforeAll(() => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+beforeEach(() => {
+  dummyConfig = {
+    id: 'test-memo',
+    type: 'memo',
+    title: 'テストメモ',
+    settings: { ...DEFAULT_MEMO_SETTINGS }
+  };
+  dummyApp = {};
+  dummyPlugin = { settings: { boards: [] }, saveSettings: jest.fn() };
+  MarkdownRenderer.renderMarkdown.mockImplementation(renderMarkdownStub);
+});
+
 describe('MemoWidget 詳細テスト', () => {
-  let dummyConfig: WidgetConfig;
-  let dummyApp: any;
-  let dummyPlugin: any;
-
-  beforeAll(() => {
-    jest.spyOn(console, 'error').mockImplementation(() => {});
-  });
-
-  beforeEach(() => {
-    dummyConfig = {
-      id: 'test-memo',
-      type: 'memo',
-      title: 'テストメモ',
-      settings: { ...DEFAULT_MEMO_SETTINGS }
-    };
-    dummyApp = {};
-    dummyPlugin = { settings: { boards: [] }, saveSettings: jest.fn() };
-    MarkdownRenderer.renderMarkdown.mockImplementation((md: string, el: HTMLElement) => {
-      let html = md
-        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-        .replace(/^- \[ \] (.+)$/gm, '<li><input type="checkbox"> $1</li>')
-        .replace(/^- (.+)$/gm, '<li>$1</li>')
-        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>');
-      el.innerHTML = html;
-      return Promise.resolve();
-    });
-  });
 
   it('createでmemo-widgetクラスとUI要素が生成される', () => {
     const widget = new MemoWidget();
@@ -136,31 +139,6 @@ describe('MemoWidget 詳細テスト', () => {
 });
 
 describe('追加テストケース', () => {
-  let dummyConfig: WidgetConfig;
-  let dummyApp: any;
-  let dummyPlugin: any;
-
-  beforeEach(() => {
-    dummyConfig = {
-      id: 'test-memo',
-      type: 'memo',
-      title: 'テストメモ',
-      settings: { ...DEFAULT_MEMO_SETTINGS }
-    };
-    dummyApp = {};
-    dummyPlugin = { settings: { boards: [] }, saveSettings: jest.fn() };
-    MarkdownRenderer.renderMarkdown.mockImplementation((md: string, el: HTMLElement) => {
-      let html = md
-        .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-        .replace(/^- \[ \] (.+)$/gm, '<li><input type="checkbox"> $1</li>')
-        .replace(/^- (.+)$/gm, '<li>$1</li>')
-        .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>');
-      el.innerHTML = html;
-      return Promise.resolve();
-    });
-  });
   // No.12 Markdown多様記法のレンダリング検証
   it('多様なMarkdown記法が正しくHTML化される', async () => {
     const md = [
