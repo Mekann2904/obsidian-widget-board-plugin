@@ -13,9 +13,9 @@ describe('i18n t関数', () => {
     // @ts-expect-error 故意に不正値
     expect(t('xx', 'show')).toBe('表示');
   });
-  it('未定義キーの場合は空文字列', () => {
+  it('未定義キーの場合はキー文字列をそのまま返す', () => {
     // @ts-expect-error 故意に不正値
-    expect(t('ja', 'notExist')).toBe('');
+    expect(t('ja', 'notExist')).toBe('notExist');
   });
 });
 
