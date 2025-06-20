@@ -15,7 +15,7 @@ jest.mock('obsidian', () => {
 import { Component } from 'obsidian';
 
 let MarkdownRenderer: { renderMarkdown: jest.Mock };
-const { renderMarkdownBatchWithCache } = require('../../src/utils/renderMarkdownBatch.ts');
+import { renderMarkdownBatchWithCache } from '../../src/utils/renderMarkdownBatch';
 
 describe('renderMarkdownBatchWithCache', () => {
   beforeEach(() => {

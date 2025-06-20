@@ -1,5 +1,34 @@
 import { MarkdownRenderer, TFile, Component } from "obsidian";
 
+async function renderOffscreenMarkdown(
+  markdownText: string,
+  sourcePath: string | TFile,
+  component: Component
+) {
+  const offscreenDiv = document.createElement("div");
+  offscreenDiv.style.position = "absolute";
+  offscreenDiv.style.top = "-9999px";
+  offscreenDiv.style.width = "0px";
+  offscreenDiv.style.height = "0px";
+  document.body.appendChild(offscreenDiv);
+
+  await MarkdownRenderer.renderMarkdown(
+    markdownText,
+    offscreenDiv,
+    typeof sourcePath === "string" ? sourcePath : (sourcePath as TFile).path,
+    component
+  );
+
+  document.body.removeChild(offscreenDiv);
+
+  const frag = document.createDocumentFragment();
+  while (offscreenDiv.firstChild) {
+    frag.appendChild(offscreenDiv.firstChild);
+  }
+
+  return frag;
+}
+
 /**
  * renderMarkdownBatch
  *
@@ -18,32 +47,7 @@ export async function renderMarkdownBatch(
   sourcePath: string | TFile,
   component: Component
 ) {
-  // 1) オフスクリーンの一時コンテナを作る
-  const offscreenDiv = document.createElement("div");
-  offscreenDiv.style.position = "absolute";
-  offscreenDiv.style.top = "-9999px";
-  offscreenDiv.style.width = "0px";
-  offscreenDiv.style.height = "0px";
-  document.body.appendChild(offscreenDiv);
-
-  // 2) MarkdownRenderer.renderMarkdown で描画
-  await MarkdownRenderer.renderMarkdown(
-    markdownText,
-    offscreenDiv,
-    typeof sourcePath === "string" ? sourcePath : (sourcePath as TFile).path,
-    component
-  );
-
-  // 3) オフスクリーンdivをbodyから外す（ここでreflowが1回走るが、画面外なので影響最小）
-  document.body.removeChild(offscreenDiv);
-
-  // 4) fragmentに全ノードを直接移動してバッチ化
-  const frag = document.createDocumentFragment();
-  while (offscreenDiv.firstChild) {
-    frag.appendChild(offscreenDiv.firstChild);
-  }
-
-  // 5) containerに一度だけappendChild（ここでreflowが1回だけ）
+  const frag = await renderOffscreenMarkdown(markdownText, sourcePath, component);
   container.appendChild(frag);
 }
 
@@ -102,28 +106,7 @@ export async function renderMarkdownBatchWithCache(
     container.appendChild(clone);
     return;
   }
-  // 通常のバッチ描画
-  const offscreenDiv = document.createElement("div");
-  offscreenDiv.style.position = "absolute";
-  offscreenDiv.style.top = "-9999px";
-  offscreenDiv.style.width = "0px";
-  offscreenDiv.style.height = "0px";
-  document.body.appendChild(offscreenDiv);
-
-  await MarkdownRenderer.renderMarkdown(
-    markdownText,
-    offscreenDiv,
-    typeof sourcePath === "string" ? sourcePath : (sourcePath as TFile).path,
-    component
-  );
-
-  document.body.removeChild(offscreenDiv);
-
-  const frag = document.createDocumentFragment();
-  while (offscreenDiv.firstChild) {
-    frag.appendChild(offscreenDiv.firstChild);
-  }
-  // キャッシュに保存
+  const frag = await renderOffscreenMarkdown(markdownText, sourcePath, component);
   markdownCache.set(markdownText, frag.cloneNode(true) as DocumentFragment);
   container.appendChild(frag);
 }
@@ -163,27 +146,7 @@ export async function renderMarkdownBatchSegmentedWithCache(
     if (cached) {
       container.appendChild(cached.cloneNode(true) as DocumentFragment);
     } else {
-      // オフスクリーンdiv
-      const offscreenDiv = document.createElement("div");
-      offscreenDiv.style.cssText = "position:absolute;top:-9999px;width:0;height:0;";
-      document.body.appendChild(offscreenDiv);
-
-      // レンダリング
-      await MarkdownRenderer.renderMarkdown(
-        seg,
-        offscreenDiv,
-        typeof sourcePath === "string" ? sourcePath : (sourcePath as TFile).path,
-        component
-      );
-
-      document.body.removeChild(offscreenDiv);
-
-      // フラグメントに移動
-      const frag = document.createDocumentFragment();
-      while (offscreenDiv.firstChild) {
-        frag.appendChild(offscreenDiv.firstChild);
-      }
-      // キャッシュ保存
+      const frag = await renderOffscreenMarkdown(seg, sourcePath, component);
       segmentCache.set(seg, frag.cloneNode(true) as DocumentFragment);
       container.appendChild(frag);
     }
