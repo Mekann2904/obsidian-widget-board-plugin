@@ -23,6 +23,7 @@ import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/c
 import { obfuscate, deobfuscate } from './utils';
 import { widgetTypeName, t, LANGUAGE_NAMES } from './i18n/index';
 import type { Language } from './i18n/index';
+import { createAccordion } from './utils/uiHelpers';
 // import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
 
 /**
@@ -136,35 +137,22 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     });
             });
 
-        // --- アコーディオン生成ヘルパー (トップレベル用) ---
-        const createAccordion = (title: string, defaultOpen: boolean = false) => {
-            const acc = containerEl.createDiv({ cls: 'wb-accordion' + (defaultOpen ? ' wb-accordion-open' : '') });
-            const header = acc.createDiv({ cls: 'wb-accordion-header' });
-            const icon = header.createSpan({ cls: 'wb-accordion-icon' });
-            icon.setText('▶');
-            header.appendText(title);
-            const body = acc.createDiv({ cls: 'wb-accordion-body' });
-
-            if (defaultOpen) {
-                header.addClass('wb-accordion-open');
-                // icon.setText('▼'); // アイコンを開いた状態にする場合
-            } else {
-                body.style.display = 'none'; // 初期状態で閉じていればbodyも非表示
-            }
-
-            header.addEventListener('click', (event) => {
-                // ヘッダー自身がクリックされた場合のみ開閉
-                if (event.currentTarget !== event.target) return;
-                const isOpen = acc.classList.toggle('wb-accordion-open');
-                header.classList.toggle('wb-accordion-open');
-                // icon.setText(isOpen ? '▼' : '▶'); // アイコン切り替え
-                body.style.display = isOpen ? '' : 'none';
-            });
-            return { acc, header, body };
-        };
-
         // --- ポモドーロ（グローバル設定） ---
-        const pomoAcc = createAccordion(t(lang, 'pomoGlobalSetting'), false); // デフォルトで閉じる
+        this.renderPomodoroSettings(containerEl, lang);
+        // --- タイマー／ストップウォッチ通知音（全体設定） ---
+        this.renderTimerSettings(containerEl, lang);
+        // --- LLMグローバル設定 ---
+        this.renderLLMSettings(containerEl, lang);
+        // --- つぶやき（グローバル設定） ---
+        this.renderTweetWidgetSettings(containerEl, lang);
+        // --- カレンダー（グローバル設定） ---
+        this.renderCalendarSettings(containerEl, lang);
+        this.renderBoardManagementSection(containerEl, lang);
+        this.renderBoardGroupSection(containerEl, lang);
+    }
+
+    private renderPomodoroSettings(containerEl: HTMLElement, lang: Language) {
+        const pomoAcc = createAccordion(containerEl, t(lang, 'pomoGlobalSetting'), false); // デフォルトで閉じる
         new Setting(pomoAcc.body)
             .setName(t(lang, 'notificationSound'))
             .setDesc(t(lang, 'pomodoroNotificationSoundDesc'))
@@ -244,9 +232,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+    }
 
-        // --- タイマー／ストップウォッチ通知音（全体設定） ---
-        const timerAcc = createAccordion(t(lang, 'timerGlobalSetting'), false); // デフォルトで閉じる
+    private renderTimerSettings(containerEl: HTMLElement, lang: Language) {
+        const timerAcc = createAccordion(containerEl, t(lang, 'timerGlobalSetting'), false); // デフォルトで閉じる
         new Setting(timerAcc.body)
             .setName(t(lang, 'notificationSound'))
             .setDesc(t(lang, 'timerNotificationSoundDesc'))
@@ -289,9 +278,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                 });
             });
+    }
 
-        // --- LLMグローバル設定 ---
-        const llmAcc = createAccordion(t(lang, 'llmGlobalSetting'), false);
+    private renderLLMSettings(containerEl: HTMLElement, lang: Language) {
+        const llmAcc = createAccordion(containerEl, t(lang, 'llmGlobalSetting'), false);
         new Setting(llmAcc.body).setName('Gemini').setHeading();
         // Gemini APIキー
         new Setting(llmAcc.body)
@@ -365,7 +355,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
-
         // --- ユーザプロンプト（今日用） ---
         new Setting(llmAcc.body)
             .setName(t(lang, 'userSummaryPromptToday'))
@@ -402,15 +391,15 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     });
             });
+    }
 
-        // --- つぶやき（グローバル設定） ---
-        const tweetGlobalAcc = createAccordion(t(lang, 'tweetWidgetGlobalSettings'), false);
-        // ユーザー一覧セクション
+    private renderTweetWidgetSettings(containerEl: HTMLElement, lang: Language) {
+        const tweetGlobalAcc = createAccordion(containerEl, t(lang, 'tweetWidgetGlobalSettings'), false);
+        // ユーザー一覧セクションのみ先に切り出し
         new Setting(tweetGlobalAcc.body).setName(t(lang, 'userListGlobal')).setHeading();
         const userListDiv = tweetGlobalAcc.body.createDiv({ cls: 'tweet-user-list-table' });
         const renderUserList = () => {
             userListDiv.empty();
-            // '@you'ユーザーがいなければ必ず先頭に追加
             if (!this.plugin.settings.userProfiles) this.plugin.settings.userProfiles = [];
             if (!this.plugin.settings.userProfiles.some(p => p.userId === '@you')) {
                 this.plugin.settings.userProfiles.unshift({ userName: 'あなた', userId: '@you', avatarUrl: '' });
@@ -423,7 +412,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             (this.plugin.settings.userProfiles || []).forEach((profile, idx) => {
                 const isSelf = profile.userId === '@you';
                 const row = tbody.createEl('tr');
-                // ユーザー名
                 const nameTd = row.createEl('td');
                 const nameInput = nameTd.createEl('input', { type: 'text', value: profile.userName || '', placeholder: '例: あなた' });
                 nameInput.onchange = async () => {
@@ -431,7 +419,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     this.plugin.settings.userProfiles[idx].userName = nameInput.value;
                     await this.plugin.saveSettings();
                 };
-                // ユーザーID
                 const idTd = row.createEl('td');
                 const idInput = idTd.createEl('input', { type: 'text', value: profile.userId || '', placeholder: '例: @you' });
                 if (isSelf) idInput.disabled = true;
@@ -440,7 +427,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     this.plugin.settings.userProfiles[idx].userId = idInput.value;
                     await this.plugin.saveSettings();
                 };
-                // アバターURL
                 const avatarTd = row.createEl('td');
                 const avatarInput = avatarTd.createEl('input', { type: 'text', value: profile.avatarUrl || '', placeholder: 'https://example.com/avatar.png' });
                 avatarInput.onchange = async () => {
@@ -448,7 +434,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     this.plugin.settings.userProfiles[idx].avatarUrl = avatarInput.value;
                     await this.plugin.saveSettings();
                 };
-                // 削除ボタン
                 const delTd = row.createEl('td');
                 if (!isSelf) {
                     const delBtn = delTd.createEl('button', { text: t(lang, 'delete'), cls: 'mod-warning' });
@@ -460,7 +445,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     };
                 }
             });
-            // 追加ボタン
             const addTr = tbody.createEl('tr');
             addTr.createEl('td', { attr: { colspan: 4 } });
             const addBtn = addTr.createEl('button', { text: t(lang, 'addUser'), cls: 'mod-cta' });
@@ -472,6 +456,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             };
         };
         renderUserList();
+
         // --- AIリプライ発火上限設定 ---
         new Setting(tweetGlobalAcc.body)
             .setName(t(lang, 'aiReplyTriggerless'))
@@ -523,7 +508,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     const v = text.inputEl.value.trim();
                     this.plugin.settings.tweetWidgetAvatarUrl = v;
                     await this.plugin.saveSettings();
-                    // すべてのtweet-widgetインスタンスに反映
                     this.plugin.settings.boards.forEach(board => {
                         board.widgets.filter(w => w.type === 'tweet-widget').forEach(w => {
                             if (!w.settings) w.settings = {};
@@ -643,7 +627,6 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     if (sched.startDate) info += `  ${t(lang, 'startDate')}: ${sched.startDate}`;
                     if (sched.endDate) info += `  ${t(lang, 'endDate')}: ${sched.endDate}`;
                     main.createEl('div', { text: info, cls: 'scheduled-tweet-info' });
-                    // ボタン横並び
                     const actions = item.createDiv({ cls: 'scheduled-tweet-actions' });
                     const editBtn = actions.createEl('button', { text: t(lang, 'edit'), cls: 'scheduled-tweet-edit-btn' });
                     editBtn.onclick = () => {
@@ -656,31 +639,15 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         await repo.save({ ...settings, scheduledPosts });
                         new Notice(t(lang, 'scheduledPostDeleted'));
                         listDiv.remove();
-                        // 再描画
                         this.display();
                     };
                 });
             }
         })();
+    }
 
-        // --- カレンダー（グローバル設定） ---
-        const calendarAcc = createAccordion(t(lang, 'calendarGlobalSetting'), false); // デフォルトで閉じる
-
-        new Setting(calendarAcc.body)
-            .setName(t(lang, 'weekStartDay'))
-            .setDesc(t(lang, 'weekStartDayDesc'))
-            .addDropdown(drop => {
-                const labels = [t(lang, 'sunday'),t(lang, 'monday'),t(lang, 'tuesday'),t(lang, 'wednesday'),t(lang, 'thursday'),t(lang, 'friday'),t(lang, 'saturday')];
-                labels.forEach((l, i) => drop.addOption(String(i), l));
-                drop.setValue(String(this.plugin.settings.weekStartDay ?? 1));
-                drop.onChange(async value => {
-                    this.plugin.settings.weekStartDay = parseInt(value, 10);
-                    await this.plugin.saveSettings();
-                });
-            });
-
-        // --- ボード管理セクション ---
-        const boardManagementAcc = createAccordion(t(lang, 'boardManagement'), false); // デフォルトで閉じる
+    private renderBoardManagementSection(containerEl: HTMLElement, lang: Language) {
+        const boardManagementAcc = createAccordion(containerEl, t(lang, 'boardManagement'), false); // デフォルトで閉じる
         this.renderBoardManagementUI(boardManagementAcc.body, lang); // langを渡す
         // --- 選択されたボードの詳細設定をボード管理アコーディオン内に表示 ---
         const boardDetailContainer = boardManagementAcc.body.createDiv({ cls: 'selected-board-settings-section' });
@@ -690,13 +657,12 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
             const msg = this.plugin.settings.boards.length === 0 ? t(lang, 'noBoards') : t(lang, 'selectBoardToConfig');
             boardDetailContainer.createEl('p', { text: msg });
         }
+    }
 
-        // --- ボードグループ管理セクション ---
-        const boardGroupAcc = createAccordion(t(lang, 'boardGroupManagement'), false);
+    private renderBoardGroupSection(containerEl: HTMLElement, lang: Language) {
+        const boardGroupAcc = createAccordion(containerEl, t(lang, 'boardGroupManagement'), false);
         this.boardGroupBodyEl = boardGroupAcc.body;
         this.renderBoardGroupManagementUI(this.boardGroupBodyEl, lang); // langを渡す
-
-
     }
 
     /**
@@ -1380,6 +1346,22 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         // TODO: ここに予約投稿リストの描画ロジックを実装する
         containerEl.empty();
         containerEl.createEl('p', { text: '（予約投稿リストはここに表示されます）' });
+    }
+
+    private renderCalendarSettings(containerEl: HTMLElement, lang: Language) {
+        const calendarAcc = createAccordion(containerEl, t(lang, 'calendarGlobalSetting'), false); // デフォルトで閉じる
+        new Setting(calendarAcc.body)
+            .setName(t(lang, 'weekStartDay'))
+            .setDesc(t(lang, 'weekStartDayDesc'))
+            .addDropdown(drop => {
+                const labels = [t(lang, 'sunday'),t(lang, 'monday'),t(lang, 'tuesday'),t(lang, 'wednesday'),t(lang, 'thursday'),t(lang, 'friday'),t(lang, 'saturday')];
+                labels.forEach((l, i) => drop.addOption(String(i), l));
+                drop.setValue(String(this.plugin.settings.weekStartDay ?? 1));
+                drop.onChange(async value => {
+                    this.plugin.settings.weekStartDay = parseInt(value, 10);
+                    await this.plugin.saveSettings();
+                });
+            });
     }
 }
 
