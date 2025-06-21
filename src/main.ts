@@ -25,6 +25,7 @@ import { TweetWidgetSettings } from './widgets/tweetWidget/types';
 import { ReflectionWidgetSettings } from './widgets/reflectionWidget/reflectionWidgetTypes';
 import { BoardManager } from './boardManager';
 import { PrewarmManager } from './prewarm';
+import { t, type Language, StringKey } from './i18n';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -59,12 +60,12 @@ export default class WidgetBoardPlugin extends Plugin {
         await this.loadSettings();
         await this.prewarmManager.initTweetPostCountCache();
         this.boardManager.registerAllBoardCommands();
-        this.addRibbonIcon('layout-dashboard', 'ウィジェットボードを開く', () => this.openBoardPicker());
+        this.addRibbonIcon('layout-dashboard', this.t('openWidgetBoard'), () => this.openBoardPicker());
         this.addSettingTab(new WidgetBoardSettingTab(this.app, this));
         // すべてのボードをトグルで非表示/表示するコマンドを追加
         this.addCommand({
             id: 'hide-all-widget-boards',
-            name: 'すべてのウィジェットボードを非表示',
+            name: this.t('hideAllWidgetBoards'),
             callback: () => this.hideAllBoards()
         });
         // widget-boardコードブロックプロセッサ登録
@@ -75,11 +76,11 @@ export default class WidgetBoardPlugin extends Plugin {
                 try {
                     config = yaml.load(source);
                 } catch (e) {
-                    element.createEl('pre', { text: `YAMLパースエラー: ${String(e)}` });
+                    element.createEl('pre', { text: this.t('yamlParseError', { error: String(e) }) });
                     return;
                 }
                 if (!config || typeof config !== 'object' || !config.type) {
-                    element.createEl('pre', { text: 'ウィジェット設定が不正です。typeフィールドが必要です。' });
+                    element.createEl('pre', { text: this.t('invalidWidgetConfig') });
                     return;
                 }
                 // id, titleがなければ自動生成
@@ -118,7 +119,7 @@ export default class WidgetBoardPlugin extends Plugin {
                 // typeに対応するWidgetImplementationを呼び出し
                 const WidgetClass = registeredWidgetImplementations.get(config.type);
                 if (!WidgetClass) {
-                    element.createEl('pre', { text: `未対応のウィジェットタイプ: ${config.type}` });
+                    element.createEl('pre', { text: this.t('unsupportedWidgetType', { type: config.type }) });
                     return;
                 }
                 try {
@@ -126,7 +127,7 @@ export default class WidgetBoardPlugin extends Plugin {
                     const widgetEl = widgetInstance.create(config, this.app, this);
                     element.appendChild(widgetEl);
                 } catch (e) {
-                    element.createEl('pre', { text: `ウィジェット描画エラー: ${String(e)}` });
+                    element.createEl('pre', { text: this.t('widgetRenderError', { error: String(e) }) });
                 }
             }
         );
@@ -171,7 +172,7 @@ export default class WidgetBoardPlugin extends Plugin {
             // 旧形式からのマイグレーション
             const oldBoard: BoardConfiguration = {
                 id: DEFAULT_BOARD_CONFIGURATION.id,
-                name: 'マイウィジェットボード (旧設定)',
+                name: this.t('migratedBoardName'),
                 defaultMode: loadedData.defaultMode || DEFAULT_BOARD_CONFIGURATION.defaultMode,
                 widgets: loadedData.widgets || [],
                 viewMode: 'center'
@@ -277,5 +278,9 @@ export default class WidgetBoardPlugin extends Plugin {
 
     private async prewarmAllWidgetMarkdownCache() {
         await this.prewarmManager.prewarmAllWidgetMarkdownCache();
+    }
+
+    private t(key: StringKey, vars?: Record<string, string | number>): string {
+        return t(this.settings.language || 'ja', key, vars);
     }
 }
