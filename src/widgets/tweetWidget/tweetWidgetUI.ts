@@ -1,12 +1,13 @@
-import { App, Notice, setIcon, Menu, Component } from 'obsidian';
+import { App, Notice, setIcon, Menu, Component, Modal } from 'obsidian';
 import type { TweetWidget } from './tweetWidget';
 import type { TweetWidgetPost } from './types';
 import { getFullThreadHistory } from './aiReply';
-import { extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
+import { extractYouTubeUrl, fetchYouTubeTitle, formatTimeAgo, wrapSelection } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { renderMermaidInWorker } from '../../utils';
 import { debugLog } from '../../utils/logger';
+import { StringKey, t } from '../../i18n';
 
 // --- ユーティリティ関数 ---
 function escapeRegExp(str: string): string {
@@ -60,6 +61,10 @@ export class TweetWidgetUI {
         this.postsById = widget.postsById;
     }
 
+    private t(key: StringKey, vars?: Record<string, string | number>): string {
+        return t(this.widget.plugin.settings.language || 'ja', key, vars);
+    }
+
     public resetScroll(): void {
         this.container.scrollTop = 0;
         const panel = this.container.closest('.widget-board-panel-custom');
@@ -98,8 +103,8 @@ export class TweetWidgetUI {
     }
 
     private renderTabBar(tabBar: HTMLElement): void {
-        const homeTab = tabBar.createEl('button', { text: 'ホーム', cls: 'tweet-tab-btn' });
-        const notifTab = tabBar.createEl('button', { text: '通知', cls: 'tweet-tab-btn' });
+        const homeTab = tabBar.createEl('button', { text: this.t('home'), cls: 'tweet-tab-btn' });
+        const notifTab = tabBar.createEl('button', { text: this.t('notifications'), cls: 'tweet-tab-btn' });
 
         if (this.widget.currentTab === 'home') homeTab.classList.add('active');
         if (this.widget.currentTab === 'notification') notifTab.classList.add('active');
@@ -129,10 +134,10 @@ export class TweetWidgetUI {
 
         if (notifications.length > 0) {
             const notifBox = this.container.createDiv({ cls: 'tweet-notification-list' });
-            notifBox.createDiv({ text: '通知', cls: 'tweet-notification-title' });
+            notifBox.createDiv({ text: this.t('notifications'), cls: 'tweet-notification-title' });
             notifications.slice(0, 20).forEach(n => this.renderSingleNotification(notifBox, n));
         } else {
-            this.container.createDiv({ text: '通知はありません', cls: 'tweet-notification-empty' });
+            this.container.createDiv({ text: this.t('noNotifications'), cls: 'tweet-notification-empty' });
         }
     }
 
@@ -145,9 +150,9 @@ export class TweetWidgetUI {
         row.createEl('img', { attr: { src: avatarUrl, width: 36, height: 36 }, cls: 'tweet-notification-avatar' });
         
         const titleLine = row.createDiv({ cls: 'tweet-notification-titleline' });
-        titleLine.createSpan({ text: n.from.userName || n.from.userId || '誰か', cls: 'tweet-notification-user' });
+        titleLine.createSpan({ text: n.from.userName || n.from.userId || this.t('someone'), cls: 'tweet-notification-user' });
         
-        let actionText = n.type === 'reply' ? ' がリプライしました' : '';
+        let actionText = n.type === 'reply' ? this.t('repliedToYou') : '';
         titleLine.createSpan({ text: actionText, cls: 'tweet-notification-action' });
 
         const content = `「${n.from.text.slice(0, 40)}...」\n→「${n.to.text.slice(0, 40)}...」`;
@@ -178,17 +183,17 @@ export class TweetWidgetUI {
         const header = this.container.createDiv({ cls: 'tweet-detail-header' });
         const backBtn = header.createEl('button', { cls: 'tweet-detail-header-back', text: '←' });
         backBtn.onclick = () => this.widget.navigateToDetail(null);
-        header.createDiv({ cls: 'tweet-detail-header-title', text: 'ポスト' });
+        header.createDiv({ cls: 'tweet-detail-header-title', text: this.t('post') });
     }
 
     private renderFilterBar(): void {
         const filterBar = this.container.createDiv({ cls: 'tweet-filter-bar' });
         const filterSelect = filterBar.createEl('select');
         [
-            { value: 'active', label: '通常のみ' },
-            { value: 'all', label: 'すべて' },
-            { value: 'deleted', label: '非表示のみ' },
-            { value: 'bookmark', label: 'ブックマーク' }
+            { value: 'active', label: this.t('filterActiveOnly') },
+            { value: 'all', label: this.t('filterAll') },
+            { value: 'deleted', label: this.t('filterDeletedOnly') },
+            { value: 'bookmark', label: this.t('filterBookmarks') }
         ].forEach(opt => {
             filterSelect.createEl('option', { value: opt.value, text: opt.label });
         });
@@ -199,13 +204,13 @@ export class TweetWidgetUI {
         };
         const periodSelect = filterBar.createEl('select', { cls: 'tweet-period-select' });
         [
-            { value: 'all', label: '全期間' },
-            { value: 'today', label: '今日' },
-            { value: '1d', label: '1日' },
-            { value: '3d', label: '3日' },
-            { value: '7d', label: '1週間' },
-            { value: '30d', label: '1ヶ月' },
-            { value: 'custom', label: 'カスタム' }
+            { value: 'all', label: this.t('allTime') },
+            { value: 'today', label: this.t('today') },
+            { value: '1d', label: this.t('oneDay') },
+            { value: '3d', label: this.t('threeDays') },
+            { value: '7d', label: this.t('oneWeek') },
+            { value: '30d', label: this.t('oneMonth') },
+            { value: 'custom', label: this.t('custom') }
         ].forEach(opt => {
             periodSelect.createEl('option', { value: opt.value, text: opt.label });
         });
@@ -235,26 +240,24 @@ export class TweetWidgetUI {
                 }
             }
         };
-        const dataViewerBtn = filterBar.createEl('button', { text: 'データビューア', cls: 'tweet-data-viewer-btn' });
+        const dataViewerBtn = filterBar.createEl('button', { text: this.t('dataViewer'), cls: 'tweet-data-viewer-btn' });
         dataViewerBtn.onclick = () => {
-            this.openDataViewerModal();
+            this.showDataViewer();
         };
     }
 
-    private openDataViewerModal(): void {
-        const backdrop = document.body.createDiv('tweet-reply-modal-backdrop');
-        const closeModal = () => backdrop.remove();
-        backdrop.onclick = (e) => { if (e.target === backdrop) closeModal(); };
-        const modal = backdrop.createDiv('tweet-data-viewer-modal');
-        modal.style.zIndex = '9999';
-        // ヘッダー
-        const header = modal.createDiv('tweet-reply-modal-header');
-        header.createSpan({ text: 'つぶやきデータビューア' });
-        const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
-        closeBtn.onclick = closeModal;
-        // ビューア本体
-        const viewerContainer = modal.createDiv('tweet-data-viewer-main');
-        new TweetWidgetDataViewer(Array.from(this.widget.postsById.values()), viewerContainer);
+    private showDataViewer() {
+        const modal = new Modal(this.widget.app);
+        modal.modalEl.addClass('tweet-data-viewer-modal');
+        modal.onOpen = () => {
+            const viewerContainer = modal.contentEl.createDiv();
+            new TweetWidgetDataViewer(
+                Array.from(this.widget.postsById.values()), 
+                viewerContainer, 
+                this.widget.plugin.settings.language || 'ja'
+            );
+        };
+        modal.open();
     }
 
     private renderPostInputArea(): void {
@@ -273,7 +276,7 @@ export class TweetWidgetUI {
         toggleBar.style.display = 'flex';
         toggleBar.style.justifyContent = 'flex-end';
         toggleBar.style.marginBottom = '2px';
-        const toggleBtn = toggleBar.createEl('button', { cls: 'tweet-toggle-switch', attr: { 'aria-label': 'プレビューモード', type: 'button' } });
+        const toggleBtn = toggleBar.createEl('button', { cls: 'tweet-toggle-switch', attr: { 'aria-label': this.t('previewMode'), type: 'button' } });
         let isPreview = false;
         const previewArea = inputArea.createDiv({ cls: 'tweet-preview-area' });
         previewArea.style.display = 'none';
@@ -285,7 +288,7 @@ export class TweetWidgetUI {
             cls: 'tweet-textarea-main', 
             attr: { 
                 rows: 2, 
-                placeholder: this.widget.replyingToParentId ? '返信をポスト' : 'いまどうしてる？' 
+                placeholder: this.widget.replyingToParentId ? this.t('replyPlaceholder') : this.t('postPlaceholder') 
             }
         });
         input.addEventListener('input', () => {
@@ -307,13 +310,13 @@ export class TweetWidgetUI {
                 ytSuggest.textContent = '';
                 return;
             }
-            ytSuggest.textContent = '動画タイトル取得中...';
+            ytSuggest.textContent = this.t('fetchingYoutubeTitle');
             ytSuggest.style.display = 'block';
             const currentInput = val;
             fetchYouTubeTitle(url).then(title => {
                 if (input.value !== currentInput) return;
                 if (title) {
-                    ytSuggest.textContent = `「${title}」を挿入 → クリック`;
+                    ytSuggest.textContent = this.t('insertYoutubeTitle', { title });
                     ytSuggest.onclick = () => {
                         const insertText = `![${title}](${url})`;
                         // 元のYouTube URL（クエリ付きも含む）を正規表現で検出して置換
@@ -324,7 +327,7 @@ export class TweetWidgetUI {
                         input.dispatchEvent(new Event('input'));
                     };
                 } else {
-                    ytSuggest.textContent = '動画タイトル取得失敗';
+                    ytSuggest.textContent = this.t('fetchYoutubeTitleFailed');
                     ytSuggest.onclick = null;
                 }
             });
@@ -358,7 +361,7 @@ export class TweetWidgetUI {
 
         const postBtn = bottomBar.createEl('button', { 
             cls: 'tweet-post-btn-main', 
-            text: this.widget.editingPostId ? '編集完了' : (this.widget.replyingToParentId ? '返信する' : 'ポストする') 
+            text: this.widget.editingPostId ? this.t('finishEditing') : (this.widget.replyingToParentId ? this.t('reply') : this.t('postVerb')) 
         });
 
         postBtn.onclick = async () => {
@@ -476,8 +479,8 @@ export class TweetWidgetUI {
         const replyingToPost = this.postsById.get(this.widget.replyingToParentId!);
         if (replyingToPost) {
             const replyInfoDiv = replyInfoContainer.createDiv({ cls: 'tweet-reply-info' });
-            replyInfoDiv.setText(`${replyingToPost.userName || '@user'} さんに返信中`);
-            const cancelReplyBtn = replyInfoDiv.createEl('button', { text: 'キャンセル', cls: 'tweet-cancel-reply-btn' });
+            replyInfoDiv.setText(this.t('replyingTo', { user: replyingToPost.userName || replyingToPost.userId || '@user' }));
+            const cancelReplyBtn = replyInfoDiv.createEl('button', { text: this.t('cancel'), cls: 'tweet-cancel-reply-btn' });
             cancelReplyBtn.onclick = () => this.widget.cancelReply();
         } else {
              this.widget.cancelReply();
@@ -485,7 +488,7 @@ export class TweetWidgetUI {
     }
 
     private renderInputIcons(iconBar: HTMLElement, input: HTMLTextAreaElement, filePreviewArea: HTMLElement): void {
-        const imageBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main', attr: { title: '画像を添付' }});
+        const imageBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main', attr: { title: this.t('attachImage') }});
         setIcon(imageBtn, 'image');
         const imageInput = document.createElement('input');
         imageInput.type = 'file';
@@ -501,11 +504,11 @@ export class TweetWidgetUI {
             imageInput.value = '';
         };
 
-        const boldBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main', attr: { title: '太字' }});
+        const boldBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main', attr: { title: this.t('bold') }});
         setIcon(boldBtn, 'bold');
         boldBtn.onclick = () => this.widget.wrapSelection(input, '**');
         
-        const italicBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main', attr: { title: '斜体' }});
+        const italicBtn = iconBar.createEl('button', { cls: 'tweet-icon-btn-main', attr: { title: this.t('italic') }});
         setIcon(italicBtn, 'italic');
         italicBtn.onclick = () => this.widget.wrapSelection(input, '*');
     }
@@ -638,19 +641,19 @@ export class TweetWidgetUI {
 
     private showImageContextMenu(event: MouseEvent, img: HTMLImageElement): void {
         const menu = new Menu();
-        menu.addItem(item => item.setTitle('画像をコピー').setIcon('copy')
+        menu.addItem(item => item.setTitle(this.t('copyImage')).setIcon('copy')
             .onClick(async () => {
                 try {
                     const blob = await (await fetch(img.src)).blob();
                     await navigator.clipboard.write([
                         new ClipboardItem({ [blob.type]: blob })
                     ]);
-                    new Notice('画像をコピーしました');
+                    new Notice(this.t('imageCopied'));
                 } catch { /* ignore copy error */
-                    new Notice('コピーに失敗しました');
+                    new Notice(this.t('copyFailed'));
                 }
             }));
-        menu.addItem(item => item.setTitle('画像を拡大表示').setIcon('image')
+        menu.addItem(item => item.setTitle(this.t('zoomImage')).setIcon('image')
             .onClick(() => this.showImageModal(img.src)));
         menu.showAtMouseEvent(event);
     }
@@ -668,7 +671,7 @@ export class TweetWidgetUI {
         }
         const filteredPosts = this.widget.getFilteredPosts();
         if (filteredPosts.length === 0) {
-            listEl.createEl('div', { cls: 'tweet-empty-notice', text: 'まだつぶやきがありません。' });
+            listEl.createEl('div', { cls: 'tweet-empty-notice', text: this.t('noTweetsYet') });
             return;
         }
         const rootItems = filteredPosts
@@ -723,7 +726,7 @@ export class TweetWidgetUI {
         renderRecursiveReplies(target.id, container);
 
         if (this.widget.getReplies(target.id).length === 0) {
-            container.createDiv({ cls: 'tweet-detail-no-reply', text: 'リプライはありません' });
+            container.createDiv({ cls: 'tweet-detail-no-reply', text: this.t('noReplies') });
         }
     }
     
@@ -736,11 +739,11 @@ export class TweetWidgetUI {
         const inputArea = replyBox.createDiv({ cls: 'tweet-detail-reply-input' });
         const textarea = inputArea.createEl('textarea', { 
             cls: 'tweet-detail-reply-textarea', 
-            attr: { placeholder: '返信をポスト' } 
+            attr: { placeholder: this.t('replyPlaceholder') } 
         });
         const replyBtn = inputArea.createEl('button', { 
             cls: 'tweet-detail-reply-btn', 
-            text: '返信' 
+            text: this.t('reply') 
         });
         replyBtn.onclick = async () => {
             const text = textarea.value.trim();
@@ -791,22 +794,22 @@ export class TweetWidgetUI {
         avatarImg.onclick = (e) => this.showAvatarModal(e, avatarUrl);
 
         const userInfo = header.createDiv({ cls: 'tweet-item-userinfo-main' });
-        userInfo.createEl('span', { text: post.userName || 'あなた', cls: 'tweet-item-username-main' });
+        userInfo.createEl('span', { text: post.userName || this.t('defaultUserName'), cls: 'tweet-item-username-main' });
         if (post.verified) {
             const badgeSpan = userInfo.createSpan({ cls: 'tweet-item-badge-main' });
             setIcon(badgeSpan, 'badge-check');
         }
         userInfo.createEl('span', { text: post.userId || '@you', cls: 'tweet-item-userid-main' });
-        const timeText = '・' + this.widget.formatTimeAgo(post.created) + (post.edited ? ' (編集済)' : '');
+        const timeText = '・' + this.widget.formatTimeAgo(post.created) + (post.edited ? this.t('edited') : '');
         userInfo.createEl('span', { text: timeText, cls: 'tweet-item-time-main' });
 
         if (post.threadId && !isDetail) {
              const parentPost = this.postsById.get(post.threadId);
              const replyToDiv = item.createDiv({ cls: 'tweet-item-reply-to' });
              if(parentPost && !parentPost.deleted) {
-                 replyToDiv.setText(`返信先: ${parentPost.userName || parentPost.userId}`);
+                 replyToDiv.setText(this.t('replyingToShort', { user: parentPost.userName || parentPost.userId || '@user' }));
              } else {
-                 replyToDiv.setText('削除されたポストへの返信');
+                 replyToDiv.setText(this.t('replyToDeleted'));
                  replyToDiv.addClass('deleted-reply');
              }
         }
@@ -908,7 +911,7 @@ export class TweetWidgetUI {
         }
 
         const metadataDiv = item.createDiv({ cls: 'tweet-item-metadata-main' });
-        if (post.bookmark) metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: 'Bookmarked' });
+        if (post.bookmark) metadataDiv.createEl('span', { cls: 'tweet-chip bookmark', text: this.t('bookmarked') });
         if (post.visibility && post.visibility !== 'public') metadataDiv.createEl('span', { cls: 'tweet-chip visibility', text: post.visibility });
         if (post.noteQuality && post.noteQuality !== 'fleeting') metadataDiv.createEl('span', { cls: 'tweet-chip quality', text: post.noteQuality });
         if (post.taskStatus) metadataDiv.createEl('span', { cls: 'tweet-chip status', text: post.taskStatus });
@@ -922,11 +925,11 @@ export class TweetWidgetUI {
 
         if (post.userId && post.userId.startsWith('@ai-') && this.widget.plugin.settings.showAiHistory) {
             const historyDiv = item.createDiv({ cls: 'tweet-ai-history-main' });
-            historyDiv.createEl('div', { text: '会話履歴', cls: 'tweet-ai-history-title' });
+            historyDiv.createEl('div', { text: this.t('conversationHistory'), cls: 'tweet-ai-history-title' });
             const thread = getFullThreadHistory(post, this.widget.currentSettings.posts);
             thread.forEach(t => {
                 const line = historyDiv.createDiv({ cls: 'tweet-ai-history-line' });
-                const who = t.userId && t.userId.startsWith('@ai-') ? 'AI' : (t.userName || t.userId || 'あなた');
+                const who = t.userId && t.userId.startsWith('@ai-') ? 'AI' : (t.userName || t.userId || this.t('defaultUserName'));
                 line.createSpan({ text: `${who}: `, cls: 'tweet-ai-history-who' });
                 line.createSpan({ text: t.text, cls: 'tweet-ai-history-text' });
             });
@@ -965,7 +968,7 @@ export class TweetWidgetUI {
 
         if (this.widget.plugin.settings.llm?.gemini?.apiKey) {
             const geminiBtn = this.createActionButton(actionBar, 'bot', undefined, 'gemini-reply');
-            geminiBtn.title = 'Geminiでリプライ生成';
+            geminiBtn.title = this.t('generateGeminiReply');
             geminiBtn.onclick = async (e) => {
                 e.stopPropagation();
                 geminiBtn.setAttribute('disabled', 'true');
@@ -992,7 +995,7 @@ export class TweetWidgetUI {
         if (uniqueUsers.size > 0) {
             const reactedDiv = container.createDiv({ cls: 'tweet-reacted-users-main' });
             const row = reactedDiv.createDiv({ cls: 'tweet-reacted-row' });
-            row.createDiv({ text: 'この人たちが反応しています！', cls: 'tweet-reacted-label' });
+            row.createDiv({ text: this.t('peopleReacted'), cls: 'tweet-reacted-label' });
             const avatarsDiv = row.createDiv({ cls: 'tweet-reacted-avatars' });
             const usersArr = Array.from(uniqueUsers.values());
             const maxAvatars = 5;
@@ -1011,21 +1014,21 @@ export class TweetWidgetUI {
     private showMoreMenu(event: MouseEvent, post: TweetWidgetPost): void {
         const menu = new Menu();
 
-        menu.addItem((item) => item.setTitle("編集").setIcon("pencil").onClick(() => this.widget.startEdit(post)));
+        menu.addItem((item) => item.setTitle(this.t('edit')).setIcon("pencil").onClick(() => this.widget.startEdit(post)));
         
         if (post.deleted) {
-            menu.addItem(item => item.setTitle('復元').setIcon('rotate-ccw').onClick(() => this.widget.setPostDeleted(post.id, false)));
+            menu.addItem(item => item.setTitle(this.t('restore')).setIcon('rotate-ccw').onClick(() => this.widget.setPostDeleted(post.id, false)));
         } else {
-            menu.addItem(item => item.setTitle('非表示').setIcon('eye-off').onClick(() => this.widget.setPostDeleted(post.id, true)));
+            menu.addItem(item => item.setTitle(this.t('hide')).setIcon('eye-off').onClick(() => this.widget.setPostDeleted(post.id, true)));
         }
         
-        menu.addItem(item => item.setTitle('⚠️ 完全削除').setIcon('x-circle').onClick(() => {
-            if (confirm('このつぶやきを完全に削除しますか？（元に戻せません）')) {
+        menu.addItem(item => item.setTitle(this.t('deletePermanently')).setIcon('x-circle').onClick(() => {
+            if (confirm(this.t('confirmDeletePost'))) {
                 this.widget.deletePost(post.id);
             }
         }));
-        menu.addItem(item => item.setTitle('🧹 スレッドを完全削除').setIcon('trash').onClick(() => {
-             if (confirm('このスレッド（親＋リプライ）を完全に削除しますか？（元に戻せません）')) {
+        menu.addItem(item => item.setTitle(this.t('deleteThreadPermanently')).setIcon('trash').onClick(() => {
+             if (confirm(this.t('confirmDeleteThread'))) {
                 this.widget.deleteThread(post.id);
             }
         }));
@@ -1037,24 +1040,31 @@ export class TweetWidgetUI {
         ) => {
             menu.addItem(item => item.setTitle(sectionTitle).setDisabled(true));
             options.forEach(option => {
-                let label = option ? option.charAt(0).toUpperCase() + option.slice(1) : "None";
-                if (labelMap && option && labelMap[option]) label += `（${labelMap[option]}）`;
+                let label: string;
+                if (option === null) {
+                    label = this.t('off');
+                } else {
+                    label = option.charAt(0).toUpperCase() + option.slice(1);
+                    if (labelMap && labelMap[option]) {
+                        label += `（${labelMap[option]}）`;
+                    }
+                }
                 menu.addItem(item => item
                     .setTitle(label)
-                    .setChecked(currentValue === option)
+                    .setChecked((currentValue ?? null) === option)
                     .onClick(() => this.widget.updatePostProperty(post.id, key, option)));
             });
         };
 
-        addMenuItems("Visibility", ["public", "private", "draft"], post.visibility, 'visibility' as keyof TweetWidgetPost);
+        addMenuItems(this.t('visibility'), ["public", "private", "draft"], post.visibility, 'visibility' as keyof TweetWidgetPost);
         menu.addSeparator();
-        addMenuItems("Note Quality", ["fleeting", "literature", "permanent"], post.noteQuality, 'noteQuality' as keyof TweetWidgetPost, 
-            { fleeting: "アイデア", literature: "文献", permanent: "永久" });
+        addMenuItems(this.t('noteQuality'), ["fleeting", "literature", "permanent"], post.noteQuality, 'noteQuality' as keyof TweetWidgetPost, 
+            { fleeting: this.t('qualityFleeting'), literature: this.t('qualityLiterature'), permanent: this.t('qualityPermanent') });
         menu.addSeparator();
-        addMenuItems("Task Status", [null, "todo", "doing", "done"], post.taskStatus, 'taskStatus' as keyof TweetWidgetPost);
+        addMenuItems(this.t('taskStatus'), [null, "todo", "doing", "done"], post.taskStatus, 'taskStatus' as keyof TweetWidgetPost);
         menu.addSeparator();
 
-        menu.addItem(item => item.setTitle("Open/Create Context Note").setIcon("file-text")
+        menu.addItem(item => item.setTitle(this.t('openCreateContextNote')).setIcon("file-text")
             .onClick(() => this.widget.openContextNote(post)));
 
         menu.showAtMouseEvent(event);
@@ -1062,8 +1072,8 @@ export class TweetWidgetUI {
 
     private showRetweetMenu(event: MouseEvent, post: TweetWidgetPost): void {
         const menu = new Menu();
-        menu.addItem(item => item.setTitle('引用').setIcon('quote').onClick(() => this.widget.startRetweet(post)));
-        menu.addItem(item => item.setTitle('詳細').setIcon('list').onClick(() => this.widget.openRetweetList(post)));
+        menu.addItem(item => item.setTitle(this.t('quote')).setIcon('quote').onClick(() => this.widget.startRetweet(post)));
+        menu.addItem(item => item.setTitle(this.t('details')).setIcon('list').onClick(() => this.widget.openRetweetList(post)));
         menu.showAtMouseEvent(event);
     }
     
@@ -1109,7 +1119,7 @@ export class TweetWidgetUI {
         }, 0);
 
         const header = modal.createDiv('tweet-reply-modal-header');
-        header.createSpan({ text: '返信' });
+        header.createSpan({ text: this.t('reply') });
         const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
         closeBtn.onclick = closeModal;
 
@@ -1117,7 +1127,7 @@ export class TweetWidgetUI {
         this.renderSinglePost(post, postBox, true);
 
         const inputArea = modal.createDiv('tweet-reply-modal-input');
-        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: '返信をポスト' } });
+        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: this.t('replyPlaceholder') } });
         textarea.focus();
 
         // --- YouTubeサジェストUI ---
@@ -1132,13 +1142,13 @@ export class TweetWidgetUI {
                 ytSuggest.textContent = '';
                 return;
             }
-            ytSuggest.textContent = '動画タイトル取得中...';
+            ytSuggest.textContent = this.t('fetchingYoutubeTitle');
             ytSuggest.style.display = 'block';
             const currentInput = val;
             fetchYouTubeTitle(url).then(title => {
                 if (textarea.value !== currentInput) return;
                 if (title) {
-                    ytSuggest.textContent = `「${title}」を挿入 → クリック`;
+                    ytSuggest.textContent = this.t('insertYoutubeTitle', { title });
                     ytSuggest.onclick = () => {
                         const insertText = `![${title}](${url})`;
                         // 元のYouTube URL（クエリ付きも含む）を正規表現で検出して置換
@@ -1149,13 +1159,13 @@ export class TweetWidgetUI {
                         textarea.dispatchEvent(new Event('input'));
                     };
                 } else {
-                    ytSuggest.textContent = '動画タイトル取得失敗';
+                    ytSuggest.textContent = this.t('fetchYoutubeTitleFailed');
                     ytSuggest.onclick = null;
                 }
             });
         });
 
-        const replyBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: '返信' });
+        const replyBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: this.t('reply') });
         replyBtn.onclick = async () => {
             const text = textarea.value.trim();
             if (!text) return;
@@ -1231,7 +1241,7 @@ export class TweetWidgetUI {
         }, 0);
 
         const header = modal.createDiv('tweet-reply-modal-header');
-        header.createSpan({ text: '引用リツイート' });
+        header.createSpan({ text: this.t('quoteRetweet') });
         const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
         closeBtn.onclick = closeModal;
 
@@ -1239,7 +1249,7 @@ export class TweetWidgetUI {
         this.renderSinglePost(post, postBox, true);
 
         const inputArea = modal.createDiv('tweet-reply-modal-input');
-        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: 'コメントを追加' } });
+        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: this.t('addComment') } });
         textarea.focus();
 
         const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
@@ -1253,13 +1263,13 @@ export class TweetWidgetUI {
                 ytSuggest.textContent = '';
                 return;
             }
-            ytSuggest.textContent = '動画タイトル取得中...';
+            ytSuggest.textContent = this.t('fetchingYoutubeTitle');
             ytSuggest.style.display = 'block';
             const currentInput = val;
             fetchYouTubeTitle(url).then(title => {
                 if (textarea.value !== currentInput) return;
                 if (title) {
-                    ytSuggest.textContent = `「${title}」を挿入 → クリック`;
+                    ytSuggest.textContent = this.t('insertYoutubeTitle', { title });
                     ytSuggest.onclick = () => {
                         const insertText = `![${title}](${url})`;
                         const urlRegex = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}(?:[?&][^\s]*)?)/;
@@ -1269,13 +1279,13 @@ export class TweetWidgetUI {
                         textarea.dispatchEvent(new Event('input'));
                     };
                 } else {
-                    ytSuggest.textContent = '動画タイトル取得失敗';
+                    ytSuggest.textContent = this.t('fetchYoutubeTitleFailed');
                     ytSuggest.onclick = null;
                 }
             });
         });
 
-        const retweetBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: 'リツイート' });
+        const retweetBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: this.t('retweet') });
         retweetBtn.onclick = async () => {
             await this.widget.submitRetweet(textarea.value, post);
             closeModal();
@@ -1349,14 +1359,14 @@ export class TweetWidgetUI {
         }, 0);
 
         const header = modal.createDiv('tweet-reply-modal-header');
-        header.createSpan({ text: '引用リツイート一覧' });
+        header.createSpan({ text: this.t('quoteRetweetList') });
         const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
         closeBtn.onclick = closeModal;
 
         const listBox = modal.createDiv('tweet-reply-modal-post');
         const retweets = this.widget.getQuotePosts(post.id);
         if (retweets.length === 0) {
-            listBox.createDiv({ text: 'まだ引用リツイートはありません。', cls: 'tweet-empty-notice' });
+            listBox.createDiv({ text: this.t('noQuoteRetweets'), cls: 'tweet-empty-notice' });
         } else {
             retweets.forEach(rt => {
                 const wrapper = listBox.createDiv({ cls: 'tweet-quote-list-item' });
@@ -1411,7 +1421,7 @@ export class TweetWidgetUI {
         }, 0);
 
         const header = modal.createDiv('tweet-reply-modal-header');
-        header.createSpan({ text: 'つぶやきを編集' });
+        header.createSpan({ text: this.t('editTweet') });
         const closeBtn = header.createEl('button', { text: '×', cls: 'tweet-reply-modal-close' });
         closeBtn.onclick = closeModal;
 
@@ -1419,11 +1429,11 @@ export class TweetWidgetUI {
         this.renderSinglePost(post, postBox, true);
 
         const inputArea = modal.createDiv('tweet-reply-modal-input');
-        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: 'つぶやきを編集', rows: 3 } });
+        const textarea = inputArea.createEl('textarea', { cls: 'tweet-reply-modal-textarea', attr: { placeholder: this.t('editTweetPlaceholder'), rows: 3 } });
         textarea.value = post.text;
         textarea.focus();
 
-        const replyBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: '編集完了' });
+        const replyBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: this.t('finishEditing') });
         replyBtn.onclick = async () => {
             const text = textarea.value.trim();
             if (!text) return;

@@ -1,13 +1,13 @@
 import type { TweetWidgetSettings } from './types';
 
 /**
- * TweetWidgetのデフォルト設定
+ * Default settings for the TweetWidget.
  */
 export const DEFAULT_TWEET_WIDGET_SETTINGS: TweetWidgetSettings = {
     posts: [],
     scheduledPosts: [],
     avatarUrl: '',
-    userName: 'あなた',
+    userName: 'You', // This will be localized in the component that uses it.
     userId: '@you',
     verified: false,
     aiGovernance: {
@@ -17,6 +17,6 @@ export const DEFAULT_TWEET_WIDGET_SETTINGS: TweetWidgetSettings = {
 };
 
 /**
- * 投稿の最大文字数
+ * Maximum character count for a post.
  */
 export const MAX_TWEET_LENGTH = 300;

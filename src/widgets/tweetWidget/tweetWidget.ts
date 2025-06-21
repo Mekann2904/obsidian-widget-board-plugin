@@ -7,6 +7,7 @@ import { geminiPrompt } from '../../llm/gemini/tweetReplyPrompt';
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
 import { getWeekRange } from '../../utils';
+import { t } from '../../i18n';
 
 // --- 分離したモジュールをインポート ---
 import type { TweetWidgetFile, TweetWidgetPost, TweetWidgetSettings } from './types';
@@ -77,7 +78,7 @@ export class TweetWidget implements WidgetImplementation {
         // 非同期初期化は副作用として行い、UIは一旦ローディング表示
         // jsdom の innerText は textContent を更新しないため textContent を使用する
         this.widgetEl.textContent = 'Loading...';
-        this.repository.load().then(initialSettings => {
+        this.repository.load(this.plugin.settings.language || 'ja').then(initialSettings => {
             this.store = new TweetStore(initialSettings);
             this.recalculateQuoteCounts();
             this.ui = new TweetWidgetUI(this, this.widgetEl);
@@ -115,7 +116,7 @@ export class TweetWidget implements WidgetImplementation {
         this.saveTimeout = window.setTimeout(async () => {
             // update path in case settings changed while widget is open
             this.repository.setPath(this.getTweetDbPath());
-            await this.repository.save(this.store.settings);
+            await this.repository.save(this.store.settings, this.plugin.settings.language || 'ja');
             this.saveTimeout = null;
         }, 500);
     }
@@ -151,12 +152,12 @@ export class TweetWidget implements WidgetImplementation {
                 tags: parseTags(trimmedText),
                 links: parseLinks(trimmedText),
             });
-            new Notice('つぶやきを編集しました');
+            new Notice(t(this.plugin.settings.language || 'ja', 'tweetEdited'));
         } else {
             const newPost = this.createNewPostObject(trimmedText);
             this.store.addPost(newPost);
             this.plugin.updateTweetPostCount(newPost.created, 1);
-            new Notice(this.replyingToParentId ? '返信を投稿しました' : 'つぶやきを投稿しました');
+            new Notice(this.replyingToParentId ? t(this.plugin.settings.language || 'ja', 'replyPosted') : t(this.plugin.settings.language || 'ja', 'tweetPosted'));
             this.triggerAiReply(newPost);
         }
 
@@ -172,7 +173,7 @@ export class TweetWidget implements WidgetImplementation {
         const newPost = this.createNewPostObject(trimmedText, parentId);
         this.store.addPost(newPost);
         this.plugin.updateTweetPostCount(newPost.created, 1);
-        new Notice('返信を投稿しました');
+        new Notice(t(this.plugin.settings.language || 'ja', 'replyPosted'));
         
         this.triggerAiReply(newPost);
         this.saveDataDebounced();
@@ -189,7 +190,7 @@ export class TweetWidget implements WidgetImplementation {
             retweet: count,
             retweeted: true,
         });
-        new Notice('引用リツイートを投稿しました');
+        new Notice(t(this.plugin.settings.language || 'ja', 'quotePosted'));
         this.saveDataDebounced();
         this.ui.render();
     }
@@ -228,7 +229,7 @@ export class TweetWidget implements WidgetImplementation {
             tags: parseTags(text),
             links: parseLinks(text),
             userId: selfProfile?.userId || this.store.settings.userId || '@you',
-            userName: selfProfile?.userName || this.store.settings.userName || 'あなた',
+            userName: selfProfile?.userName || this.store.settings.userName || t(this.plugin.settings.language || 'ja', 'defaultUserName'),
             avatarUrl: selfProfile?.avatarUrl || this.store.settings.avatarUrl || '',
             verified: this.store.settings.verified,
         };

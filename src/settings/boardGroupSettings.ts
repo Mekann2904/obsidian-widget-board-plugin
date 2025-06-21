@@ -15,7 +15,7 @@ import {
 import type { PomodoroSettings } from '../widgets/pomodoro';
 import type { MemoWidgetSettings } from '../widgets/memo';
 import type { CalendarWidgetSettings } from '../widgets/calendar';
-import { widgetTypeName, t } from '../i18n';
+import { widgetTypeName, t, StringKey } from '../i18n';
 import type { Language } from '../i18n';
 import { createAccordion } from '../utils/uiHelpers';
 import type { WidgetBoardSettingTab } from '../settingsTab';
@@ -262,44 +262,53 @@ export function renderSelectedBoardSettingsUI(containerEl: HTMLElement, tab: Wid
 
         // createAddButtonToBoardの定義を修正
         const createAddButtonToBoard = (
-            buttonText: string,
             widgetType: string,
             defaultWidgetSettings: Record<string, unknown>,
-            lang: import('../i18n').Language
+            lang: Language
         ) => {
-            const settingItem = new Setting(addWidgetButtonsContainer);
-            settingItem.addButton(button => button
-                .setButtonText(buttonText)
-                .setCta()
-                .onClick(async () => {
-                    if (!tab.selectedBoardId) return;
-                    const currentBoard = tab.plugin.settings.boards.find(b => b.id === tab.selectedBoardId);
-                    if (!currentBoard) return;
-                    const newWidget: WidgetConfig = {
-                        id: `${widgetType}-widget-${Date.now()}`,
-                        type: widgetType,
-                        title: '',
-                        settings: { ...defaultWidgetSettings }
-                    };
-                    currentBoard.widgets.push(newWidget);
-                    await tab.plugin.saveSettings(currentBoard.id);
-                    renderWidgetListForBoard(widgetListEl, tab, currentBoard, lang); // widgetListEl は既に定義済み
-                    const widgetDisplayName = widgetTypeName(tab.plugin.settings.language || 'ja', widgetType); // 通知用にも表示名を使用
-                    new Notice(`「${widgetDisplayName}」ウィジェットがボード「${currentBoard.name}」に追加されました。`);
-                }));
-            settingItem.settingEl.addClass('widget-add-button-setting-item');
-            settingItem.nameEl.remove(); settingItem.descEl.remove();
+            const buttonTextKey = ('add' + widgetType.split('-').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(''))
+                .replace('Widget', '') as StringKey;
+
+            const button = addWidgetButtonsContainer.createEl('button', {
+                text: t(lang, buttonTextKey),
+                cls: 'add-widget-btn'
+            });
+
+            button.onclick = async () => {
+                if (!tab.selectedBoardId) return;
+                const currentBoard = tab.plugin.settings.boards.find(b => b.id === tab.selectedBoardId);
+                if (!currentBoard) return;
+                const newWidget: WidgetConfig = {
+                    id: `widget-${widgetType}-${Date.now()}`,
+                    type: widgetType,
+                    title: widgetTypeName(lang, widgetType as import('../i18n').WidgetTypeKey),
+                    settings: { ...defaultWidgetSettings },
+                };
+
+                if (widgetType === 'tweet-widget' && newWidget.settings) {
+                    (newWidget.settings as { userName?: string }).userName = t(lang, 'defaultUserName');
+                }
+
+                if (!currentBoard.widgets) {
+                    currentBoard.widgets = [];
+                }
+                currentBoard.widgets.push(newWidget);
+                await tab.plugin.saveSettings(currentBoard.id);
+                renderWidgetListForBoard(widgetListEl, tab, currentBoard, lang); // widgetListEl は既に定義済み
+                const widgetDisplayName = widgetTypeName(lang, widgetType as import('../i18n').WidgetTypeKey); // 通知用にも表示名を使用
+                new Notice(`「${widgetDisplayName}」ウィジェットがボード「${currentBoard.name}」に追加されました。`);
+            };
         };
         // 呼び出し時にlangを渡す
-        createAddButtonToBoard(t(lang, 'addPomodoro'), "pomodoro", DEFAULT_POMODORO_SETTINGS as unknown as Record<string, unknown>, lang);
-        createAddButtonToBoard(t(lang, 'addMemo'), "memo", DEFAULT_MEMO_SETTINGS as unknown as Record<string, unknown>, lang);
-        createAddButtonToBoard(t(lang, 'addCalendar'), "calendar", DEFAULT_CALENDAR_SETTINGS as unknown as Record<string, unknown>, lang);
-        createAddButtonToBoard(t(lang, 'addRecentNotes'), "recent-notes", DEFAULT_RECENT_NOTES_SETTINGS as unknown as Record<string, unknown>, lang);
-        createAddButtonToBoard(t(lang, 'addThemeSwitcher'), "theme-switcher", {}, lang);
-        createAddButtonToBoard(t(lang, 'addTimerStopwatch'), "timer-stopwatch", { ...DEFAULT_TIMER_STOPWATCH_SETTINGS } as unknown as Record<string, unknown>, lang);
-        createAddButtonToBoard(t(lang, 'addFileView'), "file-view-widget", { heightMode: "auto", fixedHeightPx: 200 } as unknown as Record<string, unknown>, lang);
-        createAddButtonToBoard(t(lang, 'addTweetWidget'), "tweet-widget", DEFAULT_TWEET_WIDGET_SETTINGS as unknown as Record<string, unknown>, lang);
-        createAddButtonToBoard(t(lang, 'addReflectionWidget'), "reflection-widget", REFLECTION_WIDGET_DEFAULT_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard('memo', DEFAULT_MEMO_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard('pomodoro', DEFAULT_POMODORO_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard('timer-stopwatch', DEFAULT_TIMER_STOPWATCH_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard('calendar', DEFAULT_CALENDAR_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard('recent-notes', DEFAULT_RECENT_NOTES_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard('theme-switcher', {}, lang);
+        createAddButtonToBoard('file-view-widget', {}, lang);
+        createAddButtonToBoard('tweet-widget', DEFAULT_TWEET_WIDGET_SETTINGS as unknown as Record<string, unknown>, lang);
+        createAddButtonToBoard('reflection-widget', REFLECTION_WIDGET_DEFAULT_SETTINGS as unknown as Record<string, unknown>, lang);
 
         renderWidgetListForBoard(widgetListEl, tab, board, lang);
     }

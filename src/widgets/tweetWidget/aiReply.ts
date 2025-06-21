@@ -4,6 +4,7 @@ import { deobfuscate, pad2 } from '../../utils';
 import { debugLog } from '../../utils/logger';
 import type { TweetWidgetPost, AiGovernanceData } from './types'; // AiGovernanceData をインポート
 import type { PluginGlobalSettings } from '../../interfaces';
+import { t } from '../../i18n';
 
 // AIリプライ用のuserId生成関数
 export function generateAiUserId(): string {
@@ -144,30 +145,37 @@ export async function generateAiReply({
             const maxMs = typeof settings.aiReplyDelayMaxMs === 'number' ? settings.aiReplyDelayMaxMs : 7000;
             await randomDelay(minMs, maxMs);
         }
+        const lang = settings.language || 'ja';
 
         const thread = getFullThreadHistory(tweet, allTweets);
-        const threadText = thread.map(t =>
-            (t.userId && t.userId.startsWith('@ai-') ? 'AI: ' : 'あなた: ') + t.text
-        ).join('\n');
+        const threadText = thread.map(t_post =>
+            (t_post.userId && t_post.userId.startsWith('@ai-') ? t(lang, 'aiPromptAI') : t(lang, 'aiPromptYou')) + t_post.text
+        ).join('\\n');
         // スレッドの最後の投稿の投稿日時を取得
         const lastPost = thread[thread.length - 1];
         const date = new Date(lastPost.created);
-        const dateStr = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${date.getHours()}時${pad2(date.getMinutes())}分`;
+        const dateStr = t(lang, 'aiPromptDateFormat', {
+            year: date.getFullYear(),
+            month: date.getMonth() + 1,
+            day: date.getDate(),
+            hour: date.getHours(),
+            minute: pad2(date.getMinutes()),
+        });
         // 時間帯ラベルを判定
         function getTimeZoneLabel(date: Date): string {
             const hour = date.getHours();
-            if (hour >= 0 && hour < 3) return "未明";
-            if (hour >= 3 && hour < 6) return "明け方";
-            if (hour >= 6 && hour < 9) return "朝";
-            if (hour >= 9 && hour < 12) return "昼前";
-            if (hour >= 12 && hour < 15) return "昼過ぎ";
-            if (hour >= 15 && hour < 18) return "夕方";
-            if (hour >= 18 && hour < 21) return "夜のはじめ頃";
-            if (hour >= 21 && hour < 24) return "夜遅く";
-            return "";
+            if (hour >= 0 && hour < 3) return t(lang, 'timeZoneEarlyDawn');
+            if (hour >= 3 && hour < 6) return t(lang, 'timeZoneDawn');
+            if (hour >= 6 && hour < 9) return t(lang, 'timeZoneMorning');
+            if (hour >= 9 && hour < 12) return t(lang, 'timeZoneLateMorning');
+            if (hour >= 12 && hour < 15) return t(lang, 'timeZoneAfternoon');
+            if (hour >= 15 && hour < 18) return t(lang, 'timeZoneEvening');
+            if (hour >= 18 && hour < 21) return t(lang, 'timeZoneEarlyNight');
+            if (hour >= 21 && hour < 24) return t(lang, 'timeZoneLateNight');
+            return t(lang, 'timeZoneUnspecified');
         }
         const timeZoneLabel = getTimeZoneLabel(date);
-        const dateWithZone = `${dateStr}（この時間帯は「${timeZoneLabel}」です）`;
+        const dateWithZone = `${dateStr} ${t(lang, 'aiPromptTimeZoneInfo', { timeZoneLabel })}`;
         // プロンプトに投稿日時＋時間帯を埋め込む
         const customPrompt = settings.userTweetPrompt && settings.userTweetPrompt.trim() ? settings.userTweetPrompt : geminiPrompt;
         const promptText = customPrompt.replace('{postDate}', dateWithZone).replace('{tweet}', threadText);
@@ -209,7 +217,7 @@ export async function generateAiReply({
             tags: parseTags(replyText),
             links: parseLinks(replyText),
             userId: findLatestAiUserIdInThread(tweet, allTweets) || generateAiUserId(),
-            userName: 'AI',
+            userName: t(lang, 'aiUserName'),
             verified: true
         };
         await saveReply(aiReply);

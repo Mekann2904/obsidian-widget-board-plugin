@@ -2,6 +2,7 @@ import { App, Notice } from 'obsidian';
 import type { TweetWidgetSettings } from './types'; // types.ts から型をインポート
 import { validatePost } from './tweetWidgetUtils'; // tweetWidgetUtils.ts からユーティリティをインポート
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from './constants'; // constants.ts から定数をインポート
+import { t, type Language } from '../../i18n';
 
 export class TweetRepository {
     private app: App;
@@ -24,12 +25,12 @@ export class TweetRepository {
      * ファイルが存在しない、空、または破損している場合は、デフォルト設定を返す。
      * @returns 読み込んだ設定オブジェクト (Promise<TweetWidgetSettings>)
      */
-    async load(): Promise<TweetWidgetSettings> {
+    async load(lang: Language): Promise<TweetWidgetSettings> {
         try {
             const fileExists = await this.app.vault.adapter.exists(this.dbPath);
             if (!fileExists) {
                 // ファイルが存在しない場合は、デフォルト設定で初期化し、一度保存を試みる
-                await this.save(DEFAULT_TWEET_WIDGET_SETTINGS);
+                await this.save(DEFAULT_TWEET_WIDGET_SETTINGS, lang);
                 return { ...DEFAULT_TWEET_WIDGET_SETTINGS };
             }
 
@@ -37,7 +38,7 @@ export class TweetRepository {
 
             // データが空の場合
             if (!raw || raw.trim() === '') {
-                new Notice('データファイルが空です。初期設定を使用します。');
+                new Notice(t(lang, 'dataFileEmpty'));
                 return { ...DEFAULT_TWEET_WIDGET_SETTINGS };
             }
 
@@ -46,8 +47,8 @@ export class TweetRepository {
                 loadedSettings = JSON.parse(raw);
             } catch (parseError) {
                 console.error("Error parsing tweet data JSON:", parseError);
-                new Notice('つぶやきデータのフォーマットが不正です。初期設定で起動します。\n破損したファイルは '.concat(this.dbPath, '.bak として保存を試みます。'));
-                await this.backupCorruptedFile(raw);
+                new Notice(t(lang, 'dataFileCorrupted', { filePath: this.dbPath }));
+                await this.backupCorruptedFile(raw, lang);
                 return { ...DEFAULT_TWEET_WIDGET_SETTINGS };
             }
             
@@ -66,7 +67,7 @@ export class TweetRepository {
 
         } catch (e) {
             console.error("Error loading tweet data:", e);
-            new Notice('つぶやきデータの読み込み中に予期せぬエラーが発生しました。詳細はコンソールを確認してください。');
+            new Notice(t(lang, 'loadError'));
         }
         
         // 上記のいずれかのエラーパスで処理されなかった場合のフォールバック
@@ -77,7 +78,7 @@ export class TweetRepository {
      * 現在の設定と投稿データをファイルに保存する。
      * @param settings 保存する設定オブジェクト
      */
-    async save(settings: TweetWidgetSettings): Promise<void> {
+    async save(settings: TweetWidgetSettings, lang: Language): Promise<void> {
         try {
             const sanitizedSettings = this.ensureSettingsSchema(settings);
             const lastSlash = this.dbPath.lastIndexOf('/');
@@ -91,7 +92,7 @@ export class TweetRepository {
             await this.app.vault.adapter.write(this.dbPath, dataToSave);
         } catch (e) {
             console.error("Error saving tweet data:", e);
-            new Notice("つぶやきデータの保存中にエラーが発生しました。詳細はコンソールを確認してください。");
+            new Notice(t(lang, 'saveError'));
         }
     }
 
@@ -121,11 +122,11 @@ export class TweetRepository {
      * 破損したデータファイルのバックアップを作成するヘルパー関数
      * @param rawContent バックアップする生のファイル内容
      */
-    private async backupCorruptedFile(rawContent: string): Promise<void> {
+    private async backupCorruptedFile(rawContent: string, lang: Language): Promise<void> {
         const backupPath = `${this.dbPath}.bak_${Date.now()}`;
         try {
             await this.app.vault.adapter.write(backupPath, rawContent);
-            new Notice(`破損したデータは ${backupPath} にバックアップされました。`);
+            new Notice(t(lang, 'backupSuccess', { backupPath: backupPath }));
         } catch (backupError) {
             console.error("Error creating backup of corrupted tweet data:", backupError);
             new Notice(`破損したデータのバックアップ作成に失敗しました: ${backupPath}`);
