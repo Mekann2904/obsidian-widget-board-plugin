@@ -265,6 +265,7 @@ export class PomodoroWidget implements WidgetImplementation {
         this.config = config;
         this.app = app;
         this.plugin = plugin;
+        const lang = this.plugin.settings.language || 'ja';
         this.sessionLogger = new PomodoroSessionLogger(app, plugin);
 
         if (!this.initialized) {
@@ -294,8 +295,8 @@ export class PomodoroWidget implements WidgetImplementation {
         config.settings = this.currentSettings;
 
         this.view = new PomodoroView();
-        const { widgetEl, contentEl } = this.view.create(config);
-        this.widgetEl = this.view.widgetEl;
+        const { widgetEl, contentEl } = this.view.create(this.config, lang);
+        this.widgetEl = widgetEl;
         this.timeDisplayEl = this.view.timeDisplayEl;
         this.statusDisplayEl = this.view.statusDisplayEl;
         this.cycleDisplayEl = this.view.cycleDisplayEl;
@@ -330,7 +331,7 @@ export class PomodoroWidget implements WidgetImplementation {
             if (this.plugin && typeof this.plugin.saveData === 'function') {
                 await this.plugin.saveData(this.plugin.settings);
             }
-        });
+        }, lang);
 
         if (!this.initialized) {
             this.resetTimerState(this.currentPomodoroSet, true); 
@@ -452,14 +453,18 @@ export class PomodoroWidget implements WidgetImplementation {
     }
 
     private playSoundNotification() {
+        const lang = this.plugin.settings.language || 'ja';
         const globalSound = this.plugin.settings.pomodoroNotificationSound;
         const globalVolume = this.plugin.settings.pomodoroNotificationVolume;
+
         const soundType = globalSound ?? this.currentSettings.notificationSound;
+        if (soundType === 'off') return;
+
         const volume = globalVolume !== undefined ? globalVolume : this.currentSettings.notificationVolume;
-        this.soundPlayer.play(soundType, volume);
+        this.soundPlayer.play(soundType, volume, lang);
     }
 
-    private async handleSessionEnd() {
+    private async handleSessionEnd(isSkipped = false) {
         debugLog(this.plugin, 'handleSessionEnd called', this);
         if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
         this.isRunning = false;

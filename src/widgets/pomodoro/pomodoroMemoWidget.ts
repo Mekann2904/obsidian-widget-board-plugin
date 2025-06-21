@@ -1,5 +1,6 @@
 import { App, Notice, setIcon, Component } from 'obsidian';
 import { renderMarkdownBatch } from '../../utils/renderMarkdownBatch';
+import { t, Language } from '../../i18n';
 
 declare global {
     interface Window {
@@ -27,6 +28,7 @@ export class PomodoroMemoWidget {
     private isEditingMemo: boolean = false;
     private settings: PomodoroMemoSettings;
     private onSave: ((newMemo: string) => void) | null = null;
+    private lang: Language = 'ja';
 
     /**
      * インスタンス初期化
@@ -35,11 +37,12 @@ export class PomodoroMemoWidget {
      * @param settings メモ設定
      * @param onSave 保存時コールバック
      */
-    constructor(app: App, parentEl: HTMLElement, settings: PomodoroMemoSettings, onSave?: (newMemo: string) => void) {
+    constructor(app: App, parentEl: HTMLElement, settings: PomodoroMemoSettings, onSave?: (newMemo: string) => void, lang: Language = 'ja') {
         this.app = app;
         this.settings = settings;
         this.containerEl = parentEl.createDiv({ cls: 'pomodoro-memo-container' });
         this.onSave = onSave || null;
+        this.lang = lang;
         this.render();
     }
 
@@ -51,7 +54,7 @@ export class PomodoroMemoWidget {
         const memoHeaderEl = this.containerEl.createDiv({ cls: 'pomodoro-memo-header' });
         this.editMemoButtonEl = memoHeaderEl.createEl('button', { cls: 'pomodoro-memo-edit-button' });
         setIcon(this.editMemoButtonEl, 'pencil');
-        this.editMemoButtonEl.setAttribute('aria-label', 'メモを編集/追加');
+        this.editMemoButtonEl.setAttribute('aria-label', t(this.lang, 'widget.memo.editAddAriaLabel'));
         this.editMemoButtonEl.onClickEvent(() => this.enterMemoEditMode());
 
         // 表示エリア
@@ -61,9 +64,9 @@ export class PomodoroMemoWidget {
         this.memoEditContainerEl.style.display = 'none';
         this.memoEditAreaEl = this.memoEditContainerEl.createEl('textarea', { cls: 'pomodoro-memo-edit-area' });
         const memoEditControlsEl = this.memoEditContainerEl.createDiv({ cls: 'pomodoro-memo-edit-controls' });
-        this.saveMemoButtonEl = memoEditControlsEl.createEl('button', { text: '保存' });
+        this.saveMemoButtonEl = memoEditControlsEl.createEl('button', { text: t(this.lang, 'save') });
         this.saveMemoButtonEl.addClass('mod-cta');
-        this.cancelMemoButtonEl = memoEditControlsEl.createEl('button', { text: 'キャンセル' });
+        this.cancelMemoButtonEl = memoEditControlsEl.createEl('button', { text: t(this.lang, 'cancel') });
         this.saveMemoButtonEl.onClickEvent(() => this.saveMemoChanges());
         this.cancelMemoButtonEl.onClickEvent(() => this.cancelMemoEditMode());
         this.updateMemoEditUI();
@@ -123,11 +126,11 @@ export class PomodoroMemoWidget {
                 try {
                     await this.onSave(newMemo);
                 } catch (e) {
-                    new Notice('メモの保存に失敗しました');
+                    new Notice(t(this.lang, 'widget.pomodoro.memoSaveFailed'));
                     console.error(e);
                 }
             }
-            new Notice('メモを保存しました');
+            new Notice(t(this.lang, 'widget.pomodoro.memoSaved'));
         }
         this.updateMemoEditUI();
     }

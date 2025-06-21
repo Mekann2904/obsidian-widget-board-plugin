@@ -1,11 +1,12 @@
 import { Notice } from 'obsidian';
 import type { PomodoroSoundType } from './index';
+import { t, Language } from '../../i18n';
 
 export class PomodoroSoundPlayer {
   private audioContext: AudioContext | null = null;
   private currentAudioElement: HTMLAudioElement | null = null;
 
-  play(soundType: PomodoroSoundType, volume: number) {
+  play(soundType: PomodoroSoundType, volume: number, lang: Language = 'ja') {
     if (soundType === 'off') return;
 
     if (this.currentAudioElement) {
@@ -80,7 +81,7 @@ export class PomodoroSoundPlayer {
         });
       }
     } catch (e) {
-      new Notice('音声の再生に失敗しました');
+      new Notice(t(lang, 'widget.pomodoro.soundFailed'));
       console.error('Error playing sound:', e);
     }
   }

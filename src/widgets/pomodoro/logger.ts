@@ -2,13 +2,15 @@ import { Notice } from 'obsidian';
 import type { App } from 'obsidian';
 import type WidgetBoardPlugin from '../../main';
 import type { PomodoroExportFormat, SessionLog } from './index';
+import { t, Language } from '../../i18n';
 
 export class PomodoroSessionLogger {
   constructor(private app: App, private plugin: WidgetBoardPlugin) {}
 
   async exportLogs(sessionLogs: SessionLog[], format: PomodoroExportFormat): Promise<void> {
+    const lang = this.plugin.settings.language || 'ja';
     if (sessionLogs.length === 0) {
-      new Notice('エクスポートするログがありません。');
+      new Notice(t(lang, 'widget.pomodoro.noLogsToExport'));
       return;
     }
 
@@ -85,9 +87,9 @@ export class PomodoroSessionLogger {
           allLogs.map(log => `| ${log.date} | ${log.start} | ${log.end} | ${log.sessionType} | ${(log.memo || '').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>')} |`).join('\n');
       }
       await this.app.vault.adapter.write(filePath, content);
-      new Notice(`ポモドーロログを ${filePath} に保存しました。`);
+      new Notice(t(lang, 'widget.pomodoro.logsExported', { filePath }));
     } catch (e) {
-      new Notice('ログのエクスポートに失敗しました');
+      new Notice(t(lang, 'widget.pomodoro.logExportFailed'));
       console.error('Error exporting session logs:', e);
     }
   }
