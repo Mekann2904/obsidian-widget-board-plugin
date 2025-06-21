@@ -86,6 +86,7 @@ export class PrewarmManager {
                         return data.reflectionSummaries[type].summary;
                     }
                 } catch {
+                    // ignore error if file doesn't exist
                 }
                 return null;
             }

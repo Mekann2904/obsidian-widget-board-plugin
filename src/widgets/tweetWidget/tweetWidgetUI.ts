@@ -2,7 +2,7 @@ import { App, Notice, setIcon, Menu, Component, Modal } from 'obsidian';
 import type { TweetWidget } from './tweetWidget';
 import type { TweetWidgetPost } from './types';
 import { getFullThreadHistory } from './aiReply';
-import { extractYouTubeUrl, fetchYouTubeTitle, formatTimeAgo, wrapSelection } from './tweetWidgetUtils';
+import { extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { renderMermaidInWorker } from '../../utils';

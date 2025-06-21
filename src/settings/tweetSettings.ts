@@ -4,11 +4,11 @@ import { createAccordion } from '../utils/uiHelpers';
 import { TweetRepository } from '../widgets/tweetWidget';
 import { computeNextTime, ScheduleOptions } from '../widgets/tweetWidget/scheduleUtils';
 import type { ScheduledTweet } from '../widgets/tweetWidget/types';
-import { widgetTypeName, t } from '../i18n';
-import type { Language } from '../i18n';
+import { t } from '../i18n';
 import type { WidgetBoardSettingTab } from '../settingsTab';
 
-export function renderTweetWidgetSettings(tab: WidgetBoardSettingTab, containerEl: HTMLElement, lang: Language) {
+export function renderTweetWidgetSettings(tab: WidgetBoardSettingTab, containerEl: HTMLElement) {
+        const lang = tab.plugin.settings.language || 'ja';
         const tweetGlobalAcc = createAccordion(containerEl, t(lang, 'tweetWidgetGlobalSettings'), false);
         // ユーザー一覧セクションのみ先に切り出し
         new Setting(tweetGlobalAcc.body).setName(t(lang, 'userListGlobal')).setHeading();
@@ -294,7 +294,7 @@ export class ScheduleTweetModal extends Modal {
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        const lang = (this.plugin.settings.language || 'ja') as import('../i18n').Language;
+        const lang = this.plugin.settings.language || 'ja';
         new Setting(contentEl).setName(this.sched ? t(lang, 'editScheduledTweet') : t(lang, 'addScheduledTweet')).setHeading();
         let text = this.sched ? this.sched.text : '';
         let hour = this.sched ? this.sched.hour : 9;
@@ -327,8 +327,8 @@ export class ScheduleTweetModal extends Modal {
         // 時刻入力欄（時:分 形式のテキスト入力）
         let timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
         new Setting(contentEl)
-            .setName(t(lang, 'time'))
-            .setDesc(t(lang, 'timeDesc'))
+            .setName(t('time'))
+            .setDesc(t('timeDesc'))
             .addText(text => { // 't' を 'text' に変更
                 text.setPlaceholder('09:00');
                 text.setValue(timeStr);
@@ -343,17 +343,17 @@ export class ScheduleTweetModal extends Modal {
                     } else {
                         // 不正な場合は直前の値に戻す
                         text.setValue(`${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`);
-                        new Notice(t(lang, 'invalidTimeFormat'));
+                        new Notice(t('invalidTimeFormat'));
                     }
                 });
             });
 
         // 曜日選択
         new Setting(contentEl)
-            .setName(t(lang, 'daysOfWeek'))
-            .setDesc(t(lang, 'daysOfWeekDesc'));
+            .setName(t('daysOfWeek'))
+            .setDesc(t('daysOfWeekDesc'));
         const dayChecksEl = contentEl.createDiv({cls: 'day-checkboxes'});
-        const dayLabels = [t(lang, 'sunday'),t(lang, 'monday'),t(lang, 'tuesday'),t(lang, 'wednesday'),t(lang, 'thursday'),t(lang, 'friday'),t(lang, 'saturday')];
+        const dayLabels = [t('sunday'),t('monday'),t('tuesday'),t('wednesday'),t('thursday'),t('friday'),t('saturday')];
         dayLabels.forEach((label, i) => {
             const labelEl = dayChecksEl.createEl('label');
             const cb = labelEl.createEl('input', { type: 'checkbox' });
@@ -373,8 +373,8 @@ export class ScheduleTweetModal extends Modal {
 
         // 開始日
         new Setting(contentEl)
-            .setName(t(lang, 'startDate'))
-            .setDesc(t(lang, 'startDateDesc'))
+            .setName(t('startDate'))
+            .setDesc(t('startDateDesc'))
             .addText(t => {
                 t.setPlaceholder('YYYY-MM-DD');
                 t.inputEl.type = 'date';
@@ -382,8 +382,8 @@ export class ScheduleTweetModal extends Modal {
             });
         // 終了日
         new Setting(contentEl)
-            .setName(t(lang, 'endDate'))
-            .setDesc(t(lang, 'endDateDesc'))
+            .setName(t('endDate'))
+            .setDesc(t('endDateDesc'))
             .addText(t => {
                 t.setPlaceholder('YYYY-MM-DD');
                 t.inputEl.type = 'date';
@@ -392,16 +392,16 @@ export class ScheduleTweetModal extends Modal {
 
         // AIプロンプト入力欄
         new Setting(contentEl)
-            .setName(t(lang, 'aiPrompt'))
-            .setDesc(t(lang, 'aiPromptDesc'))
+            .setName(t('aiPrompt'))
+            .setDesc(t('aiPromptDesc'))
             .addTextArea(t => {
                 t.setValue(aiPrompt);
                 t.onChange(v => { aiPrompt = v; });
             });
         // AIモデル選択欄
         new Setting(contentEl)
-            .setName(t(lang, 'aiModel'))
-            .setDesc(t(lang, 'aiModelDesc'))
+            .setName(t('aiModel'))
+            .setDesc(t('aiModelDesc'))
             .addText(t => {
                 t.setPlaceholder('例: gemini-1.5-flash-latest');
                 t.setValue(aiModel);
@@ -410,14 +410,14 @@ export class ScheduleTweetModal extends Modal {
 
         const btnRow = contentEl.createDiv({ cls: 'modal-button-row', attr: { style: 'display:flex;justify-content:flex-end;gap:12px;margin-top:24px;' } });
         new Setting(btnRow)
-            .addButton(btn => btn.setButtonText(this.sched ? t(lang, 'update') : t(lang, 'add')).setCta().onClick(async () => {
-                if (!text.trim()) { new Notice(t(lang, 'enterContent')); return; }
+            .addButton(btn => btn.setButtonText(this.sched ? t('update') : t('add')).setCta().onClick(async () => {
+                if (!text.trim()) { new Notice(t('enterContent')); return; }
                 const opts: ScheduleOptions = { hour, minute };
                 if (daysArr.length > 0) opts.daysOfWeek = daysArr;
                 if (start.trim()) opts.startDate = start.trim();
                 if (end.trim()) opts.endDate = end.trim();
                 const next = computeNextTime(opts);
-                if (next === null) { new Notice(t(lang, 'cannotCalculateNextPost')); return; }
+                if (next === null) { new Notice(t('cannotCalculateNextPost')); return; }
                 const sched: ScheduledTweet = {
                     id: this.sched ? this.sched.id : 'sch-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
                     text: text.trim(),
@@ -441,11 +441,11 @@ export class ScheduleTweetModal extends Modal {
                     settings.scheduledPosts.push(sched);
                 }
                 await this.repo.save(settings);
-                new Notice(this.sched ? t(lang, 'scheduledTweetUpdated') : t(lang, 'scheduledTweetAdded'));
+                new Notice(this.sched ? t('scheduledTweetUpdated') : t('scheduledTweetAdded'));
                 this.onSave();
                 this.close();
             }))
-            .addButton(btn => btn.setButtonText(t(lang, 'cancel')).onClick(() => this.close()));
+            .addButton(btn => btn.setButtonText(t('cancel')).onClick(() => this.close()));
     }
 }
 

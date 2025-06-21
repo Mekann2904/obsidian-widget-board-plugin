@@ -1,5 +1,3 @@
-import type { LanguageRecord } from '../types';
-
 export const TWEET_STRINGS = {
   addTweetWidget: {
     ja: 'つぶやき追加',

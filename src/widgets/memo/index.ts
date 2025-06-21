@@ -6,7 +6,7 @@ import { renderMarkdownBatch, renderMarkdownBatchWithCache } from '../../utils/r
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
 import { renderMermaidInWorker } from '../../utils';
-import { t, Language } from '../../i18n';
+import { t } from '../../i18n';
 
 // --- Mermaid SVGメモリキャッシュ ---
 const mermaidSvgCache = new Map<string, string>();
@@ -31,7 +31,7 @@ export const DEFAULT_MEMO_SETTINGS: MemoWidgetSettings = {
  */
 export class MemoWidget implements WidgetImplementation {
     id = 'memo';
-    private config!: WidgetConfig; // このウィジェットインスタンスが作成されたときのconfig
+    config!: WidgetConfig; // このウィジェットインスタンスが作成されたときのconfig
     private app!: App;
     private plugin!: WidgetBoardPlugin; // WidgetBoardPlugin のインスタンスへの参照
     private widgetEl!: HTMLElement;

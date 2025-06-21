@@ -1,6 +1,13 @@
-import type { LanguageRecord } from '../types';
-
 export const LLM_STRINGS = {
+  aiSummary: {
+    ja: 'AI要約',
+    en: 'AI Summary',
+    zh: 'AI摘要',
+    es: 'Resumen de IA',
+    de: 'KI-Zusammenfassung',
+    fr: 'Résumé IA',
+    ko: 'AI 요약',
+  },
   geminiApiKey: {
     ja: 'Gemini APIキー',
     en: 'Gemini API Key',

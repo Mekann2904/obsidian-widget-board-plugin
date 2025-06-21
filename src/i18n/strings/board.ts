@@ -1,5 +1,3 @@
-import type { LanguageRecord } from '../types';
-
 export const BOARD_MANAGEMENT_STRINGS = {
   noBoardOpened: {
     ja: 'ボードが開かれていません。「ボード管理」からボードを選択してください。',
@@ -252,6 +250,51 @@ export const BOARD_MANAGEMENT_STRINGS = {
     de: 'Anker für benutzerdefinierte Breite',
     fr: 'Ancre de largeur personnalisée',
     ko: '사용자 정의 너비 기준 위치',
+  },
+  boardSelect: {
+    ja: 'ボードを選択',
+    en: 'Select Board',
+    zh: '选择看板',
+    es: 'Seleccionar Tablero',
+    de: 'Board auswählen',
+    fr: 'Sélectionner un tableau',
+    ko: '보드 선택',
+  },
+  boardSelectDesc: {
+    ja: '設定を編集するボードを選択してください。',
+    en: 'Select the board to edit settings.',
+    zh: '请选择要编辑设置的看板。',
+    es: 'Seleccione el tablero para editar la configuración.',
+    de: 'Wählen Sie das Board aus, dessen Einstellungen bearbeitet werden sollen.',
+    fr: 'Sélectionnez le tableau pour modifier les paramètres.',
+    ko: '설정을 편집할 보드를 선택하세요.',
+  },
+  customWidthAnchorDesc: {
+    ja: 'カスタム幅を適用する際の基準点を指定します。',
+    en: 'Specifies the anchor point when applying custom width.',
+    zh: '指定应用自定义宽度时的锚点。',
+    es: 'Especifica el punto de anclaje al aplicar un ancho personalizado.',
+    de: 'Gibt den Ankerpunkt beim Anwenden der benutzerdefinierten Breite an.',
+    fr: "Spécifie le point d'ancrage lors de l'application de la largeur personnalisée.",
+    ko: '사용자 정의 너비를 적용할 때의 기준점을 지정합니다.',
+  },
+  deleteThisBoard: {
+    ja: 'このボードを削除',
+    en: 'Delete this board',
+    zh: '删除此看板',
+    es: 'Eliminar este tablero',
+    de: 'Dieses Board löschen',
+    fr: 'Supprimer ce tableau',
+    ko: '이 보드 삭제',
+  },
+  deleteBoardConfirm: {
+    ja: '本当にこのボード「{boardName}」を削除しますか？ウィジェットの設定もすべて失われます。',
+    en: 'Are you sure you want to delete this board "{boardName}"? All widget settings will be lost.',
+    zh: '您确定要删除此看板"{boardName}"?所有小组件设置都将丢失。',
+    es: '¿Está seguro de que desea eliminar este tablero "{boardName}"? Se perderán todas las configuraciones de los widgets.',
+    de: 'Sind Sie sicher, dass Sie dieses Board "{boardName}" löschen möchten? Alle Widget-Einstellungen gehen verloren.',
+    fr: 'Êtes-vous sûr de vouloir supprimer ce tableau "{boardName}" ? Tous les paramètres des widgets seront perdus.',
+    ko: '정말로 이 보드 "{boardName}"을 삭제하시겠습니까? 모든 위젯 설정이 사라집니다.',
   },
 } as const;
 

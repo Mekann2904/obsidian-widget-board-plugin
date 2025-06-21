@@ -1,6 +1,13 @@
-import type { LanguageRecord } from '../types';
-
 export const MODAL_STRINGS = {
+  openWidgetBoard: {
+    ja: 'ウィジェットボードを開く',
+    en: 'Open WidgetBoard',
+    zh: '打开小组件看板',
+    es: 'Abrir WidgetBoard',
+    de: 'WidgetBoard öffnen',
+    fr: 'Ouvrir WidgetBoard',
+    ko: '위젯보드 열기',
+  },
   'modal.addWidgetPlaceholder': {
     ja: '追加するウィジェットを選択',
     en: 'Select a widget to add',

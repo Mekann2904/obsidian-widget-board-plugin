@@ -13,6 +13,7 @@ export interface WidgetConfig {
 // --- ウィジェット実装のインターフェース ---
 export interface WidgetImplementation {
     id: string;
+    config?: WidgetConfig;
     create(
         config: WidgetConfig,
         app: App,

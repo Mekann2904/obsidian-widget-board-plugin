@@ -1,6 +1,6 @@
 import { App, Modal, Notice, Setting } from 'obsidian';
 import type WidgetBoardPlugin from '../main';
-import type { BoardConfiguration, BoardGroup, WidgetConfig } from '../interfaces';
+import type { BoardConfiguration, WidgetConfig } from '../interfaces';
 import { DEFAULT_BOARD_CONFIGURATION } from '../settingsDefaults';
 import { WidgetBoardModal } from '../modal';
 import {
@@ -656,7 +656,7 @@ export function notifyWidgetInstanceIfBoardOpen(tab: WidgetBoardSettingTab,
         const modal = tab.plugin.boardManager.widgetBoardModals.get(boardId);
         if (modal && modal.isOpen) {
             const widgetInstance = modal.uiWidgetReferences.find(
-                w => (w as any).config?.id === widgetId
+                w => w.config?.id === widgetId
             );
             if (widgetInstance && widgetInstance.updateExternalSettings) {
                 widgetInstance.updateExternalSettings(newSettings);

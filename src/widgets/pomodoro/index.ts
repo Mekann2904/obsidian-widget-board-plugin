@@ -64,7 +64,7 @@ export const DEFAULT_POMODORO_SETTINGS: PomodoroSettings = {
  */
 export class PomodoroWidget implements WidgetImplementation {
     id = 'pomodoro';
-    private config!: WidgetConfig;
+    public config!: WidgetConfig;
     private app!: App;
     private plugin!: WidgetBoardPlugin;
 
@@ -464,98 +464,47 @@ export class PomodoroWidget implements WidgetImplementation {
         this.soundPlayer.play(soundType, volume, lang);
     }
 
-    private async handleSessionEnd(isSkipped = false) {
-        debugLog(this.plugin, 'handleSessionEnd called', this);
-        if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
-        this.isRunning = false;
+    private async handleSessionEnd() {
+        if (!this.plugin || !this.app) {
+            debugLog(this.plugin, 'Plugin or App not initialized in handleSessionEnd');
+            return;
+        }
+
+        debugLog(this.plugin, `[${this.config.id}] Session ended`, {
+            set: this.currentPomodoroSet,
+            completed: this.pomodorosCompletedInCycle
+        });
+
+        // セッション終了時刻を記録
         this.currentSessionEndTime = new Date();
-        let shouldExport = false;
-        if (this.currentPomodoroSet === 'work') {
-            let startDate: Date;
-            let endDate: Date;
-            if (this.currentSessionStartTime && this.currentSessionEndTime) {
-                startDate = this.currentSessionStartTime;
-                endDate = this.currentSessionEndTime;
-            } else {
-                startDate = new Date();
-                endDate = new Date();
-            }
-            const dateStr = getDateKeyLocal(startDate);
-            const startStr = `${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`;
-            const endStr = `${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}`;
+
+        // ログ記録
+        if (this.currentSessionStartTime) {
             this.sessionLogs.push({
-                date: dateStr,
-                start: startStr,
-                end: endStr,
+                date: getDateKeyLocal(this.currentSessionStartTime),
+                start: `${pad2(this.currentSessionStartTime.getHours())}:${pad2(this.currentSessionStartTime.getMinutes())}`,
+                end: `${pad2(this.currentSessionEndTime.getHours())}:${pad2(this.currentSessionEndTime.getMinutes())}`,
                 memo: this.memoWidget?.getMemoContent() || '',
-                sessionType: 'work',
+                sessionType: this.currentPomodoroSet,
             });
-            shouldExport = true;
-        } else if (this.currentPomodoroSet === 'shortBreak') {
-            // 短い休憩終了時も記録
-            let startDate: Date;
-            let endDate: Date;
-            if (this.currentSessionStartTime && this.currentSessionEndTime) {
-                startDate = this.currentSessionStartTime;
-                endDate = this.currentSessionEndTime;
-            } else {
-                startDate = new Date();
-                endDate = new Date();
+        }
+
+        // CSV/JSON/Markdownエクスポート
+        if (this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
+            await this.exportSessionLogs(this.currentSettings.exportFormat);
+        }
+
+        this.pauseTimer();
+
+        // ポモドーロボードが開いていれば更新を通知
+        const board = this.plugin.settings.boards.find(b => b.widgets.some(w => w.id === this.config.id));
+        if (board) {
+            const modal = this.plugin.boardManager.widgetBoardModals.get(board.id);
+            if (modal && modal.isOpen) {
+                // this.plugin.settingsTab.notifyWidgetInstanceIfBoardOpen(board.id, this.config.id, 'pomodoro', {});
             }
-            const dateStr = getDateKeyLocal(startDate);
-            const startStr = `${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`;
-            const endStr = `${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}`;
-            this.sessionLogs.push({
-                date: dateStr,
-                start: startStr,
-                end: endStr,
-                memo: this.memoWidget?.getMemoContent() || '',
-                sessionType: 'shortBreak',
-            });
-            shouldExport = true;
-        } else if (this.currentPomodoroSet === 'longBreak') {
-            // 長い休憩終了時も記録
-            let startDate: Date;
-            let endDate: Date;
-            if (this.currentSessionStartTime && this.currentSessionEndTime) {
-                startDate = this.currentSessionStartTime;
-                endDate = this.currentSessionEndTime;
-            } else {
-                startDate = new Date();
-                endDate = new Date();
-            }
-            const dateStr = getDateKeyLocal(startDate);
-            const startStr = `${pad2(startDate.getHours())}:${pad2(startDate.getMinutes())}`;
-            const endStr = `${pad2(endDate.getHours())}:${pad2(endDate.getMinutes())}`;
-            this.sessionLogs.push({
-                date: dateStr,
-                start: startStr,
-                end: endStr,
-                memo: this.memoWidget?.getMemoContent() || '',
-                sessionType: 'longBreak',
-            });
-            shouldExport = true;
         }
         PomodoroWidget.endSessionAndAdvance(this.config.id, this);
-        const exportFormat = this.plugin.settings.pomodoroExportFormat || 'none';
-        if (shouldExport && exportFormat !== 'none') {
-            await this.exportSessionLogs(exportFormat);
-        }
-        // --- 追加: ポモドーロ終了時に該当ボードを自動で開く ---
-        if (this.plugin.settings.openBoardOnPomodoroEnd) {
-            const boards = this.plugin.settings.boards;
-            const board = boards?.find(b => b.widgets?.some(w => w.id === this.config.id));
-            if (board) {
-                this.plugin.openWidgetBoardById(board.id);
-                new Notice('ポモドーロ終了: ウィジェットボードを開きました。');
-            }
-        }
-        // --- 追加: ポモドーロ終了時に自動で次のセッションを開始 ---
-        if (this.plugin.settings.autoStartNextPomodoroSession) {
-            setTimeout(() => {
-                this.toggleStartPause();
-            }, 800);
-        }
     }
     
     private skipToNextSessionConfirm() {
@@ -612,8 +561,11 @@ export class PomodoroWidget implements WidgetImplementation {
      * ウィジェット破棄時のクリーンアップ
      */
     onunload(): void {
-        const widgetIdLog = `[${this.config?.id || 'PomodoroWidget'}]`;
-        if (this.timerId) { clearInterval(this.timerId); this.timerId = null; }
+        debugLog(this.plugin, `[${this.getWidgetId()}] Unloading pomodoro widget`);
+        if (this.timerId) {
+            clearInterval(this.timerId);
+            this.timerId = null;
+        }
         this.isRunning = false;
         if (this.soundPlayer) {
             this.soundPlayer.unload();

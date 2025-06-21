@@ -11,9 +11,7 @@ import {
     DEFAULT_TIMER_STOPWATCH_SETTINGS,
 } from './settings/defaultWidgetSettings';
 import type { PomodoroSettings } from './widgets/pomodoro';
-import type { MemoWidgetSettings } from './widgets/memo';
 import type { TimerStopwatchWidgetSettings } from './widgets/timer-stopwatch';
-import type { CalendarWidgetSettings } from './widgets/calendar';
 import cloneDeep from 'lodash.clonedeep';
 import { LLMManager } from './llm/llmManager';
 import { GeminiProvider } from './llm/gemini/geminiApi';
@@ -25,7 +23,7 @@ import { TweetWidgetSettings } from './widgets/tweetWidget/types';
 import { ReflectionWidgetSettings } from './widgets/reflectionWidget/reflectionWidgetTypes';
 import { BoardManager } from './boardManager';
 import { PrewarmManager } from './prewarm';
-import { t, type Language, StringKey } from './i18n';
+import { t, StringKey } from './i18n';
 
 /**
  * Obsidian Widget Board Pluginのメインクラス
@@ -51,7 +49,7 @@ export default class WidgetBoardPlugin extends Plugin {
     async onload(): Promise<void> {
         debugLog(this, 'Widget Board Plugin: Loading...');
         filterConsoleWarn(['[Violation]', '[Deprecation]']);
-        this.llmManager = new LLMManager();
+        this.llmManager = new LLMManager(this);
         this.llmManager.register(GeminiProvider);
         this.boardManager = new BoardManager(this);
         this.prewarmManager = new PrewarmManager(this);

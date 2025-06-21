@@ -27,4 +27,12 @@ export default [
       '@typescript-eslint/no-unused-vars': 'warn',
     },
   },
+  {
+    files: ['src/i18n/index.ts'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+      },
+    },
+  },
 ];

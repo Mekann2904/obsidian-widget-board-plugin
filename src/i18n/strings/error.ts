@@ -1,6 +1,7 @@
-import type { LanguageRecord } from '../types';
-
 export const ERROR_MESSAGES = {
+  yamlParseError: {
+    ja: 'ボード設定のYAMLパースに失敗しました',
+  },
   vaultRelativePathOnly: {
     ja: 'Vault内の相対パスのみ指定できます。絶対パスやVault外は不可です。',
     en: 'Only relative paths within the Vault are allowed. Absolute paths or outside the Vault are not permitted.',

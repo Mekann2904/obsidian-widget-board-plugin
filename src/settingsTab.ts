@@ -1,33 +1,16 @@
 // src/settingsTab.ts
-import { App, PluginSettingTab, Setting, Notice, Modal, TFolder, FuzzySuggestModal } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, TFolder, FuzzySuggestModal } from 'obsidian';
 import type WidgetBoardPlugin from './main';
-import { WidgetBoardModal } from './modal';
 import type {
-    PomodoroSettings,
     PomodoroSoundType,
     PomodoroExportFormat,
 } from './widgets/pomodoro';
-import type { MemoWidgetSettings } from './widgets/memo';
-import type { CalendarWidgetSettings } from './widgets/calendar';
-import {
-    DEFAULT_POMODORO_SETTINGS,
-    DEFAULT_MEMO_SETTINGS,
-    DEFAULT_CALENDAR_SETTINGS,
-    DEFAULT_RECENT_NOTES_SETTINGS,
-    DEFAULT_TIMER_STOPWATCH_SETTINGS,
-    DEFAULT_TWEET_WIDGET_SETTINGS,
-    REFLECTION_WIDGET_DEFAULT_SETTINGS,
-} from './settings/defaultWidgetSettings';
-import { TweetRepository } from './widgets/tweetWidget';
-import { computeNextTime, ScheduleOptions } from './widgets/tweetWidget/scheduleUtils';
-import type { ScheduledTweet } from './widgets/tweetWidget/types';
 import { obfuscate, deobfuscate } from './utils';
-import { widgetTypeName, t, LANGUAGE_NAMES } from './i18n/index';
+import { t, LANGUAGE_NAMES } from './i18n/index';
 import type { Language } from './i18n/index';
 import { createAccordion } from './utils/uiHelpers';
 import { renderBoardManagementSection, renderBoardGroupSection, notifyWidgetInstanceIfBoardOpen as externalNotify } from './settings/boardGroupSettings';
 import { renderTweetWidgetSettings } from './settings/tweetSettings';
-// import { registeredWidgetImplementations } from './widgetRegistry'; // 未使用なのでコメントアウトまたは削除
 
 /**
  * プラグインの「ウィジェットボード設定」タブを管理するクラス

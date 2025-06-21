@@ -440,4 +440,22 @@ export const POMODORO_STRINGS = {
     fr: 'Êtes-vous sûr ?',
     ko: '실행하시겠습니까?',
   },
+  'widget.pomodoro.soundNotSupported': {
+    ja: 'お使いのブラウザは音声再生をサポートしていません。',
+    en: 'Your browser does not support audio playback.',
+    zh: '您的浏览器不支持音频播放。',
+    es: 'Su navegador no soporta la reproducción de audio.',
+    de: 'Ihr Browser unterstützt keine Audiowiedergabe.',
+    fr: 'Votre navigateur ne prend pas en charge la lecture audio.',
+    ko: '사용하시는 브라우저가 오디오 재생을 지원하지 않습니다。',
+  },
+  next: {
+    ja: '次へ',
+    en: 'Next',
+    zh: '下一个',
+    es: 'Siguiente',
+    de: 'Nächste',
+    fr: 'Suivant',
+    ko: '다음',
+  },
 } as const; 

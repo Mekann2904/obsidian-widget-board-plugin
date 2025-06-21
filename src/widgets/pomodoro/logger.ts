@@ -2,7 +2,11 @@ import { Notice } from 'obsidian';
 import type { App } from 'obsidian';
 import type WidgetBoardPlugin from '../../main';
 import type { PomodoroExportFormat, SessionLog } from './index';
-import { t, Language } from '../../i18n';
+import { t } from '../../i18n';
+
+function isSessionType(value: unknown): value is SessionLog['sessionType'] {
+  return typeof value === 'string' && ['work', 'shortBreak', 'longBreak'].includes(value);
+}
 
 export class PomodoroSessionLogger {
   constructor(private app: App, private plugin: WidgetBoardPlugin) {}
@@ -37,13 +41,13 @@ export class PomodoroSessionLogger {
           const lines = existing.split('\n').filter(l => l.trim() !== '');
           if (lines.length > 1) {
             for (let i = 1; i < lines.length; i++) {
-              const [date, start, end, sessionType, memo] = lines[i].split(/,(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)/);
+              const [date, start, end, sessionType, memo] = lines[i].split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
               allLogs.push({
                 date: date || '',
                 start: start || '',
                 end: end || '',
-                sessionType: (sessionType as any) || 'work',
-                memo: memo ? memo.replace(/^\"|\"$/g, '').replace(/\"\"/g, '"') : '',
+                sessionType: isSessionType(sessionType) ? sessionType : 'work',
+                memo: memo ? memo.replace(/^"|"$/g, '').replace(/""/g, '"') : '',
               });
             }
           }
@@ -66,7 +70,7 @@ export class PomodoroSessionLogger {
                   date: cols[1],
                   start: cols[2],
                   end: cols[3],
-                  sessionType: (cols[4] as any) || 'work',
+                  sessionType: isSessionType(cols[4]) ? cols[4] : 'work',
                   memo: memo,
                 });
               }
@@ -77,7 +81,7 @@ export class PomodoroSessionLogger {
       allLogs = allLogs.concat(sessionLogs);
       if (format === 'csv') {
         content = '\uFEFFdate,start,end,sessionType,memo\n' + allLogs.map(log => {
-          const safeMemo = (log.memo || '').replace(/\r?\n/g, '\\n').replace(/\"/g, '""');
+          const safeMemo = (log.memo || '').replace(/\r?\n/g, '\\n').replace(/"/g, '""');
           return `${log.date},${log.start},${log.end},${log.sessionType},"${safeMemo}"`;
         }).join('\n');
       } else if (format === 'json') {

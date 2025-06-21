@@ -1,5 +1,3 @@
-import type { LanguageRecord } from '../types';
-
 export const WIDGET_MANAGEMENT_STRINGS = {
   widgetManagement: {
     ja: 'ウィジェット管理',

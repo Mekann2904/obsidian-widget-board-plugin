@@ -1,5 +1,3 @@
-import type { LanguageRecord } from '../types';
-
 export const REFLECTION_WIDGET_STRINGS = {
   addReflectionWidget: {
     ja: '振り返りレポート',

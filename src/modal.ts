@@ -7,7 +7,7 @@ import cloneDeep from 'lodash.clonedeep';
 import { preloadChartJS, loadReflectionSummaryShared } from './widgets/reflectionWidget/reflectionWidgetUI';
 import { getDateKeyLocal, getWeekRange } from './utils';
 import type { ReflectionWidgetPreloadBundle } from './widgets/reflectionWidget/reflectionWidget';
-import { t, Language } from './i18n';
+import { t } from './i18n';
 
 /**
  * 新しいウィジェットの種類を選択して追加するためのモーダル
@@ -832,8 +832,9 @@ export class WidgetBoardModal {
         this.onClose();
         // 300msのアニメーション後にDOMから削除
         setTimeout(() => {
-            var _a;
-            (_a = this.modalEl) === null || _a === void 0 ? void 0 : _a.remove();
+            if (this.modalEl) {
+                this.modalEl.remove();
+            }
             this.isClosing = false;
         }, 300);
         // 他のボードのモーダルも閉じる

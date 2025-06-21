@@ -2,6 +2,11 @@ import { Notice } from 'obsidian';
 import type { PomodoroSoundType } from './index';
 import { t, Language } from '../../i18n';
 
+interface CustomWindow extends Window {
+  AudioContext?: typeof AudioContext;
+  webkitAudioContext?: typeof AudioContext;
+}
+
 export class PomodoroSoundPlayer {
   private audioContext: AudioContext | null = null;
   private currentAudioElement: HTMLAudioElement | null = null;
@@ -16,7 +21,12 @@ export class PomodoroSoundPlayer {
     }
 
     if (!this.audioContext || this.audioContext.state === 'closed') {
-      const Ctor = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const customWindow = window as CustomWindow;
+      const Ctor = customWindow.AudioContext || customWindow.webkitAudioContext;
+      if (!Ctor) {
+        // new Notice(t(lang, 'widget.pomodoro.soundNotSupported'));
+        return;
+      }
       this.audioContext = new Ctor();
     }
     const ctx = this.audioContext!;

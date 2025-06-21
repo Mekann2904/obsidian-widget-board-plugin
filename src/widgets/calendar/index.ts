@@ -6,7 +6,7 @@ import type WidgetBoardPlugin from '../../main';
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer, pad2 } from '../../utils';
 import moment from 'moment';
-import { t, Language } from '../../i18n';
+import { t } from '../../i18n';
 
 // --- カレンダーウィジェット設定インターフェース ---
 export interface CalendarWidgetSettings {
@@ -20,7 +20,7 @@ export interface CalendarWidgetSettings {
  */
 export class CalendarWidget implements WidgetImplementation {
     id = 'calendar';
-    private config!: WidgetConfig;
+    public config!: WidgetConfig;
     private app!: App;
     private plugin!: WidgetBoardPlugin; // plugin は型だけ保持し、実際には使わない場合もある
     private widgetEl!: HTMLElement;
