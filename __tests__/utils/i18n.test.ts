@@ -32,16 +32,15 @@ describe('i18n', () => {
     });
 
     it('should handle placeholders', () => {
-      expect(t('ja', 'test.placeholder', { value: 'HOGE' })).toBe('テスト: HOGE');
+      expect(t('ja', 'test.placeholder' as any, { value: 'HOGE' })).toBe('テスト: HOGE');
     });
 
     it('should fall back to Japanese if translation is missing', () => {
-      expect(t('ko', 'test.fallback')).toBe('フォールバックテスト');
+      expect(t('ko', 'test.fallback' as any)).toBe('フォールバックテスト');
     });
 
     it('should handle non-existent keys gracefully', () => {
-      // @ts-expect-error
-      expect(t('en', 'aNonExistentKey')).toBe('aNonExistentKey');
+      expect(t('en', 'aNonExistentKey' as any)).toBe('aNonExistentKey');
     });
   });
 
@@ -91,35 +90,47 @@ describe('LANGUAGE_NAMES', () => {
 });
 
 describe('i18nカテゴリ統合テスト', () => {
-  const categories = [
-    'COMMON_STRINGS',
-    'SETTINGS_PANE_STRINGS',
-    'GLOBAL_SETTINGS_SECTIONS',
-    'POMODORO_STRINGS',
-    'MEMO_STRINGS',
-    'CALENDAR_STRINGS',
-    'RECENT_NOTES_STRINGS',
-    'THEME_SWITCHER_STRINGS',
-    'TIMER_STRINGS',
-    'FILE_VIEW_STRINGS',
-    'TWEET_STRINGS',
-    'REFLECTION_WIDGET_STRINGS',
-    'LLM_STRINGS',
-    'BOARD_MANAGEMENT_STRINGS',
-    'WIDGET_MANAGEMENT_STRINGS',
-    'BOARD_GROUP_STRINGS',
-    'ERROR_MESSAGES',
-    'MODAL_STRINGS',
-    'MODAL_PANEL_STRINGS',
-    'MAIN_STRINGS',
-    'TEST_STRINGS',
-    'WIDGET_STRINGS',
-    'PREWARM_STRINGS',
-  ];
+  const testCases = {
+    // COMMON_STRINGS
+    'show': { ja: '表示', en: 'Show' },
+    // SETTINGS_PANE_STRINGS
+    'settingTabHeading': { ja: 'ウィジェットボード設定', en: 'Widget Board Settings' },
+    // POMODORO_STRINGS
+    'addPomodoro': { ja: 'ポモドーロ追加', en: 'Add Pomodoro' },
+    // MEMO_STRINGS
+    'addMemo': { ja: 'メモ追加', en: 'Add Memo' },
+    // CALENDAR_STRINGS
+    'addCalendar': { ja: 'カレンダー追加', en: 'Add Calendar' },
+    // TWEET_STRINGS
+    'addTweetWidget': { ja: 'つぶやき追加', en: 'Add Tweet' },
+    // REFLECTION_WIDGET_STRINGS
+    'addReflectionWidget': { ja: '振り返りレポート', en: 'Add Reflection Report' },
+    // LLM_STRINGS
+    'geminiApiKey': { ja: 'Gemini APIキー', en: 'Gemini API Key' },
+    // BOARD_MANAGEMENT_STRINGS
+    'boardManagement': { ja: 'ボード管理', en: 'Board Management' },
+    // BOARD_GROUP_STRINGS
+    'addNewGroup': { ja: '新しいグループを追加', en: 'Add New Group' },
+    // WIDGET_MANAGEMENT_STRINGS
+    'widgetManagement': { ja: 'ウィジェット管理', en: 'Widget Management' },
+    // ERROR_MESSAGES
+    'vaultRelativePathOnly': { ja: 'Vault内の相対パスのみ指定できます。絶対パスやVault外は不可です。', en: 'Only relative paths within the Vault are allowed. Absolute paths or outside the Vault are not permitted.' },
+    // MAIN_STRINGS
+    'openWidgetBoard': { ja: 'ウィジェットボードを開く', en: 'Open Widget Board' },
+    // RECENT_NOTES_STRINGS
+    'addRecentNotes': { ja: '最近編集したノート', en: 'Add Recent Notes' },
+    // THEME_SWITCHER_STRINGS
+    'addThemeSwitcher': { ja: 'テーマ切り替え', en: 'Add Theme Switcher' },
+    // TIMER_STRINGS
+    'addTimerStopwatch': { ja: 'タイマー／ストップウォッチ', en: 'Add Timer/Stopwatch' },
+    // FILE_VIEW_STRINGS
+    'addFileView': { ja: 'ファイルビューア追加', en: 'Add File Viewer' },
+  };
 
-  categories.forEach(categoryName => {
-    it(`${categoryName} が定義されている`, () => {
-      expect(i18n[categoryName as keyof typeof i18n]).toBeDefined();
+  Object.entries(testCases).forEach(([key, translations]) => {
+    it(`${key} が正しく翻訳される`, () => {
+      expect(t('ja', key as any)).toBe(translations.ja);
+      expect(t('en', key as any)).toBe(translations.en);
     });
   });
 }); 
