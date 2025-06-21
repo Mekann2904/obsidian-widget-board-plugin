@@ -2054,10 +2054,21 @@ const ERROR_MESSAGES = {
   },
 } as const;
 
-
-// -----------------------------------------------------------------------------
-// 型定義とt関数
-// -----------------------------------------------------------------------------
+const TEST_STRINGS = {
+  'test.placeholder': {
+    ja: 'テスト: {{value}}',
+    en: 'Test: {{value}}',
+    zh: '测试: {{value}}',
+    es: 'Prueba: {{value}}',
+    de: 'Test: {{value}}',
+    fr: 'Test: {{value}}',
+    ko: '테스트: {{value}}',
+  },
+  'test.fallback': {
+    ja: 'フォールバックテスト',
+    en: 'Fallback test',
+  },
+} as const;
 
 const STRINGS = {
   ...COMMON_STRINGS,
@@ -2077,6 +2088,7 @@ const STRINGS = {
   ...WIDGET_MANAGEMENT_STRINGS,
   ...BOARD_GROUP_STRINGS,
   ...ERROR_MESSAGES,
+  ...TEST_STRINGS,
 };
 
 export type StringKey = keyof typeof STRINGS;
@@ -2094,7 +2106,7 @@ export function t(
   let str = v[lang] ?? v.ja;
   if (vars) {
     Object.entries(vars).forEach(([k, val]) => {
-      str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(val));
+      str = str.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(val));
     });
   }
   return str;

@@ -1,36 +1,84 @@
 import { t, widgetTypeName, LANGUAGE_NAMES, Language } from '../../src/i18n';
 
-describe('i18n t関数', () => {
-  it('日本語で正しい値を返す', () => {
-    expect(t('ja', 'show')).toBe('表示');
-    expect(t('ja', 'hide')).toBe('非表示');
-  });
-  it('英語で正しい値を返す', () => {
-    expect(t('en', 'show')).toBe('Show');
-    expect(t('en', 'hide')).toBe('Hide');
-  });
-  it('未定義言語でもjaを返す', () => {
-    // @ts-expect-error 故意に不正値
-    expect(t('xx', 'show')).toBe('表示');
-  });
-  it('未定義キーの場合はキー文字列をそのまま返す', () => {
-    // @ts-expect-error 故意に不正値
-    expect(t('ja', 'notExist')).toBe('notExist');
-  });
-});
+describe('i18n', () => {
+  describe('t', () => {
+    it('should return Japanese translation', () => {
+      expect(t('ja', 'show')).toBe('表示');
+    });
 
-describe('i18n widgetTypeName関数', () => {
-  it('日本語でウィジェットタイプ名を返す', () => {
-    expect(widgetTypeName('ja', 'pomodoro')).toBe('ポモドーロタイマー');
-    expect(widgetTypeName('ja', 'memo')).toBe('メモ');
+    it('should return English translation', () => {
+      expect(t('en', 'show')).toBe('Show');
+    });
+
+    it('should return Chinese translation', () => {
+      expect(t('zh', 'show')).toBe('显示');
+    });
+
+    it('should return Spanish translation', () => {
+      expect(t('es', 'show')).toBe('Mostrar');
+    });
+
+    it('should return German translation', () => {
+      expect(t('de', 'show')).toBe('Anzeigen');
+    });
+
+    it('should return French translation', () => {
+      expect(t('fr', 'show')).toBe('Afficher');
+    });
+
+    it('should return Korean translation', () => {
+      expect(t('ko', 'show')).toBe('표시');
+    });
+
+    it('should handle placeholders', () => {
+      expect(t('ja', 'test.placeholder', { value: 'HOGE' })).toBe('テスト: HOGE');
+    });
+
+    it('should fall back to Japanese if translation is missing', () => {
+      expect(t('ko', 'test.fallback')).toBe('フォールバックテスト');
+    });
+
+    it('should handle non-existent keys gracefully', () => {
+      // @ts-expect-error
+      expect(t('en', 'aNonExistentKey')).toBe('aNonExistentKey');
+    });
   });
-  it('英語でウィジェットタイプ名を返す', () => {
-    expect(widgetTypeName('en', 'pomodoro')).toBe('Pomodoro Timer');
-    expect(widgetTypeName('en', 'memo')).toBe('Memo');
-  });
-  it('未定義タイプはtype文字列をそのまま返す', () => {
-    expect(widgetTypeName('ja', 'unknown-type')).toBe('unknown-type');
-    expect(widgetTypeName('en', 'unknown-type')).toBe('unknown-type');
+
+  describe('widgetTypeName', () => {
+    const widgetTypes: { [key: string]: string } = {
+      memo: 'Memo',
+      'recent-notes': 'Recent Notes',
+      'file-view-widget': 'File Viewer',
+      calendar: 'Calendar',
+      'timer-stopwatch': 'Timer/Stopwatch',
+      pomodoro: 'Pomodoro Timer',
+      'theme-switcher': 'Theme Switcher',
+      'tweet-widget': 'Tweet',
+      'reflection-widget': 'Reflection Report',
+    };
+
+    Object.entries(widgetTypes).forEach(([key, name]) => {
+      it(`should return the correct name for ${key} in English`, () => {
+        expect(widgetTypeName('en', key)).toBe(name);
+      });
+    });
+
+    it('should return Japanese name for memo', () => {
+      expect(widgetTypeName('ja', 'memo')).toBe('メモ');
+    });
+
+    it('should return the key if the widget type is not found', () => {
+      expect(widgetTypeName('en', 'non-existent-widget')).toBe(
+        'non-existent-widget',
+      );
+    });
+
+    it('should work for all languages', () => {
+      const languages: Language[] = ['ja', 'en', 'zh', 'es', 'de', 'fr', 'ko'];
+      languages.forEach(lang => {
+        expect(widgetTypeName(lang, 'memo')).toBeTruthy();
+      });
+    });
   });
 });
 
