@@ -3,6 +3,7 @@ import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import moment from 'moment';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
+import { t } from '../../i18n';
 
 export interface RecentNotesWidgetSettings {
     maxNotes?: number;
@@ -49,7 +50,7 @@ export class RecentNotesWidget implements WidgetImplementation {
         const { widgetEl, titleEl } = createWidgetContainer(config, 'recent-notes-widget');
         this.widgetEl = widgetEl;
         if (titleEl) {
-            titleEl.textContent = this.config.title?.trim() || '最近編集したノート';
+            titleEl.textContent = this.config.title?.trim() || t(this.plugin.settings.language || 'ja', 'recentNotesTitle');
         }
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
@@ -77,7 +78,7 @@ export class RecentNotesWidget implements WidgetImplementation {
             .slice(0, this.currentSettings.maxNotes || 10);
 
         if (files.length === 0) {
-            container.createEl('p', { text: '最近編集したノートがありません。' });
+            container.createEl('p', { text: t(this.plugin.settings.language || 'ja', 'noRecentNotes') });
             return;
         }
 

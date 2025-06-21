@@ -1068,6 +1068,24 @@ const RECENT_NOTES_STRINGS = {
     fr: 'Ajouter des notes récentes',
     ko: '최근 편집한 노트 추가',
   },
+  recentNotesTitle: {
+    ja: '最近編集したノート',
+    en: 'Recent Notes',
+    zh: '最近编辑的笔记',
+    es: 'Notas Recientes',
+    de: 'Zuletzt bearbeitete Notizen',
+    fr: 'Notes Récentes',
+    ko: '최근 편집한 노트',
+  },
+  noRecentNotes: {
+    ja: '最近編集したノートがありません。',
+    en: 'No recently edited notes.',
+    zh: '没有最近编辑的笔记。',
+    es: 'No hay notas editadas recientemente.',
+    de: 'Keine kürzlich bearbeiteten Notizen.',
+    fr: 'Aucune note récemment modifiée.',
+    ko: '최근에 편집한 노트가 없습니다.',
+  },
 } as const;
 
 const THEME_SWITCHER_STRINGS = {
@@ -1239,7 +1257,7 @@ const FILE_VIEW_STRINGS = {
 		fr: 'Chemin du fichier',
 		ko: '파일 경로',
 	},
-};
+} as const;
 
 const TWEET_STRINGS = {
   addTweetWidget: {
