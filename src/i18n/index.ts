@@ -1328,6 +1328,7 @@ const LLM_STRINGS = {
     zh: '在推文小组件的AI回复中使用的自定义提示。{tweet}和{postDate}将被替换为帖子内容和日期。如果为空，将使用默认提示。',
     es: 'Prompt personalizado para respuesta de AI en el widget de tweet. {tweet} y {postDate} se reemplazarán con el contenido de la publicación y la fecha. Si está en blanco, se utilizará el prompt predeterminado.',
     de: 'Benutzerdefinierter Prompt für die KI-Antwort im Tweet-Widget. {tweet} und {postDate} werden durch den Beitragsinhalt und das Datum ersetzt. Wenn leer, wird der Standard-Prompt verwendet.',
+    fr: "Prompt personnalisé pour la réponse IA dans le widget de tweet. {tweet} et {postDate} seront remplacés par le contenu de la publication et la date. Si vide, le prompt par défaut sera utilisé.",
   },
 } as const;
 
@@ -1338,6 +1339,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '选择看板',
     es: 'Seleccionar Tablero',
     de: 'Board auswählen',
+    fr: 'Sélectionner un tableau',
   },
   boardSelectDesc: {
     ja: '設定を編集するウィジェットボードを選択してください。',
@@ -1345,6 +1347,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '请选择要编辑设置的小组件看板。',
     es: 'Seleccione el tablero de widget para editar su configuración.',
     de: 'Wählen Sie das Widget-Board aus, dessen Einstellungen Sie bearbeiten möchten.',
+    fr: 'Sélectionnez le tableau de widgets pour éditer ses paramètres.',
   },
   noBoards: {
     ja: '利用可能なボードがありません。「ボード管理」から新しいボードを追加してください。',
@@ -1352,6 +1355,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '没有可用的看板。请从"看板管理"中添加新的看板。',
     es: 'No hay tableros disponibles. Por favor, agregue un nuevo tablero desde "Gestión de Tableros".',
     de: 'Keine Boards verfügbar. Bitte fügen Sie ein neues Board über "Board-Verwaltung" hinzu.',
+    fr: 'Aucun tableau disponible. Veuillez ajouter un nouveau tableau depuis "Gestion des tableaux".',
   },
   selectBoardToConfig: {
     ja: '設定するボードを「ボード管理」から選択してください。',
@@ -1359,6 +1363,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '请从"看板管理"中选择要配置的看板。',
     es: 'Por favor, seleccione un tablero para configurar desde "Gestión de Tableros".',
     de: 'Bitte wählen Sie ein Board zur Konfiguration aus der "Board-Verwaltung".',
+    fr: 'Veuillez sélectionner un tableau à configurer depuis "Gestion des tableaux".',
   },
   noBoardsAvailable: {
     ja: '利用可能なボードがありません',
@@ -1366,6 +1371,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '没有可用的看板',
     es: 'No hay tableros disponibles',
     de: 'Keine Boards verfügbar',
+    fr: 'Aucun tableau disponible',
   },
   addNewBoard: {
     ja: '新しいボードを追加',
@@ -1373,6 +1379,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '添加新看板',
     es: 'Agregar Nuevo Tablero',
     de: 'Neues Board hinzufügen',
+    fr: 'Ajouter un nouveau tableau',
   },
   defaultViewMode: {
     ja: 'デフォルト表示モード',
@@ -1380,6 +1387,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '默认视图模式',
     es: 'Modo de Visualización Predeterminado',
     de: 'Standard-Ansichtsmodus',
+    fr: 'Mode d\'affichage par défaut',
   },
   defaultViewModeDesc: {
     ja: 'このボードを開いたときの初期表示モード。',
@@ -1387,6 +1395,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '打开此看板时的初始视图模式。',
     es: 'El modo de visualización inicial cuando se abre este tablero.',
     de: 'Der anfängliche Ansichtsmodus beim Öffnen dieses Boards.',
+    fr: 'Le mode d\'affichage initial lors de l\'ouverture de ce tableau.',
   },
   leftPanel33: {
     ja: '左パネル（33vw）',
@@ -1394,6 +1403,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '左面板 (33vw)',
     es: 'Panel Izquierdo (33vw)',
     de: 'Linkes Panel (33vw)',
+    fr: 'Panneau gauche (33vw)',
   },
   leftPanel50: {
     ja: '左パネル（50vw）',
@@ -1401,6 +1411,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '左面板 (50vw)',
     es: 'Panel Izquierdo (50vw)',
     de: 'Linkes Panel (50vw)',
+    fr: 'Panneau gauche (50vw)',
   },
   leftPanel66: {
     ja: '左パネル（66vw）',
@@ -1408,6 +1419,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '左面板 (66vw)',
     es: 'Panel Izquierdo (66vw)',
     de: 'Linkes Panel (66vw)',
+    fr: 'Panneau gauche (66vw)',
   },
   leftSplitOuter: {
     ja: '左スプリット外（32vw）',
@@ -1415,6 +1427,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '左侧分割外部 (32vw)',
     es: 'Separación Izquierda Fuera (32vw)',
     de: 'Außerhalb linker Split (32vw)',
+    fr: 'En dehors de la division gauche (32vw)',
   },
   centerPanel33: {
     ja: '中央パネル（33vw）',
@@ -1422,6 +1435,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '中央面板 (33vw)',
     es: 'Panel Central (33vw)',
     de: 'Mittleres Panel (33vw)',
+    fr: 'Panneau central (33vw)',
   },
   centerPanel50: {
     ja: '中央パネル（50vw）',
@@ -1429,6 +1443,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '中央面板 (50vw)',
     es: 'Panel Central (50vw)',
     de: 'Mittleres Panel (50vw)',
+    fr: 'Panneau central (50vw)',
   },
   rightPanel33: {
     ja: '右パネル（33vw）',
@@ -1436,6 +1451,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '右面板 (33vw)',
     es: 'Panel Derecho (33vw)',
     de: 'Rechtes Panel (33vw)',
+    fr: 'Panneau droit (33vw)',
   },
   rightPanel50: {
     ja: '右パネル（50vw）',
@@ -1443,6 +1459,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '右面板 (50vw)',
     es: 'Panel Derecho (50vw)',
     de: 'Rechtes Panel (50vw)',
+    fr: 'Panneau droit (50vw)',
   },
   rightPanel66: {
     ja: '右パネル（66vw）',
@@ -1450,6 +1467,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '右面板 (66vw)',
     es: 'Panel Derecho (66vw)',
     de: 'Rechtes Panel (66vw)',
+    fr: 'Panneau droit (66vw)',
   },
   rightSplitOuter: {
     ja: '右スプリット外（32vw）',
@@ -1457,6 +1475,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '右侧分割外部 (32vw)',
     es: 'Separación Derecha Fuera (32vw)',
     de: 'Außerhalb rechter Split (32vw)',
+    fr: 'En dehors de la division droite (32vw)',
   },
   customWidthVw: {
     ja: 'カスタム幅（vw）',
@@ -1464,6 +1483,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '自定义宽度 (vw)',
     es: 'Ancho Personalizado (vw)',
     de: 'Benutzerdefinierte Breite (vw)',
+    fr: 'Largeur personnalisée (vw)',
   },
   boardName: {
     ja: 'ボード名',
@@ -1471,6 +1491,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '看板名称',
     es: 'Nombre del Tablero',
     de: 'Board-Name',
+    fr: 'Nom du tableau',
   },
   boardNameDesc: {
     ja: 'このボードの名前を入力してください。',
@@ -1478,6 +1499,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '请输入此看板的名称。',
     es: 'Ingrese el nombre de este tablero.',
     de: 'Geben Sie den Namen dieses Boards ein.',
+    fr: 'Entrez le nom de ce tableau.',
   },
   customWidth: {
     ja: 'カスタム幅（vw）',
@@ -1485,6 +1507,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '自定义宽度 (vw)',
     es: 'Ancho Personalizado (vw)',
     de: 'Benutzerdefinierte Breite (vw)',
+    fr: 'Largeur personnalisée (vw)',
   },
   customWidthDesc: {
     ja: 'パネルの幅をvw単位で指定します（例: 40）',
@@ -1492,6 +1515,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '以vw为单位指定面板宽度 (例如: 40)',
     es: 'Especifique el ancho del panel en unidades vw (por ejemplo: 40)',
     de: 'Geben Sie die Panelbreite in vw-Einheiten an (z.B. 40)',
+    fr: 'Spécifiez la largeur du panneau en unités vw (ex: 40)',
   },
   customWidthPlaceholder: {
     ja: '例: 40',
@@ -1499,6 +1523,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '例如: 40',
     es: 'ej: 40',
     de: 'z.B. 40',
+    fr: 'ex: 40',
   },
   customWidthAnchor: {
     ja: 'カスタム幅の基準位置',
@@ -1506,6 +1531,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '自定义宽度锚点',
     es: 'Anclaje de Ancho Personalizado',
     de: 'Anker für benutzerdefinierte Breite',
+    fr: 'Ancre de largeur personnalisée',
   },
   customWidthAnchorDesc: {
     ja: 'カスタム幅パネルの表示基準（左・中央・右）',
@@ -1513,6 +1539,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '自定义宽度面板的显示锚点 (左、中、右)',
     es: 'Anclaje de ancho personalizado para panel (izquierda, centro, derecha)',
     de: 'Anzeigeanker für benutzerdefiniertes Breitenpanel (links, mitte, rechts)',
+    fr: 'Ancre d\'affichage pour le panneau de largeur personnalisée (gauche, centre, droite)',
   },
   deleteThisBoard: {
     ja: 'このボードを削除',
@@ -1520,6 +1547,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '删除此看板',
     es: 'Eliminar este tablero',
     de: 'Dieses Board löschen',
+    fr: 'Supprimer ce tableau',
   },
   deleteBoardConfirm: {
     ja: 'ボード「{name}」を本当に削除しますか？',
@@ -1527,6 +1555,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '您确定要删除看板"{name}"?',
     es: '¿Está seguro de que desea eliminar el tablero "{name}"?',
     de: 'Sind Sie sicher, dass Sie das Board "{name}" löschen möchten?',
+    fr: 'Êtes-vous sûr de vouloir supprimer le tableau "{name}"?',
   },
 } as const;
 
@@ -1537,6 +1566,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '小组件管理',
     es: 'Gestión de Widgets',
     de: 'Widget-Verwaltung',
+    fr: 'Gestion des widgets',
   },
   addWidget: {
     ja: '追加',
@@ -1544,6 +1574,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '添加',
     es: 'Añadir',
     de: 'Hinzufügen',
+    fr: 'Ajouter',
   },
   noWidgets: {
     ja: 'このボードにはウィジェットがありません。「追加」ボタンで作成できます。',
@@ -1551,6 +1582,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '此看板上没有小组件。您可以使用"添加"按钮创建一个。',
     es: 'No hay widgets en este tablero. Puede crear uno con el botón "Añadir".',
     de: 'Auf diesem Board befinden sich keine Widgets. Sie können eines mit der Schaltfläche "Hinzufügen" erstellen.',
+    fr: 'Il n\'y a pas de widgets sur ce tableau. Vous pouvez en créer un avec le bouton "Ajouter".',
   },
   moveUp: {
     ja: '上に移動',
@@ -1558,6 +1590,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '上移',
     es: 'Mover Arriba',
     de: 'Nach oben',
+    fr: 'Déplacer vers le haut',
   },
   moveDown: {
     ja: '下に移動',
@@ -1565,6 +1598,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '下移',
     es: 'Mover Abajo',
     de: 'Nach unten',
+    fr: 'Déplacer vers le bas',
   },
   deleteWidget: {
     ja: 'このウィジェットを削除',
@@ -1572,6 +1606,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '删除此小组件',
     es: 'Eliminar este widget',
     de: 'Dieses Widget löschen',
+    fr: 'Supprimer ce widget',
   },
   widgetType: {
     ja: '種類',
@@ -1579,6 +1614,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '类型',
     es: 'Tipo',
     de: 'Typ',
+    fr: 'Type',
   },
   widgetId: {
     ja: 'ID',
@@ -1586,6 +1622,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: 'ID',
     es: 'ID',
     de: 'ID',
+    fr: 'ID',
   },
   widgetNamePlaceholder: {
     ja: '(ウィジェット名)',
@@ -1593,6 +1630,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '(小组件名称)',
     es: '(Nombre del Widget)',
     de: '(Widget-Name)',
+    fr: '(Nom du widget)',
   },
   untitledWidget: {
     ja: '(名称未設定 {type})',
@@ -1600,6 +1638,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '(未命名 {type})',
     es: '(Sin título {type})',
     de: '(Unbenannt {type})',
+    fr: '(Sans titre {type})',
   },
   widgetAddedToBoard: {
     ja: '「{widgetName}」ウィジェットがボード「{boardName}」に追加されました。',
@@ -1607,6 +1646,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '小组件"{widgetName}"已添加到看板"{boardName}"。',
     es: 'Widget "{widgetName}" se ha agregado al tablero "{boardName}".',
     de: 'Widget "{widgetName}" wurde zum Board "{boardName}" hinzugefügt.',
+    fr: 'Le widget "{widgetName}" a été ajouté au tableau "{boardName}".',
   },
   widgetDeletedFromBoard: {
     ja: 'ウィジェット「{widgetName}」をボード「{boardName}」から削除しました。',
@@ -1614,6 +1654,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '小组件"{widgetName}"已从看板"{boardName}"中删除。',
     es: 'Widget "{widgetName}" se ha eliminado del tablero "{boardName}".',
     de: 'Widget "{widgetName}" wurde vom Board "{boardName}" gelöscht.',
+    fr: 'Le widget "{widgetName}" a été supprimé du tableau "{boardName}".',
   },
   detailedSettings: {
     ja: '詳細設定',
@@ -1621,6 +1662,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     zh: '详细设置',
     es: 'Configuración Detallada',
     de: 'Detaillierte Einstellungen',
+    fr: 'Paramètres détaillés',
   },
 } as const;
 
@@ -1631,6 +1673,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '可以将多个看板分组，并使用命令一次性显示它们。',
     es: 'Agrupe varios tableros para mostrarlos todos a la vez con un comando.',
     de: 'Gruppieren Sie mehrere Boards, um sie alle auf einmal mit einem Befehl anzuzeigen.',
+    fr: 'Groupez plusieurs tableaux pour les afficher tous en même temps avec une commande.',
   },
   addNewGroup: {
     ja: '新しいグループを追加',
@@ -1638,6 +1681,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '添加新组',
     es: 'Agregar Nuevo Grupo',
     de: 'Neue Gruppe hinzufügen',
+    fr: 'Ajouter un nouveau groupe',
   },
   noGroups: {
     ja: 'グループがありません。',
@@ -1645,6 +1689,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '没有分组。',
     es: 'No hay grupos.',
     de: 'Keine Gruppen.',
+    fr: 'Aucun groupe.',
   },
   editGroup: {
     ja: 'グループを編集',
@@ -1652,6 +1697,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '编辑分组',
     es: 'Editar Grupo',
     de: 'Gruppe bearbeiten',
+    fr: 'Modifier le groupe',
   },
   deleteGroup: {
     ja: 'グループを削除',
@@ -1659,6 +1705,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '删除分组',
     es: 'Eliminar Grupo',
     de: 'Gruppe löschen',
+    fr: 'Supprimer le groupe',
   },
   deleteGroupConfirm: {
     ja: 'グループ「{name}」を本当に削除しますか？',
@@ -1666,6 +1713,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '您确定要删除分组"{name}"?',
     es: '¿Está seguro de que desea eliminar el grupo "{name}"?',
     de: 'Sind Sie sicher, dass Sie die Gruppe "{name}" löschen möchten?',
+    fr: 'Êtes-vous sûr de vouloir supprimer le groupe "{name}"?',
   },
   groupName: {
     ja: 'グループ名',
@@ -1673,6 +1721,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '分组名称',
     es: 'Nombre del Grupo',
     de: 'Gruppenname',
+    fr: 'Nom du groupe',
   },
   groupNameDesc: {
     ja: 'コマンドパレットに表示される名前です。',
@@ -1680,6 +1729,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '显示在命令面板中的名称。',
     es: 'Der im Befehlspanel angezeigte Name.',
     de: 'Der in der Befehlspalette angezeigte Name.',
+    fr: 'Le nom affiché dans la palette de commandes.',
   },
   groupNamePlaceholder: {
     ja: '例: 私の作業スペース',
@@ -1687,6 +1737,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '例如: 我的工作区',
     es: 'ej: Mi Espacio de Trabajo',
     de: 'z.B. Mein Arbeitsbereich',
+    fr: 'ex: Mon espace de travail',
   },
   selectBoards: {
     ja: 'ボードを選択',
@@ -1694,6 +1745,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '选择看板',
     es: 'Seleccionar Tableros',
     de: 'Boards auswählen',
+    fr: 'Sélectionner des tableaux',
   },
   selectBoardsDesc: {
     ja: 'グループに含めるボードを選択してください。',
@@ -1701,6 +1753,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '请选择要包含在分组中的看板。',
     es: 'Seleccione los tableros para incluir en el grupo.',
     de: 'Wählen Sie die Boards aus, die in die Gruppe aufgenommen werden sollen.',
+    fr: 'Sélectionnez les tableaux à inclure dans le groupe.',
   },
   enterGroupName: {
     ja: 'グループ名を入力してください',
@@ -1708,6 +1761,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '请输入分组名称',
     es: 'Por favor, ingrese el nombre del grupo',
     de: 'Bitte geben Sie einen Gruppennamen ein',
+    fr: 'Veuillez entrer un nom de groupe',
   },
   selectOneBoardAtLeast: {
     ja: '1つ以上のボードを選択してください',
@@ -1715,6 +1769,7 @@ const BOARD_GROUP_STRINGS = {
     zh: '请至少选择一个看板',
     es: 'Por favor, seleccione al menos un tablero',
     de: 'Bitte wählen Sie mindestens ein Board aus',
+    fr: 'Veuillez sélectionner au moins un tableau',
   },
 } as const;
 
@@ -1725,6 +1780,7 @@ const ERROR_MESSAGES = {
     zh: '只能指定Vault内的相对路径。不允许使用绝对路径或Vault外的路径。',
     es: 'Solo se permiten rutas relativas dentro del Vault. Las rutas absolutas o fuera del Vault no están permitidas.',
     de: 'Nur relative Pfade innerhalb des Vaults sind erlaubt. Absolute Pfade oder Pfade außerhalb des Vaults sind nicht zulässig.',
+    fr: 'Seuls les chemins relatifs à l\'intérieur du coffre sont autorisés. Les chemins absolus ou en dehors du coffre ne sont pas autorisés.',
   },
   invalidNumber: {
     ja: '数値を入力してください（vw単位）',
@@ -1732,6 +1788,7 @@ const ERROR_MESSAGES = {
     zh: '请输入数字 (vw单位)。',
     es: 'Por favor, ingrese un número (unidades vw)',
     de: 'Bitte geben Sie eine Zahl ein (vw-Einheiten)',
+    fr: 'Veuillez entrer un nombre (unités vw)',
   },
   rangeWarning: {
     ja: '1〜100の範囲でvwを指定することを推奨します。',
@@ -1739,6 +1796,7 @@ const ERROR_MESSAGES = {
     zh: '建议在1到100的范围内指定vw。',
     es: 'Se recomienda especificar vw en el rango de 1 a 100.',
     de: 'Es wird empfohlen, vw im Bereich von 1 bis 100 anzugeben.',
+    fr: 'Il est recommandé de spécifier vw dans la plage de 1 à 100.',
   },
   enterPositiveNumber: {
     ja: '1以上の半角数値を入力してください。',
@@ -1746,6 +1804,7 @@ const ERROR_MESSAGES = {
     zh: '请输入一个正数。',
     es: 'Por favor, ingrese un número positivo.',
     de: 'Bitte geben Sie eine positive Zahl ein.',
+    fr: 'Veuillez entrer un nombre positif.',
   },
   invalidTimeFormat: {
     ja: '時刻は00:00〜23:59の形式で入力してください',
@@ -1753,6 +1812,7 @@ const ERROR_MESSAGES = {
     zh: '请输入00:00-23:59格式的时间。',
     es: 'Por favor, ingrese la hora en formato 00:00-23:59',
     de: 'Bitte geben Sie die Zeit im Format 00:00-23:59 ein',
+    fr: 'Veuillez entrer l\'heure au format 00:00-23:59',
   },
   enterContent: {
     ja: '内容を入力してください',
@@ -1760,6 +1820,7 @@ const ERROR_MESSAGES = {
     zh: '请输入内容。',
     es: 'Por favor, ingrese el contenido.',
     de: 'Bitte geben Sie den Inhalt ein.',
+    fr: 'Veuillez entrer le contenu',
   },
   cannotCalculateNextPost: {
     ja: '次の投稿日時が計算できません',
@@ -1767,6 +1828,7 @@ const ERROR_MESSAGES = {
     zh: '无法计算下一次发布时间。',
     es: 'No se puede calcular la próxima hora de publicación',
     de: 'Die nächste Beitragszeit kann nicht berechnet werden',
+    fr: 'Impossible de calculer l\'heure de la prochaine publication',
   },
 } as const;
 
