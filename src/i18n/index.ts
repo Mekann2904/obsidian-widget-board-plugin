@@ -1,4 +1,4 @@
-export type Language = 'ja' | 'en' | 'zh' | 'es' | 'de' | 'fr';
+export type Language = 'ja' | 'en' | 'zh' | 'es' | 'de' | 'fr' | 'ko';
 
 export const LANGUAGE_NAMES: Record<Language, string> = {
   ja: '日本語',
@@ -7,6 +7,7 @@ export const LANGUAGE_NAMES: Record<Language, string> = {
   es: 'Español',
   de: 'Deutsch',
   fr: 'Français',
+  ko: '한국어',
 };
 
 // -----------------------------------------------------------------------------
@@ -21,6 +22,7 @@ const COMMON_STRINGS = {
     es: 'Mostrar',
     de: 'Anzeigen',
     fr: 'Afficher',
+    ko: '표시',
   },
   hide: {
     ja: '非表示',
@@ -29,6 +31,7 @@ const COMMON_STRINGS = {
     es: 'Ocultar',
     de: 'Ausblenden',
     fr: 'Masquer',
+    ko: '숨기기',
   },
   save: {
     ja: '保存',
@@ -37,6 +40,7 @@ const COMMON_STRINGS = {
     es: 'Guardar',
     de: 'Speichern',
     fr: 'Enregistrer',
+    ko: '저장',
   },
   cancel: {
     ja: 'キャンセル',
@@ -45,6 +49,7 @@ const COMMON_STRINGS = {
     es: 'Cancelar',
     de: 'Abbrechen',
     fr: 'Annuler',
+    ko: '취소',
   },
   add: {
     ja: '追加',
@@ -53,6 +58,7 @@ const COMMON_STRINGS = {
     es: 'Añadir',
     de: 'Hinzufügen',
     fr: 'Ajouter',
+    ko: '추가',
   },
   update: {
     ja: '更新',
@@ -61,6 +67,7 @@ const COMMON_STRINGS = {
     es: 'Actualizar',
     de: 'Aktualisieren',
     fr: 'Mettre à jour',
+    ko: '업데이트',
   },
   edit: {
     ja: '編集',
@@ -69,6 +76,7 @@ const COMMON_STRINGS = {
     es: 'Editar',
     de: 'Bearbeiten',
     fr: 'Modifier',
+    ko: '편집',
   },
   delete: {
     ja: '削除',
@@ -77,6 +85,7 @@ const COMMON_STRINGS = {
     es: 'Eliminar',
     de: 'Löschen',
     fr: 'Supprimer',
+    ko: '삭제',
   },
   off: {
     ja: 'なし',
@@ -85,6 +94,7 @@ const COMMON_STRINGS = {
     es: 'Desactivado',
     de: 'Aus',
     fr: 'Désactivé',
+    ko: '끄기',
   },
   beep: {
     ja: 'ビープ音',
@@ -93,6 +103,7 @@ const COMMON_STRINGS = {
     es: 'Beep',
     de: 'Signalton',
     fr: 'Bip',
+    ko: '삐 소리',
   },
   bell: {
     ja: 'ベル',
@@ -101,6 +112,7 @@ const COMMON_STRINGS = {
     es: 'Campana',
     de: 'Glocke',
     fr: 'Cloche',
+    ko: '벨',
   },
   chime: {
     ja: 'チャイム',
@@ -109,6 +121,7 @@ const COMMON_STRINGS = {
     es: 'Timbre',
     de: 'Gong',
     fr: 'Carillon',
+    ko: '차임',
   },
   notSave: {
     ja: '保存しない',
@@ -117,6 +130,7 @@ const COMMON_STRINGS = {
     es: 'No guardar',
     de: 'Nicht speichern',
     fr: 'Ne pas enregistrer',
+    ko: '저장 안 함',
   },
   playSound: {
     ja: '音を聞く',
@@ -125,6 +139,7 @@ const COMMON_STRINGS = {
     es: 'Reproducir sonido',
     de: 'Ton abspielen',
     fr: 'Jouer le son',
+    ko: '소리 재생',
   },
   addUser: {
     ja: '+ ユーザー追加',
@@ -133,6 +148,7 @@ const COMMON_STRINGS = {
     es: '+ Añadir Usuario',
     de: '+ Benutzer hinzufügen',
     fr: '+ Ajouter un utilisateur',
+    ko: '+ 사용자 추가',
   },
   left: {
     ja: '左',
@@ -141,6 +157,7 @@ const COMMON_STRINGS = {
     es: 'Izquierda',
     de: 'Links',
     fr: 'Gauche',
+    ko: '왼쪽',
   },
   center: {
     ja: '中央',
@@ -149,6 +166,7 @@ const COMMON_STRINGS = {
     es: 'Centro',
     de: 'Mitte',
     fr: 'Centre',
+    ko: '가운데',
   },
   right: {
     ja: '右',
@@ -157,6 +175,7 @@ const COMMON_STRINGS = {
     es: 'Derecha',
     de: 'Rechts',
     fr: 'Droite',
+    ko: '오른쪽',
   },
   auto: {
     ja: '自動（内容に合わせる）',
@@ -165,6 +184,7 @@ const COMMON_STRINGS = {
     es: 'Automático (ajustar al contenido)',
     de: 'Automatisch (an Inhalt anpassen)',
     fr: 'Auto (ajuster au contenu)',
+    ko: '자동 (내용에 맞춤)',
   },
   fixed: {
     ja: '固定',
@@ -173,6 +193,7 @@ const COMMON_STRINGS = {
     es: 'Fijo',
     de: 'Fest',
     fr: 'Fixe',
+    ko: '고정',
   },
   custom: {
     ja: 'カスタム',
@@ -181,6 +202,7 @@ const COMMON_STRINGS = {
     es: 'Personalizado',
     de: 'Benutzerdef.',
     fr: 'Personnalisé',
+    ko: '사용자 정의',
   },
   allTime: {
     ja: '全期間',
@@ -189,6 +211,7 @@ const COMMON_STRINGS = {
     es: 'Desde siempre',
     de: 'Gesamte Zeit',
     fr: 'Tout le temps',
+    ko: '전체 기간',
   },
   today: {
     ja: '今日',
@@ -197,6 +220,7 @@ const COMMON_STRINGS = {
     es: 'Hoy',
     de: 'Heute',
     fr: "Aujourd'hui",
+    ko: '오늘',
   },
   oneDay: {
     ja: '1日',
@@ -205,6 +229,7 @@ const COMMON_STRINGS = {
     es: '1 Tag',
     de: '1 Tag',
     fr: '1 jour',
+    ko: '1일',
   },
   threeDays: {
     ja: '3日',
@@ -213,6 +238,7 @@ const COMMON_STRINGS = {
     es: '3 Tage',
     de: '3 Tage',
     fr: '3 jours',
+    ko: '3일',
   },
   oneWeek: {
     ja: '1週間',
@@ -221,6 +247,7 @@ const COMMON_STRINGS = {
     es: '1 Semana',
     de: '1 Woche',
     fr: '1 semaine',
+    ko: '1주',
   },
   oneMonth: {
     ja: '1ヶ月',
@@ -229,6 +256,7 @@ const COMMON_STRINGS = {
     es: '1 Mes',
     de: '1 Monat',
     fr: '1 mois',
+    ko: '1개월',
   },
   sunday: {
     ja: '日曜日',
@@ -237,6 +265,7 @@ const COMMON_STRINGS = {
     es: 'Domingo',
     de: 'Sonntag',
     fr: 'Dimanche',
+    ko: '일요일',
   },
   monday: {
     ja: '月曜日',
@@ -245,6 +274,7 @@ const COMMON_STRINGS = {
     es: 'Lunes',
     de: 'Montag',
     fr: 'Lundi',
+    ko: '월요일',
   },
   tuesday: {
     ja: '火曜日',
@@ -253,6 +283,7 @@ const COMMON_STRINGS = {
     es: 'Martes',
     de: 'Dienstag',
     fr: 'Mardi',
+    ko: '화요일',
   },
   wednesday: {
     ja: '水曜日',
@@ -261,6 +292,7 @@ const COMMON_STRINGS = {
     es: 'Miércoles',
     de: 'Mittwoch',
     fr: 'Mercredi',
+    ko: '수요일',
   },
   thursday: {
     ja: '木曜日',
@@ -269,6 +301,7 @@ const COMMON_STRINGS = {
     es: 'Jueves',
     de: 'Donnerstag',
     fr: 'Jeudi',
+    ko: '목요일',
   },
   friday: {
     ja: '金曜日',
@@ -277,6 +310,7 @@ const COMMON_STRINGS = {
     es: 'Viernes',
     de: 'Freitag',
     fr: 'Vendredi',
+    ko: '금요일',
   },
   saturday: {
     ja: '土曜日',
@@ -285,6 +319,7 @@ const COMMON_STRINGS = {
     es: 'Sábado',
     de: 'Samstag',
     fr: 'Samedi',
+    ko: '토요일',
   },
   content: {
     ja: '内容',
@@ -293,6 +328,7 @@ const COMMON_STRINGS = {
     es: 'Contenido',
     de: 'Inhalt',
     fr: 'Contenu',
+    ko: '내용',
   },
 } as const;
 
@@ -304,6 +340,7 @@ const SETTINGS_PANE_STRINGS = {
     es: 'Configuración del Tablero de Widgets',
     de: 'Widget-Board-Einstellungen',
     fr: 'Paramètres du tableau de bord des widgets',
+    ko: '위젯 보드 설정',
   },
   languageSetting: {
     ja: '表示言語',
@@ -312,6 +349,7 @@ const SETTINGS_PANE_STRINGS = {
     es: 'Idioma',
     de: 'Sprache',
     fr: 'Langue',
+    ko: '표시 언어',
   },
   baseFolderGlobal: {
     ja: 'ベースフォルダ（グローバル）',
@@ -320,6 +358,7 @@ const SETTINGS_PANE_STRINGS = {
     es: 'Carpeta Base (Global)',
     de: 'Basisordner (Global)',
     fr: 'Dossier de base (Global)',
+    ko: '기본 폴더 (전역)',
   },
   baseFolderGlobalDesc: {
     ja: '全ウィジェット共通のデータ保存先となるVault内のフォルダを指定します（例: myfolder）。\nこのフォルダ配下に各ウィジェットのデータやノートが保存されます。',
@@ -328,6 +367,7 @@ const SETTINGS_PANE_STRINGS = {
     es: 'Especifique la carpeta en su Vault para guardar los datos de todos los widgets (ej: mi-carpeta). Todos los datos y notas de los widgets se guardarán en esta carpeta.',
     de: 'Geben Sie den Ordner in Ihrem Vault an, in dem die Daten für alle Widgets gespeichert werden sollen (z.B. myfolder). Alle Widget-Daten und Notizen werden in diesem Ordner gespeichert.',
     fr: 'Spécifiez le dossier dans votre coffre pour enregistrer les données de tous les widgets (par exemple, mon-dossier). Toutes les données et notes des widgets seront enregistrées dans ce dossier.',
+    ko: '모든 위젯이 공통으로 데이터를 저장할 Vault 내 폴더를 지정합니다 (예: myfolder).\\n이 폴더 아래에 각 위젯의 데이터와 노트가 저장됩니다.',
   },
   myfolderPlaceholder: {
     ja: 'myfolder',
@@ -336,6 +376,7 @@ const SETTINGS_PANE_STRINGS = {
     es: 'mi-carpeta',
     de: 'meinordner',
     fr: 'mon-dossier',
+    ko: 'myfolder',
   },
   debugLog: {
     ja: 'デバッグログを有効にする',
@@ -344,6 +385,7 @@ const SETTINGS_PANE_STRINGS = {
     es: 'Habilitar Registro de Depuración',
     de: 'Debug-Protokoll aktivieren',
     fr: 'Activer le journal de débogage',
+    ko: '디버그 로그 활성화',
   },
   debugLogDesc: {
     ja: 'コンソールに開発用のデバッグ情報を出力します。',
@@ -352,6 +394,7 @@ const SETTINGS_PANE_STRINGS = {
     es: 'Geben Sie Debug-Informationen für die Entwicklung in der Konsole aus.',
     de: 'Gibt Debug-Informationen auf der Konsole aus.',
     fr: 'Affiche les informations de débogage pour le développement dans la console.',
+    ko: '콘솔에 개발용 디버그 정보를 출력합니다.',
   },
 } as const;
 
@@ -363,6 +406,7 @@ const GLOBAL_SETTINGS_SECTIONS = {
     es: 'Pomodoro (Configuración Global)',
     de: 'Pomodoro (Globale Einstellungen)',
     fr: 'Pomodoro (Paramètres globaux)',
+    ko: '포모도로 (전역 설정)',
   },
   timerGlobalSetting: {
     ja: 'タイマー／ストップウォッチ（グローバル設定）',
@@ -371,6 +415,7 @@ const GLOBAL_SETTINGS_SECTIONS = {
     es: 'Temporizador/Cronómetro (Configuración Global)',
     de: 'Timer/Stoppuhr (Globale Einstellungen)',
     fr: 'Minuterie/Chronomètre (Paramètres globaux)',
+    ko: '타이머/스톱워치 (전역 설정)',
   },
   llmGlobalSetting: {
     ja: 'LLM（グローバル設定）',
@@ -379,6 +424,7 @@ const GLOBAL_SETTINGS_SECTIONS = {
     es: 'LLM (Configuración Global)',
     de: 'LLM (Globale Einstellungen)',
     fr: 'LLM (Paramètres globaux)',
+    ko: 'LLM (전역 설정)',
   },
   tweetWidgetGlobalSettings: {
     ja: 'つぶやき（グローバル設定）',
@@ -387,6 +433,7 @@ const GLOBAL_SETTINGS_SECTIONS = {
     es: 'Tweet (Configuración Global)',
     de: 'Tweet (Globale Einstellungen)',
     fr: 'Tweet (Paramètres globaux)',
+    ko: '트윗 (전역 설정)',
   },
   calendarGlobalSetting: {
     ja: 'カレンダー（グローバル設定）',
@@ -395,6 +442,7 @@ const GLOBAL_SETTINGS_SECTIONS = {
     es: 'Calendario (Configuración Global)',
     de: 'Kalender (Globale Einstellungen)',
     fr: 'Calendrier (Paramètres globaux)',
+    ko: '캘린더 (전역 설정)',
   },
   boardManagement: {
     ja: 'ボード管理',
@@ -403,6 +451,7 @@ const GLOBAL_SETTINGS_SECTIONS = {
     es: 'Gestión de Tableros',
     de: 'Board-Verwaltung',
     fr: 'Gestion des tableaux',
+    ko: '보드 관리',
   },
   boardGroupManagement: {
     ja: 'ボードグループ管理',
@@ -411,6 +460,7 @@ const GLOBAL_SETTINGS_SECTIONS = {
     es: 'Gestión de Grupos de Tableros',
     de: 'Board-Gruppenverwaltung',
     fr: 'Gestion des groupes de tableaux',
+    ko: '보드 그룹 관리',
   },
 } as const;
 
@@ -422,6 +472,7 @@ const POMODORO_STRINGS = {
     es: 'Añadir Pomodoro',
     de: 'Pomodoro hinzufügen',
     fr: 'Ajouter un Pomodoro',
+    ko: '포모도로 추가',
   },
   notificationSound: {
     ja: '通知音',
@@ -430,6 +481,7 @@ const POMODORO_STRINGS = {
     es: 'Sonido de Notificación',
     de: 'Benachrichtigungston',
     fr: 'Son de notification',
+    ko: '알림음',
   },
   notificationVolume: {
     ja: '通知音量',
@@ -438,6 +490,7 @@ const POMODORO_STRINGS = {
     es: 'Volumen de Notificación',
     de: 'Benachrichtigungslautstärke',
     fr: 'Volume de la notification',
+    ko: '알림 볼륨',
   },
   pomodoroNotificationSoundDesc: {
     ja: '全てのポモドーロタイマーで使う通知音（個別設定より優先）',
@@ -446,6 +499,7 @@ const POMODORO_STRINGS = {
     es: 'Sonido de notificación para todos los temporizadores Pomodoro (sobrescribe la configuración individual)',
     de: 'Benachrichtigungston für alle Pomodoro-Timer (überschreibt individuelle Einstellungen)',
     fr: 'Son de notification utilisé pour tous les minuteurs Pomodoro (remplace les paramètres individuels)',
+    ko: '모든 포모도로 타이머에 사용할 알림음 (개별 설정보다 우선 적용)',
   },
   notificationVolumeDesc: {
     ja: '通知音の音量（0.0〜1.0）',
@@ -454,6 +508,7 @@ const POMODORO_STRINGS = {
     es: 'Volumen del sonido de notificación (0.0-1.0)',
     de: 'Benachrichtigungslautstärke (0.0-1.0)',
     fr: 'Volume du son de notification (0.0-1.0)',
+    ko: '알림음 볼륨 (0.0-1.0)',
   },
   exportFormat: {
     ja: 'エクスポート形式',
@@ -462,6 +517,7 @@ const POMODORO_STRINGS = {
     es: 'Formato de Exportación',
     de: 'Exportformat',
     fr: "Format d'exportation",
+    ko: '내보내기 형식',
   },
   exportFormatDesc: {
     ja: '全てのポモドーロタイマーで使うログ記録形式（個別設定より優先）',
@@ -470,6 +526,7 @@ const POMODORO_STRINGS = {
     es: 'Formato de exportación de registros para todos los temporizadores Pomodoro (sobrescribe la configuración individual)',
     de: 'Protokoll-Exportformat für alle Pomodoro-Timer (überschreibt individuelle Einstellungen)',
     fr: "Format d'exportation du journal pour tous les minuteurs Pomodoro (remplace les paramètres individuels)",
+    ko: '모든 포모도로 타이머에 사용할 로그 기록 형식 (개별 설정보다 우선 적용)',
   },
   openBoardOnPomodoroEnd: {
     ja: 'ポモドーロ終了時に該当ボードを自動で開く',
@@ -477,7 +534,8 @@ const POMODORO_STRINGS = {
     zh: '番茄钟结束时自动打开看板',
     es: 'Abrir el tablero automáticamente cuando finalice el Pomodoro',
     de: 'Board bei Pomodoro-Ende automatisch öffnen',
-    fr: 'Ouvrir le tableau automatiquement à la fin du Pomodoro',
+    fr: "Ouvrir le tableau automatiquement à la fin du Pomodoro",
+    ko: '포모도로 종료 시 해당 보드 자동 열기',
   },
   openBoardOnPomodoroEndDesc: {
     ja: 'ONにすると、ポモドーロが終了したときにこのウィジェットが属するボードを自動で開きます。',
@@ -486,6 +544,7 @@ const POMODORO_STRINGS = {
     es: 'Si está activado, el tablero que contiene este widget se abrirá automáticamente cuando finalice el Pomodoro.',
     de: 'Wenn EIN, wird das Board, das dieses Widget enthält, bei Pomodoro-Ende automatisch geöffnet.',
     fr: "Si activé, le tableau contenant ce widget s'ouvrira automatiquement à la fin du Pomodoro.",
+    ko: 'ON으로 설정하면, 포모도로가 종료될 때 이 위젯이 속한 보드가 자동으로 열립니다.',
   },
   autoStartNextPomodoroSession: {
     ja: 'ポモドーロ終了時に自動で次のセッションを開始',
@@ -494,6 +553,7 @@ const POMODORO_STRINGS = {
     es: 'Iniciar automáticamente la siguiente sesión cuando finalice el Pomodoro',
     de: 'Nächste Sitzung bei Pomodoro-Ende automatisch starten',
     fr: 'Démarrer automatiquement la session suivante à la fin du Pomodoro',
+    ko: '포모도로 종료 시 다음 세션 자동 시작',
   },
   autoStartNextPomodoroSessionDesc: {
     ja: 'ONにすると、ポモドーロが終了したときに自動で次のセッションを開始します。',
@@ -502,6 +562,7 @@ const POMODORO_STRINGS = {
     es: 'Si está activado, la siguiente sesión comenzará automáticamente cuando finalice el Pomodoro.',
     de: 'Wenn EIN, startet die nächste Sitzung bei Pomodoro-Ende automatisch.',
     fr: 'Si activé, la session suivante démarrera automatiquement à la fin du Pomodoro.',
+    ko: 'ON으로 설정하면, 포모도로가 종료될 때 다음 세션이 자동으로 시작됩니다.',
   },
   workMinutes: {
     ja: '作業時間 (分)',
@@ -510,6 +571,7 @@ const POMODORO_STRINGS = {
     es: 'Tiempo de Trabajo (min)',
     de: 'Arbeitszeit (min)',
     fr: 'Temps de travail (min)',
+    ko: '작업 시간 (분)',
   },
   workMinutesDesc: {
     ja: 'ポモドーロの作業フェーズの時間。',
@@ -518,6 +580,7 @@ const POMODORO_STRINGS = {
     es: 'Die Dauer der Arbeitsphase eines Pomodoro.',
     de: 'Die Dauer der Arbeitsphase eines Pomodoros.',
     fr: "La durée de la phase de travail d'un pomodoro.",
+    ko: '포모도로의 작업 단계 시간입니다.',
   },
   shortBreakMinutes: {
     ja: '短い休憩 (分)',
@@ -526,6 +589,7 @@ const POMODORO_STRINGS = {
     es: 'Descanso Corto (min)',
     de: 'Kurze Pause (min)',
     fr: 'Courte pause (min)',
+    ko: '짧은 휴식 (분)',
   },
   shortBreakMinutesDesc: {
     ja: '短い休憩フェーズの時間。',
@@ -534,6 +598,7 @@ const POMODORO_STRINGS = {
     es: 'La duración de la fase de descanso corto.',
     de: 'Die Dauer der kurzen Pausenphase.',
     fr: 'La durée de la phase de courte pause.',
+    ko: '짧은 휴식 단계의 시간입니다.',
   },
   longBreakMinutes: {
     ja: '長い休憩 (分)',
@@ -542,6 +607,7 @@ const POMODORO_STRINGS = {
     es: 'Descanso Largo (min)',
     de: 'Lange Pause (min)',
     fr: 'Longue pause (min)',
+    ko: '긴 휴식 (분)',
   },
   longBreakMinutesDesc: {
     ja: '長い休憩フェーズの時間。',
@@ -550,6 +616,7 @@ const POMODORO_STRINGS = {
     es: 'La duración de la fase de descanso largo.',
     de: 'Die Dauer der langen Pausenphase.',
     fr: 'La durée de la phase de longue pause.',
+    ko: '긴 휴식 단계의 시간입니다.',
   },
   pomodorosUntilLongBreak: {
     ja: 'サイクル数',
@@ -558,6 +625,7 @@ const POMODORO_STRINGS = {
     es: 'Ciclos',
     de: 'Zyklen',
     fr: 'Cycles',
+    ko: '사이클 수',
   },
   pomodorosUntilLongBreakDesc: {
     ja: '長い休憩までの作業ポモドーロ回数。',
@@ -566,6 +634,7 @@ const POMODORO_STRINGS = {
     es: 'El número de pomodoros antes de un descanso largo.',
     de: 'Die Anzahl der Pomodoros vor einer langen Pause.',
     fr: 'Le nombre de pomodoros avant une longue pause.',
+    ko: '긴 휴식 전까지의 작업 포모도로 횟수입니다.',
   },
   backgroundImageUrl: {
     ja: '背景画像URL',
@@ -574,6 +643,7 @@ const POMODORO_STRINGS = {
     es: 'URL de la Imagen de Fondo',
     de: 'Hintergrundbild-URL',
     fr: "URL de l'image d'arrière-plan",
+    ko: '배경 이미지 URL',
   },
   backgroundImageUrlDesc: {
     ja: 'タイマーの背景として表示する画像のURL。',
@@ -582,6 +652,7 @@ const POMODORO_STRINGS = {
     es: 'La URL de la imagen para mostrar como fondo del temporizador.',
     de: 'Die URL des Bildes, das als Timer-Hintergrund angezeigt werden soll.',
     fr: "L'URL de l'image à afficher en arrière-plan du minuteur.",
+    ko: '타이머 배경으로 표시할 이미지의 URL입니다.',
   },
   backgroundImageUrlPlaceholder: {
     ja: '例: https://example.com/image.jpg',
@@ -590,6 +661,7 @@ const POMODORO_STRINGS = {
     es: 'ej: https://example.com/image.jpg',
     de: 'z.B. https://example.com/image.jpg',
     fr: 'ex: https://example.com/image.jpg',
+    ko: '예: https://example.com/image.jpg',
   },
   notificationAndExport: {
     ja: '通知音・エクスポート形式',
@@ -598,6 +670,7 @@ const POMODORO_STRINGS = {
     es: 'Notificación/Exportación',
     de: 'Benachrichtigung/Export',
     fr: 'Notification/Exportation',
+    ko: '알림음/내보내기 형식',
   },
   notificationAndExportDesc: {
     ja: 'このウィジェットの通知音・エクスポート形式は「ポモドーロ（グローバル設定）」が適用されます。',
@@ -606,6 +679,7 @@ const POMODORO_STRINGS = {
     es: 'El sonido de notificación y el formato de exportación para este widget se aplican desde "Pomodoro (Configuración Global)".',
     de: 'Der Benachrichtigungston und das Exportformat für dieses Widget werden von "Pomodoro (Globale Einstellungen)" übernommen.',
     fr: 'Le son de notification et le format d\'exportation pour ce widget sont appliqués depuis "Pomodoro (Paramètres globaux)".',
+    ko: '이 위젯의 알림음 및 내보내기 형식은 "포모도로 (전역 설정)"이 적용됩니다.',
   },
 } as const;
 
@@ -617,6 +691,7 @@ const MEMO_STRINGS = {
     es: 'Añadir Memo',
     de: 'Memo hinzufügen',
     fr: 'Ajouter un mémo',
+    ko: '메모 추가',
   },
   memoContent: {
     ja: 'メモ内容 (Markdown)',
@@ -625,6 +700,7 @@ const MEMO_STRINGS = {
     es: 'Contenido del Memo (Markdown)',
     de: 'Memo-Inhalt (Markdown)',
     fr: 'Contenu du mémo (Markdown)',
+    ko: '메모 내용 (Markdown)',
   },
   memoContentDesc: {
     ja: 'メモウィジェットに表示する内容。ウィジェット内でも編集できます。',
@@ -633,6 +709,7 @@ const MEMO_STRINGS = {
     es: 'El contenido a mostrar en el widget de memo. También se puede editar dentro del widget.',
     de: 'Der Inhalt, der im Memo-Widget angezeigt werden soll. Er kann auch innerhalb des Widgets bearbeitet werden.',
     fr: 'Le contenu à afficher dans le widget mémo. Il peut également être modifié dans le widget.',
+    ko: '메모 위젯에 표시할 내용. 위젯 내에서도 편집할 수 있습니다.',
   },
   memoContentPlaceholder: {
     ja: 'ここにメモを記述...',
@@ -641,6 +718,7 @@ const MEMO_STRINGS = {
     es: 'Escribe tu memo aquí...',
     de: 'Schreiben Sie hier Ihr Memo...',
     fr: 'Écrivez votre mémo ici...',
+    ko: '여기에 메모를 작성하세요...',
   },
   memoHeightMode: {
     ja: '高さモード',
@@ -649,6 +727,7 @@ const MEMO_STRINGS = {
     es: 'Modo de Altura',
     de: 'Höhenmodus',
     fr: 'Mode de hauteur',
+    ko: '높이 모드',
   },
   memoHeightModeDesc: {
     ja: '自動調整（内容にfit）または固定高さを選択',
@@ -657,6 +736,7 @@ const MEMO_STRINGS = {
     es: 'Seleccione ajuste automático al contenido o altura fija',
     de: 'Wählen Sie automatische Anpassung an den Inhalt oder feste Höhe',
     fr: "Sélectionnez l'ajustement automatique au contenu ou la hauteur fixe",
+    ko: '자동 맞춤(내용에 맞게) 또는 고정 높이 선택',
   },
   fixedHeightPx: {
     ja: '固定高さ(px)',
@@ -665,6 +745,7 @@ const MEMO_STRINGS = {
     es: 'Altura Fija (px)',
     de: 'Feste Höhe (px)',
     fr: 'Hauteur fixe (px)',
+    ko: '고정 높이(px)',
   },
   fixedHeightPxDesc: {
     ja: '固定モード時の高さ（px）',
@@ -673,6 +754,7 @@ const MEMO_STRINGS = {
     es: 'Altura en modo fijo (px)',
     de: 'Höhe im festen Modus (px)',
     fr: 'Hauteur en mode fixe (px)',
+    ko: '고정 모드 시 높이(px)',
   },
 } as const;
 
@@ -684,6 +766,7 @@ const CALENDAR_STRINGS = {
     es: 'Añadir Calendario',
     de: 'Kalender hinzufügen',
     fr: 'Ajouter un calendrier',
+    ko: '캘린더 추가',
   },
   weekStartDay: {
     ja: '週の開始曜日',
@@ -692,6 +775,7 @@ const CALENDAR_STRINGS = {
     es: 'Inicio de la semana',
     de: 'Wochenstarttag',
     fr: 'Jour de début de la semaine',
+    ko: '주 시작 요일',
   },
   weekStartDayDesc: {
     ja: 'カレンダーや要約の週範囲に使用する開始曜日です。',
@@ -700,6 +784,7 @@ const CALENDAR_STRINGS = {
     es: 'El día de inicio de la semana para calendarios y resúmenes.',
     de: 'Der Starttag der Woche für Kalender und Zusammenfassungen.',
     fr: 'Le jour de début de la semaine pour les calendriers et les résumés.',
+    ko: '캘린더 및 요약의 주 범위에 사용할 시작 요일입니다.',
   },
   dailyNoteFormat: {
     ja: 'デイリーノートファイル名フォーマット',
@@ -708,6 +793,7 @@ const CALENDAR_STRINGS = {
     es: 'Formato de Nombre de Archivo de Nota Diaria',
     de: 'Dateinamensformat für tägliche Notizen',
     fr: 'Format du nom de fichier de la note quotidienne',
+    ko: '일일 노트 파일 이름 형식',
   },
   dailyNoteFormatDesc: {
     ja: '例: YYYY-MM-DD, YYYY-MM-DD.md など。YYYY, MM, DDが日付に置換されます。Moment.jsのフォーマットリファレンス（https://momentjs.com/docs/#/displaying/format/）に準拠。',
@@ -716,6 +802,7 @@ const CALENDAR_STRINGS = {
     es: 'ej: YYYY-MM-DD, YYYY-MM-DD.md. YYYY, MM, DD serán reemplazados por la fecha. Cumple con la referencia de formato de Moment.js (https://momentjs.com/docs/#/displaying/format/).',
     de: 'z.B. YYYY-MM-DD, YYYY-MM-DD.md. YYYY, MM, DD werden durch das Datum ersetzt. Entspricht der Moment.js-Format-Referenz (https://momentjs.com/docs/#/displaying/format/).',
     fr: 'ex: AAAA-MM-JJ, AAAA-MM-JJ.md. AAAA, MM, JJ seront remplacés par la date. Conforme à la référence de format de Moment.js (https://momentjs.com/docs/#/displaying/format/).',
+    ko: '예: YYYY-MM-DD, YYYY-MM-DD.md 등. YYYY, MM, DD가 날짜로 대체됩니다. Moment.js 형식 참조(https://momentjs.com/docs/#/displaying/format/)를 따릅니다.',
   },
 } as const;
 
@@ -727,6 +814,7 @@ const RECENT_NOTES_STRINGS = {
     es: 'Añadir Notas Recientes',
     de: 'Zuletzt bearbeitete Notizen hinzufügen',
     fr: 'Ajouter des notes récentes',
+    ko: '최근 편집한 노트 추가',
   },
 } as const;
 
@@ -738,6 +826,7 @@ const THEME_SWITCHER_STRINGS = {
     es: 'Añadir Cambiador de Tema',
     de: 'Theme-Umschalter hinzufügen',
     fr: 'Ajouter un sélecteur de thème',
+    ko: '테마 전환기 추가',
   },
 } as const;
 
@@ -749,6 +838,7 @@ const TIMER_STRINGS = {
     es: 'Añadir Temporizador/Cronómetro',
     de: 'Timer/Stoppuhr hinzufügen',
     fr: 'Ajouter une minuterie/chronomètre',
+    ko: '타이머/스톱워치 추가',
   },
   timerNotificationSoundDesc: {
     ja: '全てのタイマー／ストップウォッチで使う通知音（個別設定より優先）',
@@ -757,6 +847,7 @@ const TIMER_STRINGS = {
     es: 'Sonido de notificación para todos los temporizadores/cronómetros (sobrescribe la configuración individual)',
     de: 'Benachrichtigungston für alle Timer/Stoppuhren (überschreibt individuelle Einstellungen)',
     fr: 'Son de notification utilisé pour toutes les minuteries/chronomètres (remplace les paramètres individuels)',
+    ko: '모든 타이머/스톱워치에서 사용할 알림음 (개별 설정보다 우선 적용)',
   },
 } as const;
 
@@ -768,6 +859,7 @@ const FILE_VIEW_STRINGS = {
     es: 'Añadir Visor de Archivos',
     de: 'Dateibetrachter hinzufügen',
     fr: 'Ajouter une visionneuse de fichiers',
+    ko: '파일 뷰어 추가',
   },
   filePath: {
     ja: 'ファイルパス',
@@ -776,6 +868,7 @@ const FILE_VIEW_STRINGS = {
     es: 'Ruta del Archivo',
     de: 'Dateipfad',
     fr: 'Chemin du fichier',
+    ko: '파일 경로',
   },
   filePathDesc: {
     ja: '表示するファイルのVault内パス',
@@ -784,6 +877,7 @@ const FILE_VIEW_STRINGS = {
     es: 'La ruta del archivo a mostrar dentro del Vault',
     de: 'Der Pfad der anzuzeigenden Datei innerhalb des Vaults',
     fr: 'Le chemin du fichier à afficher dans le coffre',
+    ko: 'Vault 내에 표시할 파일의 경로',
   },
 } as const;
 
@@ -795,6 +889,7 @@ const TWEET_STRINGS = {
     es: 'Añadir Tweet',
     de: 'Tweet hinzufügen',
     fr: 'Ajouter un Tweet',
+    ko: '트윗 추가',
   },
   userName: {
     ja: 'ユーザー名',
@@ -803,6 +898,7 @@ const TWEET_STRINGS = {
     es: 'Nombre de Usuario',
     de: 'Benutzername',
     fr: "Nom d'utilisateur",
+    ko: '사용자 이름',
   },
   userId: {
     ja: 'ユーザーID',
@@ -811,6 +907,7 @@ const TWEET_STRINGS = {
     es: 'ID de Usuario',
     de: 'Benutzer-ID',
     fr: 'ID utilisateur',
+    ko: '사용자 ID',
   },
   avatarUrl: {
     ja: 'アバターURL',
@@ -819,6 +916,7 @@ const TWEET_STRINGS = {
     es: 'URL del Avatar',
     de: 'Avatar-URL',
     fr: "URL de l'avatar",
+    ko: '아바타 URL',
   },
   userListGlobal: {
     ja: 'ユーザー一覧（グローバル）',
@@ -827,6 +925,7 @@ const TWEET_STRINGS = {
     es: 'Lista de Usuarios (Global)',
     de: 'Benutzerliste (Global)',
     fr: "Liste d'utilisateurs (Globale)",
+    ko: '사용자 목록 (전역)',
   },
   aiReplyTriggerless: {
     ja: 'AIリプライをトリガーワードなしでも自動で送信する',
@@ -835,6 +934,7 @@ const TWEET_STRINGS = {
     es: 'Activar la respuesta de AI automáticamente incluso sin palabra de activación',
     de: 'KI-Antwort auch ohne Triggerwort automatisch auslösen',
     fr: "Déclencher la réponse de l'IA automatiquement même sans mot déclencheur",
+    ko: '트리거 단어 없이도 AI 답장 자동 전송',
   },
   aiReplyRpm: {
     ja: 'AIリプライの1分あたり発火上限（RPM）',
@@ -843,6 +943,7 @@ const TWEET_STRINGS = {
     es: 'Máximo de respuestas de AI por minuto (RPM)',
     de: 'KI-Antwort max. pro Minute (RPM)',
     fr: "Réponses max de l'IA par minute (RPM)",
+    ko: 'AI 답장 분당 최대 호출 수 (RPM)',
   },
   aiReplyRpmDesc: {
     ja: '-1で無制限。0は送信しません。',
@@ -851,6 +952,7 @@ const TWEET_STRINGS = {
     es: '-1: ilimitado. 0: no responder.',
     de: '-1: unbegrenzt. 0: keine Antwort.',
     fr: '-1: illimité. 0: pas de réponse.',
+    ko: '-1: 무제한. 0: 답장 없음.',
   },
   aiReplyRpd: {
     ja: 'AIリプライの1日あたり発火上限（RPD）',
@@ -859,6 +961,7 @@ const TWEET_STRINGS = {
     es: 'Máximo de respuestas de AI por día (RPD)',
     de: 'KI-Antwort max. pro Tag (RPD)',
     fr: "Réponses max de l'IA par jour (RPD)",
+    ko: 'AI 답장 하루 최대 호출 수 (RPD)',
   },
   aiReplyRpdDesc: {
     ja: '-1で無制限。0は送信しません。',
@@ -867,6 +970,7 @@ const TWEET_STRINGS = {
     es: '-1: ilimitado. 0: no responder.',
     de: '-1: unbegrenzt. 0: keine Antwort.',
     fr: '-1: illimité. 0: pas de réponse.',
+    ko: '-1: 무제한. 0: 답장 없음.',
   },
   unlimitedPlaceholder: {
     ja: '-1（無制限）',
@@ -875,6 +979,7 @@ const TWEET_STRINGS = {
     es: '-1 (Sin límites)',
     de: '-1 (Unbegrenzt)',
     fr: '-1 (Illimité)',
+    ko: '-1 (무제한)',
   },
   userIconUrl: {
     ja: 'ユーザーアイコンURL',
@@ -883,6 +988,7 @@ const TWEET_STRINGS = {
     es: 'URL del Icono de Usuario',
     de: 'Benutzersymbol-URL',
     fr: "URL de l'icône de l'utilisateur",
+    ko: '사용자 아이콘 URL',
   },
   userIconUrlDesc: {
     ja: 'つぶやきウィジェットで使うアバター画像のURLを指定してください（例: https://.../avatar.png）',
@@ -891,6 +997,7 @@ const TWEET_STRINGS = {
     es: 'Especifique la URL de la imagen del avatar para usar en el widget de tweet (por ejemplo: https://.../avatar.png)',
     de: 'Geben Sie die URL des Avatar-Bildes an, das im Tweet-Widget verwendet werden soll (z. B. https://.../avatar.png)',
     fr: "Spécifiez l'URL de l'image d'avatar à utiliser dans le widget de tweet (par exemple, https://.../avatar.png)",
+    ko: '트윗 위젯에서 사용할 아바타 이미지의 URL을 지정하세요 (예: https://.../avatar.png)',
   },
   showAiHistory: {
     ja: 'AIの会話履歴を表示',
@@ -899,6 +1006,7 @@ const TWEET_STRINGS = {
     es: 'Mostrar Historial de Conversación de AI',
     de: 'KI-Konversationsverlauf anzeigen',
     fr: "Afficher l'historique des conversations de l'IA",
+    ko: 'AI 대화 기록 표시',
   },
   showAiHistoryDesc: {
     ja: 'AIリプライの下に会話履歴を表示する（デフォルト: オフ）',
@@ -907,6 +1015,7 @@ const TWEET_STRINGS = {
     es: 'Mostrar historial de conversación debajo de respuestas de AI (predeterminado: apagado)',
     de: 'Konversationsverlauf unter KI-Antworten anzeigen (Standard: aus)',
     fr: "Afficher l'historique des conversations sous les réponses de l'IA (par défaut: désactivé)",
+    ko: 'AI 답장 아래에 대화 기록 표시 (기본값: 끔)',
   },
   aiAvatarUrls: {
     ja: 'AIアバター画像URLリスト',
@@ -915,6 +1024,7 @@ const TWEET_STRINGS = {
     es: 'Lista de URL de Imagen de Avatar de AI',
     de: 'KI-Avatarbild-URL-Liste',
     fr: "Liste d'URL d'images d'avatar de l'IA",
+    ko: 'AI 아바타 이미지 URL 목록',
   },
   aiAvatarUrlsDesc: {
     ja: 'AIごとに使い分けるアバター画像のURLをカンマ区切りで指定（例: https://.../ai1.png, https://.../ai2.png）',
@@ -923,6 +1033,7 @@ const TWEET_STRINGS = {
     es: 'Especifique las URL de la imagen del avatar para cada AI (por ejemplo: https://.../ai1.png, https://.../ai2.png)',
     de: 'Geben Sie kommagetrennte Avatar-Bild-URLs für jede KI an (z. B. https://.../ai1.png, https://.../ai2.png)',
     fr: "Spécifiez les URL d'images d'avatar séparées par des virgules pour chaque IA (par exemple, https://.../ai1.png, https://.../ai2.png)",
+    ko: 'AI별로 사용할 아바타 이미지 URL을 쉼표로 구분하여 지정하세요 (예: https://.../ai1.png, https://.../ai2.png)',
   },
   aiReplyDelayMin: {
     ja: 'AIリプライの最小遅延（ms）',
@@ -931,6 +1042,7 @@ const TWEET_STRINGS = {
     es: 'Retardo Mínimo de Respuesta de AI (ms)',
     de: 'Minimale Verzögerung der KI-Antwort (ms)',
     fr: "Délai minimum de réponse de l'IA (ms)",
+    ko: 'AI 답장 최소 지연 시간 (ms)',
   },
   aiReplyDelayMinDesc: {
     ja: 'AIリプライを送るまでの最小待機時間（ミリ秒）。例: 1500 = 1.5秒',
@@ -939,6 +1051,7 @@ const TWEET_STRINGS = {
     es: 'Tiempo mínimo de espera antes de enviar una respuesta de AI (milisegundos). ej: 1500 = 1.5 segundos',
     de: 'Minimale Wartezeit vor dem Senden einer KI-Antwort (Millisekunden). z.B. 1500 = 1,5 Sekunden',
     fr: "Temps d'attente minimum avant d'envoyer une réponse de l'IA (millisecondes). ex: 1500 = 1.5 secondes",
+    ko: 'AI 답장을 보내기 전 최소 대기 시간 (밀리초). 예: 1500 = 1.5초',
   },
   aiReplyDelayMax: {
     ja: 'AIリプライの最大遅延（ms）',
@@ -947,6 +1060,7 @@ const TWEET_STRINGS = {
     es: 'Retardo Máximo de Respuesta de AI (ms)',
     de: 'Maximale Verzögerung der KI-Antwort (ms)',
     fr: "Délai maximum de réponse de l'IA (ms)",
+    ko: 'AI 답장 최대 지연 시간 (ms)',
   },
   aiReplyDelayMaxDesc: {
     ja: 'AIリプライを送るまでの最大待機時間（ミリ秒）。例: 7000 = 7秒',
@@ -955,6 +1069,7 @@ const TWEET_STRINGS = {
     es: 'Tiempo máximo de espera antes de enviar una respuesta de AI (milisegundos). ej: 7000 = 7 segundos',
     de: 'Maximale Wartezeit vor dem Senden einer KI-Antwort (Millisekunden). z.B. 7000 = 7 Sekunden',
     fr: "Temps d'attente maximum avant d'envoyer une réponse de l'IA (millisecondes). ex: 7000 = 7 secondes",
+    ko: 'AI 답장을 보내기 전 최대 대기 시간 (밀리초). 예: 7000 = 7초',
   },
   tweetDefaultPeriod: {
     ja: 'つぶやきウィジェットのデフォルト表示期間',
@@ -963,6 +1078,7 @@ const TWEET_STRINGS = {
     es: 'Período de Visualización Predeterminado para Widget de Tweet',
     de: 'Standard-Anzeigezeitraum für Tweet-Widget',
     fr: "Période d'affichage par défaut pour le widget Tweet",
+    ko: '트윗 위젯 기본 표시 기간',
   },
   tweetDefaultPeriodDesc: {
     ja: 'つぶやきウィジェットを開いたときに最初に表示される期間を選択できます。',
@@ -971,6 +1087,7 @@ const TWEET_STRINGS = {
     es: 'Seleccione el período de visualización inicial cuando abra el widget de tweet.',
     de: 'Wählen Sie den anfänglichen Anzeigezeitraum beim Öffnen des Tweet-Widgets.',
     fr: "Sélectionnez la période d'affichage initiale lors de l'ouverture du widget de tweet.",
+    ko: '트윗 위젯을 열었을 때 처음 표시되는 기간을 선택할 수 있습니다.',
   },
   tweetDefaultCustomDays: {
     ja: 'つぶやきウィジェットのカスタム期間（日数）',
@@ -979,6 +1096,7 @@ const TWEET_STRINGS = {
     es: 'Período Personalizado para Widget de Tweet (días)',
     de: 'Benutzerdefinierter Zeitraum für Tweet-Widget (Tage)',
     fr: 'Période personnalisée pour le widget Tweet (jours)',
+    ko: '트윗 위젯 사용자 정의 기간 (일)',
   },
   tweetDefaultCustomDaysDesc: {
     ja: 'デフォルト期間が「カスタム」の場合に使われます。',
@@ -987,6 +1105,7 @@ const TWEET_STRINGS = {
     es: 'Wird verwendet, wenn der Standardzeitraum "Benutzerdefiniert" ist.',
     de: 'Wird verwendet, wenn der Standardzeitraum "Benutzerdef." ist.',
     fr: 'Utilisé lorsque la période par défaut est "Personnalisé".',
+    ko: '기본 기간이 "사용자 정의"일 경우 사용됩니다.',
   },
   addScheduledTweet: {
     ja: '予約投稿を追加',
@@ -995,6 +1114,7 @@ const TWEET_STRINGS = {
     es: 'Añadir Tweet Programado',
     de: 'Geplanten Tweet hinzufügen',
     fr: 'Ajouter un Tweet programmé',
+    ko: '예약 게시물 추가',
   },
   addScheduledTweetDesc: {
     ja: '指定した日時に自動投稿するメッセージを登録します',
@@ -1003,6 +1123,7 @@ const TWEET_STRINGS = {
     es: 'Registre un mensaje para que se publique automáticamente en la fecha y hora especificadas.',
     de: 'Registrieren Sie eine Nachricht, die automatisch zum angegebenen Datum und zur angegebenen Uhrzeit veröffentlicht wird.',
     fr: 'Enregistrez un message à publier automatiquement à la date et à l\'heure spécifiées.',
+    ko: '지정한 날짜와 시간에 자동으로 게시될 메시지를 등록합니다.',
   },
   editScheduledTweet: {
     ja: '予約投稿を編集',
@@ -1011,6 +1132,7 @@ const TWEET_STRINGS = {
     es: 'Editar Tweet Programado',
     de: 'Geplanten Tweet bearbeiten',
     fr: 'Modifier le Tweet programmé',
+    ko: '예약 게시물 편집',
   },
   userIdSelectDesc: {
     ja: 'グローバル設定で登録したユーザーから選択',
@@ -1019,6 +1141,7 @@ const TWEET_STRINGS = {
     es: 'Seleccione de los usuarios registrados en la configuración global',
     de: 'Aus den in den globalen Einstellungen registrierten Benutzern auswählen',
     fr: "Sélectionnez parmi les utilisateurs enregistrés dans les paramètres globaux",
+    ko: '전역 설정에 등록된 사용자 중에서 선택',
   },
   time: {
     ja: '時刻',
@@ -1027,6 +1150,7 @@ const TWEET_STRINGS = {
     es: 'Tiempo',
     de: 'Zeit',
     fr: 'Heure',
+    ko: '시간',
   },
   timeDesc: {
     ja: '例: 09:00（24時間表記）',
@@ -1035,6 +1159,7 @@ const TWEET_STRINGS = {
     es: 'ej: 09:00 (formato de 24 horas)',
     de: 'z.B. 09:00 (24-Stunden-Format)',
     fr: 'ex: 09:00 (format 24 heures)',
+    ko: '예: 09:00 (24시간 형식)',
   },
   daysOfWeek: {
     ja: '曜日',
@@ -1043,6 +1168,7 @@ const TWEET_STRINGS = {
     es: 'Días de la semana',
     de: 'Wochentage',
     fr: 'Jours de la semaine',
+    ko: '요일',
   },
   daysOfWeekDesc: {
     ja: '投稿する曜日を選択（複数可）',
@@ -1051,6 +1177,7 @@ const TWEET_STRINGS = {
     es: 'Seleccione el(los) día(s) de la semana para publicar (múltiples selecciones permitidas)',
     de: 'Wählen Sie den/die Wochentag(e) zum Posten aus (Mehrfachauswahl möglich)',
     fr: 'Sélectionnez le(s) jour(s) de la semaine pour publier (plusieurs sélections autorisées)',
+    ko: '게시할 요일 선택 (복수 선택 가능)',
   },
   startDate: {
     ja: '開始日',
@@ -1059,6 +1186,7 @@ const TWEET_STRINGS = {
     es: 'Fecha de Inicio',
     de: 'Startdatum',
     fr: 'Date de début',
+    ko: '시작일',
   },
   startDateDesc: {
     ja: 'この日以降に投稿（空欄で無期限）',
@@ -1067,6 +1195,7 @@ const TWEET_STRINGS = {
     es: 'Publicar después de esta fecha (indefinido si está en blanco)',
     de: 'An oder nach diesem Datum posten (leer für unbegrenzt)',
     fr: 'Publier à cette date ou après (indéfini si vide)',
+    ko: '이 날짜 이후에 게시 (비워두면 무기한)',
   },
   endDate: {
     ja: '終了日',
@@ -1075,6 +1204,7 @@ const TWEET_STRINGS = {
     es: 'Fecha de Finalización',
     de: 'Enddatum',
     fr: 'Date de fin',
+    ko: '종료일',
   },
   endDateDesc: {
     ja: 'この日まで投稿（空欄で無期限）',
@@ -1083,6 +1213,7 @@ const TWEET_STRINGS = {
     es: 'Bis zu diesem Datum posten (leer für unbegrenzt)',
     de: 'Bis zu diesem Datum posten (leer für unbegrenzt)',
     fr: "Publier jusqu'à cette date (indéfini si vide)",
+    ko: '이 날짜까지 게시 (비워두면 무기한)',
   },
   aiPrompt: {
     ja: 'AIプロンプト',
@@ -1091,6 +1222,7 @@ const TWEET_STRINGS = {
     es: 'AI Prompt',
     de: 'KI-Prompt',
     fr: 'Prompt IA',
+    ko: 'AI 프롬프트',
   },
   aiPromptDesc: {
     ja: '投稿時にAIで内容を自動生成したい場合にプロンプトを記入。{{ai}}で内容欄に埋め込まれます。',
@@ -1099,6 +1231,7 @@ const TWEET_STRINGS = {
     es: 'Ingrese un prompt si desea generar automáticamente contenido con AI al publicar. {{ai}} se incrustará en el contenido.',
     de: 'Geben Sie einen Prompt ein, wenn Sie den Inhalt beim Posten automatisch mit KI generieren möchten. {{ai}} wird in den Inhalt eingebettet.',
     fr: "Entrez un prompt si vous souhaitez générer automatiquement du contenu avec l'IA lors de la publication. {{ai}} sera intégré dans le contenu.",
+    ko: '게시 시 AI로 내용을 자동 생성하려면 프롬프트를 입력하세요. {{ai}}가 내용 필드에 포함됩니다.',
   },
   aiModel: {
     ja: 'AIモデル',
@@ -1107,6 +1240,7 @@ const TWEET_STRINGS = {
     es: 'AI Modelo',
     de: 'KI-Modell',
     fr: 'Modèle IA',
+    ko: 'AI 모델',
   },
   aiModelDesc: {
     ja: 'AIプロンプト実行時に使うモデル。空欄でグローバル設定のつぶやき返信用モデルを使用',
@@ -1115,6 +1249,7 @@ const TWEET_STRINGS = {
     es: 'El modelo que se utilizará cuando se ejecute el prompt de AI. Si está en blanco, se utilizará el modelo de respuesta de tweet global.',
     de: 'Das Modell, das beim Ausführen des KI-Prompts verwendet wird. Wenn leer, wird das globale Tweet-Antwort-Modell verwendet.',
     fr: "Le modèle à utiliser lors de l'exécution du prompt de l'IA. Si vide, le modèle de réponse de tweet global sera utilisé.",
+    ko: 'AI 프롬프트를 실행할 때 사용할 모델입니다. 비워두면 전역 트윗 답장 모델이 사용됩니다.',
   },
   scheduledTweetUpdated: {
     ja: '予約投稿を更新しました',
@@ -1123,6 +1258,7 @@ const TWEET_STRINGS = {
     es: 'Tweet programado actualizado',
     de: 'Geplanter Tweet aktualisiert',
     fr: 'Tweet programmé mis à jour',
+    ko: '예약된 게시물이 업데이트되었습니다.',
   },
   scheduledTweetAdded: {
     ja: '予約投稿を追加しました',
@@ -1131,6 +1267,7 @@ const TWEET_STRINGS = {
     es: 'Tweet programado añadido',
     de: 'Geplanter Tweet hinzugefügt',
     fr: 'Tweet programmé ajouté',
+    ko: '예약된 게시물이 추가되었습니다.',
   },
   scheduledPostList: {
     ja: '予約投稿一覧',
@@ -1139,6 +1276,7 @@ const TWEET_STRINGS = {
     es: 'Lista de Tweets Programados',
     de: 'Geplante Beiträge',
     fr: 'Publications programmées',
+    ko: '예약된 게시물 목록',
   },
   noScheduledPosts: {
     ja: '現在、予約投稿はありません。',
@@ -1147,6 +1285,7 @@ const TWEET_STRINGS = {
     es: 'No hay tweets programados en este momento.',
     de: 'Keine geplanten Beiträge.',
     fr: 'Aucune publication programmée.',
+    ko: '예약된 게시물이 없습니다.',
   },
   deleteScheduledPostConfirm: {
     ja: 'この予約投稿を削除しますか？',
@@ -1155,6 +1294,7 @@ const TWEET_STRINGS = {
     es: '¿Desea eliminar este tweet programado?',
     de: 'Diesen geplanten Beitrag löschen?',
     fr: 'Supprimer cette publication programmée?',
+    ko: '이 예약된 게시물을 삭제하시겠습니까?',
   },
   scheduledPostDeleted: {
     ja: '予約投稿を削除しました',
@@ -1163,6 +1303,7 @@ const TWEET_STRINGS = {
     es: 'Tweet programado eliminado',
     de: 'Geplanter Beitrag gelöscht',
     fr: 'Publication programmée supprimée',
+    ko: '예약된 게시물이 삭제되었습니다.',
   },
 } as const;
 
@@ -1174,6 +1315,7 @@ const REFLECTION_WIDGET_STRINGS = {
     es: 'Añadir Informe de Reflexión',
     de: 'Reflexionsbericht hinzufügen',
     fr: 'Ajouter un rapport de réflexion',
+    ko: '리플렉션 리포트 추가',
   },
   autoTriggerInterval: {
     ja: '自動生成の間隔（時間）',
@@ -1182,6 +1324,7 @@ const REFLECTION_WIDGET_STRINGS = {
     es: 'Intervalo de Generación Automática',
     de: 'Automatisches Auslöseintervall (Stunden)',
     fr: "Intervalle de déclenchement automatique (heures)",
+    ko: '자동 생성 간격 (시간)',
   },
   autoTriggerIntervalDesc: {
     ja: '-1で自動生成しません。1以上で何時間ごとに自動生成するか指定。',
@@ -1190,6 +1333,7 @@ const REFLECTION_WIDGET_STRINGS = {
     es: '-1 para deshabilitar la generación automática. Especifique cuántas horas para generar automáticamente.',
     de: '-1 zum Deaktivieren. Geben Sie an, nach wie vielen Stunden automatisch generiert werden soll.',
     fr: '-1 pour désactiver le déclenchement automatique. Spécifiez le nombre d\'heures pour la génération automatique.',
+    ko: '-1이면 자동 생성하지 않습니다. 1 이상으로 몇 시간마다 자동 생성할지 지정합니다.',
   },
   showManualTrigger: {
     ja: '手動生成ボタンを表示',
@@ -1198,6 +1342,7 @@ const REFLECTION_WIDGET_STRINGS = {
     es: 'Mostrar Botón de Generación Manual',
     de: 'Manuellen Auslöser-Button anzeigen',
     fr: 'Afficher le bouton de déclenchement manuel',
+    ko: '수동 생성 버튼 표시',
   },
   showManualTriggerDesc: {
     ja: 'ONにすると、ウィジェット内に「まとめ生成」ボタンが表示されます。',
@@ -1206,6 +1351,7 @@ const REFLECTION_WIDGET_STRINGS = {
     es: 'Si está activado, se mostrará un botón "Generar Resumen" en el widget.',
     de: 'Wenn EIN, wird im Widget ein "Zusammenfassung generieren"-Button angezeigt.',
     fr: 'Si activé, un bouton "Générer un résumé" sera affiché dans le widget.',
+    ko: 'ON으로 설정하면 위젯 내에 "요약 생성" 버튼이 표시됩니다.',
   },
 } as const;
 
@@ -1217,6 +1363,7 @@ const LLM_STRINGS = {
     es: 'Clave API de Gemini',
     de: 'Gemini API-Schlüssel',
     fr: 'Clé API Gemini',
+    ko: 'Gemini API 키',
   },
   geminiApiKeyDesc: {
     ja: 'Google Gemini APIのキーを入力してください。',
@@ -1225,6 +1372,7 @@ const LLM_STRINGS = {
     es: 'Ingrese la clave de API de Google Gemini.',
     de: 'Geben Sie Ihren Google Gemini API-Schlüssel ein.',
     fr: 'Entrez votre clé API Google Gemini.',
+    ko: 'Google Gemini API 키를 입력하세요.',
   },
   llmModelName: {
     ja: 'モデル名',
@@ -1233,6 +1381,7 @@ const LLM_STRINGS = {
     es: 'Nombre del Modelo',
     de: 'Modellname',
     fr: 'Nom du modèle',
+    ko: '모델 이름',
   },
   llmModelNameExample: {
     ja: '例: gemini-2.0-flash-exp',
@@ -1241,6 +1390,7 @@ const LLM_STRINGS = {
     es: 'ej: gemini-2.0-flash-exp',
     de: 'z.B. gemini-2.0-flash-exp',
     fr: 'ex: gemini-2.0-flash-exp',
+    ko: '예: gemini-2.0-flash-exp',
   },
   enterCustomPrompt: {
     ja: 'カスタムプロンプトを入力',
@@ -1249,6 +1399,7 @@ const LLM_STRINGS = {
     es: 'Ingrese el prompt personalizado',
     de: 'Benutzerdefinierten Prompt eingeben',
     fr: 'Entrez un prompt personnalisé',
+    ko: '사용자 정의 프롬프트 입력',
   },
   tweetAiModelName: {
     ja: 'つぶやきAI返信用モデル名',
@@ -1257,6 +1408,7 @@ const LLM_STRINGS = {
     es: 'Nombre del Modelo de Respuesta de AI para Tweet',
     de: 'Tweet KI-Antwort Modellname',
     fr: 'Nom du modèle de réponse IA pour les tweets',
+    ko: '트윗 AI 답장 모델 이름',
   },
   tweetAiModelNameDesc: {
     ja: '空欄の場合は上記モデル名を使用',
@@ -1265,6 +1417,7 @@ const LLM_STRINGS = {
     es: 'Si está en blanco, se utilizará el nombre del modelo anterior.',
     de: 'Wenn leer, wird der obige Modellname verwendet.',
     fr: 'Si vide, le nom du modèle ci-dessus sera utilisé.',
+    ko: '비워두면 위 모델 이름을 사용합니다.',
   },
   reflectionAiModelName: {
     ja: '振り返りAI要約用モデル名',
@@ -1273,6 +1426,7 @@ const LLM_STRINGS = {
     es: 'Nombre del Modelo de Respuesta de AI para Resumen de Reflexión',
     de: 'Reflexion KI-Zusammenfassung Modellname',
     fr: 'Nom du modèle de résumé IA pour la réflexion',
+    ko: '리플렉션 AI 요약 모델 이름',
   },
   reflectionAiModelNameDesc: {
     ja: '空欄の場合は上記モデル名を使用',
@@ -1281,6 +1435,7 @@ const LLM_STRINGS = {
     es: 'Si está en blanco, se utilizará el nombre del modelo anterior.',
     de: 'Wenn leer, wird der obige Modellname verwendet.',
     fr: 'Si vide, le nom du modèle ci-dessus sera utilisé.',
+    ko: '비워두면 위 모델 이름을 사용합니다.',
   },
   userSummaryPromptToday: {
     ja: 'ユーザプロンプト（振り返りレポート 今日用）',
@@ -1289,6 +1444,7 @@ const LLM_STRINGS = {
     es: 'Prompt de Usuario (Resumen de Reporte de Reflexión Hoy)',
     de: 'Benutzer-Prompt (Reflexionsbericht Heute)',
     fr: "Prompt utilisateur (Rapport de réflexion d'aujourd'hui)",
+    ko: '사용자 프롬프트 (오늘의 리플렉션 리포트)',
   },
   userSummaryPromptTodayDesc: {
     ja: 'AI要約で使うカスタムプロンプト（今日のまとめ）。{posts}が投稿一覧に置換されます。空欄の場合はデフォルトプロンプトが使われます。',
@@ -1297,6 +1453,7 @@ const LLM_STRINGS = {
     es: 'Prompt personalizado para resumen de AI (resumen de hoy). {posts} se reemplazará con la lista de publicaciones. Si está en blanco, se utilizará el prompt predeterminado.',
     de: 'Benutzerdefinierter Prompt für KI-Zusammenfassung (heutige Zusammenfassung). {posts} wird durch die Beitragsliste ersetzt. Wenn leer, wird der Standard-Prompt verwendet.',
     fr: "Prompt personnalisé pour le résumé IA (résumé d'aujourd'hui). {posts} sera remplacé par la liste des publications. Si vide, le prompt par défaut sera utilisé.",
+    ko: 'AI 요약에 사용할 사용자 정의 프롬프트 (오늘의 요약). {posts}가 게시물 목록으로 대체됩니다. 비워두면 기본 프롬프트가 사용됩니다.',
   },
   userSummaryPromptWeek: {
     ja: 'ユーザプロンプト（振り返りレポート 今週用）',
@@ -1305,6 +1462,7 @@ const LLM_STRINGS = {
     es: 'Prompt de Usuario (Resumen de Reporte de Reflexión Esta Semana)',
     de: 'Benutzer-Prompt (Reflexionsbericht Diese Woche)',
     fr: 'Prompt utilisateur (Rapport de réflexion de cette semaine)',
+    ko: '사용자 프롬프트 (이번 주 리플렉션 리포트)',
   },
   userSummaryPromptWeekDesc: {
     ja: 'AI要約で使うカスタムプロンプト（今週のまとめ）。{posts}が投稿一覧に置換されます。空欄の場合はデフォルトプロンプトが使われます。',
@@ -1313,6 +1471,7 @@ const LLM_STRINGS = {
     es: 'Prompt personalizado para resumen de AI (resumen de esta semana). {posts} se reemplazará con la lista de publicaciones. Si está en blanco, se utilizará el prompt predeterminado.',
     de: 'Benutzerdefinierter Prompt für KI-Zusammenfassung (Zusammenfassung dieser Woche). {posts} wird durch die Beitragsliste ersetzt. Wenn leer, wird der Standard-Prompt verwendet.',
     fr: 'Prompt personnalisé pour le résumé IA (résumé de cette semaine). {posts} sera remplacé par la liste des publications. Si vide, le prompt par défaut sera utilisé.',
+    ko: 'AI 요약에 사용할 사용자 정의 프롬프트 (이번 주 요약). {posts}가 게시물 목록으로 대체됩니다. 비워두면 기본 프롬프트가 사용됩니다.',
   },
   userTweetPrompt: {
     ja: 'ユーザプロンプト（つぶやき用）',
@@ -1321,6 +1480,7 @@ const LLM_STRINGS = {
     es: 'Prompt de Usuario (Tweet)',
     de: 'Benutzer-Prompt (Tweet)',
     fr: 'Prompt utilisateur (Tweet)',
+    ko: '사용자 프롬프트 (트윗용)',
   },
   userTweetPromptDesc: {
     ja: 'つぶやきウィジェットのAI返信で使うカスタムプロンプト。{tweet}や{postDate}が投稿内容・日時に置換されます。空欄の場合はデフォルトプロンプトが使われます。',
@@ -1329,6 +1489,7 @@ const LLM_STRINGS = {
     es: 'Prompt personalizado para respuesta de AI en el widget de tweet. {tweet} y {postDate} se reemplazarán con el contenido de la publicación y la fecha. Si está en blanco, se utilizará el prompt predeterminado.',
     de: 'Benutzerdefinierter Prompt für die KI-Antwort im Tweet-Widget. {tweet} und {postDate} werden durch den Beitragsinhalt und das Datum ersetzt. Wenn leer, wird der Standard-Prompt verwendet.',
     fr: "Prompt personnalisé pour la réponse IA dans le widget de tweet. {tweet} et {postDate} seront remplacés par le contenu de la publication et la date. Si vide, le prompt par défaut sera utilisé.",
+    ko: '트윗 위젯의 AI 답장에 사용할 사용자 정의 프롬프트. {tweet} 및 {postDate}가 게시물 내용 및 날짜/시간으로 대체됩니다. 비워두면 기본 프롬프트가 사용됩니다.',
   },
 } as const;
 
@@ -1340,6 +1501,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Seleccionar Tablero',
     de: 'Board auswählen',
     fr: 'Sélectionner un tableau',
+    ko: '보드 선택',
   },
   boardSelectDesc: {
     ja: '設定を編集するウィジェットボードを選択してください。',
@@ -1348,6 +1510,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Seleccione el tablero de widget para editar su configuración.',
     de: 'Wählen Sie das Widget-Board aus, dessen Einstellungen Sie bearbeiten möchten.',
     fr: 'Sélectionnez le tableau de widgets pour éditer ses paramètres.',
+    ko: '설정을 편집할 위젯 보드를 선택하세요.',
   },
   noBoards: {
     ja: '利用可能なボードがありません。「ボード管理」から新しいボードを追加してください。',
@@ -1356,6 +1519,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'No hay tableros disponibles. Por favor, agregue un nuevo tablero desde "Gestión de Tableros".',
     de: 'Keine Boards verfügbar. Bitte fügen Sie ein neues Board über "Board-Verwaltung" hinzu.',
     fr: 'Aucun tableau disponible. Veuillez ajouter un nouveau tableau depuis "Gestion des tableaux".',
+    ko: '사용 가능한 보드가 없습니다. "보드 관리"에서 새 보드를 추가하세요.',
   },
   selectBoardToConfig: {
     ja: '設定するボードを「ボード管理」から選択してください。',
@@ -1364,6 +1528,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Por favor, seleccione un tablero para configurar desde "Gestión de Tableros".',
     de: 'Bitte wählen Sie ein Board zur Konfiguration aus der "Board-Verwaltung".',
     fr: 'Veuillez sélectionner un tableau à configurer depuis "Gestion des tableaux".',
+    ko: '"보드 관리"에서 설정할 보드를 선택하세요.',
   },
   noBoardsAvailable: {
     ja: '利用可能なボードがありません',
@@ -1372,6 +1537,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'No hay tableros disponibles',
     de: 'Keine Boards verfügbar',
     fr: 'Aucun tableau disponible',
+    ko: '사용 가능한 보드가 없습니다',
   },
   addNewBoard: {
     ja: '新しいボードを追加',
@@ -1380,6 +1546,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Agregar Nuevo Tablero',
     de: 'Neues Board hinzufügen',
     fr: 'Ajouter un nouveau tableau',
+    ko: '새 보드 추가',
   },
   defaultViewMode: {
     ja: 'デフォルト表示モード',
@@ -1387,7 +1554,8 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '默认视图模式',
     es: 'Modo de Visualización Predeterminado',
     de: 'Standard-Ansichtsmodus',
-    fr: 'Mode d\'affichage par défaut',
+    fr: "Mode d'affichage par défaut",
+    ko: '기본 보기 모드',
   },
   defaultViewModeDesc: {
     ja: 'このボードを開いたときの初期表示モード。',
@@ -1395,7 +1563,8 @@ const BOARD_MANAGEMENT_STRINGS = {
     zh: '打开此看板时的初始视图模式。',
     es: 'El modo de visualización inicial cuando se abre este tablero.',
     de: 'Der anfängliche Ansichtsmodus beim Öffnen dieses Boards.',
-    fr: 'Le mode d\'affichage initial lors de l\'ouverture de ce tableau.',
+    fr: "Le mode d'affichage initial lors de l'ouverture de ce tableau.",
+    ko: '이 보드를 열었을 때의 초기 보기 모드입니다.',
   },
   leftPanel33: {
     ja: '左パネル（33vw）',
@@ -1404,6 +1573,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Panel Izquierdo (33vw)',
     de: 'Linkes Panel (33vw)',
     fr: 'Panneau gauche (33vw)',
+    ko: '왼쪽 패널 (33vw)',
   },
   leftPanel50: {
     ja: '左パネル（50vw）',
@@ -1412,6 +1582,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Panel Izquierdo (50vw)',
     de: 'Linkes Panel (50vw)',
     fr: 'Panneau gauche (50vw)',
+    ko: '왼쪽 패널 (50vw)',
   },
   leftPanel66: {
     ja: '左パネル（66vw）',
@@ -1420,6 +1591,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Panel Izquierdo (66vw)',
     de: 'Linkes Panel (66vw)',
     fr: 'Panneau gauche (66vw)',
+    ko: '왼쪽 패널 (66vw)',
   },
   leftSplitOuter: {
     ja: '左スプリット外（32vw）',
@@ -1428,6 +1600,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Separación Izquierda Fuera (32vw)',
     de: 'Außerhalb linker Split (32vw)',
     fr: 'En dehors de la division gauche (32vw)',
+    ko: '왼쪽 분할 외부 (32vw)',
   },
   centerPanel33: {
     ja: '中央パネル（33vw）',
@@ -1436,6 +1609,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Panel Central (33vw)',
     de: 'Mittleres Panel (33vw)',
     fr: 'Panneau central (33vw)',
+    ko: '중앙 패널 (33vw)',
   },
   centerPanel50: {
     ja: '中央パネル（50vw）',
@@ -1444,6 +1618,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Panel Central (50vw)',
     de: 'Mittleres Panel (50vw)',
     fr: 'Panneau central (50vw)',
+    ko: '중앙 패널 (50vw)',
   },
   rightPanel33: {
     ja: '右パネル（33vw）',
@@ -1452,6 +1627,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Panel Derecho (33vw)',
     de: 'Rechtes Panel (33vw)',
     fr: 'Panneau droit (33vw)',
+    ko: '오른쪽 패널 (33vw)',
   },
   rightPanel50: {
     ja: '右パネル（50vw）',
@@ -1460,6 +1636,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Panel Derecho (50vw)',
     de: 'Rechtes Panel (50vw)',
     fr: 'Panneau droit (50vw)',
+    ko: '오른쪽 패널 (50vw)',
   },
   rightPanel66: {
     ja: '右パネル（66vw）',
@@ -1468,6 +1645,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Panel Derecho (66vw)',
     de: 'Rechtes Panel (66vw)',
     fr: 'Panneau droit (66vw)',
+    ko: '오른쪽 패널 (66vw)',
   },
   rightSplitOuter: {
     ja: '右スプリット外（32vw）',
@@ -1476,6 +1654,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Separación Derecha Fuera (32vw)',
     de: 'Außerhalb rechter Split (32vw)',
     fr: 'En dehors de la division droite (32vw)',
+    ko: '오른쪽 분할 외부 (32vw)',
   },
   customWidthVw: {
     ja: 'カスタム幅（vw）',
@@ -1484,6 +1663,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Ancho Personalizado (vw)',
     de: 'Benutzerdefinierte Breite (vw)',
     fr: 'Largeur personnalisée (vw)',
+    ko: '사용자 정의 너비 (vw)',
   },
   boardName: {
     ja: 'ボード名',
@@ -1492,6 +1672,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Nombre del Tablero',
     de: 'Board-Name',
     fr: 'Nom du tableau',
+    ko: '보드 이름',
   },
   boardNameDesc: {
     ja: 'このボードの名前を入力してください。',
@@ -1500,6 +1681,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Ingrese el nombre de este tablero.',
     de: 'Geben Sie den Namen dieses Boards ein.',
     fr: 'Entrez le nom de ce tableau.',
+    ko: '이 보드의 이름을 입력하세요.',
   },
   customWidth: {
     ja: 'カスタム幅（vw）',
@@ -1508,6 +1690,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Ancho Personalizado (vw)',
     de: 'Benutzerdefinierte Breite (vw)',
     fr: 'Largeur personnalisée (vw)',
+    ko: '사용자 정의 너비 (vw)',
   },
   customWidthDesc: {
     ja: 'パネルの幅をvw単位で指定します（例: 40）',
@@ -1516,6 +1699,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Especifique el ancho del panel en unidades vw (por ejemplo: 40)',
     de: 'Geben Sie die Panelbreite in vw-Einheiten an (z.B. 40)',
     fr: 'Spécifiez la largeur du panneau en unités vw (ex: 40)',
+    ko: '패널 너비를 vw 단위로 지정합니다 (예: 40)',
   },
   customWidthPlaceholder: {
     ja: '例: 40',
@@ -1524,6 +1708,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'ej: 40',
     de: 'z.B. 40',
     fr: 'ex: 40',
+    ko: '예: 40',
   },
   customWidthAnchor: {
     ja: 'カスタム幅の基準位置',
@@ -1532,6 +1717,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Anclaje de Ancho Personalizado',
     de: 'Anker für benutzerdefinierte Breite',
     fr: 'Ancre de largeur personnalisée',
+    ko: '사용자 정의 너비 기준 위치',
   },
   customWidthAnchorDesc: {
     ja: 'カスタム幅パネルの表示基準（左・中央・右）',
@@ -1540,6 +1726,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Anclaje de ancho personalizado para panel (izquierda, centro, derecha)',
     de: 'Anzeigeanker für benutzerdefiniertes Breitenpanel (links, mitte, rechts)',
     fr: 'Ancre d\'affichage pour le panneau de largeur personnalisée (gauche, centre, droite)',
+    ko: '사용자 정의 너비 패널의 표시 기준 (왼쪽, 중앙, 오른쪽)',
   },
   deleteThisBoard: {
     ja: 'このボードを削除',
@@ -1548,6 +1735,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: 'Eliminar este tablero',
     de: 'Dieses Board löschen',
     fr: 'Supprimer ce tableau',
+    ko: '이 보드 삭제',
   },
   deleteBoardConfirm: {
     ja: 'ボード「{name}」を本当に削除しますか？',
@@ -1556,6 +1744,7 @@ const BOARD_MANAGEMENT_STRINGS = {
     es: '¿Está seguro de que desea eliminar el tablero "{name}"?',
     de: 'Sind Sie sicher, dass Sie das Board "{name}" löschen möchten?',
     fr: 'Êtes-vous sûr de vouloir supprimer le tableau "{name}"?',
+    ko: '보드 "{name}"을(를) 정말 삭제하시겠습니까?',
   },
 } as const;
 
@@ -1567,6 +1756,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'Gestión de Widgets',
     de: 'Widget-Verwaltung',
     fr: 'Gestion des widgets',
+    ko: '위젯 관리',
   },
   addWidget: {
     ja: '追加',
@@ -1575,6 +1765,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'Añadir',
     de: 'Hinzufügen',
     fr: 'Ajouter',
+    ko: '추가',
   },
   noWidgets: {
     ja: 'このボードにはウィジェットがありません。「追加」ボタンで作成できます。',
@@ -1583,6 +1774,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'No hay widgets en este tablero. Puede crear uno con el botón "Añadir".',
     de: 'Auf diesem Board befinden sich keine Widgets. Sie können eines mit der Schaltfläche "Hinzufügen" erstellen.',
     fr: 'Il n\'y a pas de widgets sur ce tableau. Vous pouvez en créer un avec le bouton "Ajouter".',
+    ko: '이 보드에는 위젯이 없습니다. "추가" 버튼으로 생성할 수 있습니다.',
   },
   moveUp: {
     ja: '上に移動',
@@ -1591,6 +1783,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'Mover Arriba',
     de: 'Nach oben',
     fr: 'Déplacer vers le haut',
+    ko: '위로 이동',
   },
   moveDown: {
     ja: '下に移動',
@@ -1599,6 +1792,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'Mover Abajo',
     de: 'Nach unten',
     fr: 'Déplacer vers le bas',
+    ko: '아래로 이동',
   },
   deleteWidget: {
     ja: 'このウィジェットを削除',
@@ -1607,6 +1801,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'Eliminar este widget',
     de: 'Dieses Widget löschen',
     fr: 'Supprimer ce widget',
+    ko: '이 위젯 삭제',
   },
   widgetType: {
     ja: '種類',
@@ -1615,6 +1810,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'Tipo',
     de: 'Typ',
     fr: 'Type',
+    ko: '유형',
   },
   widgetId: {
     ja: 'ID',
@@ -1623,6 +1819,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'ID',
     de: 'ID',
     fr: 'ID',
+    ko: 'ID',
   },
   widgetNamePlaceholder: {
     ja: '(ウィジェット名)',
@@ -1631,6 +1828,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: '(Nombre del Widget)',
     de: '(Widget-Name)',
     fr: '(Nom du widget)',
+    ko: '(위젯 이름)',
   },
   untitledWidget: {
     ja: '(名称未設定 {type})',
@@ -1639,6 +1837,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: '(Sin título {type})',
     de: '(Unbenannt {type})',
     fr: '(Sans titre {type})',
+    ko: '(제목 없음 {type})',
   },
   widgetAddedToBoard: {
     ja: '「{widgetName}」ウィジェットがボード「{boardName}」に追加されました。',
@@ -1647,6 +1846,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'Widget "{widgetName}" se ha agregado al tablero "{boardName}".',
     de: 'Widget "{widgetName}" wurde zum Board "{boardName}" hinzugefügt.',
     fr: 'Le widget "{widgetName}" a été ajouté au tableau "{boardName}".',
+    ko: '"{boardName}" 보드에 "{widgetName}" 위젯이 추가되었습니다.',
   },
   widgetDeletedFromBoard: {
     ja: 'ウィジェット「{widgetName}」をボード「{boardName}」から削除しました。',
@@ -1655,6 +1855,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'Widget "{widgetName}" se ha eliminado del tablero "{boardName}".',
     de: 'Widget "{widgetName}" wurde vom Board "{boardName}" gelöscht.',
     fr: 'Le widget "{widgetName}" a été supprimé du tableau "{boardName}".',
+    ko: '"{boardName}" 보드에서 "{widgetName}" 위젯을 삭제했습니다.',
   },
   detailedSettings: {
     ja: '詳細設定',
@@ -1663,6 +1864,7 @@ const WIDGET_MANAGEMENT_STRINGS = {
     es: 'Configuración Detallada',
     de: 'Detaillierte Einstellungen',
     fr: 'Paramètres détaillés',
+    ko: '상세 설정',
   },
 } as const;
 
@@ -1674,6 +1876,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Agrupe varios tableros para mostrarlos todos a la vez con un comando.',
     de: 'Gruppieren Sie mehrere Boards, um sie alle auf einmal mit einem Befehl anzuzeigen.',
     fr: 'Groupez plusieurs tableaux pour les afficher tous en même temps avec une commande.',
+    ko: '여러 보드를 그룹화하여 명령으로 한 번에 표시할 수 있습니다.',
   },
   addNewGroup: {
     ja: '新しいグループを追加',
@@ -1682,6 +1885,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Agregar Nuevo Grupo',
     de: 'Neue Gruppe hinzufügen',
     fr: 'Ajouter un nouveau groupe',
+    ko: '새 그룹 추가',
   },
   noGroups: {
     ja: 'グループがありません。',
@@ -1690,6 +1894,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'No hay grupos.',
     de: 'Keine Gruppen.',
     fr: 'Aucun groupe.',
+    ko: '그룹이 없습니다.',
   },
   editGroup: {
     ja: 'グループを編集',
@@ -1698,6 +1903,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Editar Grupo',
     de: 'Gruppe bearbeiten',
     fr: 'Modifier le groupe',
+    ko: '그룹 편집',
   },
   deleteGroup: {
     ja: 'グループを削除',
@@ -1706,6 +1912,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Eliminar Grupo',
     de: 'Gruppe löschen',
     fr: 'Supprimer le groupe',
+    ko: '그룹 삭제',
   },
   deleteGroupConfirm: {
     ja: 'グループ「{name}」を本当に削除しますか？',
@@ -1714,6 +1921,7 @@ const BOARD_GROUP_STRINGS = {
     es: '¿Está seguro de que desea eliminar el grupo "{name}"?',
     de: 'Sind Sie sicher, dass Sie die Gruppe "{name}" löschen möchten?',
     fr: 'Êtes-vous sûr de vouloir supprimer le groupe "{name}"?',
+    ko: '그룹 "{name}"을(를) 정말 삭제하시겠습니까?',
   },
   groupName: {
     ja: 'グループ名',
@@ -1722,6 +1930,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Nombre del Grupo',
     de: 'Gruppenname',
     fr: 'Nom du groupe',
+    ko: '그룹 이름',
   },
   groupNameDesc: {
     ja: 'コマンドパレットに表示される名前です。',
@@ -1730,6 +1939,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Der im Befehlspanel angezeigte Name.',
     de: 'Der in der Befehlspalette angezeigte Name.',
     fr: 'Le nom affiché dans la palette de commandes.',
+    ko: '명령어 팔레트에 표시되는 이름입니다.',
   },
   groupNamePlaceholder: {
     ja: '例: 私の作業スペース',
@@ -1738,6 +1948,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'ej: Mi Espacio de Trabajo',
     de: 'z.B. Mein Arbeitsbereich',
     fr: 'ex: Mon espace de travail',
+    ko: '예: 내 작업 공간',
   },
   selectBoards: {
     ja: 'ボードを選択',
@@ -1746,6 +1957,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Seleccionar Tableros',
     de: 'Boards auswählen',
     fr: 'Sélectionner des tableaux',
+    ko: '보드 선택',
   },
   selectBoardsDesc: {
     ja: 'グループに含めるボードを選択してください。',
@@ -1754,6 +1966,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Seleccione los tableros para incluir en el grupo.',
     de: 'Wählen Sie die Boards aus, die in die Gruppe aufgenommen werden sollen.',
     fr: 'Sélectionnez les tableaux à inclure dans le groupe.',
+    ko: '그룹에 포함할 보드를 선택하세요.',
   },
   enterGroupName: {
     ja: 'グループ名を入力してください',
@@ -1762,6 +1975,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Por favor, ingrese el nombre del grupo',
     de: 'Bitte geben Sie einen Gruppennamen ein',
     fr: 'Veuillez entrer un nom de groupe',
+    ko: '그룹 이름을 입력하세요',
   },
   selectOneBoardAtLeast: {
     ja: '1つ以上のボードを選択してください',
@@ -1770,6 +1984,7 @@ const BOARD_GROUP_STRINGS = {
     es: 'Por favor, seleccione al menos un tablero',
     de: 'Bitte wählen Sie mindestens ein Board aus',
     fr: 'Veuillez sélectionner au moins un tableau',
+    ko: '하나 이상의 보드를 선택하세요',
   },
 } as const;
 
@@ -1781,6 +1996,7 @@ const ERROR_MESSAGES = {
     es: 'Solo se permiten rutas relativas dentro del Vault. Las rutas absolutas o fuera del Vault no están permitidas.',
     de: 'Nur relative Pfade innerhalb des Vaults sind erlaubt. Absolute Pfade oder Pfade außerhalb des Vaults sind nicht zulässig.',
     fr: 'Seuls les chemins relatifs à l\'intérieur du coffre sont autorisés. Les chemins absolus ou en dehors du coffre ne sont pas autorisés.',
+    ko: 'Vault 내의 상대 경로만 지정할 수 있습니다. 절대 경로나 Vault 외부 경로는 허용되지 않습니다.',
   },
   invalidNumber: {
     ja: '数値を入力してください（vw単位）',
@@ -1789,6 +2005,7 @@ const ERROR_MESSAGES = {
     es: 'Por favor, ingrese un número (unidades vw)',
     de: 'Bitte geben Sie eine Zahl ein (vw-Einheiten)',
     fr: 'Veuillez entrer un nombre (unités vw)',
+    ko: '숫자를 입력하세요 (vw 단위).',
   },
   rangeWarning: {
     ja: '1〜100の範囲でvwを指定することを推奨します。',
@@ -1797,6 +2014,7 @@ const ERROR_MESSAGES = {
     es: 'Se recomienda especificar vw en el rango de 1 a 100.',
     de: 'Es wird empfohlen, vw im Bereich von 1 bis 100 anzugeben.',
     fr: 'Il est recommandé de spécifier vw dans la plage de 1 à 100.',
+    ko: 'vw는 1에서 100 사이의 범위로 지정하는 것을 권장합니다.',
   },
   enterPositiveNumber: {
     ja: '1以上の半角数値を入力してください。',
@@ -1805,6 +2023,7 @@ const ERROR_MESSAGES = {
     es: 'Por favor, ingrese un número positivo.',
     de: 'Bitte geben Sie eine positive Zahl ein.',
     fr: 'Veuillez entrer un nombre positif.',
+    ko: '양수를 입력하세요.',
   },
   invalidTimeFormat: {
     ja: '時刻は00:00〜23:59の形式で入力してください',
@@ -1813,6 +2032,7 @@ const ERROR_MESSAGES = {
     es: 'Por favor, ingrese la hora en formato 00:00-23:59',
     de: 'Bitte geben Sie die Zeit im Format 00:00-23:59 ein',
     fr: 'Veuillez entrer l\'heure au format 00:00-23:59',
+    ko: '시간을 00:00-23:59 형식으로 입력하세요.',
   },
   enterContent: {
     ja: '内容を入力してください',
@@ -1821,6 +2041,7 @@ const ERROR_MESSAGES = {
     es: 'Por favor, ingrese el contenido.',
     de: 'Bitte geben Sie den Inhalt ein.',
     fr: 'Veuillez entrer le contenu',
+    ko: '내용을 입력하세요.',
   },
   cannotCalculateNextPost: {
     ja: '次の投稿日時が計算できません',
@@ -1829,6 +2050,7 @@ const ERROR_MESSAGES = {
     es: 'No se puede calcular la próxima hora de publicación',
     de: 'Die nächste Beitragszeit kann nicht berechnet werden',
     fr: 'Impossible de calculer l\'heure de la prochaine publication',
+    ko: '다음 게시 시간을 계산할 수 없습니다.',
   },
 } as const;
 
@@ -1864,7 +2086,7 @@ export function t(
   key: StringKey,
   vars?: Record<string, string | number>
 ): string {
-  const v = STRINGS[key] as { ja: string; en: string; zh?: string, es?: string, de?: string, fr?: string } | undefined;
+  const v = STRINGS[key] as { ja: string; en: string; zh?: string, es?: string, de?: string, fr?: string, ko?: string } | undefined;
   if (!v) {
     // console.warn(`Translation key not found: ${key}`);
     return key;
@@ -1948,6 +2170,17 @@ const WIDGET_TYPE_NAMES = {
     'file-view-widget': 'Visionneuse de fichiers',
     'tweet-widget': 'Tweet',
     'reflection-widget': 'Rapport de réflexion',
+  },
+  ko: {
+    'pomodoro': '포모도로 타이머',
+    'memo': '메모',
+    'timer-stopwatch': '타이머/스톱워치',
+    'calendar': '캘린더',
+    'recent-notes': '최근 노트',
+    'theme-switcher': '테마 전환기',
+    'file-view-widget': '파일 뷰어',
+    'tweet-widget': '트윗',
+    'reflection-widget': '리플렉션 리포트',
   },
 } as const;
 
