@@ -522,7 +522,8 @@ export class WidgetBoardModal {
         container.empty();
         this.uiWidgetReferences = [];
         if (!widgetsToLoad || widgetsToLoad.length === 0) {
-            container.createEl('p', { text: 'このボードに表示するウィジェットがありません。' + (this.isEditMode ? '「ウィジェット追加」から追加してください。' : '設定を開いてウィジェットを追加してください。') });
+            const lang = this.plugin.settings.language || 'ja';
+            container.createEl('p', { text: this.isEditMode ? t(lang, 'widget.emptyEdit') : t(lang, 'widget.empty') });
             this.lastWidgetOrder = [];
             return;
         }
@@ -565,7 +566,7 @@ export class WidgetBoardModal {
                                     const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
                                     setIcon(deleteBtn, 'trash');
                                     deleteBtn.onclick = async () => {
-                                        if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
+                                        if (confirm(t(this.plugin.settings.language || 'ja', 'widget.deleteConfirm', { widgetName: widgetConfig.title }))) {
                                             await this.deleteWidget(widgetConfig.id);
                                         }
                                     };
@@ -579,8 +580,8 @@ export class WidgetBoardModal {
                             } catch (e: unknown) {
                                 wrapper.empty();
                                 const errDiv = wrapper.createDiv({ cls: 'widget widget-error' });
-                                new Setting(errDiv).setName(`${widgetConfig.title || '(名称未設定)'} (ロードエラー)`).setHeading();
-                                errDiv.createEl('p', { text: 'このウィジェットの読み込み中にエラーが発生しました。' });
+                                new Setting(errDiv).setName(t(this.plugin.settings.language || 'ja', 'widget.loadError', { widgetName: widgetConfig.title || t(this.plugin.settings.language || 'ja', 'widget.untitled') })).setHeading();
+                                errDiv.createEl('p', { text: t(this.plugin.settings.language || 'ja', 'widget.loadErrorBody') });
                                 const errMessage = e instanceof Error ? e.message : String(e);
                                 errDiv.createEl('p', { text: errMessage });
                                 obs.unobserve(wrapper);
@@ -594,8 +595,8 @@ export class WidgetBoardModal {
                     } else {
                         wrapper.empty();
                         const unknownDiv = wrapper.createDiv({ cls: 'widget widget-unknown' });
-                        new Setting(unknownDiv).setName(`${widgetConfig.title || '(名称未設定)'} (不明な種類)`).setHeading();
-                        unknownDiv.createEl('p', { text: `ウィジェットの種類 '${widgetConfig.type}' は登録されていません。` });
+                        new Setting(unknownDiv).setName(t(this.plugin.settings.language || 'ja', 'widget.unknownType', { widgetName: widgetConfig.title || t(this.plugin.settings.language || 'ja', 'widget.untitled') })).setHeading();
+                        unknownDiv.createEl('p', { text: t(this.plugin.settings.language || 'ja', 'widget.unknownTypeBody', { widgetType: widgetConfig.type }) });
                         obs.unobserve(wrapper);
                     }
                 }
@@ -621,19 +622,19 @@ export class WidgetBoardModal {
                 const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
                 setIcon(deleteBtn, 'trash');
                 deleteBtn.onclick = async () => {
-                    if (confirm(`ウィジェット「${widgetConfig.title}」を削除しますか？`)) {
+                    if (confirm(t(this.plugin.settings.language || 'ja', 'widget.deleteConfirm', { widgetName: widgetConfig.title }))) {
                         await this.deleteWidget(widgetConfig.id);
                     }
                 };
                 const placeholder = wrapper.createDiv({ cls: 'wb-widget-placeholder' });
-                placeholder.setText('Loading...');
+                placeholder.setText(t(this.plugin.settings.language || 'ja', 'widget.loading'));
                 const dragHandle = wrapper.createDiv({ cls: 'wb-widget-drag-handle' });
                 setIcon(dragHandle, 'grip-vertical');
             } else {
                 wrapper = container.createDiv();
                 wrapper.dataset.widgetId = widgetConfig.id;
                 wrapper.empty();
-                wrapper.createDiv({ cls: 'wb-widget-placeholder', text: 'Loading...' });
+                wrapper.createDiv({ cls: 'wb-widget-placeholder', text: t(this.plugin.settings.language || 'ja', 'widget.loading') });
             }
             observer.observe(wrapper);
         }
