@@ -37,7 +37,13 @@ beforeEach(() => {
     settings: { ...DEFAULT_MEMO_SETTINGS }
   };
   dummyApp = {};
-  dummyPlugin = { settings: { boards: [] }, saveSettings: jest.fn() };
+  dummyPlugin = {
+    settings: { boards: [], language: 'ja' },
+    saveSettings: jest.fn(),
+    boardManager: {
+      widgetBoardModals: new Map()
+    }
+  };
   (MarkdownRenderer.renderMarkdown as jest.Mock).mockImplementation(renderMarkdownStub);
 });
 

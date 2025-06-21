@@ -1,4 +1,5 @@
 import { t, widgetTypeName, LANGUAGE_NAMES, Language } from '../../src/i18n';
+import * as i18n from '../../src/i18n';
 
 describe('i18n', () => {
   describe('t', () => {
@@ -86,5 +87,39 @@ describe('LANGUAGE_NAMES', () => {
   it('jaとenのラベルが設定されている', () => {
     expect(LANGUAGE_NAMES.ja).toBeDefined();
     expect(LANGUAGE_NAMES.en).toBeDefined();
+  });
+});
+
+describe('i18nカテゴリ統合テスト', () => {
+  const categories = [
+    'COMMON_STRINGS',
+    'SETTINGS_PANE_STRINGS',
+    'GLOBAL_SETTINGS_SECTIONS',
+    'POMODORO_STRINGS',
+    'MEMO_STRINGS',
+    'CALENDAR_STRINGS',
+    'RECENT_NOTES_STRINGS',
+    'THEME_SWITCHER_STRINGS',
+    'TIMER_STRINGS',
+    'FILE_VIEW_STRINGS',
+    'TWEET_STRINGS',
+    'REFLECTION_WIDGET_STRINGS',
+    'LLM_STRINGS',
+    'BOARD_MANAGEMENT_STRINGS',
+    'WIDGET_MANAGEMENT_STRINGS',
+    'BOARD_GROUP_STRINGS',
+    'ERROR_MESSAGES',
+    'MODAL_STRINGS',
+    'MODAL_PANEL_STRINGS',
+    'MAIN_STRINGS',
+    'TEST_STRINGS',
+    'WIDGET_STRINGS',
+    'PREWARM_STRINGS',
+  ];
+
+  categories.forEach(categoryName => {
+    it(`${categoryName} が定義されている`, () => {
+      expect(i18n[categoryName as keyof typeof i18n]).toBeDefined();
+    });
   });
 }); 

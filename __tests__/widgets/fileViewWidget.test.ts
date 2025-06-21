@@ -19,13 +19,25 @@ describe('FileViewWidget 詳細テスト', () => {
     };
     dummyApp = {
       vault: {
-        getFiles: () => [new TFile('test.md')],
-        getAbstractFileByPath: (path: string) => new TFile(path),
+        getFiles: () => {
+          const file = Object.create(TFile.prototype);
+          return [Object.assign(file, { path: 'test.md', name: 'test.md', basename: 'test', extension: 'md' })];
+        },
+        getAbstractFileByPath: (path: string) => {
+          if (path === 'notfound.md') return null;
+          const file = Object.create(TFile.prototype);
+          return Object.assign(file, { path: path, name: path.split('/').pop() || '', basename: path.split('/').pop()?.replace(/\.md$/, '') || '', extension: 'md' });
+        },
         read: jest.fn().mockResolvedValue('# テスト')
       },
       workspace: { openLinkText: jest.fn() }
     };
-    dummyPlugin = { saveSettings: jest.fn() };
+    dummyPlugin = {
+      saveSettings: jest.fn(),
+      settings: {
+        language: 'ja'
+      }
+    };
   });
 
   it('createでfile-view-widgetクラスとコントロールが生成される', () => {
@@ -50,11 +62,10 @@ describe('FileViewWidget 詳細テスト', () => {
     const widget = new FileViewWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
     await Promise.resolve();
-    expect(widget['fileContentEl'].textContent).toContain('Markdown（.md）ファイルのみ表示できます');
+    expect(widget['fileContentEl'].textContent).toContain('Markdown (.md) ファイルのみ表示できます');
   });
 
   it('存在しないファイル名指定時は「ファイルが見つかりません」', async () => {
-    dummyApp.vault.getAbstractFileByPath = () => null;
     (dummyConfig.settings as any).fileName = 'notfound.md';
     const widget = new FileViewWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
@@ -65,7 +76,8 @@ describe('FileViewWidget 詳細テスト', () => {
   it('Obsidianで開くボタンでopenLinkTextが呼ばれる', async () => {
     const widget = new FileViewWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
-    widget['currentFile'] = new TFile('test.md');
+    const file = Object.create(TFile.prototype);
+    widget['currentFile'] = Object.assign(file, { path: 'test.md', name: 'test.md', basename: 'test', extension: 'md' });
     const btn = widget['obsidianOpenButton'];
     btn.click();
     expect(dummyApp.workspace.openLinkText).toHaveBeenCalledWith('test.md', '', false);
@@ -105,7 +117,7 @@ describe('FileViewWidget 詳細テスト', () => {
     const widget = new FileViewWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
 
-    await Promise.resolve(); // loadFile内の非同期処理を待つ
+    await new Promise(process.nextTick); // loadFile内の非同期処理を待つ
 
     expect(widget['fileContentEl'].textContent).toBe('');
   });

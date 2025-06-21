@@ -24,6 +24,11 @@ describe('TweetWidgetUI', () => {
       submitReply: jest.fn(),
       navigateToDetail: jest.fn(),
       getFilteredPosts: () => [],
+      plugin: {
+        settings: {
+          language: 'ja',
+        },
+      },
     };
     // requestAnimationFrameはテスト用にタイマーで即座に実行
     (global as any).requestAnimationFrame = (cb: FrameRequestCallback) => {
