@@ -2,6 +2,7 @@ import { setIcon } from 'obsidian';
 import type { WidgetConfig } from '../../interfaces';
 import { applyWidgetSize, createWidgetContainer, pad2 } from '../../utils';
 import type { PomodoroSettings } from './index';
+import { t, Language } from '../../i18n';
 
 export class PomodoroView {
   widgetEl!: HTMLElement;
@@ -13,12 +14,14 @@ export class PomodoroView {
   nextButton!: HTMLButtonElement;
 
   private _prevDisplay: { timeStr?: string; isRunning?: boolean; statusText?: string; cycleText?: string; resetIconSet?: boolean } = {};
+  private lang: Language = 'ja';
 
-  create(config: WidgetConfig): { widgetEl: HTMLElement; contentEl: HTMLElement } {
+  create(config: WidgetConfig, lang: Language): { widgetEl: HTMLElement; contentEl: HTMLElement } {
+    this.lang = lang;
     const { widgetEl, titleEl } = createWidgetContainer(config, 'pomodoro-timer-widget');
     this.widgetEl = widgetEl;
     if (titleEl) {
-      titleEl.textContent = config.title || 'ポモドーロタイマー';
+      titleEl.textContent = config.title || t(this.lang, 'pomodoroTimer');
       if (!config.title || config.title.trim() === '') titleEl.style.display = 'none';
     }
     const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
@@ -61,33 +64,33 @@ export class PomodoroView {
     }
     if (prev.isRunning !== state.isRunning) {
       setIcon(this.startPauseButton, state.isRunning ? 'pause' : 'play');
-      this.startPauseButton.setAttribute('aria-label', state.isRunning ? '一時停止' : '開始');
+      this.startPauseButton.setAttribute('aria-label', state.isRunning ? t(this.lang, 'pause') : t(this.lang, 'start'));
       prev.isRunning = state.isRunning;
     }
     if (!prev.resetIconSet) {
       setIcon(this.resetButton, 'rotate-ccw');
-      this.resetButton.setAttribute('aria-label', 'リセット');
+      this.resetButton.setAttribute('aria-label', t(this.lang, 'reset'));
       setIcon(this.nextButton, 'skip-forward');
-      this.nextButton.setAttribute('aria-label', '次のセッションへ');
+      this.nextButton.setAttribute('aria-label', t(this.lang, 'nextSession'));
       prev.resetIconSet = true;
     }
     let statusText = '';
     switch (state.currentPomodoroSet) {
       case 'work':
-        statusText = `作業中 (${state.settings.workMinutes}分)`;
+        statusText = t(this.lang, 'workStatus', { minutes: state.settings.workMinutes });
         break;
       case 'shortBreak':
-        statusText = `短い休憩 (${state.settings.shortBreakMinutes}分)`;
+        statusText = t(this.lang, 'shortBreakStatus', { minutes: state.settings.shortBreakMinutes });
         break;
       case 'longBreak':
-        statusText = `長い休憩 (${state.settings.longBreakMinutes}分)`;
+        statusText = t(this.lang, 'longBreakStatus', { minutes: state.settings.longBreakMinutes });
         break;
     }
     if (prev.statusText !== statusText) {
       this.statusDisplayEl.textContent = statusText;
       prev.statusText = statusText;
     }
-    const cycleText = `現在のサイクル: ${state.pomodorosCompletedInCycle} / ${state.settings.pomodorosUntilLongBreak}`;
+    const cycleText = t(this.lang, 'currentCycle', { completed: state.pomodorosCompletedInCycle, total: state.settings.pomodorosUntilLongBreak });
     if (prev.cycleText !== cycleText) {
       this.cycleDisplayEl.textContent = cycleText;
       prev.cycleText = cycleText;

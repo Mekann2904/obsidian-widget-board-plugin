@@ -21,9 +21,6 @@ import {
 import { TweetRepository } from './widgets/tweetWidget';
 import { computeNextTime, ScheduleOptions } from './widgets/tweetWidget/scheduleUtils';
 import type { ScheduledTweet } from './widgets/tweetWidget/types';
-import { DEFAULT_RECENT_NOTES_SETTINGS } from './widgets/recent-notes';
-import { DEFAULT_TIMER_STOPWATCH_SETTINGS } from './widgets/timer-stopwatch';
-import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './widgets/reflectionWidget/constants';
 import { obfuscate, deobfuscate } from './utils';
 import { widgetTypeName, t, LANGUAGE_NAMES } from './i18n/index';
 import type { Language } from './i18n/index';
@@ -61,9 +58,8 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        const lang: Language = (['ja', 'en'] as const).includes(this.plugin.settings.language as Language)
-            ? (this.plugin.settings.language as Language)
-            : 'ja';
+        const lang: Language = this.plugin.settings.language || 'ja';
+
         new Setting(containerEl).setName(t(lang, 'settingTabHeading')).setHeading();
         // --- ベースフォルダ入力欄 ---
         const baseFolderSetting = new Setting(containerEl)
@@ -85,7 +81,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 // フォルダ存在チェック
                 const folder = this.app.vault.getAbstractFileByPath(v);
                 if (!folder || folder.constructor.name !== 'TFolder') {
-                    new Notice('Vault内のフォルダのみ指定できます。');
+                    new Notice(t(lang, 'vaultRelativePathOnly'));
                     text.setValue(this.plugin.settings.baseFolder || '');
                     return;
                 }

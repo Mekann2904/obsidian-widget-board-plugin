@@ -7,6 +7,7 @@ import cloneDeep from 'lodash.clonedeep';
 import { preloadChartJS, loadReflectionSummaryShared } from './widgets/reflectionWidget/reflectionWidgetUI';
 import { getDateKeyLocal, getWeekRange } from './utils';
 import type { ReflectionWidgetPreloadBundle } from './widgets/reflectionWidget/reflectionWidget';
+import { t, Language } from './i18n';
 
 /**
  * 新しいウィジェットの種類を選択して追加するためのモーダル
@@ -21,7 +22,8 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
         this.plugin = plugin;
         this.boardId = boardId;
         this.onChoose = onChoose;
-        this.setPlaceholder("追加するウィジェットの種類を選択してください");
+        const lang = this.plugin.settings.language || 'ja';
+        this.setPlaceholder(t(lang, "addWidgetPlaceholder"));
     }
 
     getItems(): [string, new () => WidgetImplementation][] {
@@ -34,9 +36,10 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
 
     async onChooseItem(item: [string, new () => WidgetImplementation]): Promise<void> {
         const widgetType = item[0];
+        const lang = this.plugin.settings.language || 'ja';
         const board = this.plugin.settings.boards.find(b => b.id === this.boardId);
         if (!board) {
-            new Notice("対象のボードが見つかりません。");
+            new Notice(t(lang, "boardNotFound"));
             return;
         }
 
@@ -49,7 +52,7 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
 
         board.widgets.push(newWidgetConfig);
         await this.plugin.saveSettings(this.boardId);
-        new Notice(`'${widgetType}' ウィジェットが追加されました。`);
+        new Notice(t(lang, 'widgetAdded', { widgetType: widgetType }));
         this.onChoose();
     }
 }
@@ -144,7 +147,8 @@ export class WidgetBoardModal {
         }
         const headerTitleEl = this.contentEl.querySelector('.wb-panel-header h3');
         if (headerTitleEl) {
-            headerTitleEl.setText(`ウィジェットボード: ${this.currentBoardConfig.name}`);
+            const lang = this.plugin.settings.language || 'ja';
+            headerTitleEl.setText(t(lang, 'widgetBoard: {name}', { name: this.currentBoardConfig.name }));
         }
     }
 
@@ -190,9 +194,11 @@ export class WidgetBoardModal {
 
         this.applyMode(this.currentMode);
 
+        const lang = this.plugin.settings.language || 'ja';
+
         // --- ヘッダーと設定ボタン ---
         const headerEl = contentEl.createDiv({ cls: 'wb-panel-header' });
-        new Setting(headerEl).setName(`ウィジェットボード: ${this.currentBoardConfig.name}`).setHeading();
+        new Setting(headerEl).setName(t(lang, 'widgetBoard: {name}', { name: this.currentBoardConfig.name })).setHeading();
 
         // ボタン群ラッパー
         const actionsWrapper = headerEl.createDiv({ cls: 'wb-panel-header-actions' });
@@ -203,11 +209,11 @@ export class WidgetBoardModal {
 
         const settingsBtn = actionsWrapper.createEl('button', { cls: 'wb-panel-settings-toggle' });
         setIcon(settingsBtn, 'settings');
-        settingsBtn.setAttribute('aria-label', '設定を開く');
+        settingsBtn.setAttribute('aria-label', t(lang, 'openSettings'));
 
         const closeBtn = actionsWrapper.createEl('button', { cls: 'wb-panel-close-btn' });
         setIcon(closeBtn, 'x');
-        closeBtn.setAttribute('aria-label', 'ボードを閉じる');
+        closeBtn.setAttribute('aria-label', t(lang, 'closeBoard'));
         closeBtn.onclick = () => this.close();
 
         // --- リサイズハンドル（右端） ---
@@ -818,38 +824,24 @@ export class WidgetBoardModal {
      * モーダルを閉じる
      */
     close() {
-        if (this.isClosing || !this.isOpen) return; // 多重実行防止
+        if (this.isClosing)
+            return;
         this.isClosing = true;
-        const { modalEl } = this;
-        if (this.plugin.widgetBoardModals && this.plugin.widgetBoardModals.has(this.currentBoardId)) {
-            this.plugin.widgetBoardModals.delete(this.currentBoardId);
-        }
-        // --- イベントリスナー解除 ---
-        const widgetContainerEl = this.contentEl.querySelector('.wb-widget-container');
-        if (widgetContainerEl instanceof HTMLElement) {
-            this.removeDragDropListeners(widgetContainerEl);
-        }
-        modalEl.classList.remove('is-open');
-        // 右・左スプリット外モード時のみbodyの専用クラスを削除
-        if (this.currentMode === WidgetBoardModal.MODES.RIGHT_OUTER) {
-            document.body.classList.remove('wb-modal-right-outer-open');
-        } else if (this.currentMode === WidgetBoardModal.MODES.LEFT_OUTER) {
-            document.body.classList.remove('wb-modal-left-outer-open');
-        }
+        this.modalEl.classList.remove('is-open');
+        this.onClose();
+        // 300msのアニメーション後にDOMから削除
         setTimeout(() => {
-            this.onClose();
-            const selector = `.widget-board-panel-custom[data-board-id='${this.currentBoardId}']`;
-            requestAnimationFrame(() => {
-                const fragment = document.createDocumentFragment();
-                document.querySelectorAll(selector).forEach(el => {
-                    if (el.parentElement === document.body) {
-                        fragment.appendChild(el);
-                    }
-                });
-                // dropping the fragment removes the nodes in batch
-            });
+            var _a;
+            (_a = this.modalEl) === null || _a === void 0 ? void 0 : _a.remove();
+            this.isClosing = false;
         }, 300);
-        document.body.classList.remove('wb-modal-open');
+        // 他のボードのモーダルも閉じる
+        // Object.values(this.plugin.widgetBoardModals).forEach(modal => {
+        //     if (modal && modal.isOpen && modal.currentBoardId !== this.currentBoardId) {
+        //         modal.close();
+        //     }
+        // });
+        // this.plugin.widgetBoardModals[this.currentBoardId] = null;
     }
 
     /**
