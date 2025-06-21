@@ -2,6 +2,7 @@ import { App, Notice, setIcon } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { createWidgetContainer, pad2 } from '../../utils';
+import { t } from '../../i18n';
 
 // --- 通知音の種類の型定義 ---
 export type TimerSoundType = 'off' | 'default_beep' | 'bell' | 'chime'; // chime を追加する場合
@@ -257,7 +258,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         const { widgetEl, titleEl } = createWidgetContainer(config, 'timer-stopwatch-widget');
         this.widgetEl = widgetEl;
         this.widgetEl.setAttribute('data-widget-type', this.id);
-        titleEl!.textContent = this.config.title?.trim() || 'タイマー / ストップウォッチ';
+        titleEl!.textContent = this.config.title?.trim() || t(this.plugin.settings.language || 'ja', 'timerStopwatchTitle');
         titleEl!.classList.add('widget-title');
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
@@ -270,21 +271,21 @@ export class TimerStopwatchWidget implements WidgetImplementation {
     private buildUI(container: HTMLElement) {
         container.empty();
         this.modeSwitchContainer = container.createEl('div', { cls: 'timer-mode-switch setting-item' });
-        const timerBtn = this.modeSwitchContainer.createEl('button', { text: 'タイマー', cls: 'mod-timer' });
-        const swBtn = this.modeSwitchContainer.createEl('button', { text: 'ストップウォッチ', cls: 'mod-stopwatch' });
+        const timerBtn = this.modeSwitchContainer.createEl('button', { text: t(this.plugin.settings.language || 'ja', 'timer'), cls: 'mod-timer' });
+        const swBtn = this.modeSwitchContainer.createEl('button', { text: t(this.plugin.settings.language || 'ja', 'stopwatch'), cls: 'mod-stopwatch' });
         timerBtn.onclick = () => { this.handleSwitchMode('timer'); };
         swBtn.onclick = () => { this.handleSwitchMode('stopwatch'); };
 
         this.timerSetRowEl = container.createEl('div', { cls: 'timer-set-row setting-item' });
-        this.timerSetRowEl.createSpan({ text: 'タイマー設定:' });
+        this.timerSetRowEl.createSpan({ text: t(this.plugin.settings.language || 'ja', 'timerSettings') });
         const minWrap = this.timerSetRowEl.createSpan({ cls: "timer-input-wrap" });
         this.timerMinInput = minWrap.createEl('input', { type: 'number', cls: 'timer-input' });
         this.timerMinInput.setAttribute('min', '0'); this.timerMinInput.setAttribute('max', '999');
-        minWrap.createSpan({ text: '分' });
+        minWrap.createSpan({ text: t(this.plugin.settings.language || 'ja', 'minutesShort') });
         const secWrap = this.timerSetRowEl.createSpan({ cls: "timer-input-wrap" });
         this.timerSecInput = secWrap.createEl('input', { type: 'number', cls: 'timer-input' });
         this.timerSecInput.setAttribute('min', '0'); this.timerSecInput.setAttribute('max', '59');
-        secWrap.createSpan({ text: '秒' });
+        secWrap.createSpan({ text: t(this.plugin.settings.language || 'ja', 'secondsShort') });
         // oninputではバリデーションと表示のみ
         this.timerMinInput.oninput = () => {
             const val = Math.max(0, Math.min(999, parseInt(this.timerMinInput.value) || 0));
@@ -301,7 +302,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
         this.displayEl = container.createEl('div', { cls: 'timer-display' });
         const controls = container.createEl('div', { cls: 'timer-controls setting-item' });
         this.startPauseBtn = controls.createEl('button');
-        const resetBtn = controls.createEl('button', { text: 'リセット' });
+        const resetBtn = controls.createEl('button', { text: t(this.plugin.settings.language || 'ja', 'reset') });
         setIcon(resetBtn, 'rotate-ccw');
         this.startPauseBtn.onclick = () => this.handleToggleStartPause();
         resetBtn.onclick = () => this.handleReset();
@@ -352,7 +353,7 @@ export class TimerStopwatchWidget implements WidgetImplementation {
 
         // ボタン
         if (prev.running !== state.running) {
-            this.startPauseBtn.setText(state.running ? '一時停止' : 'スタート');
+            this.startPauseBtn.setText(state.running ? t(this.plugin.settings.language || 'ja', 'pause') : t(this.plugin.settings.language || 'ja', 'start'));
             setIcon(this.startPauseBtn, state.running ? 'pause' : 'play');
             prev.running = state.running;
         }
@@ -513,24 +514,24 @@ export class TimerStopwatchWidget implements WidgetImplementation {
                 });
             }
         } catch {
-            new Notice('通知音の再生中にエラーが発生しました。', 5000);
+            new Notice(t(this.plugin.settings.language || 'ja', 'soundPlaybackError'), 5000);
         }
     }
 
     private openBoardIfClosed() {
-        if (this.plugin && this.plugin.widgetBoardModals && Array.from(this.plugin.widgetBoardModals.values()).every(m => !m.isOpen)) {
+        if (this.plugin && this.plugin.boardManager.widgetBoardModals && Array.from(this.plugin.boardManager.widgetBoardModals.values()).every(m => !m.isOpen)) {
             // このウィジェットが属するボードIDを特定
             const boards = this.plugin.settings.boards;
             const board = boards?.find(b => b.widgets?.some(w => w.id === this.config.id));
             if (board) {
                 this.plugin.openWidgetBoardById(board.id);
-                new Notice('タイマー終了: ウィジェットボードを開きました。');
+                new Notice(t(this.plugin.settings.language || 'ja', 'timerFinishedBoardOpened'));
             } else if (typeof this.plugin.openBoardPicker === 'function') {
                 this.plugin.openBoardPicker();
-                new Notice('タイマー終了: ボードピッカーを開きました。');
+                new Notice(t(this.plugin.settings.language || 'ja', 'timerFinishedPickerOpened'));
             }
         } else {
-            new Notice('タイマーが終了しました！');
+            new Notice(t(this.plugin.settings.language || 'ja', 'timerFinished'));
         }
     }
 
