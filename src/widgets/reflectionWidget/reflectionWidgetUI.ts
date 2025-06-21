@@ -370,7 +370,7 @@ export class ReflectionWidgetUI {
                         ? `${this.plugin.settings.baseFolder.replace(/\/$/, '')}/tweets.json`
                         : 'tweets.json';
                     const repo = new TweetRepository(this.app, dbPath);
-                    const postsPromise = repo.load().then((s: TweetWidgetSettings) => s.posts || []);
+                    const postsPromise = repo.load(this.plugin.settings.language || 'ja').then((s: TweetWidgetSettings) => s.posts || []);
                     // キャッシュ取得
                     const [cachedToday, cachedWeek] = await Promise.all([
                         loadReflectionSummaryShared('today', todayKey, this.app),
