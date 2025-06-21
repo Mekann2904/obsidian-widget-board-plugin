@@ -6,6 +6,7 @@ import { renderMarkdownBatch, renderMarkdownBatchWithCache } from '../../utils/r
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
 import { renderMermaidInWorker } from '../../utils';
+import { t, Language } from '../../i18n';
 
 // --- Mermaid SVGメモリキャッシュ ---
 const mermaidSvgCache = new Map<string, string>();
@@ -275,8 +276,8 @@ export class MemoWidget implements WidgetImplementation {
         }
 
         let currentModalBoardId: string | undefined = undefined;
-        if (this.plugin.widgetBoardModals) {
-            for (const [boardId, modal] of this.plugin.widgetBoardModals.entries()) {
+        if (this.plugin.boardManager.widgetBoardModals) {
+            for (const [boardId, modal] of this.plugin.boardManager.widgetBoardModals.entries()) {
                 if (modal.isOpen) {
                     currentModalBoardId = boardId;
                     break;
@@ -382,6 +383,7 @@ export class MemoWidget implements WidgetImplementation {
 
     private async saveMemoChanges() {
         const widgetIdLog = `[${this.config.id} (${this.config.title || 'Memo'})]`;
+        const lang = this.plugin.settings.language || 'ja';
 
         if (!this.memoEditAreaEl) {
             console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: memoEditAreaEl is null! Cannot get new content.`);
@@ -401,8 +403,8 @@ export class MemoWidget implements WidgetImplementation {
             let settingsUpdatedInGlobalStore = false;
             // モーダルが開いていれば、そのボードIDを取得 (これが最も確実なコンテキスト)
             let currentModalBoardId: string | undefined = undefined;
-            if (this.plugin.widgetBoardModals) {
-                for (const [boardId, modal] of this.plugin.widgetBoardModals.entries()) {
+            if (this.plugin.boardManager.widgetBoardModals) {
+                for (const [boardId, modal] of this.plugin.boardManager.widgetBoardModals.entries()) {
                     if (modal.isOpen) {
                         currentModalBoardId = boardId;
                         break;
@@ -412,7 +414,7 @@ export class MemoWidget implements WidgetImplementation {
 
             if (!currentModalBoardId) {
                 console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Critical - currentModalBoardId is not available. Cannot reliably find the board in global settings.`);
-                new Notice("エラー: 現在のボードを特定できず、メモを保存できませんでした。", 7000);
+                new Notice(t(lang, 'widget.memo.error.boardNotFound'), 7000);
                 // updateMemoEditUIは最後に呼ぶので、ここではUIは表示モードに戻るが、保存は失敗
                 this.updateMemoEditUI();
                 return;
@@ -450,13 +452,14 @@ export class MemoWidget implements WidgetImplementation {
                 // new Notice(`メモ「${this.config.title || '無題'}」を保存しました。`); // 保存成功通知
             } else {
                 console.error(`${widgetIdLog} SAVE_MEMO_CHANGES: Did not update global settings store due to lookup failure. Save not fully effective.`);
-                new Notice("メモの保存に失敗しました (データ不整合の可能性あり)。", 5000);
+                new Notice(t(lang, 'widget.memo.error.saveFailed'), 5000);
             }
         } else {
             // console.log(`${widgetIdLog} SAVE_MEMO_CHANGES: Memo content did not change. No save action taken.`);
         }
         this.updateMemoEditUI(); // UIを（表示モードに）更新
         this.setupTaskEventListeners();
+        this.scheduleRender();
     }
 
     private cancelMemoEditMode() {
@@ -486,6 +489,8 @@ export class MemoWidget implements WidgetImplementation {
         // ただし、このthis.config.settingsへの変更がグローバル設定に直接反映されるわけではない。
         config.settings = this.currentSettings;
 
+        const lang = this.plugin.settings.language || 'ja';
+
         const { widgetEl, titleEl } = createWidgetContainer(config, 'memo-widget');
         this.widgetEl = widgetEl;
         this.widgetEl.style.display = 'flex';
@@ -506,7 +511,7 @@ export class MemoWidget implements WidgetImplementation {
         
         this.editMemoButtonEl = memoHeaderEl.createEl('button', { cls: 'memo-widget-edit-button' });
         setIcon(this.editMemoButtonEl, 'pencil');
-        this.editMemoButtonEl.setAttribute('aria-label', 'メモを編集/追加');
+        this.editMemoButtonEl.setAttribute('aria-label', t(lang, 'widget.memo.editAddAriaLabel'));
         this.editMemoButtonEl.onClickEvent(() => this.enterMemoEditMode());
 
         this.memoDisplayEl = this.memoContainerEl.createDiv({ cls: 'memo-widget-display' });
@@ -522,9 +527,9 @@ export class MemoWidget implements WidgetImplementation {
         const memoEditControlsEl = this.memoEditContainerEl.createDiv({ cls: 'memo-widget-edit-controls' });
         // CSS で .memo-widget-edit-controls に flex-shrink:0 が設定されている前提
 
-        this.saveMemoButtonEl = memoEditControlsEl.createEl('button', { text: '保存' });
+        this.saveMemoButtonEl = memoEditControlsEl.createEl('button', { text: t(lang, 'save') });
         this.saveMemoButtonEl.addClass('mod-cta');
-        this.cancelMemoButtonEl = memoEditControlsEl.createEl('button', { text: 'キャンセル' });
+        this.cancelMemoButtonEl = memoEditControlsEl.createEl('button', { text: t(lang, 'cancel') });
 
         this.saveMemoButtonEl.onClickEvent(() => this.saveMemoChanges());
         this.cancelMemoButtonEl.onClickEvent(() => this.cancelMemoEditMode());

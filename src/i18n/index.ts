@@ -756,6 +756,33 @@ const MEMO_STRINGS = {
     fr: 'Hauteur en mode fixe (px)',
     ko: '고정 모드 시 높이(px)',
   },
+  'widget.memo.editAddAriaLabel': {
+    ja: 'メモを編集/追加',
+    en: 'Edit/Add memo',
+    zh: '编辑/添加备忘录',
+    es: 'Editar/Añadir memo',
+    de: 'Memo bearbeiten/hinzufügen',
+    fr: 'Éditer/Ajouter un mémo',
+    ko: '메모 편집/추가',
+  },
+  'widget.memo.error.boardNotFound': {
+    ja: 'エラー: 現在のボードを特定できず、メモを保存できませんでした。',
+    en: 'Error: Could not identify the current board and failed to save the memo.',
+    zh: '错误：无法识别当前看板，保存备忘录失败。',
+    es: 'Error: No se pudo identificar el tablero actual y no se pudo guardar el memo.',
+    de: 'Fehler: Konnte das aktuelle Board nicht identifizieren und Memo konnte nicht gespeichert werden.',
+    fr: "Erreur : Impossible d'identifier le tableau actuel et d'enregistrer le mémo.",
+    ko: '오류: 현재 보드를 식별할 수 없어 메모를 저장하지 못했습니다.',
+  },
+  'widget.memo.error.saveFailed': {
+    ja: 'メモの保存に失敗しました (データ不整合の可能性あり)。',
+    en: 'Failed to save memo (possible data inconsistency).',
+    zh: '保存备忘录失败（可能存在数据不一致）。',
+    es: 'Error al guardar el memo (posible inconsistencia de datos).',
+    de: 'Fehler beim Speichern des Memos (mögliche Dateninkonsistenz).',
+    fr: "Échec de l'enregistrement du mémo (incohérence possible des données).",
+    ko: '메모 저장에 실패했습니다 (데이터 불일치 가능성 있음).',
+  },
 } as const;
 
 const CALENDAR_STRINGS = {
