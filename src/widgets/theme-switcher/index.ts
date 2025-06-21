@@ -2,6 +2,7 @@ import { App, Notice } from 'obsidian';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
+import { t } from '../../i18n';
 
 export type ThemeSwitcherWidgetSettings = Record<string, never>;
 
@@ -37,7 +38,7 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
         const { widgetEl, titleEl } = createWidgetContainer(config, 'theme-switcher-widget');
         this.widgetEl = widgetEl;
         if (titleEl) {
-            titleEl.textContent = this.config.title?.trim() || 'テーマ切り替え';
+            titleEl.textContent = this.config.title?.trim() || t(this.plugin.settings.language || 'ja', 'themeSwitcherTitle');
         }
 
         const contentEl = this.widgetEl.createDiv({ cls: 'widget-content' });
@@ -62,7 +63,7 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
         }
         const customCss = (this.app as unknown as { customCss?: CustomCssManager }).customCss;
         if (!customCss) {
-            container.createEl('p', { text: 'テーマ切り替えAPIが利用できません。' });
+            container.createEl('p', { text: t(this.plugin.settings.language || 'ja', 'apiUnavailable') });
             return;
         }
         const themesRaw = customCss?.themes;
@@ -77,7 +78,7 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
         const currentTheme: string = customCss?.theme || '';
 
         // --- デフォルトテーマを1つにまとめる ---
-        const defaultTheme = { id: '', name: 'デフォルト（Obsidian）' };
+        const defaultTheme = { id: '', name: t(this.plugin.settings.language || 'ja', 'defaultThemeName') };
         const customThemes = themes.filter(t => t !== '' && t !== 'moonstone');
         const allThemes = [defaultTheme, ...customThemes.map(t => ({ id: t, name: t }))];
 
@@ -94,13 +95,13 @@ export class ThemeSwitcherWidget implements WidgetImplementation {
             itemEl.onclick = () => {
                 if ((theme.id === '' && (customCss.theme === '' || customCss.theme === undefined)) ||
                     (theme.id !== '' && customCss.theme === theme.id)) {
-                    new Notice('すでにこのテーマが適用されています。');
+                    new Notice(t(this.plugin.settings.language || 'ja', 'themeAlreadyApplied'));
                     return;
                 }
                 customCss?.setTheme(theme.id);
                 // テーマ適用後は現在のテーマ名も更新する
                 if (customCss) customCss.theme = theme.id;
-                new Notice(`テーマ「${theme.name}」を適用しました。`);
+                new Notice(t(this.plugin.settings.language || 'ja', 'themeApplied', { themeName: theme.name }));
                 // ここでactiveクラスだけ付け替える
                 liElements.forEach(li => li.classList.remove('active'));
                 itemEl.classList.add('active');
