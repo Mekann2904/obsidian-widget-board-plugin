@@ -3,6 +3,7 @@ import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { applyWidgetSize, createWidgetContainer } from '../../utils';
+import { t, Language } from '../../i18n';
 
 export interface FileViewWidgetSettings {
   fileName?: string;
@@ -13,10 +14,10 @@ export interface FileViewWidgetSettings {
 // ファイルサジェスト用モーダル
 class FileSuggestModal extends FuzzySuggestModal<TFile> {
   onChooseCb: (file: TFile) => void;
-  constructor(app: App, private files: TFile[], onChoose: (file: TFile) => void) {
+  constructor(app: App, private files: TFile[], onChoose: (file: TFile) => void, lang: Language) {
     super(app);
     this.onChooseCb = onChoose;
-    this.setPlaceholder('ファイルを検索...');
+    this.setPlaceholder(t(lang, 'widget.fileView.searchFiles'));
   }
   getItems(): TFile[] {
     return this.files;
@@ -57,6 +58,8 @@ export class FileViewWidget implements WidgetImplementation {
     this.heightMode = settings.heightMode === 'fixed' ? 'fixed' : 'auto';
     this.fixedHeightPx = typeof settings.fixedHeightPx === 'number' ? settings.fixedHeightPx : 200;
 
+    const lang = this.plugin.settings.language || 'ja';
+
     // --- カード型ウィジェット本体 ---
     const { widgetEl, titleEl } = createWidgetContainer(config, 'file-view-widget');
     this.widgetEl = widgetEl;
@@ -78,20 +81,20 @@ export class FileViewWidget implements WidgetImplementation {
     // 編集UI（初期は非表示）
     this.fileNameInput = document.createElement('input');
     this.fileNameInput.type = 'text';
-    this.fileNameInput.placeholder = 'ファイルパス';
+    this.fileNameInput.placeholder = t(lang, 'widget.fileView.filePathPlaceholder');
     this.fileNameInput.value = (this.config.settings as FileViewWidgetSettings)?.fileName || '';
     this.fileNameInput.style.display = '';
     controlsEl.appendChild(this.fileNameInput);
 
     this.selectButton = document.createElement('button');
-    this.selectButton.textContent = 'ファイル選択';
+    this.selectButton.textContent = t(lang, 'widget.fileView.selectFile');
     this.selectButton.onclick = () => this.openFileSuggest();
     this.selectButton.style.display = '';
     controlsEl.appendChild(this.selectButton);
 
     // Obsidianで開くボタン（常時表示）
     this.obsidianOpenButton = document.createElement('button');
-    this.obsidianOpenButton.textContent = 'Obsidianで開く';
+    this.obsidianOpenButton.textContent = t(lang, 'widget.fileView.openInObsidian');
     this.obsidianOpenButton.className = 'open-in-obsidian';
     this.obsidianOpenButton.onclick = () => {
       if (this.currentFile) {
@@ -116,6 +119,7 @@ export class FileViewWidget implements WidgetImplementation {
   private openFileSuggest() {
     // .mdファイルのみサジェスト
     const files = this.app.vault.getFiles().filter(f => f.extension === 'md');
+    const lang = this.plugin.settings.language || 'ja';
     new FileSuggestModal(this.app, files, async (file) => {
       this.fileNameInput.value = file.path;
       this.config.settings = this.config.settings || {};
@@ -123,24 +127,25 @@ export class FileViewWidget implements WidgetImplementation {
       await this.plugin.saveSettings();
       this.loadFile();
       this.updateTitle();
-    }).open();
+    }, lang).open();
   }
 
   // ファイル内容をレンダリング
   private async loadFile() {
     const rawInput = (this.config.settings as FileViewWidgetSettings)?.fileName?.trim() || '';
     const fileName = rawInput;
+    const lang = this.plugin.settings.language || 'ja';
     this.updateTitle();
     if (!fileName) {
       this.fileContentEl.empty();
-      this.fileContentEl.setText('ファイルが選択されていません');
+      this.fileContentEl.setText(t(lang, 'widget.fileView.fileNotSelected'));
       this.currentFile = null;
       return;
     }
     // .mdファイル以外はエラー
     if (!fileName.endsWith('.md')) {
       this.fileContentEl.empty();
-      this.fileContentEl.setText('Markdown（.md）ファイルのみ表示できます');
+      this.fileContentEl.setText(t(lang, 'widget.fileView.onlyMarkdownSupported'));
       this.currentFile = null;
       return;
     }
@@ -162,7 +167,7 @@ export class FileViewWidget implements WidgetImplementation {
       });
     } else {
       this.fileContentEl.empty();
-      this.fileContentEl.setText('ファイルが見つかりません');
+      this.fileContentEl.setText(t(lang, 'widget.fileView.fileNotFound'));
       this.currentFile = null;
     }
   }
@@ -187,12 +192,13 @@ export class FileViewWidget implements WidgetImplementation {
   // タイトルをファイル名に自動更新
   private updateTitle() {
     const fileName = (this.config.settings as FileViewWidgetSettings)?.fileName;
+    const lang = this.plugin.settings.language || 'ja';
     if (this.titleEl) {
       if (fileName && fileName.trim() !== '') {
         const name = fileName.split(/[\\/]/).pop();
-        this.titleEl.textContent = name || 'ファイルビューア';
+        this.titleEl.textContent = name || t(lang, 'widget.fileView.title');
       } else {
-        this.titleEl.textContent = 'ファイルビューア';
+        this.titleEl.textContent = t(lang, 'widget.fileView.title');
       }
     }
   }
