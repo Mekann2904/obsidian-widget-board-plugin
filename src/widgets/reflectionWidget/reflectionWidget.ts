@@ -5,6 +5,7 @@ import type { ReflectionWidgetSettings } from './reflectionWidgetTypes';
 // Utility functions are provided by the UI module
 import { ReflectionWidgetUI } from './reflectionWidgetUI';
 import { REFLECTION_WIDGET_DEFAULT_SETTINGS } from './constants';
+import { t } from '../../i18n';
 
 // プリロードバンドル型を定義
 export interface ReflectionWidgetPreloadBundle {
@@ -30,7 +31,7 @@ export class ReflectionWidget implements WidgetImplementation {
         const initialConfig = config || {
             id: `reflection-widget-${Date.now()}`,
             type: 'reflection-widget',
-            title: 'リフレクション',
+            title: t(plugin.settings.language || 'ja', 'title'),
             settings: {},
         };
 

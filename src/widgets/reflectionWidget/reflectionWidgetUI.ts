@@ -12,6 +12,7 @@ import type { ReflectionWidgetPreloadBundle } from './reflectionWidget';
 import { debugLog } from '../../utils/logger';
 import { renderMermaidInWorker } from '../../utils';
 import type ChartInstance from 'chart.js/auto';
+import { t } from '../../i18n';
 type ChartConstructor = new (ctx: CanvasRenderingContext2D, config: unknown) => ChartInstance;
 // Chart.js型importはESM/CJS問題回避のためやめる
 
@@ -47,7 +48,7 @@ function getLastNDays(n: number): string[] {
     return days;
 }
 async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: WidgetBoardPlugin): Promise<string> {
-    if (!plugin.llmManager) return 'LLM未初期化';
+    if (!plugin.llmManager) return t(plugin.settings.language || 'ja', 'llmNotInitialized');
     const context = JSON.parse(JSON.stringify(plugin.settings.llm || {}));
     if (context.gemini && context.gemini.apiKey) {
         context.apiKey = deobfuscate(context.gemini.apiKey);
@@ -67,7 +68,7 @@ async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin:
         debugLog(plugin, 'Gemini生成結果:', result);
         return result;
     } catch {
-        return '要約生成に失敗しました';
+        return t(plugin.settings.language || 'ja', 'summaryFailed');
     }
 }
 async function saveReflectionSummary(
@@ -185,7 +186,7 @@ export class ReflectionWidgetUI {
             }
             const title = document.createElement('div');
             title.className = 'widget-title';
-            title.innerText = this.config.title || '振り返りレポート';
+            title.innerText = this.config.title || t(this.plugin.settings.language || 'ja', 'defaultTitle');
             this.container.appendChild(title);
             this.contentEl = document.createElement('div');
             this.contentEl.className = 'widget-content';
@@ -201,7 +202,7 @@ export class ReflectionWidgetUI {
             graphTitle.style.marginBottom = '4px';
             graphTitle.style.textAlign = 'center';
             graphTitle.style.fontSize = '1em';
-            graphTitle.innerText = '直近7日間の投稿数トレンド';
+            graphTitle.innerText = t(this.plugin.settings.language || 'ja', 'trends7Days');
             this.contentEl.appendChild(graphTitle);
             this.canvasEl = document.createElement('canvas');
             this.canvasEl.width = 600;
@@ -227,7 +228,7 @@ export class ReflectionWidgetUI {
             todayTitle.style.fontWeight = 'bold';
             todayTitle.style.margin = '16px 0 2px 0';
             todayTitle.style.fontSize = '2em';
-            todayTitle.innerText = 'AIによる今日のまとめ';
+            todayTitle.innerText = t(this.plugin.settings.language || 'ja', 'aiSummaryToday');
             this.aiSummarySectionEl.appendChild(todayTitle);
             this.todaySummaryEl = document.createElement('div');
             this.todaySummaryEl.innerText = '';
@@ -235,26 +236,26 @@ export class ReflectionWidgetUI {
             this.aiSummarySectionEl.appendChild(this.todaySummaryEl);
             // --- 今日のまとめ コピー用ボタン追加 ---
             const todayCopyBtn = document.createElement('button');
-            todayCopyBtn.innerText = 'コピー';
+            todayCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copy');
             todayCopyBtn.style.marginLeft = '8px';
             todayCopyBtn.onclick = async () => {
                 const text = this.lastTodaySummary || '';
                 try {
                     await navigator.clipboard.writeText(text);
                     const old = todayCopyBtn.innerText;
-                    todayCopyBtn.innerText = 'コピーしました！';
+                    todayCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copied');
                     setTimeout(() => { todayCopyBtn.innerText = old; }, 1500);
                 } catch {
-                    todayCopyBtn.innerText = 'コピー失敗';
-                    setTimeout(() => { todayCopyBtn.innerText = 'コピー'; }, 1500);
+                    todayCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copyFailed');
+                    setTimeout(() => { todayCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copy'); }, 1500);
                 }
             };
-            this.aiSummarySectionEl.appendChild(todayCopyBtn);
+            todayTitle.appendChild(todayCopyBtn);
             const weekTitle = document.createElement('div');
             weekTitle.style.fontWeight = 'bold';
             weekTitle.style.margin = '16px 0 2px 0';
             weekTitle.style.fontSize = '2em';
-            weekTitle.innerText = 'AIによる今週のまとめ';
+            weekTitle.innerText = t(this.plugin.settings.language || 'ja', 'aiSummaryWeek');
             this.aiSummarySectionEl.appendChild(weekTitle);
             this.weekSummaryEl = document.createElement('div');
             this.weekSummaryEl.innerText = '';
@@ -262,21 +263,34 @@ export class ReflectionWidgetUI {
             this.aiSummarySectionEl.appendChild(this.weekSummaryEl);
             // --- 今週のまとめ コピー用ボタン追加 ---
             const weekCopyBtn = document.createElement('button');
-            weekCopyBtn.innerText = 'コピー';
+            weekCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copy');
             weekCopyBtn.style.marginLeft = '8px';
             weekCopyBtn.onclick = async () => {
                 const text = this.lastWeekSummary || '';
                 try {
                     await navigator.clipboard.writeText(text);
                     const old = weekCopyBtn.innerText;
-                    weekCopyBtn.innerText = 'コピーしました！';
+                    weekCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copied');
                     setTimeout(() => { weekCopyBtn.innerText = old; }, 1500);
                 } catch {
-                    weekCopyBtn.innerText = 'コピー失敗';
-                    setTimeout(() => { weekCopyBtn.innerText = 'コピー'; }, 1500);
+                    weekCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copyFailed');
+                    setTimeout(() => { weekCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copy'); }, 1500);
                 }
             };
-            this.aiSummarySectionEl.appendChild(weekCopyBtn);
+            weekTitle.appendChild(weekCopyBtn);
+            // --- 手動生成ボタン ---
+            const settings = this.config.settings as ReflectionWidgetSettings;
+            if (settings.aiSummaryManualEnabled) {
+                const manualBtnContainer = document.createElement('div');
+                manualBtnContainer.style.textAlign = 'center';
+                manualBtnContainer.style.marginTop = '16px';
+                this.manualBtnEl = document.createElement('button');
+                this.manualBtnEl.innerText = t(this.plugin.settings.language || 'ja', 'generateSummary');
+                const trigger = () => this.runSummary(true);
+                this.manualBtnEl.onclick = trigger;
+                manualBtnContainer.appendChild(this.manualBtnEl);
+                this.aiSummarySectionEl.appendChild(manualBtnContainer);
+            }
         }
         // 差分描画: グラフ・要約のみ更新
         if (this.canvasEl && this.contentEl) {
@@ -292,14 +306,14 @@ export class ReflectionWidgetUI {
                 this.todaySummaryEl.empty();
                 this.todaySummaryEl.appendChild(frag);
             } else {
-                this.todaySummaryEl.innerText = this.preloadBundle.todaySummary.summary || '本日の投稿がありません。';
+                this.todaySummaryEl.innerText = this.preloadBundle.todaySummary.summary || t(this.plugin.settings.language || 'ja', 'noPostsToday');
             }
             if (this.preloadBundle.weekSummary.html) {
                 const frag = document.createRange().createContextualFragment(this.preloadBundle.weekSummary.html);
                 this.weekSummaryEl.empty();
                 this.weekSummaryEl.appendChild(frag);
             } else {
-                this.weekSummaryEl.innerText = this.preloadBundle.weekSummary.summary || '今週の投稿がありません。';
+                this.weekSummaryEl.innerText = this.preloadBundle.weekSummary.summary || t(this.plugin.settings.language || 'ja', 'noPostsThisWeek');
             }
         } else {
             const todayKey = getDateKeyLocal(new Date());
@@ -315,7 +329,7 @@ export class ReflectionWidgetUI {
                         this.todaySummaryEl.empty();
                         this.todaySummaryEl.appendChild(frag);
                     } else {
-                        this.todaySummaryEl.innerText = cachedToday.summary || '本日の投稿がありません。';
+                        this.todaySummaryEl.innerText = cachedToday.summary || t(this.plugin.settings.language || 'ja', 'noPostsToday');
                     }
                 }
                 if (this.weekSummaryEl) {
@@ -324,7 +338,7 @@ export class ReflectionWidgetUI {
                         this.weekSummaryEl.empty();
                         this.weekSummaryEl.appendChild(frag);
                     } else {
-                        this.weekSummaryEl.innerText = cachedWeek.summary || '今週の投稿がありません。';
+                        this.weekSummaryEl.innerText = cachedWeek.summary || t(this.plugin.settings.language || 'ja', 'noPostsThisWeek');
                     }
                 }
             });
@@ -338,7 +352,7 @@ export class ReflectionWidgetUI {
         // 実行中フラグ
         if (this.manualBtnEl) {
             this.manualBtnEl.disabled = true;
-            this.manualBtnEl.innerText = '実行中...';
+            this.manualBtnEl.innerText = t(this.plugin.settings.language || 'ja', 'generating');
         }
         let timeoutOccured = false;
         try {
@@ -374,10 +388,10 @@ export class ReflectionWidgetUI {
                     // MarkdownRendererの呼び出しも内容が変わったときだけ
                     const renderMdTasks = [];
                     if (!todaySummaryRendered && this.todaySummaryEl) {
-                        renderMdTasks.push(this.renderMarkdown(this.todaySummaryEl, cachedToday.summary || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v));
+                        renderMdTasks.push(this.renderMarkdown(this.todaySummaryEl, cachedToday.summary || t(this.plugin.settings.language || 'ja', 'noPostsToday'), this.lastTodaySummary, v => this.lastTodaySummary = v));
                     }
                     if (!weekSummaryRendered && this.weekSummaryEl) {
-                        renderMdTasks.push(this.renderMarkdown(this.weekSummaryEl, cachedWeek.summary || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v));
+                        renderMdTasks.push(this.renderMarkdown(this.weekSummaryEl, cachedWeek.summary || t(this.plugin.settings.language || 'ja', 'noPostsThisWeek'), this.lastWeekSummary, v => this.lastWeekSummary = v));
                     }
                     await Promise.all(renderMdTasks);
                     // 投稿データ読み込み完了を待つ
@@ -390,7 +404,7 @@ export class ReflectionWidgetUI {
                         const todayPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) === todayKey && p.userId === '@you');
                         const todayPrompt = userPromptToday && userPromptToday.trim() ? userPromptToday : geminiSummaryPromptToday;
                         const todayText = todayPosts.length > 0 ? await generateSummary(todayPosts, todayPrompt, this.plugin) : '';
-                        const todayHtml = await this.renderMarkdown(this.todaySummaryEl!, todayText || '本日の投稿がありません。', this.lastTodaySummary, v => this.lastTodaySummary = v);
+                        const todayHtml = await this.renderMarkdown(this.todaySummaryEl!, todayText || t(this.plugin.settings.language || 'ja', 'noPostsToday'), this.lastTodaySummary, v => this.lastTodaySummary = v);
                         await saveReflectionSummary(
                             'today',
                             todayKey,
@@ -404,7 +418,7 @@ export class ReflectionWidgetUI {
                         const weekPosts = posts.filter(p => !p.deleted && getDateKeyLocal(new Date(p.created)) >= weekStart && getDateKeyLocal(new Date(p.created)) <= weekKey && p.userId === '@you');
                         const weekPrompt = userPromptWeek && userPromptWeek.trim() ? userPromptWeek : geminiSummaryPromptWeek;
                         const weekText = weekPosts.length > 0 ? await generateSummary(weekPosts, weekPrompt, this.plugin) : '';
-                        const weekHtml = await this.renderMarkdown(this.weekSummaryEl!, weekText || '今週の投稿がありません。', this.lastWeekSummary, v => this.lastWeekSummary = v);
+                        const weekHtml = await this.renderMarkdown(this.weekSummaryEl!, weekText || t(this.plugin.settings.language || 'ja', 'noPostsThisWeek'), this.lastWeekSummary, v => this.lastWeekSummary = v);
                         await saveReflectionSummary(
                             'week',
                             weekKey,
@@ -475,16 +489,16 @@ export class ReflectionWidgetUI {
             ]);
         } catch {
             if (this.manualBtnEl) {
-                this.manualBtnEl.innerText = timeoutOccured ? 'タイムアウトしました' : 'まとめ生成失敗';
+                this.manualBtnEl.innerText = timeoutOccured ? t(this.plugin.settings.language || 'ja', 'timeout') : t(this.plugin.settings.language || 'ja', 'generationFailed');
                 setTimeout(() => {
-                    this.manualBtnEl!.innerText = 'まとめ生成';
+                    this.manualBtnEl!.innerText = t(this.plugin.settings.language || 'ja', 'generateSummary');
                     this.manualBtnEl!.disabled = false;
                 }, 3000);
                 return;
             }
         }
         if (this.manualBtnEl) {
-            this.manualBtnEl.innerText = 'まとめ生成';
+            this.manualBtnEl.innerText = t(this.plugin.settings.language || 'ja', 'generationComplete');
             this.manualBtnEl.disabled = false;
         }
     }
@@ -553,11 +567,11 @@ export class ReflectionWidgetUI {
         // 手動発火ボタン（初回のみ生成）
         if (manualEnabled && this.aiSummarySectionEl && !this.manualBtnEl) {
             this.manualBtnEl = document.createElement('button');
-            this.manualBtnEl.innerText = 'まとめ生成';
+            this.manualBtnEl.innerText = t(this.plugin.settings.language || 'ja', 'generateSummary');
             this.manualBtnEl.style.margin = '10px 0 0 0';
             this.manualBtnEl.onclick = async () => {
                 this.manualBtnEl!.disabled = true;
-                this.manualBtnEl!.innerText = '生成中...';
+                this.manualBtnEl!.innerText = t(this.plugin.settings.language || 'ja', 'generating');
                 const trigger = () => this.runSummary(true);
                 if ('requestIdleCallback' in window) {
                     (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(trigger);
