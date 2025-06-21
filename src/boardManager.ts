@@ -3,6 +3,7 @@ import { App, Modal as ObsidianModal, Notice, Hotkey, Modifier, Setting } from '
 import type WidgetBoardPlugin from './main';
 import type { BoardConfiguration } from './interfaces';
 import { WidgetBoardModal } from './modal';
+import { t, type Language, StringKey } from './i18n';
 
 export class BoardManager {
     widgetBoardModals: Map<string, WidgetBoardModal> = new Map();
@@ -14,9 +15,13 @@ export class BoardManager {
         return this.plugin.app;
     }
 
+    private t(key: StringKey, vars?: Record<string, string | number>): string {
+        return t(this.plugin.settings.language || 'ja', key, vars);
+    }
+
     openBoardPicker(): void {
         if (this.plugin.settings.boards.length === 0) {
-            new Notice('設定されているウィジェットボードがありません。設定画面から作成してください。');
+            new Notice(this.t('noBoardsAvailable'));
             return;
         }
         if (this.plugin.settings.boards.length === 1) {
@@ -25,7 +30,7 @@ export class BoardManager {
         }
         const modal = new BoardPickerModal(this.app, this.plugin.settings.boards, (boardId) => {
             this.openWidgetBoardById(boardId);
-        });
+        }, this.plugin.settings.language || 'ja');
         modal.open();
     }
 
@@ -43,7 +48,7 @@ export class BoardManager {
         }
         const boardConfig = this.plugin.settings.boards.find(b => b.id === boardId);
         if (!boardConfig) {
-            new Notice(`ID '${boardId}' のウィジェットボードが見つかりません。`);
+            new Notice(this.t('noticeBoardNotFound', { name: boardId }));
             return;
         }
         const validModes: string[] = Object.values(WidgetBoardModal.MODES);
@@ -86,12 +91,12 @@ export class BoardManager {
         this.plugin.settings.boards.forEach(board => {
             this.plugin.addCommand({
                 id: `toggle-widget-board-${board.id}`,
-                name: `ウィジェットボードをトグル: ${board.name}`,
+                name: this.t('commandToggleWidgetBoard', { boardName: board.name }),
                 callback: () => this.toggleWidgetBoardById(board.id)
             });
             this.plugin.addCommand({
                 id: `close-widget-board-${board.id}`,
-                name: `ウィジェットボードを閉じる: ${board.name}`,
+                name: this.t('commandCloseWidgetBoard', { boardName: board.name }),
                 callback: () => this.closeWidgetBoardById(board.id)
             });
         });
@@ -108,7 +113,7 @@ export class BoardManager {
             const cmdId = `open-board-group-${group.id}`;
             this.plugin.addCommand({
                 id: cmdId,
-                name: `ボードグループをトグル: ${group.name}`,
+                name: this.t('commandToggleBoardGroup', { groupName: group.name }),
                 hotkeys,
                 callback: () => {
                     const anyOpen = (group.boardIds || []).some(boardId => {
@@ -144,13 +149,13 @@ export class BoardManager {
 }
 
 class BoardPickerModal extends ObsidianModal {
-    constructor(app: App, private boards: BoardConfiguration[], private onChoose: (boardId: string) => void) {
+    constructor(app: App, private boards: BoardConfiguration[], private onChoose: (boardId: string) => void, private lang: Language) {
         super(app);
     }
     onOpen() {
         const { contentEl } = this;
         contentEl.empty();
-        new Setting(contentEl).setName('ウィジェットボードを選択').setHeading();
+        new Setting(contentEl).setName(t(this.lang, 'modal.selectBoardToOpen')).setHeading();
         const listEl = contentEl.createDiv({ cls: 'widget-board-picker-list' });
         this.boards.forEach(board => {
             const boardItemEl = listEl.createDiv({ cls: 'widget-board-picker-item' });

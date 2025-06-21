@@ -2704,6 +2704,42 @@ const BOARD_MANAGEMENT_STRINGS = {
     fr: 'Êtes-vous sûr de vouloir supprimer le tableau "{name}"?',
     ko: '보드 "{name}"을(를) 정말 삭제하시겠습니까?',
   },
+  commandToggleWidgetBoard: {
+    ja: 'ウィジェットボードを切り替え: {boardName}',
+    en: 'Toggle widget board: {boardName}',
+    zh: '切换小组件看板: {boardName}',
+    es: 'Alternar tablero de widgets: {boardName}',
+    de: 'Widget-Board umschalten: {boardName}',
+    fr: 'Basculer le tableau de widgets: {boardName}',
+    ko: '위젯 보드 전환: {boardName}',
+  },
+  commandCloseWidgetBoard: {
+    ja: 'ウィジェットボードを閉じる: {boardName}',
+    en: 'Close widget board: {boardName}',
+    zh: '关闭小组件看板: {boardName}',
+    es: 'Cerrar tablero de widgets: {boardName}',
+    de: 'Widget-Board schließen: {boardName}',
+    fr: 'Fermer le tableau de widgets: {boardName}',
+    ko: '위젯 보드 닫기: {boardName}',
+  },
+  commandToggleBoardGroup: {
+    ja: 'ボードグループを切り替え: {groupName}',
+    en: 'Toggle board group: {groupName}',
+    zh: '切换看板组: {groupName}',
+    es: 'Alternar grupo de tableros: {groupName}',
+    de: 'Board-Gruppe umschalten: {groupName}',
+    fr: 'Basculer le groupe de tableaux: {groupName}',
+    ko: '보드 그룹 전환: {groupName}',
+  },
+  noticeBoardNotFound: {
+    ja: 'ボード「{name}」が見つかりません。',
+    en: 'Board "{name}" not found.',
+    zh: '找不到看板"{name}"。',
+    es: 'No se encontró el tablero "{name}".',
+    de: 'Board "{name}" nicht gefunden.',
+    fr: 'Le tableau "{name}" est introuvable.',
+    ko: '보드 "{name}"을(를) 찾을 수 없습니다。',
+  },
 } as const;
 
 const WIDGET_MANAGEMENT_STRINGS = {
@@ -2823,6 +2859,24 @@ const WIDGET_MANAGEMENT_STRINGS = {
     de: 'Detaillierte Einstellungen',
     fr: 'Paramètres détaillés',
     ko: '상세 설정',
+  },
+  'modal.closeBoard': {
+    ja: 'ボードを閉じる',
+    en: 'Close board',
+    zh: '关闭看板',
+    es: 'Cerrar tablero',
+    de: 'Board schließen',
+    fr: 'Fermer le tableau',
+    ko: '보드 닫기',
+  },
+  'modal.selectBoardToOpen': {
+    ja: '開くボードを選択',
+    en: 'Select a board to open',
+    zh: '选择要打开的看板',
+    es: 'Seleccione un tablero para abrir',
+    de: 'Wählen Sie ein zu öffnendes Board aus',
+    fr: 'Sélectionnez un tableau à ouvrir',
+    ko: '열 보드를 선택하세요',
   },
 } as const;
 
