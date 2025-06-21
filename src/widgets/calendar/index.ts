@@ -6,6 +6,7 @@ import type WidgetBoardPlugin from '../../main';
 import { debugLog } from '../../utils/logger';
 import { applyWidgetSize, createWidgetContainer, pad2 } from '../../utils';
 import moment from 'moment';
+import { t, Language } from '../../i18n';
 
 // --- カレンダーウィジェット設定インターフェース ---
 export interface CalendarWidgetSettings {
@@ -74,25 +75,30 @@ export class CalendarWidget implements WidgetImplementation {
         this.calendarContentEl.empty();
         this.selectedDateInfoEl = null;
 
+        const lang = this.plugin.settings.language || 'ja';
         const year = this.currentDate.getFullYear();
         const month = this.currentDate.getMonth();
 
         const header = this.calendarContentEl.createDiv({ cls: 'calendar-header' });
         const prevButton = header.createEl('button');
         setIcon(prevButton, 'arrow-left');
-        prevButton.setAttribute('aria-label', '前の月');
+        prevButton.setAttribute('aria-label', t(lang, 'calendar.previousMonth'));
         prevButton.onClickEvent(() => this.changeMonth(-1));
 
-        header.createSpan({ cls: 'calendar-month-year', text: `${year}年 ${month + 1}月` });
+        header.createSpan({ cls: 'calendar-month-year', text: t(lang, 'calendar.yearMonth', { year, month: month + 1 }) });
 
         const nextButton = header.createEl('button');
         setIcon(nextButton, 'arrow-right');
-        nextButton.setAttribute('aria-label', '次の月');
+        nextButton.setAttribute('aria-label', t(lang, 'calendar.nextMonth'));
         nextButton.onClickEvent(() => this.changeMonth(1));
 
         const table = this.calendarContentEl.createEl('table', { cls: 'calendar-table' });
         const weekStart = this.plugin.settings.weekStartDay ?? 1;
-        const baseWeekdays = ['日', '月', '火', '水', '木', '金', '土']; // 日本語曜日
+        const baseWeekdays = [
+            t(lang, 'calendar.sunShort'), t(lang, 'calendar.monShort'), t(lang, 'calendar.tueShort'),
+            t(lang, 'calendar.wedShort'), t(lang, 'calendar.thuShort'), t(lang, 'calendar.friShort'),
+            t(lang, 'calendar.satShort')
+        ];
         const weekdays = baseWeekdays.slice(weekStart).concat(baseWeekdays.slice(0, weekStart));
         const thead = table.createEl('thead');
         const trHead = thead.createEl('tr');
@@ -197,7 +203,8 @@ export class CalendarWidget implements WidgetImplementation {
     private showNotesForDate(dateStr: string) {
         if (!this.selectedDateInfoEl) return;
         this.selectedDateInfoEl.empty();
-        new Setting(this.selectedDateInfoEl).setName(`${dateStr} のノート一覧`).setHeading();
+        const lang = this.plugin.settings.language || 'ja';
+        new Setting(this.selectedDateInfoEl).setName(t(lang, 'calendar.notesForDate', { date: dateStr })).setHeading();
 
         // --- デイリーノートのファイル名をグローバル設定で生成 ---
         const globalFormat = this.plugin?.settings?.calendarDailyNoteFormat || 'YYYY-MM-DD';
@@ -217,7 +224,7 @@ export class CalendarWidget implements WidgetImplementation {
         // デイリーノートを探す
         const dailyNote = this.app.vault.getFiles().find(f => f.extension === 'md' && (f.basename === dailyNoteBase || f.name === dailyNoteName));
         if (dailyNote) {
-            const dailyBtn = this.selectedDateInfoEl.createEl('button', { text: 'デイリーノートを開く' });
+            const dailyBtn = this.selectedDateInfoEl.createEl('button', { text: t(lang, 'calendar.openDailyNote') });
             dailyBtn.onclick = () => {
                 this.app.workspace.openLinkText(dailyNote.path, '', false);
             };
@@ -227,7 +234,7 @@ export class CalendarWidget implements WidgetImplementation {
             this.app.vault.getFiles().forEach(f => {
                 debugLog(this.plugin, 'ファイル:', { basename: f.basename, name: f.name, extension: f.extension });
             });
-            this.selectedDateInfoEl.createEl('div', { text: 'デイリーノートは存在しません。' });
+            this.selectedDateInfoEl.createEl('div', { text: t(lang, 'calendar.noDailyNote') });
         }
 
         // その日付で作成・編集されたノート一覧
@@ -250,7 +257,7 @@ export class CalendarWidget implements WidgetImplementation {
                 li.createSpan({ text: ` (${moment(f.stat.mtime).format('YYYY/MM/DD HH:mm')})` });
             });
         } else {
-            this.selectedDateInfoEl.createEl('div', { text: 'この日に作成・編集されたノートはありません。' });
+            this.selectedDateInfoEl.createEl('div', { text: t(lang, 'calendar.noNotes') });
         }
     }
 
