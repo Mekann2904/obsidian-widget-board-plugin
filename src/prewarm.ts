@@ -6,6 +6,7 @@ import { MemoWidgetSettings } from './widgets/memo';
 import { FileViewWidgetSettings } from './widgets/file-view';
 import { renderMarkdownBatchWithCache } from './utils/renderMarkdownBatch';
 import { getDateKey, getWeekRange } from './utils';
+import { t } from './i18n';
 
 export class PrewarmManager {
     tweetPostCountCache: Record<string, number> = {};
@@ -21,7 +22,7 @@ export class PrewarmManager {
             ? `${this.plugin.settings.baseFolder.replace(/\/$/, '')}/tweets.json`
             : 'tweets.json';
         const repo = new TweetRepository(this.app, dbPath);
-        const tweetSettings = await repo.load();
+        const tweetSettings = await repo.load(this.plugin.settings.language || 'ja');
         this.tweetPostCountCache = {};
         for (const p of tweetSettings.posts || []) {
             if (p.deleted) continue;
@@ -45,13 +46,14 @@ export class PrewarmManager {
 
     async prewarmAllWidgetMarkdownCache() {
         const MAX_PREWARM_ENTRIES = 50;
+        const lang = this.plugin.settings.language || 'ja';
         try {
-            new Notice('キャッシュ中…');
+            new Notice(t(lang, 'prewarm.caching'));
             const dbPath = this.plugin.settings.baseFolder
                 ? `${this.plugin.settings.baseFolder.replace(/\/$/, '')}/tweets.json`
                 : 'tweets.json';
             const repo = new TweetRepository(this.app, dbPath);
-            const tweetSettings = await repo.load();
+            const tweetSettings = await repo.load(this.plugin.settings.language || 'ja');
             const tweetPosts = (tweetSettings.posts || []).slice(0, MAX_PREWARM_ENTRIES);
 
             const memoContents: string[] = [];
@@ -137,12 +139,12 @@ export class PrewarmManager {
                 ) {
                     schedule(processBatch);
                 } else {
-                    new Notice('キャッシュ完了');
+                    new Notice(t(lang, 'prewarm.cacheComplete'));
                 }
             };
             schedule(processBatch);
         } catch (e) {
-            console.error('プリウォーム中にエラー:', e);
+            console.error(t(lang, 'prewarm.error'), e);
         }
     }
 }
