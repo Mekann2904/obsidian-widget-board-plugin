@@ -2054,6 +2054,33 @@ const ERROR_MESSAGES = {
   },
 } as const;
 
+const MODAL_STRINGS = {
+	'modal.addWidgetPlaceholder': {
+		ja: '追加するウィジェットを選択',
+		en: 'Select a widget to add',
+	},
+	'modal.boardNotFound': {
+		ja: 'ボードが見つかりません',
+		en: 'Board not found',
+	},
+	'modal.widgetAdded': {
+		ja: '{{widgetType}} を追加しました',
+		en: 'Added {{widgetType}}',
+	},
+	'modal.boardTitle': {
+		ja: 'WidgetBoard: {{name}}',
+		en: 'WidgetBoard: {{name}}',
+	},
+	'modal.openSettings': {
+		ja: '設定を開く',
+		en: 'Open settings',
+	},
+	'modal.closeBoard': {
+		ja: 'ボードを閉じる',
+		en: 'Close board',
+	},
+} as const;
+
 const TEST_STRINGS = {
   'test.placeholder': {
     ja: 'テスト: {{value}}',
@@ -2088,6 +2115,7 @@ const STRINGS = {
   ...WIDGET_MANAGEMENT_STRINGS,
   ...BOARD_GROUP_STRINGS,
   ...ERROR_MESSAGES,
+  ...MODAL_STRINGS,
   ...TEST_STRINGS,
 };
 

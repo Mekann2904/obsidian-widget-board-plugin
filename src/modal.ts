@@ -23,7 +23,7 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
         this.boardId = boardId;
         this.onChoose = onChoose;
         const lang = this.plugin.settings.language || 'ja';
-        this.setPlaceholder(t(lang, "addWidgetPlaceholder"));
+        this.setPlaceholder(t(lang, "modal.addWidgetPlaceholder"));
     }
 
     getItems(): [string, new () => WidgetImplementation][] {
@@ -39,7 +39,7 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
         const lang = this.plugin.settings.language || 'ja';
         const board = this.plugin.settings.boards.find(b => b.id === this.boardId);
         if (!board) {
-            new Notice(t(lang, "boardNotFound"));
+            new Notice(t(lang, "modal.boardNotFound"));
             return;
         }
 
@@ -52,7 +52,7 @@ class AddWidgetModal extends FuzzySuggestModal<[string, new () => WidgetImplemen
 
         board.widgets.push(newWidgetConfig);
         await this.plugin.saveSettings(this.boardId);
-        new Notice(t(lang, 'widgetAdded', { widgetType: widgetType }));
+        new Notice(t(lang, 'modal.widgetAdded', { widgetType: widgetType }));
         this.onChoose();
     }
 }
@@ -148,7 +148,7 @@ export class WidgetBoardModal {
         const headerTitleEl = this.contentEl.querySelector('.wb-panel-header h3');
         if (headerTitleEl) {
             const lang = this.plugin.settings.language || 'ja';
-            headerTitleEl.setText(t(lang, 'widgetBoard: {name}', { name: this.currentBoardConfig.name }));
+            headerTitleEl.setText(t(lang, 'modal.boardTitle', { name: this.currentBoardConfig.name }));
         }
     }
 
@@ -198,7 +198,7 @@ export class WidgetBoardModal {
 
         // --- ヘッダーと設定ボタン ---
         const headerEl = contentEl.createDiv({ cls: 'wb-panel-header' });
-        new Setting(headerEl).setName(t(lang, 'widgetBoard: {name}', { name: this.currentBoardConfig.name })).setHeading();
+        new Setting(headerEl).setName(t(lang, 'modal.boardTitle', { name: this.currentBoardConfig.name })).setHeading();
 
         // ボタン群ラッパー
         const actionsWrapper = headerEl.createDiv({ cls: 'wb-panel-header-actions' });
@@ -209,11 +209,11 @@ export class WidgetBoardModal {
 
         const settingsBtn = actionsWrapper.createEl('button', { cls: 'wb-panel-settings-toggle' });
         setIcon(settingsBtn, 'settings');
-        settingsBtn.setAttribute('aria-label', t(lang, 'openSettings'));
+        settingsBtn.setAttribute('aria-label', t(lang, 'modal.openSettings'));
 
         const closeBtn = actionsWrapper.createEl('button', { cls: 'wb-panel-close-btn' });
         setIcon(closeBtn, 'x');
-        closeBtn.setAttribute('aria-label', t(lang, 'closeBoard'));
+        closeBtn.setAttribute('aria-label', t(lang, 'modal.closeBoard'));
         closeBtn.onclick = () => this.close();
 
         // --- リサイズハンドル（右端） ---
