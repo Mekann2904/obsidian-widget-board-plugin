@@ -1,6 +1,25 @@
 import { PomodoroWidget } from '../../src/widgets/pomodoro';
 import { DEFAULT_POMODORO_SETTINGS } from '../../src/settings/defaultWidgetSettings';
 import type { WidgetConfig } from '../../src/interfaces';
+import * as i18n from '../../src/i18n';
+
+// i18n t-function mock
+jest.spyOn(i18n, 't').mockImplementation((lang, key, vars) => {
+  const translations: { [key: string]: string } = {
+    pause: '一時停止',
+    start: '開始',
+    reset: 'リセット',
+    nextSession: '次のセッションへ',
+    workStatus: `作業中 (${vars?.minutes}分)`,
+    shortBreakStatus: `短い休憩 (${vars?.minutes}分)`,
+    longBreakStatus: `長い休憩 (${vars?.minutes}分)`,
+    currentCycle: `現在のサイクル: ${vars?.completed} / ${vars?.total}`,
+    pomodoroTimer: 'ポモドーロタイマー',
+  };
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  return translations[key] || key;
+});
 
 describe('PomodoroWidget 詳細テスト', () => {
   let dummyConfig: WidgetConfig;
@@ -50,6 +69,7 @@ describe('PomodoroWidget 詳細テスト', () => {
     widget['remainingTime'] = 10;
     widget['resetTimerState']('work', true);
     expect(widget['remainingTime']).toBe(widget['currentSettings'].workMinutes * 60);
+    expect(widget['widgetEl'].style.backgroundImage).toBe('');
   });
 
   it('skipToNextSessionConfirmでcurrentPomodoroSetが変化する', () => {
@@ -143,7 +163,7 @@ describe('PomodoroWidget 詳細テスト', () => {
     // UI上も反映されているか
     const el = widget['widgetEl'];
     const cycleEl = el.querySelector('.pomodoro-cycle-display');
-    expect(cycleEl?.textContent).toContain('0 /');
+    expect(cycleEl?.textContent).toBe('現在のサイクル: 0 / 4');
   });
 
   it('playSoundNotificationで通知音が再生される（default_beep/bell/chime/off/異常系）', () => {
