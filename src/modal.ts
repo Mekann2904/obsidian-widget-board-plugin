@@ -329,7 +329,7 @@ export class WidgetBoardModal {
         const displayHeader = displayAccordion.createDiv({ cls: 'wb-settings-accordion-header' });
         const displayIcon = displayHeader.createSpan({ cls: 'wb-settings-accordion-icon' });
         displayIcon.setText('▶');
-        displayHeader.appendText('表示設定');
+        displayHeader.appendText(t(lang, 'modal.panel.displaySettings'));
         const displayBody = displayAccordion.createDiv({ cls: 'wb-settings-accordion-body' });
         displayBody.style.display = 'none';
 
@@ -338,7 +338,7 @@ export class WidgetBoardModal {
         const widgetHeader = widgetAccordion.createDiv({ cls: 'wb-settings-accordion-header' });
         const widgetIcon = widgetHeader.createSpan({ cls: 'wb-settings-accordion-icon' });
         widgetIcon.setText('▶');
-        widgetHeader.appendText('ウィジェット設定');
+        widgetHeader.appendText(t(lang, 'modal.panel.widgetSettings'));
         const widgetBody = widgetAccordion.createDiv({ cls: 'wb-settings-accordion-body' });
         widgetBody.style.display = 'none';
 
@@ -356,16 +356,16 @@ export class WidgetBoardModal {
 
         // --- 表示設定アコーディオン内に本来のロジックを移動 ---
         const panelHeader = displayBody.createDiv({ cls: 'wb-settings-panel-header' });
-        new Setting(panelHeader).setName('ボード設定').setHeading();
-        const doneBtn = panelHeader.createEl('button', { text: '完了' });
+        new Setting(panelHeader).setName(t(lang, 'modal.panel.boardSettings')).setHeading();
+        const doneBtn = panelHeader.createEl('button', { text: t(lang, 'modal.panel.done') });
 
         const displayControlsContainer = displayBody.createDiv({ cls: 'wb-display-controls-container' });
         this.modeButtons = [];
         const modeGroups = [
-            { label: '左パネル', modes: [WidgetBoardModal.MODES.LEFT_THIRD, WidgetBoardModal.MODES.LEFT_HALF, WidgetBoardModal.MODES.LEFT_TWO_THIRD, WidgetBoardModal.MODES.LEFT_OUTER] },
-            { label: '中央パネル', modes: [WidgetBoardModal.MODES.CENTER_THIRD, WidgetBoardModal.MODES.CENTER_HALF] },
-            { label: '右パネル', modes: [WidgetBoardModal.MODES.RIGHT_THIRD, WidgetBoardModal.MODES.RIGHT_HALF, WidgetBoardModal.MODES.RIGHT_TWO_THIRD, WidgetBoardModal.MODES.RIGHT_OUTER] },
-            { label: 'カスタム', modes: [WidgetBoardModal.MODES.CUSTOM_WIDTH] }
+            { label: t(lang, 'modal.panel.leftPanel'), modes: [WidgetBoardModal.MODES.LEFT_THIRD, WidgetBoardModal.MODES.LEFT_HALF, WidgetBoardModal.MODES.LEFT_TWO_THIRD, WidgetBoardModal.MODES.LEFT_OUTER] },
+            { label: t(lang, 'modal.panel.centerPanel'), modes: [WidgetBoardModal.MODES.CENTER_THIRD, WidgetBoardModal.MODES.CENTER_HALF] },
+            { label: t(lang, 'modal.panel.rightPanel'), modes: [WidgetBoardModal.MODES.RIGHT_THIRD, WidgetBoardModal.MODES.RIGHT_HALF, WidgetBoardModal.MODES.RIGHT_TWO_THIRD, WidgetBoardModal.MODES.RIGHT_OUTER] },
+            { label: t(lang, 'modal.panel.custom'), modes: [WidgetBoardModal.MODES.CUSTOM_WIDTH] }
         ];
         let customWidthAnchorBtnContainer = displayControlsContainer.createDiv({ cls: 'custom-width-anchor-btns' });
         customWidthAnchorBtnContainer.style.display = this.currentMode === WidgetBoardModal.MODES.CUSTOM_WIDTH ? '' : 'none';
@@ -376,17 +376,17 @@ export class WidgetBoardModal {
             groupDiv.createEl('span', { text: group.label, cls: 'wb-mode-group-label' });
             const buttons = group.modes.map(modeClass => {
                 let buttonText = '';
-                if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = '右パネル（33vw）';
-                else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = '右パネル（50vw）';
-                else if (modeClass === WidgetBoardModal.MODES.RIGHT_TWO_THIRD) buttonText = '右パネル（66vw）';
-                else if (modeClass === WidgetBoardModal.MODES.RIGHT_OUTER) buttonText = '右スプリット外（32vw）';
-                else if (modeClass === WidgetBoardModal.MODES.LEFT_TWO_THIRD) buttonText = '左パネル（66vw）';
-                else if (modeClass === WidgetBoardModal.MODES.LEFT_HALF) buttonText = '左パネル（50vw）';
-                else if (modeClass === WidgetBoardModal.MODES.LEFT_THIRD) buttonText = '左パネル（33vw）';
-                else if (modeClass === WidgetBoardModal.MODES.LEFT_OUTER) buttonText = '左スプリット外（32vw）';
-                else if (modeClass === WidgetBoardModal.MODES.CENTER_HALF) buttonText = '中央パネル（50vw）';
-                else if (modeClass === WidgetBoardModal.MODES.CENTER_THIRD) buttonText = '中央パネル（33vw）';
-                else if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) buttonText = 'カスタム幅';
+                if (modeClass === WidgetBoardModal.MODES.RIGHT_THIRD) buttonText = t(lang, 'rightPanel33');
+                else if (modeClass === WidgetBoardModal.MODES.RIGHT_HALF) buttonText = t(lang, 'rightPanel50');
+                else if (modeClass === WidgetBoardModal.MODES.RIGHT_TWO_THIRD) buttonText = t(lang, 'rightPanel66');
+                else if (modeClass === WidgetBoardModal.MODES.RIGHT_OUTER) buttonText = t(lang, 'rightSplitOuter');
+                else if (modeClass === WidgetBoardModal.MODES.LEFT_TWO_THIRD) buttonText = t(lang, 'leftPanel66');
+                else if (modeClass === WidgetBoardModal.MODES.LEFT_HALF) buttonText = t(lang, 'leftPanel50');
+                else if (modeClass === WidgetBoardModal.MODES.LEFT_THIRD) buttonText = t(lang, 'leftPanel33');
+                else if (modeClass === WidgetBoardModal.MODES.LEFT_OUTER) buttonText = t(lang, 'leftSplitOuter');
+                else if (modeClass === WidgetBoardModal.MODES.CENTER_HALF) buttonText = t(lang, 'centerPanel50');
+                else if (modeClass === WidgetBoardModal.MODES.CENTER_THIRD) buttonText = t(lang, 'centerPanel33');
+                else if (modeClass === WidgetBoardModal.MODES.CUSTOM_WIDTH) buttonText = t(lang, 'modal.panel.customWidth');
 
                 const button = groupDiv.createEl('button', { text: buttonText });
                 button.dataset.mode = modeClass;
@@ -408,7 +408,7 @@ export class WidgetBoardModal {
         });
 
         const anchors: Array<{ key: 'left' | 'center' | 'right', label: string }> = [
-            { key: 'left', label: '左' }, { key: 'center', label: '中央' }, { key: 'right', label: '右' }
+            { key: 'left', label: t(lang, 'left') }, { key: 'center', label: t(lang, 'center') }, { key: 'right', label: t(lang, 'right') }
         ];
         anchors.forEach(anchorObj => {
             const anchorBtn = customWidthAnchorBtnContainer.createEl('button', { text: anchorObj.label });
@@ -428,7 +428,7 @@ export class WidgetBoardModal {
 
         // --- ウィジェット設定アコーディオン内にウィジェット追加ボタンのみ配置 ---
         const addWidgetContainer = widgetBody.createDiv({ cls: 'wb-add-widget-container' });
-        const addWidgetBtn = addWidgetContainer.createEl('button', { text: '＋ ウィジェット追加', cls: 'wb-add-widget-btn' });
+        const addWidgetBtn = addWidgetContainer.createEl('button', { text: t(lang, 'modal.panel.addWidget'), cls: 'wb-add-widget-btn' });
         addWidgetBtn.onclick = () => {
             new AddWidgetModal(this.plugin.app, this.plugin, this.currentBoardId, () => {
                 const widgetContainerEl = this.contentEl.querySelector('.wb-widget-container');
