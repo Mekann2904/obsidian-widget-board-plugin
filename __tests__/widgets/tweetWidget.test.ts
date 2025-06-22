@@ -12,6 +12,11 @@ describe('TweetWidget', () => {
     vault: {
       adapter: { exists: jest.fn(), mkdir: jest.fn(), read: jest.fn(), write: jest.fn() },
       getFiles: jest.fn(() => []),
+      getAbstractFileByPath: jest.fn(() => null),
+      createFolder: jest.fn(),
+      create: jest.fn(),
+      modify: jest.fn(),
+      createBinary: jest.fn(),
     },
     workspace: { getActiveFile: jest.fn(() => ({ path: 'active.md' })) },
   } as any;
@@ -325,7 +330,7 @@ describe('TweetWidget', () => {
 
   it('ファイル書き込み失敗時にクラッシュしない', async () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (dummyApp.vault.adapter.write as jest.Mock).mockRejectedValueOnce(new Error('Disk full'));
+    (dummyApp.vault.create as jest.Mock).mockRejectedValueOnce(new Error('Disk full'));
 
     const widget = new TweetWidget();
     widget.create(dummyConfig, dummyApp, dummyPlugin);
