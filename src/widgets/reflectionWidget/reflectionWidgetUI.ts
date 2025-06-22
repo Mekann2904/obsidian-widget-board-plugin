@@ -426,6 +426,10 @@ export class ReflectionWidgetUI {
                         if (this.chartImgEl) this.chartImgEl.style.display = 'none';
                         const ctx = this.canvasEl.getContext('2d');
                         if (ctx) {
+            const style = getComputedStyle(document.documentElement);
+            const lineColor = style.getPropertyValue("--tweet-chart-line-color").trim() || "#4a90e2";
+            const fillColor = style.getPropertyValue("--tweet-chart-fill-color").trim() || "rgba(74,144,226,0.15)";
+            const gridColor = style.getPropertyValue("--tweet-chart-grid-color").trim() || "#eee";
                             if (Chart) {
                                 this.chart = new Chart(ctx, {
                                     type: 'line',
@@ -434,8 +438,8 @@ export class ReflectionWidgetUI {
                                         datasets: [{
                                             label: '投稿数',
                                             data: counts,
-                                            borderColor: '#4a90e2',
-                                            backgroundColor: 'rgba(74,144,226,0.15)',
+                                            borderColor: lineColor,
+                                            backgroundColor: fillColor,
                                             fill: true,
                                             tension: 0.3,
                                             pointRadius: 3,
@@ -450,7 +454,7 @@ export class ReflectionWidgetUI {
                                                 grid: { display: false },
                                                 ticks: { maxTicksLimit: 5 }
                                             },
-                                            y: { beginAtZero: true, grid: { color: '#eee' } }
+                                            y: { beginAtZero: true, grid: { color: gridColor } }
                                         }
                                     }
                                 });
