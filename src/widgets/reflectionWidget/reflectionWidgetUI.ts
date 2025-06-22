@@ -260,9 +260,9 @@ export class ReflectionWidgetUI {
             const settings = this.config.settings as ReflectionWidgetSettings;
             if (settings.aiSummaryManualEnabled) {
                 const manualBtnContainer = document.createElement('div');
-                manualBtnContainer.style.textAlign = 'center';
-                manualBtnContainer.style.marginTop = '16px';
+                manualBtnContainer.classList.add('manual-button-container');
                 this.manualBtnEl = document.createElement('button');
+                this.manualBtnEl.classList.add('manual-button');
                 this.manualBtnEl.innerText = t(this.plugin.settings.language || 'ja', 'generateSummary');
                 const trigger = () => this.runSummary(true);
                 this.manualBtnEl.onclick = trigger;
@@ -549,8 +549,8 @@ export class ReflectionWidgetUI {
         // 手動発火ボタン（初回のみ生成）
         if (manualEnabled && this.aiSummarySectionEl && !this.manualBtnEl) {
             this.manualBtnEl = document.createElement('button');
+            this.manualBtnEl.classList.add('manual-button');
             this.manualBtnEl.innerText = t(this.plugin.settings.language || 'ja', 'generateSummary');
-            this.manualBtnEl.style.margin = '10px 0 0 0';
             this.manualBtnEl.onclick = async () => {
                 this.manualBtnEl!.disabled = true;
                 this.manualBtnEl!.innerText = t(this.plugin.settings.language || 'ja', 'generating');

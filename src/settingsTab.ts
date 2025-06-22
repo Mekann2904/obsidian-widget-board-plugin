@@ -171,8 +171,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 slider.setLimits(0, 1, 0.01)
                     .setValue(this.plugin.settings.pomodoroNotificationVolume ?? 0.2);
                 const valueLabel = document.createElement('span');
-                valueLabel.style.marginLeft = '12px';
-                valueLabel.style.fontWeight = 'bold';
+                valueLabel.classList.add('value-label');
                 valueLabel.textContent = String((this.plugin.settings.pomodoroNotificationVolume ?? 0.2).toFixed(2));
                 slider.sliderEl.parentElement?.appendChild(valueLabel);
                 slider.onChange(async (value) => {
@@ -254,8 +253,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 slider.setLimits(0, 1, 0.01)
                     .setValue(this.plugin.settings.timerStopwatchNotificationVolume ?? 0.5);
                 const valueLabel = document.createElement('span');
-                valueLabel.style.marginLeft = '12px';
-                valueLabel.style.fontWeight = 'bold';
+                valueLabel.classList.add('value-label');
                 valueLabel.textContent = String((this.plugin.settings.timerStopwatchNotificationVolume ?? 0.5).toFixed(2));
                 slider.sliderEl.parentElement?.appendChild(valueLabel);
                 slider.onChange(async (value) => {
@@ -282,7 +280,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                 const toggleBtn = document.createElement('button');
                 toggleBtn.type = 'button';
                 toggleBtn.textContent = t(lang, 'show');
-                toggleBtn.style.marginLeft = '8px';
+                toggleBtn.classList.add('toggle-button');
                 toggleBtn.onclick = () => {
                     if (text.inputEl.type === 'password') {
                         text.inputEl.type = 'text';
