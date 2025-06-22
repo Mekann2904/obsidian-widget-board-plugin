@@ -574,6 +574,8 @@ export class TweetWidgetUI {
         layer.appendChild(closeBtn);
         imgEl.style.transform = "scale(1)";
         imgEl.style.cursor = 'zoom-in';
+        // track zoom state locally
+        let isZoomed = false;
         imgEl.addEventListener('click', (e) => {
             e.stopPropagation();
             isZoomed = !isZoomed;
