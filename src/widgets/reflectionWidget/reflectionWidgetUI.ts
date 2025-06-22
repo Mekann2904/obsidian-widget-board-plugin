@@ -50,9 +50,6 @@ function getLastNDays(n: number): string[] {
 async function generateSummary(posts: TweetWidgetPost[], prompt: string, plugin: WidgetBoardPlugin): Promise<string> {
     if (!plugin.llmManager) return t(plugin.settings.language || 'ja', 'llmNotInitialized');
     const context = JSON.parse(JSON.stringify(plugin.settings.llm || {}));
-    if (context.gemini && context.gemini.apiKey) {
-        context.apiKey = deobfuscate(context.gemini.apiKey);
-    }
     if (plugin.settings.reflectionAiModel) {
         context.model = plugin.settings.reflectionAiModel;
     }

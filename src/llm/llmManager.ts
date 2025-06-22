@@ -1,4 +1,5 @@
 import type WidgetBoardPlugin from '../main';
+import { deobfuscate } from '../utils';
 
 export interface LLMContext extends Record<string, unknown> {
   plugin: WidgetBoardPlugin;
@@ -36,10 +37,12 @@ export class LLMManager {
     if (!defaultProvider) throw new Error('LLM provider not found');
 
     const settings = this.plugin.settings.llm?.gemini;
+    const apiKey = settings?.apiKey ? deobfuscate(settings.apiKey) : '';
+
     const llmContext: LLMContext = {
       ...context,
-      apiKey: settings?.apiKey || '',
-      model: settings?.model,
+      apiKey: apiKey,
+      model: (context.model as string) || settings?.model,
       plugin: this.plugin,
     };
     return defaultProvider.generateReply(prompt, llmContext);

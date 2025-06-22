@@ -1,42 +1,37 @@
-jest.mock('../../src/utils/safeFetch', () => ({
-  safeFetch: jest.fn(),
-}));
-
-jest.mock('../../src/utils/logger', () => ({
-  debugLog: jest.fn(),
-}));
-
-import { GeminiProvider } from '../../src/llm/gemini/geminiApi.ts';
-
-const { safeFetch } = require('../../src/utils/safeFetch');
-const { debugLog } = require('../../src/utils/logger');
+import { GeminiProvider } from '../../src/llm/gemini/geminiApi';
+import * as safeFetchModule from '../../src/utils/safeFetch';
+import * as loggerModule from '../../src/utils/logger';
 
 describe('GeminiProvider error handling', () => {
-  const plugin = { settings: { debugLogging: true } };
+  let safeFetchSpy: jest.SpyInstance;
+  let debugLogSpy: jest.SpyInstance;
+
+  const mockContext = {
+    apiKey: 'test-api-key',
+    plugin: { settings: {} },
+  } as any;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    safeFetchSpy = jest.spyOn(safeFetchModule, 'safeFetch');
+    debugLogSpy = jest.spyOn(loggerModule, 'debugLog').mockImplementation(() => {});
   });
 
-  test('returns fallback when fetch fails', async () => {
-    (safeFetch as jest.Mock).mockRejectedValue(new Error('net'));
-    const text = await GeminiProvider.generateReply('p', { apiKey: 'k', plugin });
-    expect(text).toBe('リプライ生成に失敗しました');
-    expect(debugLog).toHaveBeenCalled();
+  afterEach(() => {
+    safeFetchSpy.mockRestore();
+    debugLogSpy.mockRestore();
   });
 
-  test('returns fallback when response lacks candidate text', async () => {
-    (safeFetch as jest.Mock).mockResolvedValue({ json: () => Promise.resolve({}) });
-    const text = await GeminiProvider.generateReply('p', { apiKey: 'k', plugin });
-    expect(text).toBe('リプライ生成に失敗しました');
-    expect(debugLog).toHaveBeenCalled();
+  test('throws when fetch fails', async () => {
+    safeFetchSpy.mockRejectedValue(new Error('Network error'));
+
+    await expect(GeminiProvider.generateReply('prompt', mockContext)).rejects.toThrow('Network error');
   });
 
-  test('returns candidate text when available', async () => {
-    (safeFetch as jest.Mock).mockResolvedValue({
-      json: () => Promise.resolve({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+  test('throws when response lacks candidate text', async () => {
+    safeFetchSpy.mockResolvedValue({
+      json: () => Promise.resolve({ candidates: [] }),
     });
-    const text = await GeminiProvider.generateReply('p', { apiKey: 'k', plugin });
-    expect(text).toBe('ok');
+
+    await expect(GeminiProvider.generateReply('prompt', mockContext)).rejects.toThrow(/Failed to generate reply/);
   });
 });

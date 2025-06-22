@@ -39,13 +39,14 @@ export const GeminiProvider: LLMProvider = {
       const json = await res.json();
       const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) {
-        debugLog(context.plugin, 'GeminiProvider: missing text', json);
-        return 'リプライ生成に失敗しました';
+        debugLog(context.plugin, 'GeminiProvider: missing text in response', json);
+        const errorDetails = JSON.stringify(json, null, 2);
+        throw new Error(`Failed to generate reply. Response was: ${errorDetails}`);
       }
       return text;
     } catch (e) {
       debugLog(context.plugin, 'GeminiProvider error', e);
-      return 'リプライ生成に失敗しました';
+      throw e;
     }
   }
 };

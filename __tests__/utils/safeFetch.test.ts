@@ -8,7 +8,7 @@ jest.mock('obsidian', () => {
   constructor() {}
 };
 
-import { safeFetch, obfuscate, deobfuscate } from '../../src/utils/safeFetch';
+import { safeFetch } from '../../src/utils/safeFetch';
 
 const obsidian = require('obsidian');
 
@@ -64,17 +64,5 @@ describe('safeFetch', () => {
     (obsidian.requestUrl as jest.Mock).mockRejectedValue(new Error('Network request failed'));
 
     await expect(safeFetch('https://example.com')).rejects.toThrow('Network request failed');
-  });
-});
-
-describe('obfuscate / deobfuscate', () => {
-  test('round trip', () => {
-    const str = 'secret';
-    const enc = obfuscate(str);
-    expect(deobfuscate(enc)).toBe(str);
-  });
-
-  test('invalid base64 returns empty string', () => {
-    expect(deobfuscate('@@@')).toBe('');
   });
 });

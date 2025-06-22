@@ -5,3 +5,4 @@ export * from './mermaidRenderWorkerClient';
 export * from './consoleWarnFilter';
 export * from './date';
 export * from './dom';
+export * from './deobfuscate';
