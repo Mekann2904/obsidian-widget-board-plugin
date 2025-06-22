@@ -139,7 +139,12 @@ export async function renderMarkdownBatchSegmentedWithCache(
 
   async function processNextSegment() {
     const seg = segments.shift();
-    if (!seg) return; // 全部終わり
+    if (seg === undefined) {
+      // すべてのセグメントの処理が完了したらポートを閉じる
+      channel.port1.close();
+      channel.port2.close();
+      return;
+    }
 
     // --- キャッシュチェック ---
     const cached = segmentCache.get(seg);
@@ -151,9 +156,12 @@ export async function renderMarkdownBatchSegmentedWithCache(
       container.appendChild(frag);
     }
 
-    // 次のセグメントがあればキュー
-    if (segments.length) {
+    // 次のセグメントがあればキューイングし、なければポートを閉じる
+    if (segments.length > 0) {
       channel.port2.postMessage(undefined);
+    } else {
+      channel.port1.close();
+      channel.port2.close();
     }
   }
 
