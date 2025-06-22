@@ -841,9 +841,8 @@ export class TweetWidgetUI {
             }
         }
         // Vault内画像のパスをgetResourcePathでURLに変換
-        const vaultFiles = this.app.vault.getFiles();
-        // デバッグモード判定（なければfalse）
         const debugLogging = this.widget?.plugin?.settings?.debugLogging === true;
+        const vaultFiles = debugLogging ? this.app.vault.getFiles() : [];
         replacedText = replacedText.replace(/!\[\[(.+?)\]\]/g, (match, p1) => {
             let fileName = p1;
             try {
@@ -853,7 +852,10 @@ export class TweetWidgetUI {
             if (debugLogging) {
                 debugLog(this.widget?.plugin, '[tweetWidgetUI] 画像置換: p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
             }
-            const f = vaultFiles.find(f => f.name === fileName || f.path === fileName || f.path === p1 || f.name === p1);
+            let f = this.app.vault.getFileByPath(p1) || this.app.vault.getFileByPath(fileName);
+            if (!f) {
+                f = vaultFiles.find(v => v.name === fileName || v.name === p1) || null;
+            }
             if (f) {
                 if (debugLogging) debugLog(this.widget?.plugin, '[tweetWidgetUI] マッチしたファイル:', f);
                 const url = this.app.vault.getResourcePath(f);
@@ -872,7 +874,10 @@ export class TweetWidgetUI {
             if (debugLogging) {
                 debugLog(this.widget?.plugin, '[tweetWidgetUI] 画像置換 (md): p1=', p1, 'fileName=', fileName, 'vaultFiles=', vaultFiles.map(f => ({name: f.name, path: f.path})));
             }
-            const f = vaultFiles.find(f => f.name === fileName || f.path === fileName || f.path === p1 || f.name === p1);
+            let f = this.app.vault.getFileByPath(p1) || this.app.vault.getFileByPath(fileName);
+            if (!f) {
+                f = vaultFiles.find(v => v.name === fileName || v.name === p1) || null;
+            }
             if (f) {
                 if (debugLogging) debugLog(this.widget?.plugin, '[tweetWidgetUI] マッチしたファイル (md):', f);
                 const url = this.app.vault.getResourcePath(f);

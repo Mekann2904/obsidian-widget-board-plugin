@@ -529,7 +529,7 @@ export class TweetWidget implements WidgetImplementation {
             const bin = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
             await this.app.vault.createBinary(vaultPath, bin);
             // Vaultファイルを取得し、getResourcePathでURLを取得
-            const vaultFile = this.app.vault.getFiles().find(f => f.path === vaultPath);
+            const vaultFile = this.app.vault.getFileByPath(vaultPath);
             let url = '';
             if (vaultFile) {
                 url = this.app.vault.getResourcePath(vaultFile);

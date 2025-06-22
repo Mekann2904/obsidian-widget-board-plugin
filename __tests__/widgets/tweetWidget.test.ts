@@ -12,6 +12,7 @@ describe('TweetWidget', () => {
     vault: {
       adapter: { exists: jest.fn(), mkdir: jest.fn(), read: jest.fn(), write: jest.fn() },
       getFiles: jest.fn(() => []),
+      getFileByPath: jest.fn(() => null),
     },
     workspace: { getActiveFile: jest.fn(() => ({ path: 'active.md' })) },
   } as any;
