@@ -166,4 +166,68 @@ describe('TimerStopwatchWidget', () => {
     // 仮に順序を保存する関数があればここで呼ぶ（例: saveWidgetOrder）
     // expect(saveWidgetOrder()).toEqual(['w2', 'w1']);
   });
-}); 
+
+  it('formatTimeが正しくmm:ss形式を返す', () => {
+    const widget = new TimerStopwatchWidget();
+    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    expect((widget as any).formatTime(0)).toBe('00:00');
+    expect((widget as any).formatTime(70)).toBe('01:10');
+    expect((widget as any).formatTime(3599)).toBe('59:59');
+  });
+
+  describe('openBoardIfClosed', () => {
+    it('全て閉じている場合はボードを開く', () => {
+      const plugin = {
+        settings: {
+          language: 'ja',
+          boards: [{ id: 'b1', widgets: [{ id: dummyConfig.id }] }],
+        },
+        boardManager: {
+          widgetBoardModals: new Map([['b1', { isOpen: false }]]),
+        },
+        openWidgetBoardById: jest.fn(),
+        openBoardPicker: jest.fn(),
+      } as any;
+      const widget = new TimerStopwatchWidget();
+      widget.create(dummyConfig, dummyApp, plugin);
+      (widget as any).openBoardIfClosed();
+      expect(plugin.openWidgetBoardById).toHaveBeenCalledWith('b1');
+      expect(plugin.openBoardPicker).not.toHaveBeenCalled();
+    });
+
+    it('ボードが見つからない場合はピッカーを開く', () => {
+      const plugin = {
+        settings: { language: 'ja', boards: [] },
+        boardManager: {
+          widgetBoardModals: new Map([['x', { isOpen: false }]]),
+        },
+        openWidgetBoardById: jest.fn(),
+        openBoardPicker: jest.fn(),
+      } as any;
+      const widget = new TimerStopwatchWidget();
+      widget.create(dummyConfig, dummyApp, plugin);
+      (widget as any).openBoardIfClosed();
+      expect(plugin.openWidgetBoardById).not.toHaveBeenCalled();
+      expect(plugin.openBoardPicker).toHaveBeenCalled();
+    });
+
+    it('モーダルが開いている場合は何もしない', () => {
+      const plugin = {
+        settings: {
+          language: 'ja',
+          boards: [{ id: 'b1', widgets: [{ id: dummyConfig.id }] }],
+        },
+        boardManager: {
+          widgetBoardModals: new Map([['b1', { isOpen: true }]]),
+        },
+        openWidgetBoardById: jest.fn(),
+        openBoardPicker: jest.fn(),
+      } as any;
+      const widget = new TimerStopwatchWidget();
+      widget.create(dummyConfig, dummyApp, plugin);
+      (widget as any).openBoardIfClosed();
+      expect(plugin.openWidgetBoardById).not.toHaveBeenCalled();
+      expect(plugin.openBoardPicker).not.toHaveBeenCalled();
+    });
+  });
+});
