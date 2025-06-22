@@ -131,7 +131,17 @@ describe('AI prompt integration', () => {
       ),
       write: jest.fn(),
     };
-    const app = { vault: { adapter, getAbstractFileByPath: jest.fn((p: string) => p === 'tweets.json' ? file : null), read: adapter.read, create: jest.fn(), modify: jest.fn(), createFolder: jest.fn() } } as unknown as App;
+    const app = {
+      vault: {
+        adapter,
+        getFileByPath: jest.fn((p: string) => (p === 'tweets.json' ? file : null)),
+        getAbstractFileByPath: jest.fn((p: string) => (p === 'tweets.json' ? file : null)),
+        read: adapter.read,
+        create: jest.fn(),
+        process: jest.fn(),
+        createFolder: jest.fn(),
+      },
+    } as unknown as App;
     const plugin = {
       settings: {
         weekStartDay: 1,
@@ -168,17 +178,24 @@ describe('AI prompt integration', () => {
     const file = new TFile();
     const adapter = {
       exists: jest.fn().mockResolvedValue(true),
+      read: jest.fn(),
+      write: jest.fn(),
+    };
+    const vault = {
+      adapter,
+      getFileByPath: jest.fn((p: string) => (p === 'data.json' ? file : null)),
       read: jest.fn().mockResolvedValue(
         JSON.stringify({ reflectionSummaries: { today: { date: 'd', summary: 's', html: '<p>s</p>', postCount: 1 } } })
       ),
-      write: jest.fn(),
+      process: jest.fn(),
+      create: jest.fn(),
     };
-    const app = { vault: { adapter, getAbstractFileByPath: jest.fn((p: string) => p === 'data.json' ? file : null), read: adapter.read, create: jest.fn(), modify: jest.fn(), createFolder: jest.fn() } } as unknown as App;
+    const app = { vault } as unknown as App;
 
     const res1 = await loadReflectionSummaryShared('today', 'd', app);
-    expect(adapter.read).toHaveBeenCalledTimes(1);
+    expect(vault.read).toHaveBeenCalledTimes(1);
     const res2 = await loadReflectionSummaryShared('today', 'd', app);
-    expect(adapter.read).toHaveBeenCalledTimes(1);
+    expect(vault.read).toHaveBeenCalledTimes(1);
     expect(res2).toEqual(res1);
   });
 });

@@ -79,11 +79,14 @@ export class PrewarmManager {
 
             async function loadReflectionSummary(type: 'today' | 'week', dateKey: string, app: App): Promise<string | null> {
                 const path = 'data.json';
+                const file = app.vault.getFileByPath(path);
                 try {
-                    const raw = await app.vault.adapter.read(path);
-                    const data = JSON.parse(raw);
-                    if (data.reflectionSummaries && data.reflectionSummaries[type]?.date === dateKey) {
-                        return data.reflectionSummaries[type].summary;
+                    if (file) {
+                        const raw = await app.vault.read(file);
+                        const data = JSON.parse(raw);
+                        if (data.reflectionSummaries && data.reflectionSummaries[type]?.date === dateKey) {
+                            return data.reflectionSummaries[type].summary;
+                        }
                     }
                 } catch {
                     // ignore error if file doesn't exist

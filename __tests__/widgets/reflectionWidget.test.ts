@@ -22,10 +22,10 @@ describe('ReflectionWidget 詳細テスト', () => {
           read: jest.fn().mockResolvedValue('{"posts": [], "scheduledPosts": []}'),
           write: jest.fn(),
         },
-        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
-        modify: jest.fn(),
+        process: jest.fn(),
         createFolder: jest.fn(),
       },
     };
@@ -91,10 +91,10 @@ describe('ReflectionWidget 設定値テスト', () => {
     dummyApp = {
       vault: {
         adapter: { exists: jest.fn().mockResolvedValue(true), read: jest.fn().mockResolvedValue('{}'), write: jest.fn() },
-        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
-        modify: jest.fn(),
+        process: jest.fn(),
         createFolder: jest.fn(),
       }
     };
@@ -149,10 +149,10 @@ describe('ReflectionWidget プリロードバンドルテスト', () => {
           read: jest.fn().mockResolvedValue('{"posts": [], "scheduledPosts": []}'),
           write: jest.fn(),
         },
-        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
-        modify: jest.fn(),
+        process: jest.fn(),
         createFolder: jest.fn(),
       },
     };
@@ -198,10 +198,10 @@ describe('ReflectionWidget UI統合テスト', () => {
           read: jest.fn().mockResolvedValue('{"posts": [], "scheduledPosts": []}'),
           write: jest.fn()
         },
-        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
-        modify: jest.fn(),
+        process: jest.fn(),
         createFolder: jest.fn()
       }
     };
@@ -281,10 +281,10 @@ describe('ReflectionWidget データ永続化テスト', () => {
           read: jest.fn().mockResolvedValue('{"reflectionSummaries": {}}'),
           write: jest.fn().mockResolvedValue(undefined)
         },
-        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
-        modify: jest.fn(),
+        process: jest.fn(),
         createFolder: jest.fn()
       }
     };
@@ -299,10 +299,10 @@ describe('ReflectionWidget データ永続化テスト', () => {
           read: jest.fn().mockResolvedValue('{"reflectionSummaries": {}}'),
           write: jest.fn().mockResolvedValue(undefined)
         },
-        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
-        modify: jest.fn(),
+        process: jest.fn(),
         createFolder: jest.fn()
       }
     } as unknown as App;
@@ -317,7 +317,7 @@ describe('ReflectionWidget データ永続化テスト', () => {
       (widget['ui'] as any).app = mockApp;
 
       await widget['ui']['runSummary'](true);
-      expect(mockApp.vault.adapter.write).toHaveBeenCalled();
+      expect(mockApp.vault.process).toHaveBeenCalled();
     }
   });
 
@@ -329,10 +329,10 @@ describe('ReflectionWidget データ永続化テスト', () => {
           read: jest.fn().mockRejectedValue(new Error('File not found')),
           write: jest.fn().mockResolvedValue(undefined)
         },
-        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
-        modify: jest.fn(),
+        process: jest.fn(),
         createFolder: jest.fn()
       }
     } as unknown as App;
@@ -361,10 +361,10 @@ describe('ReflectionWidget パフォーマンステスト', () => {
                 read: jest.fn().mockResolvedValue('{}'),
                 write: jest.fn(),
             },
-            getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+            getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
             read: jest.fn(),
             create: jest.fn(),
-            modify: jest.fn(),
+            process: jest.fn(),
             createFolder: jest.fn(),
         },
     };
@@ -435,10 +435,10 @@ describe('ReflectionWidget エラーハンドリングテスト', () => {
           read: jest.fn().mockResolvedValue('{"posts": [], "scheduledPosts": []}'),
           write: jest.fn()
         },
-        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
-        modify: jest.fn(),
+        process: jest.fn(),
         createFolder: jest.fn()
       }
     };
@@ -527,6 +527,11 @@ describe('ReflectionWidget アクセシビリティテスト', () => {
           read: jest.fn().mockResolvedValue('{"posts": [], "scheduledPosts": []}'),
           write: jest.fn(),
         },
+        getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        read: jest.fn(),
+        create: jest.fn(),
+        process: jest.fn(),
+        createFolder: jest.fn(),
       },
     };
     dummyPlugin = { settings: { weekStartDay: 1 } };

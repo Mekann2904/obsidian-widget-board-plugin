@@ -81,16 +81,23 @@ async function saveReflectionSummary(
 ) {
     const path = 'data.json';
     let data: Record<string, unknown> = {};
+    const file = app.vault.getFileByPath(path);
     try {
-        const raw = await app.vault.adapter.read(path);
-        data = JSON.parse(raw);
+        if (file) {
+            const raw = await app.vault.read(file);
+            data = JSON.parse(raw);
+        }
     } catch {
         // ignore
     }
     const dataObj = data as { reflectionSummaries?: Record<string, unknown> };
     if (!dataObj.reflectionSummaries) dataObj.reflectionSummaries = {};
     dataObj.reflectionSummaries[type] = { date: dateKey, summary, html, postCount };
-    await app.vault.adapter.write(path, JSON.stringify(data, null, 2));
+    if (file) {
+        await app.vault.process(file, () => JSON.stringify(data, null, 2));
+    } else {
+        await app.vault.create(path, JSON.stringify(data, null, 2));
+    }
     aiSummaryMemoryCache[`${type}:${dateKey}`] = Promise.resolve({
         summary,
         html,
@@ -107,15 +114,18 @@ async function loadReflectionSummary(
     app: App
 ): Promise<{summary: string|null, html: string|null, postCount: number}> {
     const path = 'data.json';
+    const file = app.vault.getFileByPath(path);
     try {
-        const raw = await app.vault.adapter.read(path);
-        const data = JSON.parse(raw);
-        if (data.reflectionSummaries && data.reflectionSummaries[type]?.date === dateKey) {
-            return {
-                summary: data.reflectionSummaries[type].summary ?? null,
-                html: data.reflectionSummaries[type].html ?? null,
-                postCount: data.reflectionSummaries[type].postCount ?? 0
-            };
+        if (file) {
+            const raw = await app.vault.read(file);
+            const data = JSON.parse(raw);
+            if (data.reflectionSummaries && data.reflectionSummaries[type]?.date === dateKey) {
+                return {
+                    summary: data.reflectionSummaries[type].summary ?? null,
+                    html: data.reflectionSummaries[type].html ?? null,
+                    postCount: data.reflectionSummaries[type].postCount ?? 0
+                };
+            }
         }
     } catch {
         // ignore
