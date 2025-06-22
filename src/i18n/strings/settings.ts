@@ -1,12 +1,12 @@
 export const SETTINGS_PANE_STRINGS = {
   settingTabHeading: {
-    ja: 'ウィジェットボード設定',
-    en: 'Widget board settings',
-    zh: '小组件看板设置',
-    es: 'Configuración del Tablero de Widgets',
-    de: 'Widget-Board-Einstellungen',
-    fr: 'Paramètres du tableau de bord des widgets',
-    ko: '위젯 보드 설정',
+    ja: 'ウィジェットボード',
+    en: 'Widget board',
+    zh: '小组件看板',
+    es: 'Tablero de Widgets',
+    de: 'Widget-Board',
+    fr: 'Tableau de bord des widgets',
+    ko: '위젯 보드',
   },
   languageSetting: {
     ja: '表示言語',
