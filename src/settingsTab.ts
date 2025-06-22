@@ -43,7 +43,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         containerEl.empty();
         const lang: Language = this.plugin.settings.language || 'ja';
 
-        new Setting(containerEl).setName(t(lang, 'settingTabHeading')).setHeading();
+        
         // --- ベースフォルダ入力欄 ---
         const baseFolderSetting = new Setting(containerEl)
             .setName(t(lang, 'baseFolderGlobal'))
