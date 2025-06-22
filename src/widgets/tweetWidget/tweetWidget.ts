@@ -425,7 +425,7 @@ export class TweetWidget implements WidgetImplementation {
             const sanitizedText = post.text.slice(0, 30).replace(/[\\/:*?"<>|#[\]]/g, '').trim();
             const contextFolder = this.plugin.settings.baseFolder ? `${this.plugin.settings.baseFolder}/ContextNotes` : 'ContextNotes';
             
-            if (!await this.app.vault.adapter.exists(contextFolder)) {
+            if (!this.app.vault.getAbstractFileByPath(contextFolder)) {
                 await this.app.vault.createFolder(contextFolder);
             }
             notePath = `${contextFolder}/${date}-${sanitizedText || 'note'}.md`;
@@ -436,7 +436,7 @@ export class TweetWidget implements WidgetImplementation {
         if (file instanceof TFile) {
             this.app.workspace.getLeaf(true).openFile(file);
         } else {
-             if (!await this.app.vault.adapter.exists(notePath)) {
+             if (!file) {
                 await this.app.vault.create(notePath, `> ${post.text}\n\n---\n\n`);
                 const newFile = this.app.vault.getAbstractFileByPath(notePath);
                 if (newFile instanceof TFile) {
@@ -516,8 +516,8 @@ export class TweetWidget implements WidgetImplementation {
         const tweetDbPath = this.getTweetDbPath();
         const baseDir = tweetDbPath.lastIndexOf('/') !== -1 ? tweetDbPath.substring(0, tweetDbPath.lastIndexOf('/')) : '';
         const imagesDir = baseDir ? `${baseDir}/tweet-widget-files` : 'tweet-widget-files';
-        if (!(await this.app.vault.adapter.exists(imagesDir))) {
-            await this.app.vault.adapter.mkdir(imagesDir);
+        if (!this.app.vault.getAbstractFileByPath(imagesDir)) {
+            await this.app.vault.createFolder(imagesDir);
         }
         let insertedLinks: string[] = [];
         for (const file of files) {
@@ -529,7 +529,7 @@ export class TweetWidget implements WidgetImplementation {
             const bin = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
             await this.app.vault.createBinary(vaultPath, bin);
             // Vaultファイルを取得し、getResourcePathでURLを取得
-            const vaultFile = this.app.vault.getFiles().find(f => f.path === vaultPath);
+            const vaultFile = this.app.vault.getFileByPath(vaultPath);
             let url = '';
             if (vaultFile) {
                 url = this.app.vault.getResourcePath(vaultFile);
