@@ -94,37 +94,37 @@ describe('i18nカテゴリ統合テスト', () => {
     // COMMON_STRINGS
     'show': { ja: '表示', en: 'Show' },
     // SETTINGS_PANE_STRINGS
-    'settingTabHeading': { ja: 'ウィジェットボード', en: 'Widget board' },
+    'settingTabHeading': { ja: 'ウィジェットボード設定', en: 'Widget board settings' },
     // POMODORO_STRINGS
-    'addPomodoro': { ja: 'ポモドーロ追加', en: 'Add Pomodoro' },
+    'addPomodoro': { ja: 'ポモドーロ追加', en: 'Add pomodoro' },
     // MEMO_STRINGS
-    'addMemo': { ja: 'メモ追加', en: 'Add Memo' },
+    'addMemo': { ja: 'メモ追加', en: 'Add memo' },
     // CALENDAR_STRINGS
-    'addCalendar': { ja: 'カレンダー追加', en: 'Add Calendar' },
+    'addCalendar': { ja: 'カレンダー追加', en: 'Add calendar' },
     // TWEET_STRINGS
-    'addTweetWidget': { ja: 'つぶやき追加', en: 'Add Tweet' },
+    'addTweetWidget': { ja: 'つぶやき追加', en: 'Add tweet' },
     // REFLECTION_WIDGET_STRINGS
-    'addReflectionWidget': { ja: '振り返りレポート', en: 'Add Reflection Report' },
+    'addReflectionWidget': { ja: '振り返りレポート', en: 'Add reflection report' },
     // LLM_STRINGS
-    'geminiApiKey': { ja: 'Gemini APIキー', en: 'Gemini API Key' },
+    'geminiApiKey': { ja: 'Gemini APIキー', en: 'Gemini API key' },
     // BOARD_MANAGEMENT_STRINGS
-    'boardManagement': { ja: 'ボード管理', en: 'Board Management' },
+    'boardManagement': { ja: 'ボード管理', en: 'Board management' },
     // BOARD_GROUP_STRINGS
-    'addNewGroup': { ja: '新しいグループを追加', en: 'Add New Group' },
+    'addNewGroup': { ja: '新しいグループを追加', en: 'Add new group' },
     // WIDGET_MANAGEMENT_STRINGS
-    'widgetManagement': { ja: 'ウィジェット管理', en: 'Widget Management' },
+    'widgetManagement': { ja: 'ウィジェット管理', en: 'Widget management' },
     // ERROR_MESSAGES
     'vaultRelativePathOnly': { ja: 'Vault内の相対パスのみ指定できます。絶対パスやVault外は不可です。', en: 'Only relative paths within the Vault are allowed. Absolute paths or outside the Vault are not permitted.' },
     // MAIN_STRINGS
-    'openWidgetBoard': { ja: 'ウィジェットボードを開く', en: 'Open Widget Board' },
+    'openWidgetBoard': { ja: 'ウィジェットボードを開く', en: 'Open widget board' },
     // RECENT_NOTES_STRINGS
-    'addRecentNotes': { ja: '最近編集したノート', en: 'Add Recent Notes' },
+    'addRecentNotes': { ja: '最近編集したノート', en: 'Add recent notes' },
     // THEME_SWITCHER_STRINGS
-    'addThemeSwitcher': { ja: 'テーマ切り替え', en: 'Add Theme Switcher' },
+    'addThemeSwitcher': { ja: 'テーマ切り替え', en: 'Add theme switcher' },
     // TIMER_STRINGS
-    'addTimerStopwatch': { ja: 'タイマー／ストップウォッチ', en: 'Add Timer/Stopwatch' },
+    'addTimerStopwatch': { ja: 'タイマー／ストップウォッチ', en: 'Add timer/stopwatch' },
     // FILE_VIEW_STRINGS
-    'addFileView': { ja: 'ファイルビューア追加', en: 'Add File Viewer' },
+    'addFileView': { ja: 'ファイルビューア追加', en: 'Add file viewer' },
   };
 
   Object.entries(testCases).forEach(([key, translations]) => {

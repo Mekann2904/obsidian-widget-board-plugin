@@ -1,7 +1,7 @@
 export const POMODORO_STRINGS = {
   addPomodoro: {
     ja: 'ポモドーロ追加',
-    en: 'Add Pomodoro',
+    en: 'Add pomodoro',
     zh: '添加番茄钟',
     es: 'Añadir Pomodoro',
     de: 'Pomodoro hinzufügen',
@@ -10,7 +10,7 @@ export const POMODORO_STRINGS = {
   },
   notificationSound: {
     ja: '通知音',
-    en: 'Notification Sound',
+    en: 'Notification sound',
     zh: '通知音',
     es: 'Sonido de Notificación',
     de: 'Benachrichtigungston',
@@ -19,7 +19,7 @@ export const POMODORO_STRINGS = {
   },
   notificationVolume: {
     ja: '通知音量',
-    en: 'Notification Volume',
+    en: 'Notification volume',
     zh: '通知音量',
     es: 'Volumen de Notificación',
     de: 'Benachrichtigungslautstärke',
@@ -46,7 +46,7 @@ export const POMODORO_STRINGS = {
   },
   exportFormat: {
     ja: 'エクスポート形式',
-    en: 'Export Format',
+    en: 'Export format',
     zh: '导出格式',
     es: 'Formato de Exportación',
     de: 'Exportformat',

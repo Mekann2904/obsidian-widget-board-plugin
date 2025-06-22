@@ -1,7 +1,7 @@
 export const LLM_STRINGS = {
   aiSummary: {
     ja: 'AI要約',
-    en: 'AI Summary',
+    en: 'AI summary',
     zh: 'AI摘要',
     es: 'Resumen de IA',
     de: 'KI-Zusammenfassung',
@@ -10,7 +10,7 @@ export const LLM_STRINGS = {
   },
   geminiApiKey: {
     ja: 'Gemini APIキー',
-    en: 'Gemini API Key',
+    en: 'Gemini API key',
     zh: 'Gemini API密钥',
     es: 'Clave API de Gemini',
     de: 'Gemini API-Schlüssel',
@@ -28,7 +28,7 @@ export const LLM_STRINGS = {
   },
   llmModelName: {
     ja: 'モデル名',
-    en: 'Model Name',
+    en: 'Model name',
     zh: '模型名称',
     es: 'Nombre del Modelo',
     de: 'Modellname',
@@ -55,7 +55,7 @@ export const LLM_STRINGS = {
   },
   tweetAiModelName: {
     ja: 'つぶやきAI返信用モデル名',
-    en: 'Tweet AI Reply Model Name',
+    en: 'Tweet AI reply model name',
     zh: '推文AI回复模型名称',
     es: 'Nombre del Modelo de Respuesta de AI para Tweet',
     de: 'Tweet KI-Antwort Modellname',
@@ -73,7 +73,7 @@ export const LLM_STRINGS = {
   },
   reflectionAiModelName: {
     ja: '振り返りAI要約用モデル名',
-    en: 'Reflection AI Summary Model Name',
+    en: 'Reflection AI summary model name',
     zh: '复盘AI摘要模型名称',
     es: 'Nombre del Modelo de Respuesta de AI para Resumen de Reflexión',
     de: 'Reflexion KI-Zusammenfassung Modellname',
@@ -91,7 +91,7 @@ export const LLM_STRINGS = {
   },
   userSummaryPromptToday: {
     ja: 'ユーザプロンプト（振り返りレポート 今日用）',
-    en: 'User Prompt (Reflection Report Today)',
+    en: 'User prompt (Reflection report today)',
     zh: '用户提示 (今日复盘报告)',
     es: 'Prompt de Usuario (Resumen de Reporte de Reflexión Hoy)',
     de: 'Benutzer-Prompt (Reflexionsbericht Heute)',
@@ -109,7 +109,7 @@ export const LLM_STRINGS = {
   },
   userSummaryPromptWeek: {
     ja: 'ユーザプロンプト（振り返りレポート 今週用）',
-    en: 'User Prompt (Reflection Report This Week)',
+    en: 'User prompt (Reflection report this week)',
     zh: '用户提示 (本周复盘报告)',
     es: 'Prompt de Usuario (Resumen de Reporte de Reflexión Esta Semana)',
     de: 'Benutzer-Prompt (Reflexionsbericht Diese Woche)',
@@ -127,7 +127,7 @@ export const LLM_STRINGS = {
   },
   userTweetPrompt: {
     ja: 'ユーザプロンプト（つぶやき投稿用）',
-    en: 'User Prompt (for Tweeting)',
+    en: 'User prompt (for tweeting)',
     zh: '用户提示 (用于发布推文)',
     es: 'Prompt de Usuario (para Publicar Tweet)',
     de: 'Benutzer-Prompt (zum Tweeten)',

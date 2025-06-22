@@ -139,7 +139,7 @@ export const MODAL_PANEL_STRINGS = {
   },
   'modal.panel.customWidth': {
     ja: 'カスタム幅',
-    en: 'Custom Width',
+    en: 'Custom width',
     zh: '自定义宽度',
     es: 'Ancho Personalizado',
     de: 'Benutzerdefinierte Breite',
@@ -148,7 +148,7 @@ export const MODAL_PANEL_STRINGS = {
   },
   'modal.panel.addWidget': {
     ja: '＋ ウィジェット追加',
-    en: '+ Add Widget',
+    en: '+ Add widget',
     zh: '＋ 添加小组件',
     es: '+ Añadir Widget',
     de: '+ Widget hinzufügen',

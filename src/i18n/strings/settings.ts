@@ -1,12 +1,12 @@
 export const SETTINGS_PANE_STRINGS = {
   settingTabHeading: {
-    ja: 'ウィジェットボード',
-    en: 'Widget board',
-    zh: '小组件看板',
-    es: 'Tablero de widgets',
-    de: 'Widget-Board',
-    fr: 'Tableau de bord des widgets',
-    ko: '위젯 보드',
+    ja: 'ウィジェットボード設定',
+    en: 'Widget board settings',
+    zh: '小组件看板设置',
+    es: 'Configuración del Tablero de Widgets',
+    de: 'Widget-Board-Einstellungen',
+    fr: 'Paramètres du tableau de bord des widgets',
+    ko: '위젯 보드 설정',
   },
   languageSetting: {
     ja: '表示言語',
@@ -19,7 +19,7 @@ export const SETTINGS_PANE_STRINGS = {
   },
   baseFolderGlobal: {
     ja: 'ベースフォルダ（グローバル）',
-    en: 'Base Folder (Global)',
+    en: 'Base folder (global)',
     zh: '基础文件夹 (全局)',
     es: 'Carpeta Base (Global)',
     de: 'Basisordner (Global)',
@@ -46,7 +46,7 @@ export const SETTINGS_PANE_STRINGS = {
   },
   debugLog: {
     ja: 'デバッグログを有効にする',
-    en: 'Enable Debug Log',
+    en: 'Enable debug log',
     zh: '启用调试日志',
     es: 'Habilitar Registro de Depuración',
     de: 'Debug-Protokoll aktivieren',
@@ -121,7 +121,7 @@ export const GLOBAL_SETTINGS_SECTIONS = {
   },
   boardManagement: {
     ja: 'ボード管理',
-    en: 'Board Management',
+    en: 'Board management',
     zh: '看板管理',
     es: 'Gestión de Tableros',
     de: 'Board-Verwaltung',
@@ -130,7 +130,7 @@ export const GLOBAL_SETTINGS_SECTIONS = {
   },
   boardGroupManagement: {
     ja: 'ボードグループ管理',
-    en: 'Board Group Management',
+    en: 'Board group management',
     zh: '看板组管理',
     es: 'Gestión de Grupos de Tableros',
     de: 'Board-Gruppenverwaltung',

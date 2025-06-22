@@ -1,7 +1,7 @@
 export const CALENDAR_STRINGS = {
   addCalendar: {
     ja: 'カレンダー追加',
-    en: 'Add Calendar',
+    en: 'Add calendar',
     zh: '添加日历',
     es: 'Añadir Calendario',
     de: 'Kalender hinzufügen',
@@ -10,7 +10,7 @@ export const CALENDAR_STRINGS = {
   },
   weekStartDay: {
     ja: '週の開始曜日',
-    en: 'Week Start Day',
+    en: 'Week start day',
     zh: '每周开始日',
     es: 'Inicio de la semana',
     de: 'Wochenstarttag',
@@ -28,7 +28,7 @@ export const CALENDAR_STRINGS = {
   },
   dailyNoteFormat: {
     ja: 'デイリーノートファイル名フォーマット',
-    en: 'Daily Note Filename Format',
+    en: 'Daily note filename format',
     zh: '每日笔记文件名格式',
     es: 'Formato de Nombre de Archivo de Nota Diaria',
     de: 'Dateinamensformat für tägliche Notizen',
@@ -46,7 +46,7 @@ export const CALENDAR_STRINGS = {
   },
   'calendar.previousMonth': {
     ja: '前の月',
-    en: 'Previous Month',
+    en: 'Previous month',
     zh: '上个月',
     es: 'Mes Anterior',
     de: 'Vorheriger Monat',
@@ -55,7 +55,7 @@ export const CALENDAR_STRINGS = {
   },
   'calendar.nextMonth': {
     ja: '次の月',
-    en: 'Next Month',
+    en: 'Next month',
     zh: '下个月',
     es: 'Mes Siguiente',
     de: 'Nächster Monat',
@@ -82,7 +82,7 @@ export const CALENDAR_STRINGS = {
   },
   'calendar.openDailyNote': {
     ja: 'デイリーノートを開く',
-    en: 'Open Daily Note',
+    en: 'Open daily note',
     zh: '打开每日笔记',
     es: 'Abrir Nota Diaria',
     de: 'Tägliche Notiz öffnen',

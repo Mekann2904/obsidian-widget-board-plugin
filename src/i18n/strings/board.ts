@@ -10,7 +10,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   addBoard: {
     ja: 'ボードを追加',
-    en: 'Add Board',
+    en: 'Add board',
     zh: '添加看板',
     es: 'Agregar Tablero',
     de: 'Board hinzufügen',
@@ -19,7 +19,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   boardManagement: {
     ja: 'ボード管理',
-    en: 'Board Management',
+    en: 'Board management',
     zh: '看板管理',
     es: 'Gestión de Tableros',
     de: 'Board-Verwaltung',
@@ -73,7 +73,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   addNewBoard: {
     ja: '新しいボードを追加',
-    en: 'Add New Board',
+    en: 'Add new board',
     zh: '添加新看板',
     es: 'Agregar Nuevo Tablero',
     de: 'Neues Board hinzufügen',
@@ -82,7 +82,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   defaultViewMode: {
     ja: 'デフォルト表示モード',
-    en: 'Default View Mode',
+    en: 'Default view mode',
     zh: '默认视图模式',
     es: 'Modo de Visualización Predeterminado',
     de: 'Standard-Ansichtsmodus',
@@ -100,7 +100,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   leftPanel33: {
     ja: '左パネル（33vw）',
-    en: 'Left Panel (33vw)',
+    en: 'Left panel (33vw)',
     zh: '左面板 (33vw)',
     es: 'Panel Izquierdo (33vw)',
     de: 'Linkes Panel (33vw)',
@@ -109,7 +109,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   leftPanel50: {
     ja: '左パネル（50vw）',
-    en: 'Left Panel (50vw)',
+    en: 'Left panel (50vw)',
     zh: '左面板 (50vw)',
     es: 'Panel Izquierdo (50vw)',
     de: 'Linkes Panel (50vw)',
@@ -118,7 +118,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   leftPanel66: {
     ja: '左パネル（66vw）',
-    en: 'Left Panel (66vw)',
+    en: 'Left panel (66vw)',
     zh: '左面板 (66vw)',
     es: 'Panel Izquierdo (66vw)',
     de: 'Linkes Panel (66vw)',
@@ -127,7 +127,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   leftSplitOuter: {
     ja: '左パネル外（32vw）',
-    en: 'Outside Left Split (32vw)',
+    en: 'Outside left split (32vw)',
     zh: '左侧分割外部 (32vw)',
     es: 'Separación Izquierda Fuera (32vw)',
     de: 'Außerhalb linker Split (32vw)',
@@ -136,7 +136,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   centerPanel33: {
     ja: '中央パネル（33vw）',
-    en: 'Center Panel (33vw)',
+    en: 'Center panel (33vw)',
     zh: '中央面板 (33vw)',
     es: 'Panel Central (33vw)',
     de: 'Mittleres Panel (33vw)',
@@ -145,7 +145,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   centerPanel50: {
     ja: '中央パネル（50vw）',
-    en: 'Center Panel (50vw)',
+    en: 'Center panel (50vw)',
     zh: '中央面板 (50vw)',
     es: 'Panel Central (50vw)',
     de: 'Mittleres Panel (50vw)',
@@ -154,7 +154,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   rightPanel33: {
     ja: '右パネル（33vw）',
-    en: 'Right Panel (33vw)',
+    en: 'Right panel (33vw)',
     zh: '右面板 (33vw)',
     es: 'Panel Derecho (33vw)',
     de: 'Rechtes Panel (33vw)',
@@ -163,7 +163,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   rightPanel50: {
     ja: '右パネル（50vw）',
-    en: 'Right Panel (50vw)',
+    en: 'Right panel (50vw)',
     zh: '右面板 (50vw)',
     es: 'Panel Derecho (50vw)',
     de: 'Rechtes Panel (50vw)',
@@ -172,7 +172,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   rightPanel66: {
     ja: '右パネル（66vw）',
-    en: 'Right Panel (66vw)',
+    en: 'Right panel (66vw)',
     zh: '右面板 (66vw)',
     es: 'Panel Derecho (66vw)',
     de: 'Rechtes Panel (66vw)',
@@ -181,7 +181,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   rightSplitOuter: {
     ja: '右パネル外（32vw）',
-    en: 'Outside Right Split (32vw)',
+    en: 'Outside right split (32vw)',
     zh: '右侧分割外部 (32vw)',
     es: 'Separación Derecha Fuera (32vw)',
     de: 'Außerhalb rechter Split (32vw)',
@@ -190,7 +190,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   customWidthVw: {
     ja: 'カスタム幅（vw）',
-    en: 'Custom Width (vw)',
+    en: 'Custom width (vw)',
     zh: '自定义宽度 (vw)',
     es: 'Ancho Personalizado (vw)',
     de: 'Benutzerdefinierte Breite (vw)',
@@ -280,7 +280,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   customWidthAnchor: {
     ja: 'カスタム幅の基準位置',
-    en: 'Custom Width Anchor',
+    en: 'Custom width anchor',
     zh: '自定义宽度锚点',
     es: 'Anclaje de Ancho Personalizado',
     de: 'Anker für benutzerdefinierte Breite',
@@ -289,7 +289,7 @@ export const BOARD_MANAGEMENT_STRINGS = {
   },
   boardSelect: {
     ja: 'ボードを選択',
-    en: 'Select Board',
+    en: 'Select board',
     zh: '选择看板',
     es: 'Seleccionar Tablero',
     de: 'Board auswählen',
@@ -346,7 +346,7 @@ export const BOARD_GROUP_STRINGS = {
   },
   addNewGroup: {
     ja: '新しいグループを追加',
-    en: 'Add New Group',
+    en: 'Add new group',
     zh: '添加新组',
     es: 'Agregar Nuevo Grupo',
     de: 'Neue Gruppe hinzufügen',
@@ -364,7 +364,7 @@ export const BOARD_GROUP_STRINGS = {
   },
   editGroup: {
     ja: 'グループを編集',
-    en: 'Edit Group',
+    en: 'Edit group',
     zh: '编辑分组',
     es: 'Editar Grupo',
     de: 'Gruppe bearbeiten',
@@ -373,7 +373,7 @@ export const BOARD_GROUP_STRINGS = {
   },
   deleteGroup: {
     ja: 'グループを削除',
-    en: 'Delete Group',
+    en: 'Delete group',
     zh: '删除分组',
     es: 'Eliminar Grupo',
     de: 'Gruppe löschen',
@@ -391,7 +391,7 @@ export const BOARD_GROUP_STRINGS = {
   },
   groupName: {
     ja: 'グループ名',
-    en: 'Group Name',
+    en: 'Group name',
     zh: '分组名称',
     es: 'Nombre del Grupo',
     de: 'Gruppenname',
@@ -418,7 +418,7 @@ export const BOARD_GROUP_STRINGS = {
   },
   selectBoards: {
     ja: 'ボードを選択',
-    en: 'Select Boards',
+    en: 'Select boards',
     zh: '选择看板',
     es: 'Seleccionar Tableros',
     de: 'Boards auswählen',

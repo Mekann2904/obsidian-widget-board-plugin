@@ -12,7 +12,7 @@ export const WIDGET_STRINGS = {
 	},
 	'widget.emptyEdit': {
 		ja: 'このボードに表示するウィジェットがありません。「ウィジェット追加」から追加してください。',
-		en: 'There are no widgets on this board. Please add one from "Add Widget".',
+                en: 'There are no widgets on this board. Please add one from "Add widget".',
 		zh: '此看板上没有小组件。请从"添加小组件"中添加。',
 		es: 'No hay widgets en este tablero. Por favor, agregue uno desde "Añadir Widget".',
 		de: 'Es gibt keine Widgets auf diesem Board. Bitte fügen Sie eines über "Widget hinzufügen" hinzu.',
@@ -30,7 +30,7 @@ export const WIDGET_STRINGS = {
 	},
 	'widget.loadError': {
 		ja: '{{widgetName}} (ロードエラー)',
-		en: '{{widgetName}} (Load Error)',
+                en: '{{widgetName}} (Load error)',
 		zh: '{{widgetName}} (加载错误)',
 		es: '{{widgetName}} (Error de Carga)',
 		de: '{{widgetName}} (Ladefehler)',
@@ -58,7 +58,7 @@ export const WIDGET_STRINGS = {
 	},
 	'widget.unknownType': {
 		ja: '{{widgetName}} (不明な種類)',
-		en: '{{widgetName}} (Unknown Type)',
+                en: '{{widgetName}} (Unknown type)',
 		zh: '{{widgetName}} (未知类型)',
 		es: '{{widgetName}} (Tipo Desconocido)',
 		de: '{{widgetName}} (Unbekannter Typ)',
