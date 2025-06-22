@@ -91,7 +91,7 @@ export class TweetRepository {
             const dataToSave = JSON.stringify(sanitizedSettings, null, 2);
             const file = this.app.vault.getAbstractFileByPath(this.dbPath);
             if (file instanceof TFile) {
-                await this.app.vault.modify(file, dataToSave);
+                await this.app.vault.process(file.path, () => dataToSave);
             } else {
                 await this.app.vault.create(this.dbPath, dataToSave);
             }
@@ -132,7 +132,7 @@ export class TweetRepository {
         try {
             const file = this.app.vault.getAbstractFileByPath(backupPath);
             if (file instanceof TFile) {
-                await this.app.vault.modify(file, rawContent);
+                await this.app.vault.process(file.path, () => rawContent);
             } else {
                 await this.app.vault.create(backupPath, rawContent);
             }

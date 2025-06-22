@@ -2,7 +2,7 @@ import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../../src/settings/defaultWidgetS
 const { TweetRepository } = require('../../src/widgets/tweetWidget');
 const { TFile } = require('obsidian');
 
-jest.mock('obsidian', () => ({ App: class {}, Notice: jest.fn(), TFile: class {} }), { virtual: true });
+jest.mock('obsidian', () => ({ App: class {}, Notice: jest.fn(), TFile: class { constructor(public path = 'mock.md') {} } }), { virtual: true });
 
 describe('TweetRepository.load', () => {
   let consoleErrorSpy: jest.SpyInstance;
@@ -21,9 +21,9 @@ describe('TweetRepository.load', () => {
     const get = jest.fn((path: string) => (path === 'tweets.json' ? file : null));
     const read = jest.fn().mockResolvedValue('{bad json');
     const create = jest.fn();
-    const modify = jest.fn();
+    const process = jest.fn();
     const createFolder = jest.fn();
-    const app: any = { vault: { getAbstractFileByPath: get, read, create, modify, createFolder } };
+    const app: any = { vault: { getAbstractFileByPath: get, read, create, process, createFolder } };
     const repo = new TweetRepository(app, 'tweets.json');
 
     const settings = await repo.load();
@@ -36,9 +36,9 @@ describe('TweetRepository.load', () => {
     const get = jest.fn(() => file);
     const read = jest.fn().mockResolvedValue(JSON.stringify({ posts: 'oops', scheduledPosts: {} }));
     const create = jest.fn();
-    const modify = jest.fn();
+    const process = jest.fn();
     const createFolder = jest.fn();
-    const app: any = { vault: { getAbstractFileByPath: get, read, create, modify, createFolder } };
+    const app: any = { vault: { getAbstractFileByPath: get, read, create, process, createFolder } };
     const repo = new TweetRepository(app, 'tweets.json');
 
     const settings = await repo.load();
