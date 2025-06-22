@@ -1,5 +1,5 @@
 // src/widgets/calendarWidget.ts
-import { App, setIcon, Setting } from 'obsidian';
+import { App, setIcon, Setting, normalizePath } from 'obsidian';
 import { DEFAULT_CALENDAR_SETTINGS } from '../../settings/defaultWidgetSettings';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
@@ -219,10 +219,8 @@ export class CalendarWidget implements WidgetImplementation {
             .replace(/DD/g, DD);
         debugLog(this.plugin, '置換後 dailyNoteName:', dailyNoteName);
         if (!/\.md$/i.test(dailyNoteName)) dailyNoteName += '.md';
-        const dailyNoteBase = dailyNoteName.replace(/\.md$/, '');
-
-        // デイリーノートを探す
-        const dailyNote = this.app.vault.getFiles().find(f => f.extension === 'md' && (f.basename === dailyNoteBase || f.name === dailyNoteName));
+        const dailyNotePath = normalizePath(dailyNoteName);
+        const dailyNote = this.app.vault.getFileByPath(dailyNotePath);
         if (dailyNote) {
             const dailyBtn = this.selectedDateInfoEl.createEl('button', { text: t(lang, 'calendar.openDailyNote') });
             dailyBtn.onclick = () => {
@@ -230,7 +228,7 @@ export class CalendarWidget implements WidgetImplementation {
             };
         } else {
             // デバッグ用: 一致しなかった場合、全ファイルのbasenameとnameを出力
-            debugLog(this.plugin, 'デイリーノート候補が見つかりません:', { dailyNoteBase, dailyNoteName });
+            debugLog(this.plugin, 'デイリーノート候補が見つかりません:', { dailyNotePath, dailyNoteName });
             this.app.vault.getFiles().forEach(f => {
                 debugLog(this.plugin, 'ファイル:', { basename: f.basename, name: f.name, extension: f.extension });
             });
