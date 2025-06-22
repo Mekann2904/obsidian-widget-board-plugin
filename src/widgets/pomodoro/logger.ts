@@ -1,4 +1,4 @@
-import { Notice } from 'obsidian';
+import { Notice, normalizePath } from 'obsidian';
 import type { App } from 'obsidian';
 import type WidgetBoardPlugin from '../../main';
 import type { PomodoroExportFormat, SessionLog } from './index';
@@ -25,9 +25,9 @@ export class PomodoroSessionLogger {
     else if (format === 'markdown') ext = 'md';
     else return;
 
-    const pluginFolder = this.app.vault.configDir + '/plugins/' + this.plugin.manifest.id;
-    const logsFolder = pluginFolder + '/logs';
-    const filePath = logsFolder + `/pomodoro-log.${ext}`;
+    const pluginFolder = normalizePath(`${this.app.vault.configDir}/plugins/${this.plugin.manifest.id}`);
+    const logsFolder = normalizePath(`${pluginFolder}/logs`);
+    const filePath = normalizePath(`${logsFolder}/pomodoro-log.${ext}`);
     let allLogs: SessionLog[] = [];
     try {
       const logsFolderExists = await this.app.vault.adapter.exists(logsFolder);

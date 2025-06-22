@@ -46,3 +46,6 @@ export function requestUrl(_opts: any): Promise<any> {
 }
 export class FuzzySuggestModal {}
 export const debounce = (fn: any) => fn;
+export function normalizePath(path: string): string {
+  return path.replace(/\\/g, '/');
+}
