@@ -752,17 +752,8 @@ export class BoardGroupEditModal extends Modal {
             this.plugin.settings.boards.forEach(b => {
                 const isSelected = boardIds.has(b.id);
                 const btn = boardButtonsEl.createEl('button', {
-                    cls: isSelected ? 'selected is-active' : '',
+                    cls: `wb-board-btn mod-cta${isSelected ? ' is-active' : ''}`,
                 });
-                btn.classList.add('mod-cta');
-                btn.style.minWidth = '64px';
-                btn.style.padding = '6px 16px';
-                btn.style.borderRadius = '6px';
-                btn.style.border = 'none';
-                btn.style.cursor = 'pointer';
-                btn.style.fontWeight = isSelected ? 'bold' : '';
-                btn.style.background = isSelected ? 'var(--interactive-accent)' : 'var(--background-modifier-box)';
-                btn.style.color = isSelected ? 'var(--text-on-accent)' : 'var(--text-normal)';
                 btn.setText(b.name);
                 btn.onclick = () => {
                     if (isSelected) {
