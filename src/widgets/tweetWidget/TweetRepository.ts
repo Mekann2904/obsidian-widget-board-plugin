@@ -105,8 +105,20 @@ export class TweetRepository {
         const folders = folder.split('/');
         let currentPath = '';
         for (const f of folders) {
+            if (f === '') continue; // Skip empty parts, e.g. from a leading slash
             currentPath = currentPath ? `${currentPath}/${f}` : f;
-            if (!this.app.vault.getAbstractFileByPath(currentPath)) {
+
+            const stat = await this.app.vault.adapter.stat(currentPath);
+
+            if (stat) {
+                if (stat.type === 'file') {
+                    const message = `Tweet widget: A file named "${currentPath}" already exists. Cannot create a folder with the same name.`;
+                    new Notice(message);
+                    throw new Error(message);
+                }
+                // If it's a folder, we do nothing and continue.
+            } else {
+                // If it doesn't exist, create it.
                 await this.app.vault.createFolder(currentPath);
             }
         }
