@@ -95,7 +95,6 @@ export class MemoWidget implements WidgetImplementation {
 
     private async renderMemo(markdownContent?: string) {
         if (!this.memoDisplayEl) {
-            // console.log(`[${this.config?.id}] renderMemo: memoDisplayEl is null.`);
             return;
         }
         this.memoDisplayEl.empty();

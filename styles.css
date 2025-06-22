@@ -2344,3 +2344,63 @@ body.wb-modal-left-outer-open .workspace {
   color: var(--text-faint);
   margin: 24px 0 12px 0;
 }
+
+/* Reflection Widget Styles */
+.reflection-widget-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0 0 0;
+}
+
+.reflection-graph-title {
+    font-weight: bold;
+    margin-bottom: 4px;
+    text-align: center;
+    font-size: 1em;
+}
+
+.reflection-canvas {
+    margin: 0 auto 16px auto;
+    display: block;
+    max-width: 80%;
+    width: 80%;
+}
+
+.reflection-chart-img {
+    display: none;
+    margin: 0 auto 16px auto;
+    max-width: 80%;
+    width: 80%;
+}
+
+.reflection-ai-summary-section {
+    width: 100%;
+    margin-top: 18px;
+    padding: 8px 0 0 0;
+    border-top: 1px solid var(--divider-color, #444);
+}
+
+.reflection-summary-title {
+    font-weight: bold;
+    margin: 16px 0 2px 0;
+    font-size: 2em;
+}
+
+.reflection-summary-content {
+    min-height: 2em;
+}
+
+.reflection-copy-btn {
+    margin-left: 8px;
+}
+
+.reflection-manual-btn-container {
+    text-align: center;
+    margin-top: 16px;
+}
+
+.reflection-manual-btn {
+    margin: 10px 0 0 0;
+}
