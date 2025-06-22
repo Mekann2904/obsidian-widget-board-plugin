@@ -17,6 +17,8 @@ describe('TweetWidget', () => {
       create: jest.fn(),
       modify: jest.fn(),
       createBinary: jest.fn(),
+      getFileByPath: jest.fn((path: string) => ({ path } as any)),
+      getResourcePath: jest.fn((file: any) => `app://local/${file.path}`),
     },
     workspace: { getActiveFile: jest.fn(() => ({ path: 'active.md' })) },
   } as any;
