@@ -1,7 +1,7 @@
 export const TWEET_STRINGS = {
   addTweetWidget: {
     ja: 'つぶやき追加',
-    en: 'Add Tweet',
+    en: 'Add tweet',
     zh: '添加推文',
     es: 'Añadir Tweet',
     de: 'Tweet hinzufügen',
@@ -10,7 +10,7 @@ export const TWEET_STRINGS = {
   },
   userName: {
     ja: 'ユーザー名',
-    en: 'User Name',
+    en: 'User name',
     zh: '用户名',
     es: 'Nombre de Usuario',
     de: 'Benutzername',
@@ -37,7 +37,7 @@ export const TWEET_STRINGS = {
   },
   userListGlobal: {
     ja: 'ユーザー一覧（グローバル）',
-    en: 'User List (Global)',
+    en: 'User list (global)',
     zh: '用户列表 (全局)',
     es: 'Lista de Usuarios (Global)',
     de: 'Benutzerliste (Global)',

@@ -3,7 +3,7 @@ import type { Strings } from '../types';
 export const TIMER_STRINGS = {
   addTimerStopwatch: {
     ja: 'タイマー／ストップウォッチ',
-    en: 'Add Timer/Stopwatch',
+    en: 'Add timer/stopwatch',
     zh: '添加计时器/秒表',
     es: 'Añadir Temporizador/Cronómetro',
     de: 'Timer/Stoppuhr hinzufügen',
@@ -12,7 +12,7 @@ export const TIMER_STRINGS = {
   },
   timerStopwatchTitle: {
     ja: 'タイマー / ストップウォッチ',
-    en: 'Timer / Stopwatch',
+    en: 'Timer / stopwatch',
     zh: '计时器 / 秒表',
     es: 'Temporizador / Cronómetro',
     de: 'Timer / Stoppuhr',

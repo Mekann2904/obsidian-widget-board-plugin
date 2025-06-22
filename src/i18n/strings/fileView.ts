@@ -1,18 +1,18 @@
 import type { Strings } from '../types';
 
 export const FILE_VIEW_STRINGS = {
-	addFileView: {
-		ja: 'ファイルビューア追加',
-		en: 'Add File Viewer',
+        addFileView: {
+                ja: 'ファイルビューア追加',
+                en: 'Add file viewer',
 		zh: '添加文件查看器',
 		es: 'Añadir Visor de Archivos',
 		de: 'Dateibetrachter hinzufügen',
 		fr: 'Ajouter une visionneuse de fichiers',
 		ko: '파일 뷰어 추가',
 	},
-	filePath: {
-		ja: 'ファイルパス',
-		en: 'File Path',
+        filePath: {
+                ja: 'ファイルパス',
+                en: 'File path',
 		zh: '文件路径',
 		es: 'Ruta del Archivo',
 		de: 'Dateipfad',
@@ -28,9 +28,9 @@ export const FILE_VIEW_STRINGS = {
 		fr: 'Le chemin du fichier à afficher dans le coffre',
 		ko: 'Vault 내에 표시할 파일의 경로',
 	},
-	'widget.fileView.heightMode': {
-		ja: '高さモード',
-		en: 'Height Mode',
+        'widget.fileView.heightMode': {
+                ja: '高さモード',
+                en: 'Height mode',
 		zh: '高度模式',
 		es: 'Modo de Altura',
 		de: 'Höhenmodus',
@@ -46,9 +46,9 @@ export const FILE_VIEW_STRINGS = {
 		fr: "Définissez si la hauteur du widget s'ajuste automatiquement ou a une valeur fixe.",
 		ko: '위젯 높이를 자동으로 조정할지 또는 고정 값으로 설정할지 정합니다.',
 	},
-	'widget.fileView.fixedHeight': {
-		ja: '固定時の高さ (px)',
-		en: 'Fixed Height (px)',
+        'widget.fileView.fixedHeight': {
+                ja: '固定時の高さ (px)',
+                en: 'Fixed height (px)',
 		zh: '固定高度 (px)',
 		es: 'Altura Fija (px)',
 		de: 'Feste Höhe (px)',
@@ -73,9 +73,9 @@ export const FILE_VIEW_STRINGS = {
 		fr: 'Rechercher des fichiers...',
 		ko: '파일 검색...',
 	},
-	'widget.fileView.selectFile': {
-		ja: 'ファイル選択',
-		en: 'Select File',
+        'widget.fileView.selectFile': {
+                ja: 'ファイル選択',
+                en: 'Select file',
 		zh: '选择文件',
 		es: 'Seleccionar archivo',
 		de: 'Datei auswählen',
@@ -118,9 +118,9 @@ export const FILE_VIEW_STRINGS = {
 		fr: 'Fichier non trouvé',
 		ko: '파일을 찾을 수 없습니다',
 	},
-	'widget.fileView.title': {
-		ja: 'ファイルビューア',
-		en: 'File Viewer',
+        'widget.fileView.title': {
+                ja: 'ファイルビューア',
+                en: 'File viewer',
 		zh: '文件查看器',
 		es: 'Visor de archivos',
 		de: 'Dateibetrachter',

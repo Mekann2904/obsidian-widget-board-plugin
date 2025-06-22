@@ -1,7 +1,7 @@
 export const SETTINGS_PANE_STRINGS = {
   settingTabHeading: {
     ja: 'ウィジェットボード設定',
-    en: 'Widget Board Settings',
+    en: 'Widget board settings',
     zh: '小组件看板设置',
     es: 'Configuración del Tablero de Widgets',
     de: 'Widget-Board-Einstellungen',
@@ -19,7 +19,7 @@ export const SETTINGS_PANE_STRINGS = {
   },
   baseFolderGlobal: {
     ja: 'ベースフォルダ（グローバル）',
-    en: 'Base Folder (Global)',
+    en: 'Base folder (global)',
     zh: '基础文件夹 (全局)',
     es: 'Carpeta Base (Global)',
     de: 'Basisordner (Global)',
@@ -46,7 +46,7 @@ export const SETTINGS_PANE_STRINGS = {
   },
   debugLog: {
     ja: 'デバッグログを有効にする',
-    en: 'Enable Debug Log',
+    en: 'Enable debug log',
     zh: '启用调试日志',
     es: 'Habilitar Registro de Depuración',
     de: 'Debug-Protokoll aktivieren',
@@ -76,7 +76,7 @@ export const SETTINGS_PANE_STRINGS = {
 export const GLOBAL_SETTINGS_SECTIONS = {
   pomoGlobalSetting: {
     ja: 'ポモドーロ（グローバル設定）',
-    en: 'Pomodoro (Global Settings)',
+    en: 'Pomodoro (global settings)',
     zh: '番茄钟 (全局设置)',
     es: 'Pomodoro (Configuración Global)',
     de: 'Pomodoro (Globale Einstellungen)',
@@ -85,7 +85,7 @@ export const GLOBAL_SETTINGS_SECTIONS = {
   },
   timerGlobalSetting: {
     ja: 'タイマー／ストップウォッチ（グローバル設定）',
-    en: 'Timer/Stopwatch (Global Settings)',
+    en: 'Timer/stopwatch (global settings)',
     zh: '计时器/秒表 (全局设置)',
     es: 'Temporizador/Cronómetro (Configuración Global)',
     de: 'Timer/Stoppuhr (Globale Einstellungen)',
@@ -94,7 +94,7 @@ export const GLOBAL_SETTINGS_SECTIONS = {
   },
   llmGlobalSetting: {
     ja: 'LLM（グローバル設定）',
-    en: 'LLM (Global Settings)',
+    en: 'LLM (global settings)',
     zh: 'LLM (全局设置)',
     es: 'LLM (Configuración Global)',
     de: 'LLM (Globale Einstellungen)',
@@ -103,7 +103,7 @@ export const GLOBAL_SETTINGS_SECTIONS = {
   },
   tweetWidgetGlobalSettings: {
     ja: 'つぶやき（グローバル設定）',
-    en: 'Tweet (Global Settings)',
+    en: 'Tweet (global settings)',
     zh: '推文 (全局设置)',
     es: 'Tweet (Configuración Global)',
     de: 'Tweet (Globale Einstellungen)',
@@ -112,7 +112,7 @@ export const GLOBAL_SETTINGS_SECTIONS = {
   },
   calendarGlobalSetting: {
     ja: 'カレンダー（グローバル設定）',
-    en: 'Calendar (Global Settings)',
+    en: 'Calendar (global settings)',
     zh: '日历 (全局设置)',
     es: 'Calendario (Configuración Global)',
     de: 'Kalender (Globale Einstellungen)',
@@ -121,7 +121,7 @@ export const GLOBAL_SETTINGS_SECTIONS = {
   },
   boardManagement: {
     ja: 'ボード管理',
-    en: 'Board Management',
+    en: 'Board management',
     zh: '看板管理',
     es: 'Gestión de Tableros',
     de: 'Board-Verwaltung',
@@ -130,7 +130,7 @@ export const GLOBAL_SETTINGS_SECTIONS = {
   },
   boardGroupManagement: {
     ja: 'ボードグループ管理',
-    en: 'Board Group Management',
+    en: 'Board group management',
     zh: '看板组管理',
     es: 'Gestión de Grupos de Tableros',
     de: 'Board-Gruppenverwaltung',

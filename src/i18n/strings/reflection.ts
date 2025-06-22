@@ -1,7 +1,7 @@
 export const REFLECTION_WIDGET_STRINGS = {
   addReflectionWidget: {
     ja: '振り返りレポート',
-    en: 'Add Reflection Report',
+    en: 'Add reflection report',
     zh: '添加复盘报告',
     es: 'Añadir Informe de Reflexión',
     de: 'Reflexionsbericht hinzufügen',
@@ -10,7 +10,7 @@ export const REFLECTION_WIDGET_STRINGS = {
   },
   defaultTitle: {
     ja: '振り返りレポート',
-    en: 'Reflection Report',
+    en: 'Reflection report',
     zh: '复盘报告',
     es: 'Informe de Reflexión',
     de: 'Reflexionsbericht',

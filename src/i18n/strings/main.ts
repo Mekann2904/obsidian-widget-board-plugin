@@ -3,7 +3,7 @@ import type { Strings } from '../types';
 export const MAIN_STRINGS = {
 	openWidgetBoard: {
 		ja: 'ウィジェットボードを開く',
-		en: 'Open Widget Board',
+                en: 'Open widget board',
 		zh: '打开小组件看板',
 		 es: 'Abrir Tablero de Widgets',
 		de: 'Widget-Board öffnen',
@@ -12,7 +12,7 @@ export const MAIN_STRINGS = {
 	},
 	hideAllWidgetBoards: {
 		ja: 'すべてのウィジェットボードを非表示',
-		en: 'Hide All Widget Boards',
+                en: 'Hide all widget boards',
 		zh: '隐藏所有小组件看板',
 		es: 'Ocultar Todos los Tableros de Widgets',
 		de: 'Alle Widget-Boards ausblenden',
@@ -57,7 +57,7 @@ export const MAIN_STRINGS = {
 	},
 	migratedBoardName: {
 		ja: 'マイウィジェットボード (旧設定)',
-		en: 'My Widget Board (Old Settings)',
+                en: 'My widget board (old settings)',
 		zh: '我的小组件看板 (旧设置)',
 		es: 'Mi Tablero de Widgets (Configuración Antigua)',
 		de: 'Mein Widget-Board (Alte Einstellungen)',

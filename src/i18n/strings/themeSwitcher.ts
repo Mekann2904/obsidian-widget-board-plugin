@@ -3,7 +3,7 @@ import type { Strings } from '../types';
 export const THEME_SWITCHER_STRINGS = {
   addThemeSwitcher: {
     ja: 'テーマ切り替え',
-    en: 'Add Theme Switcher',
+    en: 'Add theme switcher',
     zh: '添加主题切换器',
     es: 'Añadir Cambiador de Tema',
     de: 'Theme-Umschalter hinzufügen',
@@ -12,7 +12,7 @@ export const THEME_SWITCHER_STRINGS = {
   },
   themeSwitcherTitle: {
     ja: 'テーマ切り替え',
-    en: 'Theme Switcher',
+    en: 'Theme switcher',
     zh: '主题切换器',
     es: 'Cambiador de Tema',
     de: 'Theme-Umschalter',

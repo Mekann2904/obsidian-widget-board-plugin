@@ -3,7 +3,7 @@ import type { Strings } from '../types';
 export const RECENT_NOTES_STRINGS = {
   addRecentNotes: {
     ja: '最近編集したノート',
-    en: 'Add Recent Notes',
+    en: 'Add recent notes',
     zh: '添加最近编辑的笔记',
     es: 'Añadir Notas Recientes',
     de: 'Zuletzt bearbeitete Notizen hinzufügen',
@@ -12,7 +12,7 @@ export const RECENT_NOTES_STRINGS = {
   },
   recentNotesTitle: {
     ja: '最近編集したノート',
-    en: 'Recent Notes',
+    en: 'Recent notes',
     zh: '最近编辑的笔记',
     es: 'Notas Recientes',
     de: 'Zuletzt bearbeitete Notizen',

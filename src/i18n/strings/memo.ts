@@ -1,7 +1,7 @@
 export const MEMO_STRINGS = {
   addMemo: {
     ja: 'メモ追加',
-    en: 'Add Memo',
+    en: 'Add memo',
     zh: '添加备忘录',
     es: 'Añadir Memo',
     de: 'Memo hinzufügen',
@@ -10,7 +10,7 @@ export const MEMO_STRINGS = {
   },
   memoContent: {
     ja: 'メモ内容 (Markdown)',
-    en: 'Memo Content (Markdown)',
+    en: 'Memo content (Markdown)',
     zh: '备忘录内容 (Markdown)',
     es: 'Contenido del Memo (Markdown)',
     de: 'Memo-Inhalt (Markdown)',
@@ -37,7 +37,7 @@ export const MEMO_STRINGS = {
   },
   memoHeightMode: {
     ja: '高さモード',
-    en: 'Height Mode',
+    en: 'Height mode',
     zh: '高度模式',
     es: 'Modo de Altura',
     de: 'Höhenmodus',
@@ -55,7 +55,7 @@ export const MEMO_STRINGS = {
   },
   fixedHeightPx: {
     ja: '固定高さ(px)',
-    en: 'Fixed Height (px)',
+    en: 'Fixed height (px)',
     zh: '固定高度 (px)',
     es: 'Altura Fija (px)',
     de: 'Feste Höhe (px)',
@@ -73,7 +73,7 @@ export const MEMO_STRINGS = {
   },
   'widget.memo.editAddAriaLabel': {
     ja: 'メモを編集/追加',
-    en: 'Edit/Add memo',
+    en: 'Edit/add memo',
     zh: '编辑/添加备忘录',
     es: 'Editar/Añadir memo',
     de: 'Memo bearbeiten/hinzufügen',

@@ -1,7 +1,7 @@
 export const WIDGET_MANAGEMENT_STRINGS = {
   widgetManagement: {
     ja: 'ウィジェット管理',
-    en: 'Widget Management',
+    en: 'Widget management',
     zh: '小组件管理',
     es: 'Gestión de Widgets',
     de: 'Widget-Verwaltung',
@@ -28,7 +28,7 @@ export const WIDGET_MANAGEMENT_STRINGS = {
   },
   moveUp: {
     ja: '上に移動',
-    en: 'Move Up',
+    en: 'Move up',
     zh: '上移',
     es: 'Mover Arriba',
     de: 'Nach oben',
@@ -37,7 +37,7 @@ export const WIDGET_MANAGEMENT_STRINGS = {
   },
   moveDown: {
     ja: '下に移動',
-    en: 'Move Down',
+    en: 'Move down',
     zh: '下移',
     es: 'Mover Abajo',
     de: 'Nach unten',
@@ -73,7 +73,7 @@ export const WIDGET_MANAGEMENT_STRINGS = {
   },
   widgetNamePlaceholder: {
     ja: '(ウィジェット名)',
-    en: '(Widget Name)',
+    en: '(Widget name)',
     zh: '(小组件名称)',
     es: '(Nombre del Widget)',
     de: '(Widget-Name)',
@@ -109,7 +109,7 @@ export const WIDGET_MANAGEMENT_STRINGS = {
   },
   detailedSettings: {
     ja: '詳細設定',
-    en: 'Detailed Settings',
+    en: 'Detailed settings',
     zh: '详细设置',
     es: 'Configuración Detallada',
     de: 'Detaillierte Einstellungen',
