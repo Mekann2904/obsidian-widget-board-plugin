@@ -1,5 +1,5 @@
 // src/settingsTab.ts
-import { App, PluginSettingTab, Setting, Notice, TFolder, FuzzySuggestModal } from 'obsidian';
+import { App, PluginSettingTab, Setting, Notice, TFolder, FuzzySuggestModal, normalizePath } from 'obsidian';
 import type WidgetBoardPlugin from './main';
 import type {
     PomodoroSoundType,
@@ -55,7 +55,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                     // 入力途中は何もしない
                 });
             text.inputEl.addEventListener('blur', async () => {
-                let v = text.inputEl.value.trim();
+                let v = normalizePath(text.inputEl.value.trim());
                 if (v.startsWith('/') || v.match(/^([A-Za-z]:\\|\\|~)/)) {
                     new Notice(t(lang, 'vaultRelativePathOnly'));
                     text.setValue(this.plugin.settings.baseFolder || '');
@@ -88,8 +88,9 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
                         onChooseItem(item: TFolder) { this.onChoose(item); }
                     }
                     new FolderSuggestModal(this.app, folders, (folder) => {
-                        text.setValue(folder.path);
-                        this.plugin.settings.baseFolder = folder.path;
+                        const normalized = normalizePath(folder.path);
+                        text.setValue(normalized);
+                        this.plugin.settings.baseFolder = normalized;
                         this.plugin.saveSettings();
                     }).open();
                 });
