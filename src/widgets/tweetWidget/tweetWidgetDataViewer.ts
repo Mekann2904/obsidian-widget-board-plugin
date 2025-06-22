@@ -21,6 +21,7 @@ export class TweetWidgetDataViewer {
     private dateFrom: string = '';
     private dateTo: string = '';
     private visibleColumns: Set<string> = new Set(['id', 'created', 'user', 'text', 'like', 'tags']);
+    private tableContainer: HTMLElement;
 
     constructor(posts: TweetWidgetPost[], container: HTMLElement, lang: Language) {
         this.posts = posts;
@@ -40,6 +41,8 @@ export class TweetWidgetDataViewer {
 
     private render() {
         this.container.empty();
+        this.container.addClass('tweet-data-viewer-main');
+        
         // --- カラム選択ハンバーガーメニュー ---
         const menuBar = this.container.createDiv({ cls: 'tweet-data-viewer-menubar' });
         const menuGroup = menuBar.createDiv({ cls: 'tweet-data-viewer-menugroup' });
@@ -72,6 +75,7 @@ export class TweetWidgetDataViewer {
         document.addEventListener('click', (e) => {
             if (!menuBar.contains(e.target as Node)) menuDropdown.style.display = 'none';
         });
+        
         // --- 検索・フィルタUI ---
         const controls = this.container.createDiv({ cls: 'tweet-data-viewer-controls' });
         // 検索ボックス
@@ -127,7 +131,9 @@ export class TweetWidgetDataViewer {
             sortDirBtn.textContent = this.sortDesc ? '▼' : '▲';
             this.applyQuery();
         };
-        // --- テーブル ---
+        
+        // --- テーブルコンテナ ---
+        this.tableContainer = this.container.createDiv({ cls: 'tweet-data-viewer-table-container' });
         this.applyQuery();
     }
 
@@ -165,10 +171,15 @@ export class TweetWidgetDataViewer {
     }
 
     private renderTable() {
+        // tableContainerが存在しない場合は作成
+        if (!this.tableContainer) {
+            this.tableContainer = this.container.createDiv({ cls: 'tweet-data-viewer-table-container' });
+        }
+        
         // 既存テーブル削除
-        const oldTable = this.container.querySelector('.tweet-data-viewer-table');
+        const oldTable = this.tableContainer.querySelector('.tweet-data-viewer-table');
         if (oldTable) oldTable.remove();
-        const table = this.container.createEl('table', { cls: 'tweet-data-viewer-table' });
+        const table = this.tableContainer.createEl('table', { cls: 'tweet-data-viewer-table' });
         const thead = table.createTHead();
         const headerRow = thead.insertRow();
         const thFragment = document.createDocumentFragment();
@@ -201,7 +212,11 @@ export class TweetWidgetDataViewer {
                 }
                 const td = document.createElement('td');
                 td.className = `tweet-data-viewer-td ${col.key}`;
-                td.textContent = cellValue;
+                if (col.key === 'text' || col.key === 'tags') {
+                    td.innerHTML = cellValue;
+                } else {
+                    td.textContent = cellValue;
+                }
                 tdFragment.appendChild(td);
             });
             row.appendChild(tdFragment);
