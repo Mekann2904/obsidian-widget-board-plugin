@@ -307,29 +307,28 @@ export class ReflectionWidgetUI {
             const todayKey = getDateKeyLocal(new Date());
             const [, weekEnd] = getWeekRange(this.plugin.settings.weekStartDay);
             const weekKey = getDateKeyLocal(new Date(weekEnd));
-            Promise.all([
+            const [cachedToday, cachedWeek] = await Promise.all([
                 loadReflectionSummaryShared('today', todayKey, this.app),
                 loadReflectionSummaryShared('week', weekKey, this.app)
-            ]).then(([cachedToday, cachedWeek]) => {
-                if (this.todaySummaryEl) {
-                    if (cachedToday.html) {
-                        const frag = document.createRange().createContextualFragment(cachedToday.html);
-                        this.todaySummaryEl.empty();
-                        this.todaySummaryEl.appendChild(frag);
-                    } else {
-                        this.todaySummaryEl.innerText = cachedToday.summary || t(this.plugin.settings.language || 'ja', 'noPostsToday');
-                    }
+            ]);
+            if (this.todaySummaryEl) {
+                if (cachedToday.html) {
+                    const frag = document.createRange().createContextualFragment(cachedToday.html);
+                    this.todaySummaryEl.empty();
+                    this.todaySummaryEl.appendChild(frag);
+                } else {
+                    this.todaySummaryEl.innerText = cachedToday.summary || t(this.plugin.settings.language || 'ja', 'noPostsToday');
                 }
-                if (this.weekSummaryEl) {
-                    if (cachedWeek.html) {
-                        const frag = document.createRange().createContextualFragment(cachedWeek.html);
-                        this.weekSummaryEl.empty();
-                        this.weekSummaryEl.appendChild(frag);
-                    } else {
-                        this.weekSummaryEl.innerText = cachedWeek.summary || t(this.plugin.settings.language || 'ja', 'noPostsThisWeek');
-                    }
+            }
+            if (this.weekSummaryEl) {
+                if (cachedWeek.html) {
+                    const frag = document.createRange().createContextualFragment(cachedWeek.html);
+                    this.weekSummaryEl.empty();
+                    this.weekSummaryEl.appendChild(frag);
+                } else {
+                    this.weekSummaryEl.innerText = cachedWeek.summary || t(this.plugin.settings.language || 'ja', 'noPostsThisWeek');
                 }
-            });
+            }
         }
         // --- ここまで ---
         setTimeout(() => this.updateGraphAndSummaries(), 0);
@@ -358,7 +357,10 @@ export class ReflectionWidgetUI {
                         ? `${this.plugin.settings.baseFolder.replace(/\/$/, '')}/tweets.json`
                         : 'tweets.json';
                     const repo = new TweetRepository(this.app, dbPath);
-                    const postsPromise = repo.load(this.plugin.settings.language || 'ja').then((s: TweetWidgetSettings) => s.posts || []);
+                    const postsPromise = (async () => {
+                        const s: TweetWidgetSettings = await repo.load(this.plugin.settings.language || 'ja');
+                        return s.posts || [];
+                    })();
                     // キャッシュ取得
                     const [cachedToday, cachedWeek] = await Promise.all([
                         loadReflectionSummaryShared('today', todayKey, this.app),

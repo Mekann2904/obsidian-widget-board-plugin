@@ -213,7 +213,7 @@ export class TweetWidgetDataViewer {
         return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
     }
 
-    private copyCsvToClipboard() {
+    private async copyCsvToClipboard() {
         // 現在表示中のカラム・データでCSV生成
         const cols = Array.from(this.allColumns).filter(col => this.visibleColumns.has(col.key));
         const header = cols.map(col => col.label);
@@ -229,14 +229,15 @@ export class TweetWidgetDataViewer {
             });
         });
         const csv = [header, ...rows].map(row => row.map(cell => '"' + cell.replace(/"/g, '""') + '"').join(',')).join('\n');
-        navigator.clipboard.writeText(csv).then(() => {
+        try {
+            await navigator.clipboard.writeText(csv);
             new Notice(t(this.lang, 'copiedAsCsv'));
-        }, () => {
+        } catch {
             new Notice(t(this.lang, 'copyFailed'));
-        });
+        }
     }
 
-    private copyMarkdownToClipboard() {
+    private async copyMarkdownToClipboard() {
         // 現在表示中のカラム・データでMarkdownテーブル生成
         const cols = Array.from(this.allColumns).filter(col => this.visibleColumns.has(col.key));
         const header = cols.map(col => col.label);
@@ -257,11 +258,12 @@ export class TweetWidgetDataViewer {
             '| ' + sep.join(' | ') + ' |',
             ...rows.map(row => '| ' + row.map(cell => cell.replace(/\|/g, '\\|')).join(' | ') + ' |')
         ].join('\n');
-        navigator.clipboard.writeText(md).then(() => {
+        try {
+            await navigator.clipboard.writeText(md);
             new Notice(t(this.lang, 'copiedAsMarkdown'));
-        }, () => {
+        } catch {
             new Notice(t(this.lang, 'copyFailed'));
-        });
+        }
     }
 
     private saveVisibleColumns() {

@@ -122,7 +122,7 @@ export default class WidgetBoardPlugin extends Plugin {
                 }
                 try {
                     const widgetInstance = new WidgetClass();
-                    const widgetEl = widgetInstance.create(config, this.app, this);
+                    const widgetEl = await widgetInstance.create(config, this.app, this);
                     element.appendChild(widgetEl);
                 } catch (e) {
                     element.createEl('pre', { text: this.t('widgetRenderError', { error: String(e) }) });

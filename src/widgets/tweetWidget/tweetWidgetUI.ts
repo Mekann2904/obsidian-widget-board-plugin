@@ -291,7 +291,7 @@ export class TweetWidgetUI {
                 placeholder: this.widget.replyingToParentId ? this.t('replyPlaceholder') : this.t('postPlaceholder') 
             }
         });
-        input.addEventListener('input', () => {
+        input.addEventListener('input', async () => {
             scheduleBatchTweetResize(input);
         });
         requestAnimationFrame(() => {
@@ -302,7 +302,7 @@ export class TweetWidgetUI {
         const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
         ytSuggest.style.display = 'none';
         ytSuggest.textContent = '';
-        input.addEventListener('input', () => {
+        input.addEventListener('input', async () => {
             const val = input.value;
             const url = extractYouTubeUrl(val);
             if (!url) {
@@ -313,11 +313,11 @@ export class TweetWidgetUI {
             ytSuggest.textContent = this.t('fetchingYoutubeTitle');
             ytSuggest.style.display = 'block';
             const currentInput = val;
-            fetchYouTubeTitle(url).then(title => {
-                if (input.value !== currentInput) return;
-                if (title) {
-                    ytSuggest.textContent = this.t('insertYoutubeTitle', { title });
-                    ytSuggest.onclick = () => {
+            const title = await fetchYouTubeTitle(url);
+            if (input.value !== currentInput) return;
+            if (title) {
+                ytSuggest.textContent = this.t('insertYoutubeTitle', { title });
+                ytSuggest.onclick = () => {
                         const insertText = `![${title}](${url})`;
                         // 元のYouTube URL（クエリ付きも含む）を正規表現で検出して置換
                         const urlRegex = /(https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}(?:[?&][^\s]*)?)/;
@@ -330,7 +330,6 @@ export class TweetWidgetUI {
                     ytSuggest.textContent = this.t('fetchYoutubeTitleFailed');
                     ytSuggest.onclick = null;
                 }
-            });
         });
         
         // トグルスイッチ挙動
@@ -1095,7 +1094,7 @@ export class TweetWidgetUI {
         const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
         ytSuggest.style.display = 'none';
         ytSuggest.textContent = '';
-        textarea.addEventListener('input', () => {
+        textarea.addEventListener('input', async () => {
             const val = textarea.value;
             const url = extractYouTubeUrl(val);
             if (!url) {
@@ -1106,8 +1105,8 @@ export class TweetWidgetUI {
             ytSuggest.textContent = this.t('fetchingYoutubeTitle');
             ytSuggest.style.display = 'block';
             const currentInput = val;
-            fetchYouTubeTitle(url).then(title => {
-                if (textarea.value !== currentInput) return;
+            const title = await fetchYouTubeTitle(url);
+            if (textarea.value !== currentInput) return;
                 if (title) {
                     ytSuggest.textContent = this.t('insertYoutubeTitle', { title });
                     ytSuggest.onclick = () => {
@@ -1123,7 +1122,6 @@ export class TweetWidgetUI {
                     ytSuggest.textContent = this.t('fetchYoutubeTitleFailed');
                     ytSuggest.onclick = null;
                 }
-            });
         });
 
         const replyBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: this.t('reply') });
@@ -1216,7 +1214,7 @@ export class TweetWidgetUI {
         const ytSuggest = inputArea.createDiv({ cls: 'tweet-youtube-suggest', text: '' });
         ytSuggest.style.display = 'none';
         ytSuggest.textContent = '';
-        textarea.addEventListener('input', () => {
+        textarea.addEventListener('input', async () => {
             const val = textarea.value;
             const url = extractYouTubeUrl(val);
             if (!url) {
@@ -1227,8 +1225,8 @@ export class TweetWidgetUI {
             ytSuggest.textContent = this.t('fetchingYoutubeTitle');
             ytSuggest.style.display = 'block';
             const currentInput = val;
-            fetchYouTubeTitle(url).then(title => {
-                if (textarea.value !== currentInput) return;
+            const title = await fetchYouTubeTitle(url);
+            if (textarea.value !== currentInput) return;
                 if (title) {
                     ytSuggest.textContent = this.t('insertYoutubeTitle', { title });
                     ytSuggest.onclick = () => {
@@ -1243,7 +1241,6 @@ export class TweetWidgetUI {
                     ytSuggest.textContent = this.t('fetchYoutubeTitleFailed');
                     ytSuggest.onclick = null;
                 }
-            });
         });
 
         const retweetBtn = inputArea.createEl('button', { cls: 'tweet-reply-modal-btn', text: this.t('retweet') });
