@@ -7,7 +7,7 @@ import cloneDeep from 'lodash.clonedeep';
 import { preloadChartJS, loadReflectionSummaryShared } from './widgets/reflectionWidget/reflectionWidgetUI';
 import { getDateKeyLocal, getWeekRange } from './utils';
 import type { ReflectionWidgetPreloadBundle } from './widgets/reflectionWidget/reflectionWidget';
-import { t } from './i18n';
+import { t, widgetTypeName } from './i18n';
 
 /**
  * 新しいウィジェットの種類を選択して追加するためのモーダル
@@ -571,7 +571,12 @@ export class WidgetBoardModal {
                                     const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
                                     setIcon(deleteBtn, 'trash');
                                     deleteBtn.onclick = async () => {
-                                        if (confirm(t(this.plugin.settings.language || 'ja', 'widget.deleteConfirm', { widgetName: widgetConfig.title }))) {
+                                        // ウィジェット名を適切に表示するためのロジック
+                                        const lang = this.plugin.settings.language || 'ja';
+                                        const typeName = widgetTypeName(lang, widgetConfig.type);
+                                        const widgetDisplayName = widgetConfig.title || t(lang, 'widget.untitled').replace('{{widgetName}}', typeName);
+                                        
+                                        if (confirm(t(lang, 'widget.deleteConfirm', { widgetName: widgetDisplayName }))) {
                                             await this.deleteWidget(widgetConfig.id);
                                         }
                                     };
@@ -628,7 +633,12 @@ export class WidgetBoardModal {
                 const deleteBtn = wrapper.createEl('button', { cls: 'wb-widget-delete-btn' });
                 setIcon(deleteBtn, 'trash');
                 deleteBtn.onclick = async () => {
-                    if (confirm(t(this.plugin.settings.language || 'ja', 'widget.deleteConfirm', { widgetName: widgetConfig.title }))) {
+                    // ウィジェット名を適切に表示するためのロジック
+                    const lang = this.plugin.settings.language || 'ja';
+                    const typeName = widgetTypeName(lang, widgetConfig.type);
+                    const widgetDisplayName = widgetConfig.title || t(lang, 'widget.untitled').replace('{{widgetName}}', typeName);
+                    
+                    if (confirm(t(lang, 'widget.deleteConfirm', { widgetName: widgetDisplayName }))) {
                         await this.deleteWidget(widgetConfig.id);
                     }
                 };
