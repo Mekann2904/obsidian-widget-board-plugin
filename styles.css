@@ -2460,3 +2460,22 @@ body.wb-modal-left-outer-open .workspace {
 .reflection-manual-btn {
     margin: 10px 0 0 0;
 }
+
+/* Generic utility classes */
+.value-label {
+    margin-left: 12px;
+    font-weight: bold;
+}
+
+.manual-button-container {
+    text-align: center;
+    margin-top: 16px;
+}
+
+.manual-button {
+    margin: 10px 0 0 0;
+}
+
+.toggle-button {
+    margin-left: 8px;
+}
