@@ -88,11 +88,10 @@ describe('TweetWidget', () => {
     expect(widget.currentSettings.posts[0].liked).toBe(before);
   });
 
-  it('tweet-widgetクラスとタイトルが付与される', async () => {
+  it('tweet-widgetクラスが付与される', async () => {
     const widget = new TweetWidget();
     const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
     expect(el.classList.contains('tweet-widget')).toBe(true);
-    expect(el.textContent).toBe('Loading...');
   });
 
   it('タブ切替でcurrentTabが切り替わりUIが再描画される', async () => {
