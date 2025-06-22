@@ -129,7 +129,7 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
         // --- LLMグローバル設定 ---
         this.renderLLMSettings(containerEl, lang);
         // --- つぶやき（グローバル設定） ---
-        renderTweetWidgetSettings(this, containerEl, lang);
+        renderTweetWidgetSettings(this, containerEl);
         // --- カレンダー（グローバル設定） ---
         this.renderCalendarSettings(containerEl, lang);
         renderBoardManagementSection(this, containerEl, lang);

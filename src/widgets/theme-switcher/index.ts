@@ -12,7 +12,7 @@ export type ThemeSwitcherWidgetSettings = Record<string, never>;
  */
 export class ThemeSwitcherWidget implements WidgetImplementation {
     id = 'theme-switcher';
-    private config!: WidgetConfig;
+    config!: WidgetConfig;
     private app!: App;
     private plugin!: WidgetBoardPlugin;
     private widgetEl!: HTMLElement;

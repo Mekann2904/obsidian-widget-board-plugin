@@ -248,32 +248,27 @@ export class TweetWidget implements WidgetImplementation {
             currentGovernance
         );
 
-        // 3. ガバナンスデータをStoreに保存 (更新があった場合)
-        if (JSON.stringify(currentGovernance) !== JSON.stringify(updatedGovernanceData)) {
-            this.store.settings.aiGovernance = updatedGovernanceData;
-            // 必要に応じて this.saveDataDebounced();
-        }
-
+        // 3. 許可された場合のみAIリプライを生成し、storeを更新
         if (allow) {
-            debugLog(this.plugin, 'generateAiReply: model =', this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model || 'gemini-1.5-flash-latest');
+            this.store.settings.aiGovernance = updatedGovernanceData; // storeのデータを更新
             generateAiReply({
                 tweet: post,
                 allTweets: this.store.settings.posts,
-                llmGemini: {
-                    apiKey: this.plugin.settings.llm?.gemini?.apiKey || '',
-                    model: this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model || 'gemini-1.5-flash-latest'
-                },
-                saveReply: async (reply) => {
+                llmGemini: this.plugin.settings.llm?.gemini || { apiKey: '', model: '' },
+                saveReply: async (reply: TweetWidgetPost) => {
                     this.store.addPost(reply);
-                    this.plugin.updateTweetPostCount(reply.created, 1);
                     this.saveDataDebounced();
                     this.ui.render();
                 },
-                parseTags,
-                parseLinks,
-                onError: (err) => new Notice('AI自動リプライ生成に失敗: ' + (err instanceof Error ? err.message : String(err))),
+                parseTags: parseTags,
+                parseLinks: parseLinks,
                 settings: this.plugin.settings,
+                onError: (err) => {
+                    console.error('AI reply error', err);
+                    new Notice(t(this.plugin.settings.language || 'ja', 'error.aiReplyFailed'));
+                },
                 delay: !isExplicitAiTrigger(post),
+                plugin: this.plugin,
             });
         }
     }
@@ -487,6 +482,7 @@ export class TweetWidget implements WidgetImplementation {
             });
 
             let replyText = await GeminiProvider.generateReply(promptText, {
+                plugin: this.plugin,
                 apiKey: deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''),
                 model: this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model,
                 postText: threadText, post, thread
@@ -723,6 +719,7 @@ export class TweetWidget implements WidgetImplementation {
                 if (aiPrompt && s.text.includes('{{ai}}')) {
                     try {
                         const aiResult = await GeminiProvider.generateReply(aiPrompt, {
+                            plugin: this.plugin,
                             apiKey: deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''),
                             model: s.aiModel || this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model || 'gemini-1.5-flash-latest',
                         });

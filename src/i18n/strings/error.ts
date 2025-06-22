@@ -65,4 +65,8 @@ export const ERROR_MESSAGES = {
     fr: "Impossible de calculer l'heure de la prochaine publication",
     ko: '다음 게시 시간을 계산할 수 없습니다.',
   },
+  'error.aiReplyFailed': {
+    ja: 'AI自動リプライ生成に失敗しました。',
+    en: 'Failed to generate AI reply.',
+  },
 } as const;

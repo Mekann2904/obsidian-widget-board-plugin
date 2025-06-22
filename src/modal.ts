@@ -829,6 +829,13 @@ export class WidgetBoardModal {
             return;
         this.isClosing = true;
         this.modalEl.classList.remove('is-open');
+
+        document.body.classList.remove(
+            'wb-modal-open',
+            'wb-modal-right-outer-open',
+            'wb-modal-left-outer-open'
+        );
+
         this.onClose();
         // 300msのアニメーション後にDOMから削除
         setTimeout(() => {
@@ -861,6 +868,5 @@ export class WidgetBoardModal {
         const { contentEl } = this;
         contentEl.empty();
         this.uiWidgetReferences = [];
-        document.body.classList.remove('wb-modal-open');
     }
 }

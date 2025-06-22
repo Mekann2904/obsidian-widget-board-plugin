@@ -32,7 +32,7 @@ class FileSuggestModal extends FuzzySuggestModal<TFile> {
 
 export class FileViewWidget implements WidgetImplementation {
   id = 'file-view-widget';
-  private config!: WidgetConfig;
+  config!: WidgetConfig;
   private app!: App;
   private plugin!: WidgetBoardPlugin;
   private widgetEl!: HTMLElement;

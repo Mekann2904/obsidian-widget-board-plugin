@@ -128,6 +128,7 @@ export async function generateAiReply({
     onError,
     settings,
     delay,
+    plugin,
 }: {
     tweet: TweetWidgetPost,
     allTweets: TweetWidgetPost[],
@@ -138,6 +139,7 @@ export async function generateAiReply({
     onError?: (err: unknown) => void,
     settings: PluginGlobalSettings,
     delay: boolean,
+    plugin: any,
 }) {
     try {
         if (delay) {
@@ -184,6 +186,7 @@ export async function generateAiReply({
         debugLog({ settings }, 'Gemini送信context:', { model: llmGemini.model || 'gemini-1.5-flash-latest' });
 
         let replyText = await GeminiProvider.generateReply(promptText, {
+            plugin: plugin,
             apiKey: deobfuscate(llmGemini.apiKey || ''),
             model: llmGemini.model || 'gemini-1.5-flash-latest',
         });

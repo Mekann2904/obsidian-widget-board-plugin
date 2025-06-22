@@ -137,7 +137,7 @@ export async function loadReflectionSummaryShared(
 export class ReflectionWidgetUI {
     private widget: ReflectionWidget;
     private container: HTMLElement;
-    private config: WidgetConfig;
+    config: WidgetConfig;
     private app: App;
     private plugin: WidgetBoardPlugin;
     private autoTimer: ReturnType<typeof setInterval> | null = null;

@@ -21,7 +21,7 @@ export const DEFAULT_RECENT_NOTES_SETTINGS: RecentNotesWidgetSettings = {
  */
 export class RecentNotesWidget implements WidgetImplementation {
     id = 'recent-notes';
-    private config!: WidgetConfig;
+    config!: WidgetConfig;
     private app!: App;
     private plugin!: WidgetBoardPlugin;
     private widgetEl!: HTMLElement;

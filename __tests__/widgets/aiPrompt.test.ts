@@ -57,6 +57,7 @@ describe('AI prompt integration', () => {
       parseLinks: () => [],
       settings: { userTweetPrompt: 'Prompt {postDate} {tweet}' } as any,
       delay: false,
+      plugin: {},
     });
 
     expect(GeminiProvider.generateReply).toHaveBeenCalled();
@@ -112,6 +113,7 @@ describe('AI prompt integration', () => {
       onError,
       settings: {},
       delay: false,
+      plugin: {},
     });
 
     expect(onError).toHaveBeenCalled();

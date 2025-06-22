@@ -38,7 +38,7 @@ interface TimerStopwatchState {
  */
 export class TimerStopwatchWidget implements WidgetImplementation {
     id = 'timer-stopwatch';
-    private config!: WidgetConfig;
+    config!: WidgetConfig;
     private app!: App;
     private plugin!: WidgetBoardPlugin;
     private widgetEl!: HTMLElement;
