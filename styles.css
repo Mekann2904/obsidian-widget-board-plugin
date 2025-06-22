@@ -226,6 +226,12 @@
   padding: 0;
   font-size: 18px;
 }
+.wb-panel-close-btn .svg-icon {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  display: block;
+}
 .wb-panel-controls button.active { background-color: var(--interactive-accent); border-color: var(--interactive-accent-hover); color: var(--text-on-accent); }
 
 /* Widget Container and General Widget Styling */

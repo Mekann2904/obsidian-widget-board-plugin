@@ -211,8 +211,7 @@ export class WidgetBoardModal {
         setIcon(settingsBtn, 'settings');
         settingsBtn.setAttribute('aria-label', t(lang, 'modal.openSettings'));
 
-        const closeBtn = actionsWrapper.createEl('button', { cls: 'wb-panel-close-btn' });
-        setIcon(closeBtn, 'x');
+        const closeBtn = actionsWrapper.createEl('button', { cls: 'wb-panel-close-btn', text: '×' });
         closeBtn.setAttribute('aria-label', t(lang, 'modal.closeBoard'));
         closeBtn.onclick = () => this.close();
 
