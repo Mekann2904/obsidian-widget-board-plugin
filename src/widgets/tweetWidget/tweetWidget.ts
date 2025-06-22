@@ -58,7 +58,7 @@ export class TweetWidget implements WidgetImplementation {
     getReplies(parentId: string): TweetWidgetPost[] { return this.store.getReplies(parentId); }
     getQuotePosts(postId: string): TweetWidgetPost[] { return this.store.getQuotePosts(postId); }
 
-    async create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): Promise<HTMLElement> {
+    create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin, preloadBundle?: unknown): HTMLElement {
         this.config = config;
         this.app = app;
         this.plugin = plugin;
@@ -72,23 +72,25 @@ export class TweetWidget implements WidgetImplementation {
         this.currentPeriod = this.plugin.settings.defaultTweetPeriod || 'all';
         this.customPeriodDays = this.plugin.settings.defaultTweetCustomDays || 1;
 
-        const dbPath = this.getTweetDbPath();
-        this.repository = new TweetRepository(this.app, dbPath);
-
-        // 非同期初期化は副作用として行い、UIは一旦ローディング表示
         // jsdom の innerText は textContent を更新しないため textContent を使用する
         this.widgetEl.textContent = 'Loading...';
+        this.initialize();
+
+        this.widgetEl.addEventListener('keydown', this.handleKeyDown);
+
+        // 初期化中は空のUIを返す
+        return this.widgetEl;
+    }
+
+    private async initialize() {
+        const dbPath = this.getTweetDbPath();
+        this.repository = new TweetRepository(this.app, dbPath);
         const initialSettings = await this.repository.load(this.plugin.settings.language || 'ja');
         this.store = new TweetStore(initialSettings);
         this.recalculateQuoteCounts();
         this.ui = new TweetWidgetUI(this, this.widgetEl);
         this.ui.render();
         this.startScheduleLoop();
-
-        this.widgetEl.addEventListener('keydown', this.handleKeyDown);
-
-        // 初期化中は空のUIを返す
-        return this.widgetEl;
     }
 
     private handleKeyDown = (event: KeyboardEvent) => {
