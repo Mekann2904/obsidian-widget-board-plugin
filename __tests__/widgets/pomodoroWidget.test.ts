@@ -307,5 +307,96 @@ describe('PomodoroWidget 詳細テスト', () => {
     expect(widget['isRunning']).toBe(false);
   });
 
+  describe('静的タイマーロジック (tick)', () => {
+    beforeEach(() => {
+      // 各テストの前に、すべてのインスタンスとタイマーをクリーンアップ
+      PomodoroWidget.cleanupAllPersistentInstances();
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      // タイマーモックをリセットし、スパイを元に戻す
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
+    it('tickはセッション終了時にendSessionAndAdvanceを一度だけ呼び出す', () => {
+      // スパイを設定
+      const endSessionSpy = jest.spyOn(PomodoroWidget as any, 'endSessionAndAdvance');
+
+      // ウィジェットを作成
+      const widget = new PomodoroWidget();
+      widget.create(dummyConfig, dummyApp, dummyPlugin);
+
+      // タイマーを開始し、残り時間を1秒に設定
+      widget['startTimer'](); // これで globalInterval が開始される
+      const state = (PomodoroWidget as any).widgetStates.get(dummyConfig.id);
+
+      // stateが取得できることを確認
+      if (!state) {
+        throw new Error('Widget state was not found after starting timer.');
+      }
+
+      expect(state.isRunning).toBe(true);
+      state.remainingTime = 1;
+      (PomodoroWidget as any).widgetStates.set(dummyConfig.id, state);
+      widget['remainingTime'] = 1; // instance の残り時間も更新
+
+      // 1秒進める -> remainingTimeが0になり、endSessionAndAdvanceが呼ばれる
+      jest.advanceTimersByTime(1000);
+      expect(endSessionSpy).toHaveBeenCalledTimes(1);
+
+      // さらに2秒進める -> 重複して呼ばれないことを確認
+      jest.advanceTimersByTime(2000);
+      expect(endSessionSpy).toHaveBeenCalledTimes(1);
+      
+      // 状態がisRunning: falseになっていることを確認
+      const finalState = (PomodoroWidget as any).widgetStates.get(dummyConfig.id);
+      expect(finalState.isRunning).toBe(false);
+    });
+  });
+
+  describe('ポモドーロ終了時のボード自動オープン機能', () => {
+    beforeEach(() => {
+      dummyPlugin.openWidgetBoardById = jest.fn();
+      dummyPlugin.settings.openBoardOnPomodoroEnd = true;
+      dummyPlugin.settings.boards = [
+        { id: 'board-1', widgets: [{ id: 'test-pomodoro' }] }
+      ];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (dummyPlugin as any).modal = { isOpen: false };
+    });
+
+    it('設定が有効な場合、セッション終了時にボードが開かれる', async () => {
+      const widget = new PomodoroWidget();
+      widget.create(dummyConfig, dummyApp, dummyPlugin);
+
+      await widget['handleSessionEnd']();
+
+      expect(dummyPlugin.openWidgetBoardById).toHaveBeenCalledWith('board-1');
+    });
+
+    it('設定が無効な場合、ボードは開かれない', async () => {
+      dummyPlugin.settings.openBoardOnPomodoroEnd = false;
+      const widget = new PomodoroWidget();
+      widget.create(dummyConfig, dummyApp, dummyPlugin);
+
+      await widget['handleSessionEnd']();
+
+      expect(dummyPlugin.openWidgetBoardById).not.toHaveBeenCalled();
+    });
+
+    it('設定が有効でも、モーダルが既に開いている場合はボードは開かれない', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (dummyPlugin as any).modal.isOpen = true;
+      const widget = new PomodoroWidget();
+      widget.create(dummyConfig, dummyApp, dummyPlugin);
+
+      await widget['handleSessionEnd']();
+
+      expect(dummyPlugin.openWidgetBoardById).not.toHaveBeenCalled();
+    });
+  });
+
   // E2E/Obsidian再起動/通知・エクスポート一連動作はシステムテスト・手動/自動E2Eでカバー推奨
 }); 

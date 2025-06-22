@@ -529,16 +529,22 @@ export class WidgetBoardModal {
         }
         // --- プリロードバンドル生成（ReflectionWidget用） ---
         let reflectionPreloadBundle: ReflectionWidgetPreloadBundle | undefined = undefined;
-        if (widgetsToLoad.some(w => w.type === 'reflection-widget')) {
-            const chartModule = await preloadChartJS();
-            const todayKey = getDateKeyLocal(new Date());
-            const [, weekKey] = getWeekRange(this.plugin.settings.weekStartDay);
-            const [todaySummary, weekSummary] = await Promise.all([
-                loadReflectionSummaryShared('today', todayKey, this.plugin.app),
-                loadReflectionSummaryShared('week', weekKey, this.plugin.app)
-            ]);
-            reflectionPreloadBundle = { chartModule, todaySummary, weekSummary };
+        try {
+            if (widgetsToLoad.some(w => w.type === 'reflection-widget')) {
+                const chartModule = await preloadChartJS();
+                const todayKey = getDateKeyLocal(new Date());
+                const [, weekKey] = getWeekRange(this.plugin.settings.weekStartDay);
+                const [todaySummary, weekSummary] = await Promise.all([
+                    loadReflectionSummaryShared('today', todayKey, this.plugin.app),
+                    loadReflectionSummaryShared('week', weekKey, this.plugin.app)
+                ]);
+                reflectionPreloadBundle = { chartModule, todaySummary, weekSummary };
+            }
+        } catch (e) {
+            console.error('Error preloading data for reflection widget:', e);
+            // プリロードが失敗しても、ウィジェットのレンダリングは試みる
         }
+
         // --- Lazy Load & 非同期描画 ---
         const observer = new IntersectionObserver((entries, obs) => {
             entries.forEach(entry => {
@@ -578,6 +584,7 @@ export class WidgetBoardModal {
                                 wrapper.dataset.loaded = '1';
                                 obs.unobserve(wrapper);
                             } catch (e: unknown) {
+                                console.error(`Error creating widget ${widgetConfig.id} (${widgetConfig.type}):`, e);
                                 wrapper.empty();
                                 const errDiv = wrapper.createDiv({ cls: 'widget widget-error' });
                                 new Setting(errDiv).setName(t(this.plugin.settings.language || 'ja', 'widget.loadError', { widgetName: widgetConfig.title || t(this.plugin.settings.language || 'ja', 'widget.untitled') })).setHeading();

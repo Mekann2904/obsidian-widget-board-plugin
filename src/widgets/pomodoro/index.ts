@@ -178,6 +178,8 @@ export class PomodoroWidget implements WidgetImplementation {
         if (!state || !state.isRunning) return;
         state.remainingTime = (state.remainingTime || 0) - 1;
         if (state.remainingTime <= 0) {
+            state.isRunning = false;
+
             const inst = this.widgetInstances.get(configId);
             if (inst) {
                 debugLog(inst.plugin, 'tick: calling handleSessionEnd', inst);
@@ -186,8 +188,9 @@ export class PomodoroWidget implements WidgetImplementation {
                 this.handleSessionEndGlobal(configId);
             }
         }
+
         this.widgetStates.set(configId, state);
-        // インスタンスがあればUIも更新（状態も同期）
+
         const inst = this.widgetInstances.get(configId);
         if (inst) {
             inst.remainingTime = state.remainingTime;
@@ -238,16 +241,36 @@ export class PomodoroWidget implements WidgetImplementation {
             inst.pomodorosCompletedInCycle = state.pomodorosCompletedInCycle;
             if (typeof inst.updateDisplay === 'function') inst.updateDisplay();
             if (typeof inst.playSoundNotification === 'function') inst.playSoundNotification();
-            // サイクル終了時にポップアップ
+
             if (cycleEnded) {
-                new Notice('おつかれさまでした', 8000);
+                const exportMsg = state.exportFormat !== 'none' ? `ログは自動でエクスポートされました。` : ``;
+                new Notice(`1サイクルお疲れ様でした！${exportMsg}`, 10000);
             }
         }
         this.clearGlobalIntervalIfNoneRunning();
     }
 
     private static handleSessionEndGlobal(configId: string) {
-        this.endSessionAndAdvance(configId, this.widgetInstances.get(configId));
+        const state = this.widgetStates.get(configId);
+        const inst = this.widgetInstances.get(configId);
+
+        if (inst) {
+            inst.currentSessionEndTime = new Date();
+            if (inst.currentSessionStartTime) {
+                inst.sessionLogs.push({
+                    date: getDateKeyLocal(inst.currentSessionStartTime),
+                    start: `${pad2(inst.currentSessionStartTime.getHours())}:${pad2(inst.currentSessionStartTime.getMinutes())}`,
+                    end: `${pad2(inst.currentSessionEndTime.getHours())}:${pad2(inst.currentSessionEndTime.getMinutes())}`,
+                    memo: inst.memoWidget?.getMemoContent() || '',
+                    sessionType: inst.currentPomodoroSet,
+                });
+            }
+            if (inst.currentSettings.exportFormat && inst.currentSettings.exportFormat !== 'none') {
+                void inst.exportSessionLogs(inst.currentSettings.exportFormat);
+            }
+        }
+        
+        this.endSessionAndAdvance(configId, inst);
     }
 
     /**
@@ -475,36 +498,16 @@ export class PomodoroWidget implements WidgetImplementation {
             completed: this.pomodorosCompletedInCycle
         });
 
-        // セッション終了時刻を記録
-        this.currentSessionEndTime = new Date();
+        (this.constructor as typeof PomodoroWidget).handleSessionEndGlobal(this.config.id);
 
-        // ログ記録
-        if (this.currentSessionStartTime) {
-            this.sessionLogs.push({
-                date: getDateKeyLocal(this.currentSessionStartTime),
-                start: `${pad2(this.currentSessionStartTime.getHours())}:${pad2(this.currentSessionStartTime.getMinutes())}`,
-                end: `${pad2(this.currentSessionEndTime.getHours())}:${pad2(this.currentSessionEndTime.getMinutes())}`,
-                memo: this.memoWidget?.getMemoContent() || '',
-                sessionType: this.currentPomodoroSet,
-            });
-        }
-
-        // CSV/JSON/Markdownエクスポート
-        if (this.currentSettings.exportFormat && this.currentSettings.exportFormat !== 'none') {
-            await this.exportSessionLogs(this.currentSettings.exportFormat);
-        }
-
-        this.pauseTimer();
-
-        // ポモドーロボードが開いていれば更新を通知
-        const board = this.plugin.settings.boards.find(b => b.widgets.some(w => w.id === this.config.id));
-        if (board) {
-            const modal = this.plugin.boardManager.widgetBoardModals.get(board.id);
-            if (modal && modal.isOpen) {
-                // this.plugin.settingsTab.notifyWidgetInstanceIfBoardOpen(board.id, this.config.id, 'pomodoro', {});
+        const board = this.plugin.settings.boards.find(b => b.widgets?.some(w => w.id === this.config.id));
+        if (this.plugin.settings.openBoardOnPomodoroEnd && board) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const modal = (this.plugin as any).modal;
+            if (!modal || !modal.isOpen) {
+                this.plugin.openWidgetBoardById(board.id);
             }
         }
-        PomodoroWidget.endSessionAndAdvance(this.config.id, this);
     }
     
     private skipToNextSessionConfirm() {

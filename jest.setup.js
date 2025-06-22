@@ -1,3 +1,42 @@
+const mockIntersectionObserver = jest.fn();
+mockIntersectionObserver.mockReturnValue({
+  observe: () => null,
+  unobserve: () => null,
+  disconnect: () => null
+});
+window.IntersectionObserver = mockIntersectionObserver;
+
+class MockMessageChannel {
+  constructor() {
+    const port1 = {
+      onmessage: null,
+      close: () => {},
+    };
+    const port2 = {
+      onmessage: null,
+      close: () => {},
+    };
+    port1.postMessage = (data) => {
+      if (port2.onmessage) {
+        // テスト内で非同期性を模倣するため、同期的に呼び出す
+        port2.onmessage({ data });
+      }
+    };
+    port2.postMessage = (data) => {
+      if (port1.onmessage) {
+        port1.onmessage({ data });
+      }
+    };
+    this.port1 = port1;
+    this.port2 = port2;
+  }
+}
+
+Object.defineProperty(window, 'MessageChannel', {
+  writable: true,
+  value: MockMessageChannel,
+});
+
 if (typeof HTMLElement !== 'undefined') {
   if (!HTMLElement.prototype.empty) {
     HTMLElement.prototype.empty = function () {
