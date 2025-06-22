@@ -94,7 +94,7 @@ describe('i18nカテゴリ統合テスト', () => {
     // COMMON_STRINGS
     'show': { ja: '表示', en: 'Show' },
     // SETTINGS_PANE_STRINGS
-    'settingTabHeading': { ja: 'ウィジェットボード設定', en: 'Widget board settings' },
+    'settingTabHeading': { ja: 'ウィジェットボード', en: 'Widget board' },
     // POMODORO_STRINGS
     'addPomodoro': { ja: 'ポモドーロ追加', en: 'Add pomodoro' },
     // MEMO_STRINGS
