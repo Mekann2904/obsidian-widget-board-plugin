@@ -558,67 +558,21 @@ export class TweetWidgetUI {
         // 独自のフルスクリーンレイヤーを作成
         const layer = document.createElement('div');
         layer.className = 'tweet-image-zoom-layer';
-        layer.style.position = 'fixed';
-        layer.style.top = '0';
-        layer.style.left = '0';
-        layer.style.width = '100vw';
-        layer.style.height = '100vh';
-        layer.style.background = 'rgba(0,0,0,0.7)';
-        layer.style.zIndex = '99999';
-        layer.style.display = 'flex';
-        layer.style.alignItems = 'center';
-        layer.style.justifyContent = 'center';
-        layer.style.userSelect = 'none';
 
         // 画像本体
         const imgEl = document.createElement('img');
         imgEl.src = imgUrl;
         imgEl.alt = 'image-large';
-        imgEl.style.transition = 'transform 0.2s';
-        imgEl.style.background = '#fff';
-        imgEl.style.boxShadow = '0 2px 24px rgba(0,0,0,0.25)';
-        imgEl.style.borderRadius = '8px';
-        imgEl.style.maxWidth = '90vw';
-        imgEl.style.maxHeight = '90vh';
-        imgEl.style.display = 'block';
-        imgEl.style.position = 'relative';
+    imgEl.className = "tweet-image-zoom-img";
         layer.appendChild(imgEl);
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "×";
+    closeBtn.className = "tweet-image-zoom-close";
 
         // 閉じるボタン
-        const closeBtn = document.createElement('button');
-        closeBtn.textContent = '×';
-        closeBtn.style.position = 'absolute';
-        closeBtn.style.top = '32px';
-        closeBtn.style.right = '48px';
-        closeBtn.style.fontSize = '2.2em';
-        closeBtn.style.background = 'rgba(0,0,0,0.3)';
-        closeBtn.style.color = '#fff';
-        closeBtn.style.border = 'none';
-        closeBtn.style.borderRadius = '50%';
-        closeBtn.style.width = '48px';
-        closeBtn.style.height = '48px';
-        closeBtn.style.cursor = 'pointer';
-        closeBtn.style.zIndex = '100000';
         closeBtn.onclick = () => layer.remove();
         layer.appendChild(closeBtn);
-
-        // Escキーで閉じる
-        const escHandler = (ev: KeyboardEvent) => {
-            if (ev.key === 'Escape') {
-                layer.remove();
-                window.removeEventListener('keydown', escHandler);
-            }
-        };
-        window.addEventListener('keydown', escHandler);
-
-        // 背景クリックで閉じる
-        layer.addEventListener('click', (ev) => {
-            if (ev.target === layer) layer.remove();
-        });
-
-        // 拡大トグル（クリックで2倍、もう一度クリックで元に戻す）
-        let isZoomed = false;
-        imgEl.style.transform = 'scale(1)';
+        imgEl.style.transform = "scale(1)";
         imgEl.style.cursor = 'zoom-in';
         imgEl.addEventListener('click', (e) => {
             e.stopPropagation();
