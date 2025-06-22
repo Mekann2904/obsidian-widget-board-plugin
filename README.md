@@ -1,5 +1,21 @@
 # Obsidian Widget Board Plugin
 
+## Obsidianインデックス保護に関する重要な修正事項
+
+このプラグインでは、Obsidianのインデックスシステムに悪影響を与えないよう、以下の対策を実装しています：
+
+### ファイル操作の最適化
+- ファイルの削除→作成ではなく、Obsidian Vault APIを使用した更新操作を行います
+- `vault.adapter.remove()` + `vault.adapter.write()` の組み合わせを避け、`vault.modify()` を使用
+- フォルダ作成時の競合状態を適切に処理し、エラーハンドリングを強化
+
+### インデックス保護機能
+- 不必要なファイルシステム操作を最小化
+- Obsidianのファイルウォッチャーと協調動作
+- 既存ファイルの確認を事前に実行してから操作を行う
+
+これらの修正により、Obsidianのインデックス破壊や再インデックスの問題を防止します。
+
 [note記事 Obsidianプラグイン「obsidian-widget-board-plugin」リリースしました](https://note.com/mekann/n/ne05f32922b9e?sub_rt=share_sb)  
 [obsidian-widget-board-plugin 導入方法を簡単にまとめる](https://note.com/mekann/n/n7c593c276d5b)
 

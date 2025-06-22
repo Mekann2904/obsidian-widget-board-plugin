@@ -4,9 +4,14 @@ import { validatePost } from './tweetWidgetUtils'; // tweetWidgetUtils.ts から
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from './constants'; // constants.ts から定数をインポート
 import { t, type Language } from '../../i18n';
 
+// グローバルなファイル保存ロック
+const fileSaveLocks = new Map<string, Promise<void>>();
+
 export class TweetRepository {
     private app: App;
     private dbPath: string;
+    private saveInProgress: boolean = false;
+    private pendingSave: Promise<void> | null = null;
 
     constructor(app: App, dbPath: string) {
         this.app = app;
@@ -79,22 +84,68 @@ export class TweetRepository {
      * @param settings 保存する設定オブジェクト
      */
     async save(settings: TweetWidgetSettings, lang: Language): Promise<void> {
+        // グローバルなファイルパス基準のロック
+        const existingLock = fileSaveLocks.get(this.dbPath);
+        if (existingLock) {
+            await existingLock;
+        }
+
+        // 既に保存処理が進行中の場合は、それを待機
+        if (this.saveInProgress && this.pendingSave) {
+            await this.pendingSave;
+            return;
+        }
+
+        this.saveInProgress = true;
+        this.pendingSave = this.performSave(settings, lang);
+        fileSaveLocks.set(this.dbPath, this.pendingSave);
+        
+        try {
+            await this.pendingSave;
+        } finally {
+            this.saveInProgress = false;
+            this.pendingSave = null;
+            fileSaveLocks.delete(this.dbPath);
+        }
+    }
+
+    private async performSave(settings: TweetWidgetSettings, lang: Language): Promise<void> {
         try {
             const sanitizedSettings = this.ensureSettingsSchema(settings);
             const folder = this.getFolder();
 
             if (folder) {
-                // Let createFolder handle recursive creation
-                await this.app.vault.adapter.mkdir(normalizePath(folder));
+                // ディレクトリが存在しない場合のみ作成（Obsidianのインデックスへの影響を最小化）
+                const folderExists = await this.app.vault.adapter.exists(normalizePath(folder));
+                if (!folderExists) {
+                    await this.app.vault.adapter.mkdir(normalizePath(folder));
+                }
             }
 
             const dataToSave = JSON.stringify(sanitizedSettings, null, 2);
+            
+            // 再度ファイルの存在をチェック（競合状態を回避）
             const file = this.app.vault.getAbstractFileByPath(this.dbPath);
 
             if (file instanceof TFile) {
                 await this.app.vault.modify(file, dataToSave);
             } else {
-                await this.app.vault.create(this.dbPath, dataToSave);
+                try {
+                    await this.app.vault.create(this.dbPath, dataToSave);
+                } catch (createError) {
+                    // ファイル作成に失敗した場合、再度存在チェックして更新を試みる
+                    if (createError instanceof Error && createError.message.includes('File already exists')) {
+                        const existingFile = this.app.vault.getAbstractFileByPath(this.dbPath);
+                        if (existingFile instanceof TFile) {
+                            console.warn(`File was created by another process, updating instead: ${this.dbPath}`);
+                            await this.app.vault.modify(existingFile, dataToSave);
+                        } else {
+                            throw createError;
+                        }
+                    } else {
+                        throw createError;
+                    }
+                }
             }
         } catch (error) {
             console.error('Error saving tweet data:', error);
@@ -123,14 +174,17 @@ export class TweetRepository {
      * @param rawContent バックアップする生のファイル内容
      */
     private async backupCorruptedFile(rawContent: string, lang: Language): Promise<void> {
-        const backupPath = `${this.dbPath}.bak_${Date.now()}`;
+        let backupPath = `${this.dbPath}.bak_${Date.now()}`;
+        let counter = 0;
+        
         try {
-            const file = this.app.vault.getAbstractFileByPath(backupPath);
-            if (file instanceof TFile) {
-                await this.app.vault.process(file, () => rawContent);
-            } else {
-                await this.app.vault.create(backupPath, rawContent);
+            // 一意なバックアップファイル名を確保
+            while (this.app.vault.getAbstractFileByPath(backupPath)) {
+                counter++;
+                backupPath = `${this.dbPath}.bak_${Date.now()}_${counter}`;
             }
+            
+            await this.app.vault.create(backupPath, rawContent);
             new Notice(t(lang, 'backupSuccess', { backupPath: backupPath }));
         } catch (backupError) {
             console.error("Error creating backup of corrupted tweet data:", backupError);

@@ -429,7 +429,16 @@ export class TweetWidget implements WidgetImplementation {
             const contextFolder = this.plugin.settings.baseFolder ? `${this.plugin.settings.baseFolder}/ContextNotes` : 'ContextNotes';
             
             if (!this.app.vault.getAbstractFileByPath(contextFolder)) {
-                await this.app.vault.createFolder(contextFolder);
+                try {
+                    await this.app.vault.createFolder(contextFolder);
+                } catch (error) {
+                    // フォルダ作成失敗の場合、他のプロセスが先に作成した可能性がある
+                    if (error instanceof Error && error.message.includes('already exists')) {
+                        console.warn(`Context folder was created by another process: ${contextFolder}`);
+                    } else {
+                        throw error;
+                    }
+                }
             }
             notePath = `${contextFolder}/${date}-${sanitizedText || 'note'}.md`;
             await this.updatePostProperty(post.id, 'contextNote', notePath);
@@ -439,11 +448,16 @@ export class TweetWidget implements WidgetImplementation {
         if (file instanceof TFile) {
             this.app.workspace.getLeaf(true).openFile(file);
         } else {
-             if (!file) {
-                await this.app.vault.create(notePath, `> ${post.text}\n\n---\n\n`);
-                const newFile = this.app.vault.getAbstractFileByPath(notePath);
-                if (newFile instanceof TFile) {
-                    this.app.workspace.getLeaf(true).openFile(newFile);
+            if (!file) {
+                try {
+                    await this.app.vault.create(notePath, `> ${post.text}\n\n---\n\n`);
+                    const newFile = this.app.vault.getAbstractFileByPath(notePath);
+                    if (newFile instanceof TFile) {
+                        this.app.workspace.getLeaf(true).openFile(newFile);
+                    }
+                } catch (error) {
+                    console.error('Error creating context note:', error);
+                    new Notice('コンテキストノートの作成に失敗しました。詳細はコンソールを確認してください。');
                 }
             } else {
                 new Notice("Context note not found!");
@@ -520,25 +534,46 @@ export class TweetWidget implements WidgetImplementation {
         const baseDir = tweetDbPath.lastIndexOf('/') !== -1 ? tweetDbPath.substring(0, tweetDbPath.lastIndexOf('/')) : '';
         const imagesDir = baseDir ? `${baseDir}/tweet-widget-files` : 'tweet-widget-files';
         if (!this.app.vault.getAbstractFileByPath(imagesDir)) {
-            await this.app.vault.createFolder(imagesDir);
+            try {
+                await this.app.vault.createFolder(imagesDir);
+            } catch (error) {
+                // フォルダ作成失敗の場合、他のプロセスが先に作成した可能性がある
+                if (error instanceof Error && error.message.includes('already exists')) {
+                    console.warn(`Images folder was created by another process: ${imagesDir}`);
+                } else {
+                    throw error;
+                }
+            }
         }
         let insertedLinks: string[] = [];
         for (const file of files) {
-            const dataUrl = await readFileAsDataUrl(file);
-            const ext = file.name.split('.').pop() || 'png';
-            const uniqueName = `img_${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
-            const vaultPath = imagesDir + '/' + uniqueName;
-            const base64 = dataUrl.split(',')[1];
-            const bin = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-            await this.app.vault.createBinary(vaultPath, bin);
-            // Vaultファイルを取得し、getResourcePathでURLを取得
-            const vaultFile = this.app.vault.getFileByPath(vaultPath);
-            let url = '';
-            if (vaultFile) {
-                url = this.app.vault.getResourcePath(vaultFile);
+            try {
+                const dataUrl = await readFileAsDataUrl(file);
+                const ext = file.name.split('.').pop() || 'png';
+                const uniqueName = `img_${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
+                const vaultPath = imagesDir + '/' + uniqueName;
+                const base64 = dataUrl.split(',')[1];
+                const bin = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+                
+                // ファイルが既に存在する場合はスキップ
+                if (this.app.vault.getAbstractFileByPath(vaultPath)) {
+                    console.warn(`File already exists, skipping: ${vaultPath}`);
+                    continue;
+                }
+                
+                await this.app.vault.createBinary(vaultPath, bin);
+                // Vaultファイルを取得し、getResourcePathでURLを取得
+                const vaultFile = this.app.vault.getFileByPath(vaultPath);
+                let url = '';
+                if (vaultFile) {
+                    url = this.app.vault.getResourcePath(vaultFile);
+                }
+                this.attachedFiles.push({ name: uniqueName, type: file.type, dataUrl: url });
+                insertedLinks.push(`![[tweet-widget-files/${uniqueName}]]`);
+            } catch (error) {
+                console.error('Error attaching file:', error);
+                new Notice(`ファイル ${file.name} の添付に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
             }
-            this.attachedFiles.push({ name: uniqueName, type: file.type, dataUrl: url });
-            insertedLinks.push(`![[tweet-widget-files/${uniqueName}]]`);
         }
         // 本文テキストエリアに![[ファイル名]]を自動挿入
         const selectors = ['.tweet-textarea-main', '.tweet-reply-modal-textarea', '.tweet-detail-reply-textarea', '.tweet-edit-modal-textarea'];
