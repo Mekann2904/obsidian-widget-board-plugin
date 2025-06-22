@@ -146,7 +146,7 @@ describe('TweetWidget', () => {
     expect(spy).toHaveBeenCalled();
   });
 
-  it('navigateToDetailでボードパネルのscrollTopがリセットされる', async () => {
+  it('navigateToDetailでボードパネルのscrollTopがリセットされない', async () => {
     const widget = new TweetWidget();
     const panel = document.createElement('div');
     panel.className = 'widget-board-panel-custom';
@@ -159,8 +159,47 @@ describe('TweetWidget', () => {
     (widget as any)['ui'].container.scrollTop = 50;
     panel.scrollTop = 50;
     widget.navigateToDetail(post.id);
+    expect((widget as any)['ui'].container.scrollTop).toBe(0); // ウィジェット内部はリセット
+    expect(panel.scrollTop).toBe(50); // パネルはリセットされない
+  });
+
+  it('詳細表示以外の操作ではボードパネルのscrollTopもリセットされる', async () => {
+    const widget = new TweetWidget();
+    const panel = document.createElement('div');
+    panel.className = 'widget-board-panel-custom';
+    document.body.appendChild(panel);
+    const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
+    panel.appendChild(el);
+    await new Promise(res => setTimeout(res, 0));
+    (widget as any)['ui'].container.scrollTop = 50;
+    panel.scrollTop = 50;
+    
+    // フィルター変更による resetScroll
+    widget.setFilter('all');
     expect((widget as any)['ui'].container.scrollTop).toBe(0);
     expect(panel.scrollTop).toBe(0);
+  });
+
+  it('詳細表示から戻る際はボードパネルのscrollTopがリセットされない', async () => {
+    const widget = new TweetWidget();
+    const panel = document.createElement('div');
+    panel.className = 'widget-board-panel-custom';
+    document.body.appendChild(panel);
+    const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
+    panel.appendChild(el);
+    await new Promise(res => setTimeout(res, 0));
+    await widget.submitPost('detail back test');
+    const post = widget.currentSettings.posts[0];
+    
+    // 詳細表示に移動
+    widget.navigateToDetail(post.id);
+    (widget as any)['ui'].container.scrollTop = 50;
+    panel.scrollTop = 50;
+    
+    // 詳細表示から戻る
+    widget.navigateToDetail(null);
+    expect((widget as any)['ui'].container.scrollTop).toBe(0); // ウィジェット内部はリセット
+    expect(panel.scrollTop).toBe(50); // パネルはリセットされない
   });
 
   it('ファイル添付でattachedFilesが更新される', async () => {

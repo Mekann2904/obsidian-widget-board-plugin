@@ -129,9 +129,11 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     public navigateToDetail(postId: string | null) {
+        const wasInDetail = this.detailPostId !== null;
         this.detailPostId = postId;
         this.currentTab = 'home';
-        this.ui.resetScroll();
+        // 詳細表示から戻る場合はパネルスクロールをリセットしない
+        this.ui.resetScroll(wasInDetail && postId === null);
         this.ui.render();
     }
     

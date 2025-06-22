@@ -65,10 +65,13 @@ export class TweetWidgetUI {
         return t(this.widget.plugin.settings.language || 'ja', key, vars);
     }
 
-    public resetScroll(): void {
+    public resetScroll(skipPanelReset: boolean = false): void {
         this.container.scrollTop = 0;
-        const panel = this.container.closest('.widget-board-panel-custom');
-        if (panel instanceof HTMLElement) panel.scrollTop = 0;
+        // 詳細表示時またはskipPanelResetが指定された場合はウィジェットボードパネルのスクロールはリセットしない
+        if (!this.widget.detailPostId && !skipPanelReset) {
+            const panel = this.container.closest('.widget-board-panel-custom');
+            if (panel instanceof HTMLElement) panel.scrollTop = 0;
+        }
     }
 
     public scheduleRender(): void {

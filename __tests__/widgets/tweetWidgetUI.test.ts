@@ -61,6 +61,37 @@ describe('TweetWidgetUI', () => {
     expect(panel.scrollTop).toBe(0);
   });
 
+  it('詳細表示中のresetScrollでパネルのscrollTopはリセットされない', () => {
+    const panel = document.createElement('div');
+    panel.className = 'widget-board-panel-custom';
+    panel.style.overflow = 'auto';
+    panel.appendChild(container);
+    panel.scrollTop = 50;
+    container.scrollTop = 50;
+
+    // 詳細表示状態に設定
+    widget.detailPostId = 'test-post-id';
+
+    const ui = new TweetWidgetUI(widget, container);
+    ui.resetScroll();
+    expect(container.scrollTop).toBe(0); // ウィジェット内部のスクロールはリセット
+    expect(panel.scrollTop).toBe(50); // パネルのスクロールはリセットされない
+  });
+
+  it('skipPanelResetフラグでパネルのscrollTopはリセットされない', () => {
+    const panel = document.createElement('div');
+    panel.className = 'widget-board-panel-custom';
+    panel.style.overflow = 'auto';
+    panel.appendChild(container);
+    panel.scrollTop = 50;
+    container.scrollTop = 50;
+
+    const ui = new TweetWidgetUI(widget, container);
+    ui.resetScroll(true); // skipPanelReset = true
+    expect(container.scrollTop).toBe(0); // ウィジェット内部のスクロールはリセット
+    expect(panel.scrollTop).toBe(50); // パネルのスクロールはリセットされない
+  });
+
   it('showAvatarModalでモーダルが表示されEscで閉じる', () => {
     const ui = new TweetWidgetUI(widget, container);
     (ui as any).showAvatarModal(new MouseEvent('click'), 'url');
