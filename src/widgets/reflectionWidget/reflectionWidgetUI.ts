@@ -189,55 +189,35 @@ export class ReflectionWidgetUI {
             title.innerText = this.config.title || t(this.plugin.settings.language || 'ja', 'defaultTitle');
             this.container.appendChild(title);
             this.contentEl = document.createElement('div');
-            this.contentEl.className = 'widget-content';
-            this.contentEl.style.display = 'flex';
-            this.contentEl.style.flexDirection = 'column';
-            this.contentEl.style.alignItems = 'center';
-            this.contentEl.style.justifyContent = 'center';
-            this.contentEl.style.padding = '8px 0 0 0';
-            this.contentEl.style.contain = 'layout style';
+            this.contentEl.className = 'widget-content reflection-widget-content';
             this.container.appendChild(this.contentEl);
             const graphTitle = document.createElement('div');
-            graphTitle.style.fontWeight = 'bold';
-            graphTitle.style.marginBottom = '4px';
-            graphTitle.style.textAlign = 'center';
-            graphTitle.style.fontSize = '1em';
+            graphTitle.className = 'reflection-graph-title';
             graphTitle.innerText = t(this.plugin.settings.language || 'ja', 'trends7Days');
             this.contentEl.appendChild(graphTitle);
             this.canvasEl = document.createElement('canvas');
             this.canvasEl.width = 600;
             this.canvasEl.height = 220;
-            this.canvasEl.style.margin = '0 auto 16px auto';
-            this.canvasEl.style.display = 'block';
-            this.canvasEl.style.maxWidth = '80%';
-            this.canvasEl.style.width = '80%';
+            this.canvasEl.className = 'reflection-canvas';
             this.contentEl.appendChild(this.canvasEl);
             this.chartImgEl = document.createElement('img');
-            this.chartImgEl.style.display = 'none';
-            this.chartImgEl.style.margin = '0 auto 16px auto';
-            this.chartImgEl.style.maxWidth = '80%';
-            this.chartImgEl.style.width = '80%';
+            this.chartImgEl.className = 'reflection-chart-img';
             this.contentEl.appendChild(this.chartImgEl);
             this.aiSummarySectionEl = document.createElement('div');
-            this.aiSummarySectionEl.style.width = '100%';
-            this.aiSummarySectionEl.style.marginTop = '18px';
-            this.aiSummarySectionEl.style.padding = '8px 0 0 0';
-            this.aiSummarySectionEl.style.borderTop = '1px solid var(--divider-color, #444)';
+            this.aiSummarySectionEl.className = 'reflection-ai-summary-section';
             this.contentEl.appendChild(this.aiSummarySectionEl);
             const todayTitle = document.createElement('div');
-            todayTitle.style.fontWeight = 'bold';
-            todayTitle.style.margin = '16px 0 2px 0';
-            todayTitle.style.fontSize = '2em';
+            todayTitle.className = 'reflection-summary-title';
             todayTitle.innerText = t(this.plugin.settings.language || 'ja', 'aiSummaryToday');
             this.aiSummarySectionEl.appendChild(todayTitle);
             this.todaySummaryEl = document.createElement('div');
+            this.todaySummaryEl.className = 'reflection-summary-content';
             this.todaySummaryEl.innerText = '';
-            this.todaySummaryEl.style.minHeight = '2em';
             this.aiSummarySectionEl.appendChild(this.todaySummaryEl);
             // --- 今日のまとめ コピー用ボタン追加 ---
             const todayCopyBtn = document.createElement('button');
+            todayCopyBtn.className = 'reflection-copy-btn';
             todayCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copy');
-            todayCopyBtn.style.marginLeft = '8px';
             todayCopyBtn.onclick = async () => {
                 const text = this.lastTodaySummary || '';
                 try {
@@ -252,19 +232,17 @@ export class ReflectionWidgetUI {
             };
             todayTitle.appendChild(todayCopyBtn);
             const weekTitle = document.createElement('div');
-            weekTitle.style.fontWeight = 'bold';
-            weekTitle.style.margin = '16px 0 2px 0';
-            weekTitle.style.fontSize = '2em';
+            weekTitle.className = 'reflection-summary-title';
             weekTitle.innerText = t(this.plugin.settings.language || 'ja', 'aiSummaryWeek');
             this.aiSummarySectionEl.appendChild(weekTitle);
             this.weekSummaryEl = document.createElement('div');
+            this.weekSummaryEl.className = 'reflection-summary-content';
             this.weekSummaryEl.innerText = '';
-            this.weekSummaryEl.style.minHeight = '2em';
             this.aiSummarySectionEl.appendChild(this.weekSummaryEl);
             // --- 今週のまとめ コピー用ボタン追加 ---
             const weekCopyBtn = document.createElement('button');
+            weekCopyBtn.className = 'reflection-copy-btn';
             weekCopyBtn.innerText = t(this.plugin.settings.language || 'ja', 'copy');
-            weekCopyBtn.style.marginLeft = '8px';
             weekCopyBtn.onclick = async () => {
                 const text = this.lastWeekSummary || '';
                 try {
