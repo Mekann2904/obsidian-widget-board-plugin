@@ -2,7 +2,7 @@ jest.mock('../../src/llm/gemini/geminiApi.ts', () => ({
   GeminiProvider: { generateReply: jest.fn() },
 }));
 
-import { App } from 'obsidian';
+import { App, TFile } from 'obsidian';
 
 import type { TweetWidgetPost } from '../../src/widgets/tweetWidget/types';
 import type { WidgetConfig } from '../../src/interfaces';
@@ -123,6 +123,7 @@ describe('AI prompt integration', () => {
   test('ReflectionWidget uses custom prompt and model', async () => {
     const { ReflectionWidget } = require('../../src/widgets/reflectionWidget/reflectionWidget');
     const { GeminiProvider } = require('../../src/llm/gemini/geminiApi.ts');
+    const file = new TFile();
     const adapter = {
       exists: jest.fn().mockResolvedValue(true),
       read: jest.fn().mockResolvedValue(
@@ -130,7 +131,7 @@ describe('AI prompt integration', () => {
       ),
       write: jest.fn(),
     };
-    const app = { vault: { adapter } } as unknown as App;
+    const app = { vault: { adapter, getAbstractFileByPath: jest.fn((p: string) => p === 'tweets.json' ? file : null), read: adapter.read, create: jest.fn(), modify: jest.fn(), createFolder: jest.fn() } } as unknown as App;
     const plugin = {
       settings: {
         weekStartDay: 1,
@@ -164,6 +165,7 @@ describe('AI prompt integration', () => {
   test('loadReflectionSummaryShared caches results', async () => {
     jest.resetModules();
     const { loadReflectionSummaryShared } = require('../../src/widgets/reflectionWidget/reflectionWidgetUI.ts');
+    const file = new TFile();
     const adapter = {
       exists: jest.fn().mockResolvedValue(true),
       read: jest.fn().mockResolvedValue(
@@ -171,7 +173,7 @@ describe('AI prompt integration', () => {
       ),
       write: jest.fn(),
     };
-    const app = { vault: { adapter } } as unknown as App;
+    const app = { vault: { adapter, getAbstractFileByPath: jest.fn((p: string) => p === 'data.json' ? file : null), read: adapter.read, create: jest.fn(), modify: jest.fn(), createFolder: jest.fn() } } as unknown as App;
 
     const res1 = await loadReflectionSummaryShared('today', 'd', app);
     expect(adapter.read).toHaveBeenCalledTimes(1);
