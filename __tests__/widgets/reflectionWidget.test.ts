@@ -23,6 +23,7 @@ describe('ReflectionWidget 詳細テスト', () => {
           write: jest.fn(),
         },
         getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
         process: jest.fn(),
@@ -92,6 +93,7 @@ describe('ReflectionWidget 設定値テスト', () => {
       vault: {
         adapter: { exists: jest.fn().mockResolvedValue(true), read: jest.fn().mockResolvedValue('{}'), write: jest.fn() },
         getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
         process: jest.fn(),
@@ -150,6 +152,7 @@ describe('ReflectionWidget プリロードバンドルテスト', () => {
           write: jest.fn(),
         },
         getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
         process: jest.fn(),
@@ -196,9 +199,10 @@ describe('ReflectionWidget UI統合テスト', () => {
         adapter: {
           exists: jest.fn().mockResolvedValue(true),
           read: jest.fn().mockResolvedValue('{"posts": [], "scheduledPosts": []}'),
-          write: jest.fn()
+          write: jest.fn(),
         },
         getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
         process: jest.fn(),
@@ -282,6 +286,7 @@ describe('ReflectionWidget データ永続化テスト', () => {
           write: jest.fn().mockResolvedValue(undefined)
         },
         getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
         process: jest.fn(),
@@ -300,6 +305,7 @@ describe('ReflectionWidget データ永続化テスト', () => {
           write: jest.fn().mockResolvedValue(undefined)
         },
         getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
         process: jest.fn(),
@@ -330,6 +336,7 @@ describe('ReflectionWidget データ永続化テスト', () => {
           write: jest.fn().mockResolvedValue(undefined)
         },
         getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
         process: jest.fn(),
@@ -362,6 +369,7 @@ describe('ReflectionWidget パフォーマンステスト', () => {
                 write: jest.fn(),
             },
             getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+            getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
             read: jest.fn(),
             create: jest.fn(),
             process: jest.fn(),
@@ -436,6 +444,7 @@ describe('ReflectionWidget エラーハンドリングテスト', () => {
           write: jest.fn()
         },
         getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
         process: jest.fn(),
@@ -528,6 +537,7 @@ describe('ReflectionWidget アクセシビリティテスト', () => {
           write: jest.fn(),
         },
         getFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
+        getAbstractFileByPath: jest.fn(() => new (require('obsidian').TFile)()),
         read: jest.fn(),
         create: jest.fn(),
         process: jest.fn(),
