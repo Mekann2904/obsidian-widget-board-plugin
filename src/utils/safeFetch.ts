@@ -90,13 +90,4 @@ function createReadableStreamFromString(input: string) {
   });
 }
 
-// APIキーなどの簡易難読化（Base64）
-export function obfuscate(str: string): string {
-  return Buffer.from(str, 'utf8').toString('base64');
-}
 
-function getTweetDbPath(basePath: string | undefined): string {
-  return basePath
-    ? `${basePath.replace(/\/$/, '')}/tweets.json`
-    : 'tweets.json';
-}
