@@ -1,5 +1,5 @@
 // src/widgets/calendarWidget.ts
-import { App, setIcon, Setting, normalizePath } from 'obsidian';
+import { App, setIcon, Setting, normalizePath, TFile } from 'obsidian';
 import { DEFAULT_CALENDAR_SETTINGS } from '../../settings/defaultWidgetSettings';
 import type { WidgetConfig, WidgetImplementation } from '../../interfaces';
 import type WidgetBoardPlugin from '../../main';
@@ -206,42 +206,56 @@ export class CalendarWidget implements WidgetImplementation {
         const lang = this.plugin.settings.language || 'ja';
         new Setting(this.selectedDateInfoEl).setName(t(lang, 'calendar.notesForDate', { date: dateStr })).setHeading();
 
-        // --- デイリーノートのファイル名をグローバル設定で生成 ---
-        const globalFormat = this.plugin?.settings?.calendarDailyNoteFormat || 'YYYY-MM-DD';
-        const format = globalFormat;
-        debugLog(this.plugin, 'calendar format:', format, 'dateStr:', dateStr);
-        const [y, m, d] = dateStr.split('-');
-        const MM = pad2(parseInt(m, 10));
-        const DD = pad2(parseInt(d, 10));
-        let dailyNoteName = format.toUpperCase()
-            .replace(/YYYY/g, y)
-            .replace(/MM/g, MM)
-            .replace(/DD/g, DD);
-        debugLog(this.plugin, '置換後 dailyNoteName:', dailyNoteName);
-        if (!/\.md$/i.test(dailyNoteName)) dailyNoteName += '.md';
-        const dailyNotePath = normalizePath(dailyNoteName);
-        const dailyNote = this.app.vault.getFileByPath(dailyNotePath);
-        if (dailyNote) {
+        const date = moment(dateStr, 'YYYY-MM-DD');
+
+        // --- Get daily note settings from "Daily notes" or "Periodic Notes" plugins ---
+        let format = 'YYYY-MM-DD';
+        let folder = '';
+
+        try {
+            const periodicNotes = (this.app as any).plugins.getPlugin('periodic-notes');
+            if (periodicNotes && periodicNotes.settings?.daily?.enabled) {
+                format = periodicNotes.settings.daily.format || format;
+                folder = periodicNotes.settings.daily.folder || folder;
+            } else {
+                const dailyNotes = (this.app as any).internalPlugins.getPluginById('daily-notes');
+                if (dailyNotes && dailyNotes.enabled) {
+                    const options = dailyNotes.instance.options;
+                    format = options.format || format;
+                    folder = options.folder || folder;
+                } else {
+                    format = this.plugin?.settings?.calendarDailyNoteFormat || 'YYYY-MM-DD';
+                }
+            }
+        } catch (e) {
+            console.error("Calendar Widget: Error getting daily note settings, falling back to own settings.", e);
+            format = this.plugin?.settings?.calendarDailyNoteFormat || 'YYYY-MM-DD';
+        }
+
+        const filename = date.format(format) + '.md';
+        const dailyNotePath = normalizePath(folder ? `${folder}/${filename}` : filename);
+        const dailyNote = this.app.vault.getAbstractFileByPath(dailyNotePath);
+
+
+        if (dailyNote instanceof TFile) {
             const dailyBtn = this.selectedDateInfoEl.createEl('button', { text: t(lang, 'calendar.openDailyNote') });
             dailyBtn.onclick = () => {
                 this.app.workspace.openLinkText(dailyNote.path, '', false);
             };
         } else {
-            // デバッグ用: 一致しなかった場合、全ファイルのbasenameとnameを出力
-            debugLog(this.plugin, 'デイリーノート候補が見つかりません:', { dailyNotePath, dailyNoteName });
-            this.app.vault.getFiles().forEach(f => {
-                debugLog(this.plugin, 'ファイル:', { basename: f.basename, name: f.name, extension: f.extension });
-            });
             this.selectedDateInfoEl.createEl('div', { text: t(lang, 'calendar.noDailyNote') });
+             // デバッグ用: 一致しなかった場合、計算されたパスを出力
+            debugLog(this.plugin, 'デイリーノートが見つかりません:', { calculatedPath: dailyNotePath });
         }
 
         // その日付で作成・編集されたノート一覧
         const files = this.app.vault.getFiles().filter(f => {
-            if (f.extension !== 'md') return false;
+            if (f.extension !== 'md' || f.path === dailyNotePath) return false;
             const c = moment(f.stat.ctime).format('YYYY-MM-DD');
             const m = moment(f.stat.mtime).format('YYYY-MM-DD');
             return c === dateStr || m === dateStr;
         });
+
         if (files.length > 0) {
             const list = this.selectedDateInfoEl.createEl('ul');
             files.forEach(f => {
@@ -252,10 +266,7 @@ export class CalendarWidget implements WidgetImplementation {
                     e.preventDefault();
                     this.app.workspace.openLinkText(f.path, '', false);
                 };
-                li.createSpan({ text: ` (${moment(f.stat.mtime).format('YYYY/MM/DD HH:mm')})` });
             });
-        } else {
-            this.selectedDateInfoEl.createEl('div', { text: t(lang, 'calendar.noNotes') });
         }
     }
 

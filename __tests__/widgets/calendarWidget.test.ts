@@ -204,4 +204,103 @@ describe('CalendarWidget', () => {
       expect((tds[0] as HTMLElement).getAttribute('tabindex')).toBe('0');
     }
   });
-}); 
+});
+
+describe('CalendarWidget Daily Note Integration', () => {
+  let widget: CalendarWidget;
+  let config: WidgetConfig;
+  let app: any;
+  let plugin: any;
+
+  beforeEach(() => {
+    config = {
+      id: 'calendar-test',
+      type: 'calendar',
+      title: 'Daily Note Test',
+      settings: {},
+    };
+    app = {
+      vault: {
+        getAbstractFileByPath: jest.fn(),
+        getFiles: jest.fn(() => []),
+      },
+      workspace: {
+        openLinkText: jest.fn(),
+      },
+      plugins: {
+        getPlugin: jest.fn(),
+      },
+      internalPlugins: {
+        getPluginById: jest.fn(),
+      },
+    };
+    plugin = {
+      settings: {
+        language: 'ja',
+      },
+    };
+    widget = new CalendarWidget();
+  });
+
+  it('should use Periodic Notes settings if available', () => {
+    app.plugins.getPlugin.mockReturnValue({
+      settings: {
+        daily: {
+          enabled: true,
+          format: 'YYYY-MM-DD',
+          folder: 'daily',
+        },
+      },
+    });
+
+    widget.create(config, app, plugin);
+    widget['showNotesForDate']('2023-10-26');
+
+    expect(app.vault.getAbstractFileByPath).toHaveBeenCalledWith('daily/2023-10-26.md');
+  });
+
+  it('should use Daily Notes settings if Periodic Notes is not available', () => {
+    app.plugins.getPlugin.mockReturnValue(null);
+    app.internalPlugins.getPluginById.mockReturnValue({
+      enabled: true,
+      instance: {
+        options: {
+          format: 'YYYY.MM.DD',
+          folder: 'journal/daily',
+        },
+      },
+    });
+
+    widget.create(config, app, plugin);
+    widget['showNotesForDate']('2023-10-26');
+
+    expect(app.vault.getAbstractFileByPath).toHaveBeenCalledWith('journal/daily/2023.10.26.md');
+  });
+
+  it('should fall back to own settings if no daily note plugin is configured', () => {
+    app.plugins.getPlugin.mockReturnValue(null);
+    app.internalPlugins.getPluginById.mockReturnValue(null);
+    plugin.settings.calendarDailyNoteFormat = 'DD-MM-YYYY';
+
+    widget.create(config, app, plugin);
+    widget['showNotesForDate']('2023-10-26');
+    
+    expect(app.vault.getAbstractFileByPath).toHaveBeenCalledWith('26-10-2023.md');
+  });
+
+  it('should handle case where daily note plugins are present but disabled', () => {
+    app.plugins.getPlugin.mockReturnValue({
+        settings: { daily: { enabled: false } }
+    });
+    app.internalPlugins.getPluginById.mockReturnValue({
+        enabled: false,
+        instance: { options: {} }
+    });
+    plugin.settings.calendarDailyNoteFormat = 'YYYY/MM/DD';
+
+    widget.create(config, app, plugin);
+    widget['showNotesForDate']('2023-10-26');
+
+    expect(app.vault.getAbstractFileByPath).toHaveBeenCalledWith('2023/10/26.md');
+  });
+});

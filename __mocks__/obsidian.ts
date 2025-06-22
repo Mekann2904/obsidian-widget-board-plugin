@@ -49,3 +49,23 @@ export const debounce = (fn: any) => fn;
 export function normalizePath(path: string): string {
   return path.replace(/\\/g, '/');
 }
+
+export class Setting {
+  constructor(private containerEl: HTMLElement) {}
+  setName(name: string) {
+    this.containerEl.createEl('div', { text: name });
+    return this;
+  }
+  setHeading() {
+    return this;
+  }
+  addText(cb: (text: any) => any) {
+    const text = {
+      setPlaceholder: () => text,
+      setValue: () => text,
+      onChange: () => text,
+    };
+    cb(text);
+    return this;
+  }
+}

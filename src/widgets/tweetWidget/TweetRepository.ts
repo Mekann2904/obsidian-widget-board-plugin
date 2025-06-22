@@ -1,4 +1,4 @@
-import { App, Notice, TFile } from 'obsidian';
+import { App, Notice, TFile, normalizePath } from 'obsidian';
 import type { TweetWidgetSettings } from './types'; // types.ts から型をインポート
 import { validatePost } from './tweetWidgetUtils'; // tweetWidgetUtils.ts からユーティリティをインポート
 import { DEFAULT_TWEET_WIDGET_SETTINGS } from './constants'; // constants.ts から定数をインポート
@@ -81,58 +81,41 @@ export class TweetRepository {
     async save(settings: TweetWidgetSettings, lang: Language): Promise<void> {
         try {
             const sanitizedSettings = this.ensureSettingsSchema(settings);
-            const lastSlash = this.dbPath.lastIndexOf('/');
-            const folder = lastSlash !== -1 ? this.dbPath.substring(0, lastSlash) : '';
+            const folder = this.getFolder();
 
             if (folder) {
-                await this.ensureFolderExists(folder);
+                // Let createFolder handle recursive creation
+                await this.app.vault.adapter.mkdir(normalizePath(folder));
             }
 
             const dataToSave = JSON.stringify(sanitizedSettings, null, 2);
             const file = this.app.vault.getAbstractFileByPath(this.dbPath);
+
             if (file instanceof TFile) {
-                await this.app.vault.process(file, () => dataToSave);
+                await this.app.vault.modify(file, dataToSave);
             } else {
                 await this.app.vault.create(this.dbPath, dataToSave);
             }
-        } catch (e) {
-            console.error("Error saving tweet data:", e);
-            new Notice(t(lang, 'saveError'));
+        } catch (error) {
+            console.error('Error saving tweet data:', error);
+            new Notice('Error saving tweet data. See console for details.');
         }
     }
 
-    private async ensureFolderExists(folder: string) {
-        const folders = folder.split('/');
-        let currentPath = '';
-        for (const f of folders) {
-            if (f === '') continue; // Skip empty parts, e.g. from a leading slash
-            currentPath = currentPath ? `${currentPath}/${f}` : f;
-
-            const stat = await this.app.vault.adapter.stat(currentPath);
-
-            if (stat) {
-                if (stat.type === 'file') {
-                    const message = `Tweet widget: A file named "${currentPath}" already exists. Cannot create a folder with the same name.`;
-                    new Notice(message);
-                    throw new Error(message);
-                }
-                // If it's a folder, we do nothing and continue.
-            } else {
-                // If it doesn't exist, create it.
-                await this.app.vault.createFolder(currentPath);
-            }
-        }
+    private getFolder(): string | null {
+        const lastSlash = this.dbPath.lastIndexOf('/');
+        return lastSlash > -1 ? this.dbPath.substring(0, lastSlash) : null;
     }
 
     private ensureSettingsSchema(settings: Partial<TweetWidgetSettings>): TweetWidgetSettings {
-        const sanitized = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...settings };
-        if (!Array.isArray(sanitized.posts)) {
-            sanitized.posts = [];
+        const fullSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...settings };
+        if (!Array.isArray(fullSettings.posts)) {
+            fullSettings.posts = [];
         }
-        if (!Array.isArray(sanitized.scheduledPosts)) {
-            sanitized.scheduledPosts = [];
+        if (!Array.isArray(fullSettings.scheduledPosts)) {
+            fullSettings.scheduledPosts = [];
         }
-        return sanitized;
+        return fullSettings;
     }
 
     /**

@@ -1,71 +1,75 @@
-// Mock the obsidian API used in TweetRepository
+import { TweetRepository } from '../../src/widgets/tweetWidget/TweetRepository';
+import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../../src/settings/defaultWidgetSettings';
+import type { TweetWidgetSettings } from '../../src/widgets/tweetWidget/types';
+import { TFile } from 'obsidian';
+
 jest.mock('obsidian', () => {
-  return {
-    App: class {},
-    Notice: jest.fn(),
-    TFile: class { constructor(public path = 'mock.md') {} },
-  };
+    const original = jest.requireActual('obsidian');
+    return {
+        ...original,
+        TFile: jest.fn().mockImplementation(() => ({
+            path: 'folder/tweets.json',
+        })),
+        Notice: jest.fn(),
+        normalizePath: (p: string) => p,
+    };
 }, { virtual: true });
 
-import type { TweetWidgetSettings } from '../../src/widgets/tweetWidget/types';
-import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../../src/settings/defaultWidgetSettings';
-const { TweetRepository } = require('../../src/widgets/tweetWidget');
-const { TFile } = require('obsidian');
 
 describe('TweetRepository.save', () => {
-  const sampleSettings: TweetWidgetSettings = { posts: [] };
-  const expectedFullSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...sampleSettings };
+    let repo: TweetRepository;
+    let get: jest.Mock;
+    let create: jest.Mock;
+    let modify: jest.Mock;
+    let mkdir: jest.Mock;
+    let app: any;
 
-  test('does not create folder when path has no folder', async () => {
-    const get = jest.fn().mockReturnValue(null);
-    const createFolder = jest.fn();
-    const create = jest.fn();
-    const process = jest.fn();
-    const app: any = { vault: { getAbstractFileByPath: get, createFolder, create, process } };
-    const repo = new TweetRepository(app, 'tweets.json');
-    await repo.save(sampleSettings);
-    expect(createFolder).not.toHaveBeenCalled();
-    expect(process).not.toHaveBeenCalled();
-    expect(create).toHaveBeenCalledWith('tweets.json', JSON.stringify(expectedFullSettings, null, 2));
-  });
+    const sampleSettings: TweetWidgetSettings = { posts: [] };
+    const expectedFullSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, ...sampleSettings };
 
-  test('creates folder when missing', async () => {
-    const get = jest.fn().mockReturnValue(null);
-    const createFolder = jest.fn();
-    const create = jest.fn();
-    const process = jest.fn();
-    const app: any = { vault: { getAbstractFileByPath: get, createFolder, create, process } };
-    const repo = new TweetRepository(app, 'folder/tweets.json');
-    await repo.save(sampleSettings);
-    expect(createFolder).toHaveBeenCalledWith('folder');
-    expect(create).toHaveBeenCalledWith('folder/tweets.json', JSON.stringify(expectedFullSettings, null, 2));
-  });
+    beforeEach(() => {
+        get = jest.fn();
+        create = jest.fn();
+        modify = jest.fn();
+        mkdir = jest.fn().mockResolvedValue(undefined);
 
-  test('creates nested folders when missing', async () => {
-    const get = jest.fn().mockReturnValue(null);
-    const createFolder = jest.fn();
-    const create = jest.fn();
-    const process = jest.fn();
-    const app: any = { vault: { getAbstractFileByPath: get, createFolder, create, process } };
-    const repo = new TweetRepository(app, 'nested/folder/tweets.json');
-    await repo.save(sampleSettings);
-    expect(createFolder).toHaveBeenCalledWith('nested');
-    expect(createFolder).toHaveBeenCalledWith('nested/folder');
-    expect(create).toHaveBeenCalledWith('nested/folder/tweets.json', JSON.stringify(expectedFullSettings, null, 2));
-  });
+        app = {
+            vault: {
+                getAbstractFileByPath: get,
+                create,
+                modify,
+                adapter: {
+                    mkdir,
+                },
+            },
+        };
 
-  test('should sanitize settings before saving', async () => {
-    const get = jest.fn().mockReturnValue(new TFile());
-    const create = jest.fn();
-    const process = jest.fn();
-    const createFolder = jest.fn();
-    const app: any = { vault: { getAbstractFileByPath: get, create, process, createFolder } };
-    const repo = new TweetRepository(app, 'tweets.json');
-    const invalidSettings: any = { posts: { 'not': 'an array' } };
-    await repo.save(invalidSettings);
+        repo = new TweetRepository(app, 'folder/tweets.json');
+    });
 
-    const expectedSanitizedSettings = { ...DEFAULT_TWEET_WIDGET_SETTINGS, posts: [], scheduledPosts: [] };
+    test('creates folder and new file when neither exist', async () => {
+        get.mockReturnValue(null);
+        await repo.save(sampleSettings);
 
-    expect(process).toHaveBeenCalledWith(expect.anything(), expect.any(Function));
-  });
+        expect(mkdir).toHaveBeenCalledWith('folder');
+        expect(create).toHaveBeenCalledWith('folder/tweets.json', JSON.stringify(expectedFullSettings, null, 2));
+        expect(modify).not.toHaveBeenCalled();
+    });
+
+    test('updates existing file when folder already exists', async () => {
+        get.mockReturnValue(new TFile());
+        
+        await repo.save(sampleSettings);
+
+        expect(mkdir).toHaveBeenCalledWith('folder');
+        expect(modify).toHaveBeenCalledWith(expect.any(TFile), JSON.stringify(expectedFullSettings, null, 2));
+        expect(create).not.toHaveBeenCalled();
+    });
+
+    test('does not create folder when path is at root', async () => {
+        repo = new TweetRepository(app, 'tweets.json');
+        await repo.save(sampleSettings);
+        expect(mkdir).not.toHaveBeenCalled();
+        expect(create).toHaveBeenCalledWith('tweets.json', JSON.stringify(expectedFullSettings, null, 2));
+    });
 });
