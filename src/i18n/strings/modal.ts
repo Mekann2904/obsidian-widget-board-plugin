@@ -67,7 +67,7 @@ export const MODAL_STRINGS = {
 export const MODAL_PANEL_STRINGS = {
   'modal.panel.displaySettings': {
     ja: '表示設定',
-    en: 'Display Settings',
+    en: 'Display settings',
     zh: '显示设置',
     es: 'Ajustes de visualización',
     de: 'Anzeigeeinstellungen',
@@ -76,7 +76,7 @@ export const MODAL_PANEL_STRINGS = {
   },
   'modal.panel.widgetSettings': {
     ja: 'ウィジェット設定',
-    en: 'Widget Settings',
+    en: 'Widget settings',
     zh: '小组件设置',
     es: 'Ajustes de widget',
     de: 'Widget-Einstellungen',
@@ -85,7 +85,7 @@ export const MODAL_PANEL_STRINGS = {
   },
   'modal.panel.boardSettings': {
     ja: 'ボード設定',
-    en: 'Board Settings',
+    en: 'Board settings',
     zh: '看板设置',
     es: 'Ajustes del tablero',
     de: 'Board-Einstellungen',
@@ -103,7 +103,7 @@ export const MODAL_PANEL_STRINGS = {
   },
   'modal.panel.leftPanel': {
     ja: '左パネル',
-    en: 'Left Panel',
+    en: 'Left panel',
     zh: '左面板',
     es: 'Panel Izquierdo',
     de: 'Linkes Panel',
@@ -112,7 +112,7 @@ export const MODAL_PANEL_STRINGS = {
   },
   'modal.panel.centerPanel': {
     ja: '中央パネル',
-    en: 'Center Panel',
+    en: 'Center panel',
     zh: '中央面板',
     es: 'Panel Central',
     de: 'Mittleres Panel',
@@ -121,7 +121,7 @@ export const MODAL_PANEL_STRINGS = {
   },
   'modal.panel.rightPanel': {
     ja: '右パネル',
-    en: 'Right Panel',
+    en: 'Right panel',
     zh: '右面板',
     es: 'Panel Derecho',
     de: 'Rechtes Panel',
