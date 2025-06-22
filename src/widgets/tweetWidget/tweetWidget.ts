@@ -58,7 +58,7 @@ export class TweetWidget implements WidgetImplementation {
     getReplies(parentId: string): TweetWidgetPost[] { return this.store.getReplies(parentId); }
     getQuotePosts(postId: string): TweetWidgetPost[] { return this.store.getQuotePosts(postId); }
 
-    create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): HTMLElement {
+    async create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin): Promise<HTMLElement> {
         this.config = config;
         this.app = app;
         this.plugin = plugin;
@@ -78,13 +78,12 @@ export class TweetWidget implements WidgetImplementation {
         // 非同期初期化は副作用として行い、UIは一旦ローディング表示
         // jsdom の innerText は textContent を更新しないため textContent を使用する
         this.widgetEl.textContent = 'Loading...';
-        this.repository.load(this.plugin.settings.language || 'ja').then(initialSettings => {
-            this.store = new TweetStore(initialSettings);
-            this.recalculateQuoteCounts();
-            this.ui = new TweetWidgetUI(this, this.widgetEl);
-            this.ui.render();
-            this.startScheduleLoop();
-        });
+        const initialSettings = await this.repository.load(this.plugin.settings.language || 'ja');
+        this.store = new TweetStore(initialSettings);
+        this.recalculateQuoteCounts();
+        this.ui = new TweetWidgetUI(this, this.widgetEl);
+        this.ui.render();
+        this.startScheduleLoop();
 
         this.widgetEl.addEventListener('keydown', this.handleKeyDown);
 

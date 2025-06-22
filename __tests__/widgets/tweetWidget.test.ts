@@ -29,33 +29,32 @@ describe('TweetWidget', () => {
     getTweetPostCounts: jest.fn(() => [])
   } as any;
 
-  it('createメソッドでHTMLElementを返す', () => {
+  it('createメソッドでHTMLElementを返す', async () => {
     const widget = new TweetWidget();
-    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
     expect(el).toBeInstanceOf(HTMLElement);
   });
 
   it('switchTabでcurrentTabが切り替わる', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.switchTab('notification');
     expect(widget.currentTab).toBe('notification');
   });
 
-  it('setFilterでcurrentFilterが切り替わる', () => {
+  it('setFilterでcurrentFilterが切り替わる', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     // wait for async init
-    return Promise.resolve().then(() => new Promise(res => setTimeout(res, 0))).then(() => {
-      widget.setFilter('bookmark');
-      expect(widget.currentFilter).toBe('bookmark');
-    });
+    await new Promise(res => setTimeout(res, 0));
+    widget.setFilter('bookmark');
+    expect(widget.currentFilter).toBe('bookmark');
   });
 
   it('submitPostで投稿が追加される', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('テスト投稿');
     expect(widget.currentSettings.posts.length).toBeGreaterThan(0);
@@ -63,7 +62,7 @@ describe('TweetWidget', () => {
 
   it('submitReplyで返信が追加される', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitReply('返信テスト', 'parent-id');
     expect(widget.currentSettings.posts.length).toBeGreaterThan(0);
@@ -71,7 +70,7 @@ describe('TweetWidget', () => {
 
   it('toggleLikeでlikedが切り替わる', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('いいねテスト');
     const postId = widget.currentSettings.posts[0].id;
@@ -81,7 +80,7 @@ describe('TweetWidget', () => {
 
   it('存在しないIDのtoggleLikeで状態が変わらない', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('test');
     const before = widget.currentSettings.posts[0].liked;
@@ -89,16 +88,16 @@ describe('TweetWidget', () => {
     expect(widget.currentSettings.posts[0].liked).toBe(before);
   });
 
-  it('tweet-widgetクラスとタイトルが付与される', () => {
+  it('tweet-widgetクラスとタイトルが付与される', async () => {
     const widget = new TweetWidget();
-    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
     expect(el.classList.contains('tweet-widget')).toBe(true);
     expect(el.textContent).toBe('Loading...');
   });
 
   it('タブ切替でcurrentTabが切り替わりUIが再描画される', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     const spy = jest.spyOn(widget['ui'], 'render');
     await widget.switchTab('notification');
@@ -108,7 +107,7 @@ describe('TweetWidget', () => {
 
   it('setFilterでcurrentFilterが切り替わりUIが再描画される', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     const spy = jest.spyOn(widget['ui'], 'render');
     widget.setFilter('bookmark');
@@ -118,7 +117,7 @@ describe('TweetWidget', () => {
 
   it('投稿編集でeditingPostIdやUIが正しく切り替わる', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('編集テスト');
     const post = widget.currentSettings.posts[0];
@@ -129,7 +128,7 @@ describe('TweetWidget', () => {
 
   it('投稿詳細表示でdetailPostIdが切り替わる', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('詳細テスト');
     const post = widget.currentSettings.posts[0];
@@ -139,7 +138,7 @@ describe('TweetWidget', () => {
 
   it('navigateToDetailでresetScrollが呼ばれる', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('scroll test');
     const post = widget.currentSettings.posts[0];
@@ -153,7 +152,7 @@ describe('TweetWidget', () => {
     const panel = document.createElement('div');
     panel.className = 'widget-board-panel-custom';
     document.body.appendChild(panel);
-    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
     panel.appendChild(el);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('scroll test');
@@ -168,7 +167,7 @@ describe('TweetWidget', () => {
   it('ファイル添付でattachedFilesが更新される', async () => {
     dummyApp.vault.createBinary = jest.fn();
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     const file = new File(['test'], 'test.txt');
     await widget.attachFiles([file]);
@@ -177,7 +176,7 @@ describe('TweetWidget', () => {
 
   it('空投稿ではsubmitPostで投稿が追加されない', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     const before = widget.currentSettings.posts.length;
     await widget.submitPost('   ');
@@ -186,7 +185,7 @@ describe('TweetWidget', () => {
 
   it('toggleRetweetでretweetedが切り替わる', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('リツイートテスト');
     const postId = widget.currentSettings.posts[0].id;
@@ -196,7 +195,7 @@ describe('TweetWidget', () => {
 
   it('toggleBookmarkでbookmarkが切り替わる', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('ブックマークテスト');
     const postId = widget.currentSettings.posts[0].id;
@@ -206,7 +205,7 @@ describe('TweetWidget', () => {
 
   it('deletePostで投稿が削除される', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('削除テスト');
     const postId = widget.currentSettings.posts[0].id;
@@ -216,7 +215,7 @@ describe('TweetWidget', () => {
 
   it('詳細表示中の投稿を削除すると親にフォーカスが移る', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('parent');
     const parentId = widget.currentSettings.posts[0].id;
@@ -229,7 +228,7 @@ describe('TweetWidget', () => {
 
   it('スレッド削除中に表示していた投稿が含まれる場合親にフォーカスが移る', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('grand');
     const grandId = widget.currentSettings.posts[0].id;
@@ -244,7 +243,7 @@ describe('TweetWidget', () => {
 
   it('updatePostPropertyで任意のプロパティが更新される', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('プロパティ更新テスト');
     const postId = widget.currentSettings.posts[0].id;
@@ -254,7 +253,7 @@ describe('TweetWidget', () => {
 
   it('getFilteredPostsでフィルタが反映される', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('フィルタテスト');
     widget.setFilter('all');
@@ -263,7 +262,7 @@ describe('TweetWidget', () => {
 
   it('AIリプライが許可される場合triggerAiReplyで副作用が発生', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('AIリプライテスト');
     const post = widget.currentSettings.posts[0];
@@ -279,7 +278,7 @@ describe('TweetWidget', () => {
 
   it('state未定義時もUIメソッドでエラーにならない', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     widget['store'] = undefined as any;
     expect(() => widget.getFilteredPosts()).toThrow();
@@ -287,7 +286,7 @@ describe('TweetWidget', () => {
 
   it('Command+Enterで投稿できる', async () => {
     const widget = new TweetWidget();
-    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
     document.body.appendChild(el);
     await new Promise(res => setTimeout(res, 0));
     // textarea取得
@@ -307,7 +306,7 @@ describe('TweetWidget', () => {
 
   it('詳細画面の返信欄でCommand+Enterで返信できる', async () => {
     const widget = new TweetWidget();
-    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
     document.body.appendChild(el);
     await new Promise(res => setTimeout(res, 0));
     // まず投稿を1件追加
@@ -335,7 +334,7 @@ describe('TweetWidget', () => {
     (dummyApp.vault.create as jest.Mock).mockRejectedValueOnce(new Error('Disk full'));
 
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
 
     await expect(widget.submitPost('投稿テスト')).resolves.not.toThrow();
@@ -347,7 +346,7 @@ describe('TweetWidget', () => {
 
   it('Escキーで編集モードがキャンセルされる', async () => {
     const widget = new TweetWidget();
-    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
     document.body.appendChild(el);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('編集キャンセルテスト');
@@ -368,7 +367,7 @@ describe('TweetWidget', () => {
 
   it('Escキーで詳細表示がキャンセルされる', async () => {
     const widget = new TweetWidget();
-    const el = widget.create(dummyConfig, dummyApp, dummyPlugin);
+    const el = await widget.create(dummyConfig, dummyApp, dummyPlugin);
     document.body.appendChild(el);
     await new Promise(res => setTimeout(res, 0));
     await widget.submitPost('詳細キャンセルテスト');
@@ -389,7 +388,7 @@ describe('TweetWidget', () => {
 
   it('Markdown特殊文字を含む投稿がエラーなく処理される', async () => {
     const widget = new TweetWidget();
-    widget.create(dummyConfig, dummyApp, dummyPlugin);
+    await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
     const markdownText = '# heading\n* list\n[link](http://example.com)';
     await expect(widget.submitPost(markdownText)).resolves.not.toThrow();

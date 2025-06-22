@@ -321,13 +321,14 @@ export class MemoWidget implements WidgetImplementation {
                 parent.replaceChild(newDisplayEl, this.memoDisplayEl);
                 this.memoDisplayEl = newDisplayEl;
             }
-            const render = () => {
-                this.renderMemo(this.currentSettings.memoContent)
-                    .then(() => this.applyContainerHeightStyles())
-                    .catch(err => {
-                        console.error(`[${this.config.id}] Error rendering memo in updateMemoEditUI:`, err);
-                        this.applyContainerHeightStyles();
-                    });
+            const render = async () => {
+                try {
+                    await this.renderMemo(this.currentSettings.memoContent);
+                    this.applyContainerHeightStyles();
+                } catch (err) {
+                    console.error(`[${this.config.id}] Error rendering memo in updateMemoEditUI:`, err);
+                    this.applyContainerHeightStyles();
+                }
             };
             if ('requestIdleCallback' in window) {
                 const idleRender = (deadline?: IdleDeadline) => {

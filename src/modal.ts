@@ -552,14 +552,14 @@ export class WidgetBoardModal {
                     const WidgetClass = registeredWidgetImplementations.get(widgetConfig.type) as (new () => WidgetImplementation) | undefined;
                     if (WidgetClass) {
                         const isHeavy = ['pomodoro', 'calendar', 'recent-notes'].includes(widgetConfig.type);
-                        const createWidget = () => {
+                        const createWidget = async () => {
                             try {
                                 const widgetInstance = new WidgetClass();
                                 let widgetElement;
                                 if (widgetConfig.type === 'reflection-widget') {
-                                    widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin, reflectionPreloadBundle);
+                                    widgetElement = await widgetInstance.create(widgetConfig, this.plugin.app, this.plugin, reflectionPreloadBundle);
                                 } else {
-                                    widgetElement = widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
+                                    widgetElement = await widgetInstance.create(widgetConfig, this.plugin.app, this.plugin);
                                 }
                                 if (this.isEditMode) {
                                     wrapper.empty();
