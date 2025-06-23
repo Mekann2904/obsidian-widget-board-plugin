@@ -8,6 +8,9 @@ import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { renderMermaidInWorker } from '../../utils';
 import { debugLog } from '../../utils/logger';
 import { StringKey, t } from '../../i18n';
+import { TweetHistoryModal } from './versionControl/TweetHistoryModal';
+import { BackupHistoryModal } from './backup/BackupHistoryModal';
+import { EmergencyRecoveryModal } from './backup/EmergencyRecoveryModal';
 
 // --- ユーティリティ関数 ---
 function escapeRegExp(str: string): string {
@@ -191,6 +194,8 @@ export class TweetWidgetUI {
 
     private renderFilterBar(): void {
         const filterBar = this.container.createDiv({ cls: 'tweet-filter-bar' });
+        
+        // フィルター選択
         const filterSelect = filterBar.createEl('select');
         [
             { value: 'active', label: this.t('filterActiveOnly') },
@@ -247,6 +252,40 @@ export class TweetWidgetUI {
         dataViewerBtn.onclick = () => {
             this.showDataViewer();
         };
+
+        // 履歴ボタンを追加
+        const historyBtn = filterBar.createEl('button', { text: '履歴', cls: 'tweet-history-btn' });
+        historyBtn.onclick = () => {
+            this.showHistoryModal();
+        };
+
+        // バックアップボタンを追加
+        const backupBtn = filterBar.createEl('button', { text: 'バックアップ', cls: 'tweet-backup-btn' });
+        backupBtn.onclick = () => {
+            this.showBackupModal();
+        };
+
+        // デバッグモードの時のみデバッグ関連ボタンを表示
+        const isDebugMode = this.widget.plugin.settings.debugLogging === true;
+        if (isDebugMode) {
+            // 緊急復元ボタンを追加
+            const emergencyBtn = filterBar.createEl('button', { text: '🚨 緊急復元', cls: 'tweet-emergency-btn' });
+            emergencyBtn.onclick = () => {
+                this.showEmergencyRecoveryModal();
+            };
+
+            // デバッグボタンを追加
+            const debugBtn = filterBar.createEl('button', { text: '🔧 デバッグ', cls: 'tweet-debug-btn' });
+            debugBtn.onclick = async () => {
+                await this.widget.getRepository().debugBackupStatus(this.widget.plugin.settings.language || 'ja');
+            };
+
+            // 強制バックアップボタンを追加
+            const forceBackupBtn = filterBar.createEl('button', { text: '💾 強制バックアップ', cls: 'tweet-force-backup-btn' });
+            forceBackupBtn.onclick = async () => {
+                await this.forceCreateBackup();
+            };
+        }
     }
 
     private showDataViewer() {
@@ -261,6 +300,46 @@ export class TweetWidgetUI {
             );
         };
         modal.open();
+    }
+
+    private showHistoryModal() {
+        const historyModal = new TweetHistoryModal(
+            this.widget.app,
+            this.widget.getRepository(),
+            this.widget.plugin.settings.language || 'ja',
+            () => {
+                // 復元後の処理: ウィジェットを再読み込み
+                this.widget.reloadTweetData();
+            }
+        );
+        historyModal.open();
+    }
+
+    private showBackupModal() {
+        const backupModal = new BackupHistoryModal(
+            this.widget.app,
+            this.widget.getRepository().getBackupManager(),
+            (restoredData) => {
+                // 復元後の処理: ウィジェットを再読み込み
+                this.widget.reloadTweetData();
+            }
+        );
+        backupModal.open();
+    }
+
+    /**
+     * 緊急復元モーダルを表示
+     */
+    private showEmergencyRecoveryModal() {
+        const emergencyModal = new EmergencyRecoveryModal(
+            this.widget.app,
+            this.widget.getRepository().getEmergencyRecoveryManager(),
+            (restoredData) => {
+                // 復元後の処理: ウィジェットを再読み込み
+                this.widget.reloadTweetData();
+            }
+        );
+        emergencyModal.open();
     }
 
     private renderPostInputArea(): void {
@@ -939,6 +1018,8 @@ export class TweetWidgetUI {
                 await this.widget.generateGeminiReply(post);
             };
         }
+
+
     }
 
     private createActionButton(container: HTMLElement, icon: string, count?: number, type?: string, active?: boolean): HTMLElement {
@@ -1464,6 +1545,36 @@ export class TweetWidgetUI {
             } catch {
                 // エラー時はそのまま
             }
+        }
+    }
+
+    /**
+     * 強制バックアップ実行
+     */
+    private async forceCreateBackup(): Promise<void> {
+        console.log('[TweetWidgetUI] 💾 強制バックアップボタンがクリックされました');
+        
+        try {
+            const lang = this.widget.plugin.settings.language || 'ja';
+            
+            // 現在のデータを取得
+            const currentData = this.widget.currentSettings;
+            console.log('[TweetWidgetUI] 強制バックアップ開始');
+            console.log(`[TweetWidgetUI] データ内容: 投稿=${currentData.posts?.length || 0}件, スケジュール投稿=${currentData.scheduledPosts?.length || 0}件`);
+            
+            // BackupManagerのonDataSaveを直接呼び出し
+            const backupManager = this.widget.getRepository().getBackupManager();
+            console.log('[TweetWidgetUI] BackupManager取得完了, onDataSave実行開始');
+            
+            await backupManager.onDataSave(currentData);
+            
+            new Notice('強制バックアップが完了しました');
+            console.log('[TweetWidgetUI] ✅ 強制バックアップ完了');
+            
+        } catch (error) {
+            console.error('[TweetWidgetUI] ❌ 強制バックアップエラー:', error);
+            console.error('[TweetWidgetUI] エラースタック:', error.stack);
+            new Notice(`強制バックアップでエラーが発生しました: ${error.message}`);
         }
     }
 }

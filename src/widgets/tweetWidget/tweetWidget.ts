@@ -58,6 +58,21 @@ export class TweetWidget implements WidgetImplementation {
     getReplies(parentId: string): TweetWidgetPost[] { return this.store.getReplies(parentId); }
     getQuotePosts(postId: string): TweetWidgetPost[] { return this.store.getQuotePosts(postId); }
 
+    /**
+     * バージョン管理機能のパブリックアクセス
+     */
+    getRepository(): TweetRepository { return this.repository; }
+    
+    /**
+     * データを再読み込み（履歴復元後など）
+     */
+    public async reloadTweetData(): Promise<void> {
+        const settings = await this.repository.load(this.plugin.settings.language || 'ja');
+        this.store = new TweetStore(settings);
+        this.recalculateQuoteCounts();
+        this.ui.render();
+    }
+
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin, preloadBundle?: unknown): HTMLElement {
         this.config = config;
         this.app = app;
@@ -140,6 +155,7 @@ export class TweetWidget implements WidgetImplementation {
     public setFilter(filter: 'all' | 'active' | 'deleted' | 'bookmark') {
         this.currentFilter = filter;
         this.detailPostId = null;
+        this.ui.resetScroll();
         this.ui.render();
     }
 

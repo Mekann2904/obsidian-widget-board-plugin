@@ -808,16 +808,16 @@ export class WidgetBoardModal {
             modalEl.style.transform = '';
         } else if (newModeClass === WidgetBoardModal.MODES.RIGHT_OUTER) {
             modalEl.classList.add(WidgetBoardModal.MODES.RIGHT_OUTER);
-            modalEl.style.width = '32vw';
-            modalEl.style.right = '-32vw';
+            modalEl.style.width = '';
+            modalEl.style.right = '';
             modalEl.style.left = '';
-            modalEl.style.transform = 'none';
+            modalEl.style.transform = '';
         } else if (newModeClass === WidgetBoardModal.MODES.LEFT_OUTER) {
             modalEl.classList.add(WidgetBoardModal.MODES.LEFT_OUTER);
-            modalEl.style.width = '32vw';
-            modalEl.style.left = '-32vw';
+            modalEl.style.width = '';
+            modalEl.style.left = '';
             modalEl.style.right = '';
-            modalEl.style.transform = 'none';
+            modalEl.style.transform = '';
         } else {
             if (validModeClasses.includes(newModeClass)) {
                 modalEl.classList.add(newModeClass);

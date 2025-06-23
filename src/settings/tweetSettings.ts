@@ -8,6 +8,10 @@ import { t } from '../i18n';
 import type { WidgetBoardSettingTab } from '../settingsTab';
 
 export function renderTweetWidgetSettings(tab: WidgetBoardSettingTab, containerEl: HTMLElement) {
+        if (!tab || !tab.plugin || !tab.plugin.settings) {
+            console.error('renderTweetWidgetSettings: tab.plugin.settings is undefined', { tab, plugin: tab?.plugin, settings: tab?.plugin?.settings });
+            return;
+        }
         const lang = tab.plugin.settings.language || 'ja';
         const tweetGlobalAcc = createAccordion(containerEl, t(lang, 'tweetWidgetGlobalSettings'), false);
         // ユーザー一覧セクションのみ先に切り出し
@@ -223,7 +227,7 @@ export function renderTweetWidgetSettings(tab: WidgetBoardSettingTab, containerE
         // 予約投稿一覧表示・削除
         (async () => {
             const repo = new TweetRepository(tab.app, getTweetDbPath(tab.plugin));
-            const settings = await repo.load(this.plugin.settings.language || 'ja');
+                            const settings = await repo.load(tab.plugin.settings.language || 'ja');
             const scheduledPosts = settings.scheduledPosts || [];
             const listDiv = tweetGlobalAcc.body.createDiv({ cls: 'scheduled-tweet-list' });
             new Setting(listDiv).setName(t(lang, 'scheduledPostList')).setHeading();
@@ -251,7 +255,7 @@ export function renderTweetWidgetSettings(tab: WidgetBoardSettingTab, containerE
                     delBtn.onclick = async () => {
                         if (!confirm(t(lang, 'deleteScheduledPostConfirm'))) return;
                         scheduledPosts.splice(idx, 1);
-                        await repo.save({ ...settings, scheduledPosts }, this.plugin.settings.language || 'ja');
+                        await repo.save({ ...settings, scheduledPosts }, tab.plugin.settings.language || 'ja');
                         new Notice(t(lang, 'scheduledPostDeleted'));
                         listDiv.remove();
                         tab.display();

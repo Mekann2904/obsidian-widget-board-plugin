@@ -30,6 +30,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
     constructor(app: App, plugin: WidgetBoardPlugin) {
         super(app, plugin);
         this.plugin = plugin;
+        if (!this.plugin || !this.plugin.settings) {
+            console.error('WidgetBoardSettingTab: plugin or plugin.settings is undefined', { plugin, settings: plugin?.settings });
+            return;
+        }
         if (this.plugin.settings.boards.length > 0) {
             this.selectedBoardId = this.plugin.settings.lastOpenedBoardId || this.plugin.settings.boards[0].id;
         }
@@ -39,6 +43,10 @@ export class WidgetBoardSettingTab extends PluginSettingTab {
      * 設定タブのUIを描画
      */
     display(): void {
+        if (!this.plugin || !this.plugin.settings) {
+            console.error('WidgetBoardSettingTab.display: plugin or plugin.settings is undefined', { plugin: this.plugin, settings: this.plugin?.settings });
+            return;
+        }
         const { containerEl } = this;
         containerEl.empty();
         const lang: Language = this.plugin.settings.language || 'ja';

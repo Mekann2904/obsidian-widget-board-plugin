@@ -369,14 +369,15 @@ describe('TweetWidget', () => {
 
   it('ファイル書き込み失敗時にクラッシュしない', async () => {
     const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    (dummyApp.vault.create as jest.Mock).mockRejectedValueOnce(new Error('Disk full'));
+    // 新しい実装はadapter.writeを使用するのでそちらをモック
+    (dummyApp.vault.adapter.write as jest.Mock).mockRejectedValueOnce(new Error('Disk full'));
 
     const widget = new TweetWidget();
     await widget.create(dummyConfig, dummyApp, dummyPlugin);
     await new Promise(res => setTimeout(res, 0));
 
     await expect(widget.submitPost('投稿テスト')).resolves.not.toThrow();
-    // TweetWidget側でエラーをcatchしてconsole.errorに出力することを期待
+    // TweetRepository側でエラーをcatchしてconsole.errorに出力することを期待
     expect(consoleErrorSpy).toHaveBeenCalled();
 
     consoleErrorSpy.mockRestore();

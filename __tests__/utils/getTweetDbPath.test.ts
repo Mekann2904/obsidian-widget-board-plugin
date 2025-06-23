@@ -1,4 +1,15 @@
-jest.mock('obsidian', () => ({ Notice: jest.fn(), App: class {}, TFile: class {} }), { virtual: true });
+jest.mock('obsidian', () => ({ 
+  Notice: jest.fn(), 
+  App: class {}, 
+  TFile: class {},
+  Modal: class {
+    constructor() {}
+    open() {}
+    close() {}
+    onOpen() {}
+    onClose() {}
+  }
+}), { virtual: true });
 
 const { TweetWidget } = require('../../src/widgets/tweetWidget');
 

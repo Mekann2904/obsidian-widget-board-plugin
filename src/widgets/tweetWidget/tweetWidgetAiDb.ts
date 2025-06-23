@@ -34,19 +34,27 @@ export async function saveAiRepliesToFile(app: App, dbPath: string, aiReplies: T
             await app.vault.modify(file, data);
         } else {
             // ファイルが存在しない場合は作成
-            await app.vault.create(dbPath, data);
+            try {
+                await app.vault.create(dbPath, data);
+            } catch (createError) {
+                // ファイル作成競合時の再試行
+                if (createError instanceof Error && createError.message.includes('File already exists')) {
+                    const existingFile = app.vault.getAbstractFileByPath(dbPath);
+                    if (existingFile && existingFile instanceof TFile) {
+                        console.log(`AI replies file was created by another process, updating instead: ${dbPath}`);
+                        await app.vault.modify(existingFile, data);
+                        return; // 正常に処理できた場合は早期リターン
+                    } else {
+                        console.error(`AI replies file already exists but cannot be found in vault: ${dbPath}`);
+                        throw createError;
+                    }
+                } else {
+                    throw createError;
+                }
+            }
         }
     } catch (e) {
         console.error('Error saving AI replies:', e);
-        if (e instanceof Error && e.message.includes('File already exists')) {
-            // ファイル作成競合時の再試行
-            const existingFile = app.vault.getAbstractFileByPath(dbPath);
-            if (existingFile && existingFile instanceof TFile) {
-                console.warn(`AI replies file was created by another process, updating instead: ${dbPath}`);
-                await app.vault.modify(existingFile, JSON.stringify(aiReplies, null, 2));
-                return;
-            }
-        }
-        throw e;
+        throw e; // エラーを再スローして上位のハンドラーに伝播
     }
 } 

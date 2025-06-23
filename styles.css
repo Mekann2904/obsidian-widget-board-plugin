@@ -159,6 +159,40 @@
     opacity: 1;
 }
 
+/* 右外側パネル（スプリット外） */
+.widget-board-panel-custom.mode-right-outer {
+    width: 32vw !important;
+    right: 0 !important;
+    transform: translateX(100%);
+    opacity: 0;
+    z-index: 1000 !important; /* Obsidianの他の要素より前面に */
+}
+.widget-board-panel-custom.mode-right-outer.is-open {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+/* 左外側パネル（スプリット外） */
+.widget-board-panel-custom.mode-left-outer {
+    width: 32vw !important;
+    left: 0 !important;
+    transform: translateX(-100%);
+    opacity: 0;
+    z-index: 1000 !important; /* Obsidianの他の要素より前面に */
+}
+.widget-board-panel-custom.mode-left-outer.is-open {
+    transform: translateX(0);
+    opacity: 1;
+}
+
+/* 外側パネル用のボディクラス */
+body.wb-modal-right-outer-open {
+    padding-right: 32vw;
+}
+body.wb-modal-left-outer-open {
+    padding-left: 32vw;
+}
+
 /* Panel Header and Controls */
 .wb-panel-header {
     display: flex;
@@ -2123,4 +2157,986 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .tweet-period-select {
   min-width: 90px;
   padding-right: 24px;
+}
+
+/* Tweet Version Control UI */
+.tweet-history-btn {
+  height: 32px;
+  font-size: 1em;
+  border-radius: 6px;
+  background: var(--interactive-normal);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 0 14px;
+  margin-left: 8px;
+  transition: background 0.15s, color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  outline: none;
+}
+
+.tweet-history-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.tweet-history-loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.tweet-history-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.tweet-history-stats {
+  padding: 16px;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.tweet-history-stats p {
+  margin: 4px 0;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.tweet-history-list {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.tweet-history-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.2s;
+}
+
+.tweet-history-item:last-child {
+  border-bottom: none;
+}
+
+.tweet-history-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.tweet-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.tweet-commit-id {
+  font-family: var(--font-monospace);
+  background: var(--background-modifier-border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  color: var(--text-accent);
+}
+
+.tweet-commit-time {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.tweet-commit-message {
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: var(--text-normal);
+}
+
+.tweet-commit-summary {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.tweet-current-commit {
+  display: inline-block;
+  background: var(--text-accent);
+  color: var(--text-on-accent);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.tweet-history-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.restore-confirm-info {
+  background: var(--background-secondary);
+  padding: 12px;
+  border-radius: 6px;
+  margin: 12px 0;
+  border-left: 3px solid var(--text-accent);
+}
+
+.restore-options {
+  margin: 16px 0;
+}
+
+.restore-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-normal);
+}
+
+.commit-preview-info {
+  background: var(--background-secondary);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.commit-preview-info p {
+  margin: 8px 0;
+}
+
+.commit-preview-diffs {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.diff-item {
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  border-left: 3px solid;
+}
+
+.diff-item.diff-add {
+  background: rgba(34, 197, 94, 0.1);
+  border-left-color: #22c55e;
+}
+
+.diff-item.diff-remove {
+  background: rgba(239, 68, 68, 0.1);
+  border-left-color: #ef4444;
+}
+
+.diff-item.diff-modify {
+  background: rgba(245, 158, 11, 0.1);
+  border-left-color: #f59e0b;
+}
+
+/* Tweet Backup System UI */
+.tweet-backup-btn {
+  height: 32px;
+  font-size: 1em;
+  border-radius: 6px;
+  background: var(--interactive-normal);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 0 14px;
+  margin-left: 8px;
+  transition: background 0.15s, color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  outline: none;
+}
+
+.tweet-backup-btn:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+/* Backup History Modal */
+.backup-history-modal {
+  width: 100%;
+  max-width: 900px;
+  height: 80vh;
+  max-height: 700px;
+}
+
+.backup-history-modal .modal-content {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.backup-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  flex-shrink: 0;
+}
+
+.backup-history-title {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin: 0;
+}
+
+.backup-history-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.backup-create-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.backup-create-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* Backup Tab System */
+.backup-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  flex-shrink: 0;
+}
+
+.backup-tab {
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.95em;
+  transition: all 0.15s;
+  border-bottom: 2px solid transparent;
+  position: relative;
+}
+
+.backup-tab:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.backup-tab.active {
+  color: var(--text-accent);
+  border-bottom-color: var(--text-accent);
+  background: var(--background-primary);
+}
+
+/* Backup Tab Content */
+.backup-tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.backup-content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+/* Backup Statistics */
+.backup-stats {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.backup-stat-item {
+  text-align: center;
+}
+
+.backup-stat-value {
+  font-size: 1.8em;
+  font-weight: 600;
+  color: var(--text-accent);
+  margin-bottom: 4px;
+}
+
+.backup-stat-label {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Backup List */
+.backup-list {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.backup-list-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  background: var(--background-secondary);
+}
+
+.backup-list-loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Backup Item */
+.backup-item {
+  padding: 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  transition: background 0.15s;
+  background: var(--background-primary);
+}
+
+.backup-item:last-child {
+  border-bottom: none;
+}
+
+.backup-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.backup-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+
+.backup-item-info {
+  flex: 1;
+}
+
+.backup-item-id {
+  font-family: var(--font-monospace);
+  background: var(--background-modifier-border);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  color: var(--text-accent);
+  margin-right: 8px;
+}
+
+.backup-item-type {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.backup-item-type.full {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.backup-item-type.incremental {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
+.backup-item-type.manual {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+}
+
+.backup-item-type.auto {
+  background: rgba(107, 114, 128, 0.2);
+  color: #6b7280;
+}
+
+.backup-item-timestamp {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.backup-item-description {
+  font-size: 0.9em;
+  color: var(--text-normal);
+  margin-bottom: 8px;
+}
+
+.backup-item-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 0.8em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.backup-item-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.backup-action-btn {
+  padding: 4px 12px;
+  font-size: 0.8em;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.backup-action-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--text-accent);
+}
+
+.backup-action-btn.restore {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.backup-action-btn.restore:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.backup-action-btn.delete {
+  color: var(--text-error);
+  border-color: var(--text-error);
+}
+
+.backup-action-btn.delete:hover {
+  background: rgba(248, 113, 113, 0.1);
+}
+
+/* Manual Backup Creation */
+.manual-backup-form {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.manual-backup-title {
+  font-size: 1em;
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 12px;
+}
+
+.manual-backup-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.9em;
+  margin-bottom: 12px;
+}
+
+.manual-backup-input::placeholder {
+  color: var(--text-muted);
+}
+
+.manual-backup-controls {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Restore Confirmation Modal */
+.restore-confirm-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.restore-confirm-modal {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.restore-confirm-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.restore-confirm-title {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin: 0;
+}
+
+.restore-confirm-content {
+  padding: 20px;
+}
+
+.restore-confirm-warning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  color: var(--text-normal);
+}
+
+.restore-confirm-info {
+  background: var(--background-secondary);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.restore-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.restore-confirm-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background 0.15s;
+}
+
+.restore-confirm-btn.cancel {
+  background: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+.restore-confirm-btn.cancel:hover {
+  background: var(--background-modifier-hover);
+}
+
+.restore-confirm-btn.confirm {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.restore-confirm-btn.confirm:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* Backup Progress Indicator */
+.backup-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.backup-progress-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--background-modifier-border);
+  border-top-color: var(--text-accent);
+  border-radius: 50%;
+  animation: backup-spin 1s linear infinite;
+}
+
+@keyframes backup-spin {
+  to { transform: rotate(360deg); }
+}
+
+.backup-progress-text {
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .backup-history-modal {
+    width: 95vw;
+    height: 90vh;
+  }
+  
+  .backup-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .backup-item-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .backup-item-actions {
+    flex-wrap: wrap;
+  }
+  
+  .backup-tabs {
+    overflow-x: auto;
+  }
+  
+  .backup-tab {
+    flex-shrink: 0;
+    min-width: 120px;
+  }
+}
+
+/* === 緊急復元システム UI === */
+
+/* 緊急復元モーダル */
+.emergency-recovery-modal {
+    width: 90%;
+    max-width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.recovery-modal-header {
+    text-align: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--background-modifier-border);
+}
+
+.recovery-title {
+    color: var(--text-error);
+    margin: 0 0 10px 0;
+    font-size: 1.4em;
+}
+
+.recovery-description {
+    color: var(--text-muted);
+    margin: 0;
+    font-size: 0.9em;
+}
+
+.recovery-loading {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* 復元ソースが見つからない場合 */
+.no-sources-container {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.no-sources-icon {
+    font-size: 3em;
+    margin-bottom: 20px;
+}
+
+.no-sources-container h3 {
+    color: var(--text-error);
+    margin: 0 0 15px 0;
+}
+
+.no-sources-message {
+    background: var(--background-secondary);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid var(--text-warning);
+    margin: 20px 0;
+    text-align: left;
+}
+
+.no-sources-message code {
+    background: var(--background-modifier-border);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: var(--font-monospace);
+}
+
+/* 復元ソース一覧 */
+.recovery-sources-container {
+    padding: 10px 0;
+}
+
+.recovery-stats {
+    background: var(--background-secondary);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border-left: 4px solid var(--interactive-accent);
+}
+
+.stats-text {
+    margin: 0;
+    font-weight: 600;
+    color: var(--text-normal);
+}
+
+/* 自動復元セクション */
+.auto-recover-container {
+    background: linear-gradient(135deg, var(--background-secondary), var(--background-primary));
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border: 2px solid var(--interactive-accent);
+}
+
+.auto-recover-container h3 {
+    margin: 0 0 10px 0;
+    color: var(--interactive-accent);
+}
+
+.auto-recover-description {
+    margin: 0 0 15px 0;
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+/* 手動選択セクション */
+.manual-recovery-section {
+    margin-top: 20px;
+}
+
+.manual-recovery-section h3 {
+    margin: 0 0 15px 0;
+    color: var(--text-normal);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--background-modifier-border);
+}
+
+/* 復元ソースアイテム */
+.sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.recovery-source-item {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 15px;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.recovery-source-item:hover {
+    border-color: var(--interactive-accent);
+    background: var(--background-primary-alt);
+}
+
+.recovery-source-item.recommended {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 10px rgba(var(--interactive-accent-rgb), 0.2);
+}
+
+.recommended-badge {
+    position: absolute;
+    top: -8px;
+    right: 15px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.7em;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.source-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.confidence-icon {
+    font-size: 1.2em;
+}
+
+.source-name {
+    margin: 0;
+    color: var(--text-normal);
+    font-size: 1.1em;
+}
+
+.source-details {
+    margin-bottom: 15px;
+}
+
+.source-details p {
+    margin: 5px 0;
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+.source-timestamp,
+.source-preview {
+    font-family: var(--font-monospace);
+}
+
+.source-action {
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* ローディング状態 */
+.recovery-loading-state .loading-container {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.recovery-loading-state .loading-container h2 {
+    margin: 0 0 15px 0;
+    color: var(--interactive-accent);
+}
+
+/* 成功状態 */
+.recovery-success-state .success-container {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.recovery-success-state .success-container h2 {
+    margin: 0 0 20px 0;
+    color: var(--text-success);
+}
+
+.recovery-success-stats {
+    background: var(--background-secondary);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border-left: 4px solid var(--text-success);
+}
+
+.recovery-success-stats p {
+    margin: 5px 0;
+    font-family: var(--font-monospace);
+    color: var(--text-normal);
+}
+
+.success-message {
+    color: var(--text-muted);
+    font-style: italic;
+    margin: 20px 0 0 0;
+}
+
+/* エラー状態 */
+.recovery-error-state .error-container {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.recovery-error-state .error-container h2 {
+    margin: 0 0 15px 0;
+    color: var(--text-error);
+}
+
+.error-details {
+    background: var(--background-secondary);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border-left: 4px solid var(--text-error);
+    font-family: var(--font-monospace);
+    color: var(--text-normal);
+    text-align: left;
+    word-break: break-word;
+}
+
+/* ボタンコンテナ */
+.button-container {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 15px;
+}
+
+.cancel-container {
+    margin-top: 30px;
+    text-align: center;
+}
+
+/* 緊急復元ツールバーボタン */
+.tweet-emergency-button {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.85em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(238, 90, 36, 0.3);
+}
+
+.tweet-emergency-button:hover {
+    background: linear-gradient(135deg, #ee5a24, #c23616);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(238, 90, 36, 0.4);
+}
+
+.tweet-emergency-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(238, 90, 36, 0.3);
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 600px) {
+    .emergency-recovery-modal {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    .recovery-source-item {
+        padding: 12px;
+    }
+    
+    .source-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+    
+    .button-container {
+        flex-direction: column;
+    }
+    
+    .auto-recover-container {
+        padding: 15px;
+    }
 }

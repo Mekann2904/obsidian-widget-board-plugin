@@ -45,6 +45,10 @@ export function renderBoardGroupSection(tab: WidgetBoardSettingTab, containerEl:
      * @param lang 表示言語
      */
 export function renderBoardManagementUI(containerEl: HTMLElement, tab: WidgetBoardSettingTab, lang: import('../i18n').Language) { // langを受け取る
+        if (!tab || !tab.plugin || !tab.plugin.settings) {
+            console.error('renderBoardManagementUI: tab.plugin.settings is undefined', { tab, plugin: tab?.plugin, settings: tab?.plugin?.settings });
+            return;
+        }
         containerEl.empty();
 
         new Setting(containerEl)
@@ -118,6 +122,10 @@ export function renderBoardManagementUI(containerEl: HTMLElement, tab: WidgetBoa
      * @param containerEl 描画先要素
      */
 export function renderSelectedBoardSettingsUI(containerEl: HTMLElement, tab: WidgetBoardSettingTab, lang: import('../i18n').Language) {
+        if (!tab || !tab.plugin || !tab.plugin.settings) {
+            console.error('renderSelectedBoardSettingsUI: tab.plugin.settings is undefined', { tab, plugin: tab?.plugin, settings: tab?.plugin?.settings });
+            return;
+        }
         containerEl.empty();
         const board = tab.plugin.settings.boards.find(b => b.id === tab.selectedBoardId);
         if (!board) {
