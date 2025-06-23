@@ -137,23 +137,23 @@ export class TweetRepository {
      */
     private async attemptEmergencyRecovery(lang: Language): Promise<{ recoveredData: TweetWidgetSettings; stats: { recoveredPosts: number } } | null> {
         try {
-            console.log('緊急復元を開始...');
+            console.log(t(lang, 'emergencyRestoreStarted'));
             
             const recoveryResult = await this.emergencyRecovery.performAutoRecovery();
             
             if (recoveryResult && recoveryResult.success && recoveryResult.recoveredData) {
-                console.log(`緊急復元成功: ${recoveryResult.source.name} から ${recoveryResult.stats.recoveredPosts}件を復元`);
+                console.log(`${t(lang, 'emergencyRestoreSuccess')}: ${recoveryResult.source.name} から ${recoveryResult.stats.recoveredPosts}件を復元`);
                 return {
                     recoveredData: recoveryResult.recoveredData,
                     stats: { recoveredPosts: recoveryResult.stats.recoveredPosts }
                 };
             } else {
-                console.warn('緊急復元に失敗:', recoveryResult?.error);
+                console.warn(`${t(lang, 'emergencyRestoreFailed')}:`, recoveryResult?.error);
                 return null;
             }
             
         } catch (error) {
-            console.error('緊急復元エラー:', error);
+            console.error(`${t(lang, 'emergencyRestoreError')}:`, error);
             return null;
         }
     }
@@ -458,41 +458,32 @@ export class TweetRepository {
      */
     async debugBackupStatus(lang: Language): Promise<void> {
         try {
-            console.log('=== バックアップ状況デバッグ ===');
+            console.log(t(lang, 'debugInfoDebugHeader'));
             
-            const backups = await this.backupManager.getAvailableBackups();
-            console.log('世代バックアップ数:', backups.generations.length);
-            console.log('差分バックアップ数:', backups.incremental.length);
+            // バックアップ一覧を取得
+            const backupInfo = await this.getAvailableBackups();
+            console.log('利用可能なバックアップ:', backupInfo);
             
-            if (backups.generations.length > 0) {
-                console.log('最新の世代バックアップ:', backups.generations[0]);
-                
-                // 実際のファイル内容を確認
-                await this.debugBackupFileContent(backups.generations[0]);
+            // 各バックアップファイルの詳細確認
+            for (const generation of backupInfo.generations) {
+                await this.debugBackupFileContent(generation);
             }
             
-            if (backups.incremental.length > 0) {
-                console.log('最新の差分バックアップ:', backups.incremental[0]);
+            for (const incremental of backupInfo.incremental) {
+                await this.debugBackupFileContent(incremental);
             }
             
-            // パスの確認
-            const basePath = this.dbPath.replace('/tweets.json', '');
-            console.log('ベースパス:', basePath);
-            console.log('DBパス:', this.dbPath);
+            // BackupManagerの状況確認
+            const backupManager = this.getBackupManager();
+            console.log('BackupManager 初期化済み:', !!backupManager);
             
-            // ファイル存在確認
-            const dbExists = await this.app.vault.adapter.exists(this.dbPath);
-            console.log('DBファイル存在:', dbExists);
-            
-            const backupDirPath = `${basePath}/backups`;
-            const backupDirExists = await this.app.vault.adapter.exists(backupDirPath);
-            console.log('バックアップディレクトリ存在:', backupDirExists);
-            
-            new Notice('バックアップ状況をコンソールに出力しました');
+            // 緊急復元マネージャーの状況確認
+            const emergencyManager = this.getEmergencyRecoveryManager();
+            console.log('EmergencyRecoveryManager 初期化済み:', !!emergencyManager);
             
         } catch (error) {
-            console.error('デバッグ情報取得エラー:', error);
-            new Notice(`デバッグ情報取得に失敗: ${error instanceof Error ? error.message : String(error)}`);
+            console.error(t(lang, 'debugInfoError'), error);
+            new Notice(`${t(lang, 'debugInfoFailed')}: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 

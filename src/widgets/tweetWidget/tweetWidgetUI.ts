@@ -254,13 +254,13 @@ export class TweetWidgetUI {
         };
 
         // 履歴ボタンを追加
-        const historyBtn = filterBar.createEl('button', { text: '履歴', cls: 'tweet-history-btn' });
+        const historyBtn = filterBar.createEl('button', { text: this.t('historyButton'), cls: 'tweet-history-btn' });
         historyBtn.onclick = () => {
             this.showHistoryModal();
         };
 
         // バックアップボタンを追加
-        const backupBtn = filterBar.createEl('button', { text: 'バックアップ', cls: 'tweet-backup-btn' });
+        const backupBtn = filterBar.createEl('button', { text: this.t('backupButton'), cls: 'tweet-backup-btn' });
         backupBtn.onclick = () => {
             this.showBackupModal();
         };
@@ -269,19 +269,19 @@ export class TweetWidgetUI {
         const isDebugMode = this.widget.plugin.settings.debugLogging === true;
         if (isDebugMode) {
             // 緊急復元ボタンを追加
-            const emergencyBtn = filterBar.createEl('button', { text: '🚨 緊急復元', cls: 'tweet-emergency-btn' });
+            const emergencyBtn = filterBar.createEl('button', { text: this.t('emergencyRestoreButton'), cls: 'tweet-emergency-btn' });
             emergencyBtn.onclick = () => {
                 this.showEmergencyRecoveryModal();
             };
 
             // デバッグボタンを追加
-            const debugBtn = filterBar.createEl('button', { text: '🔧 デバッグ', cls: 'tweet-debug-btn' });
+            const debugBtn = filterBar.createEl('button', { text: this.t('debugButton'), cls: 'tweet-debug-btn' });
             debugBtn.onclick = async () => {
                 await this.widget.getRepository().debugBackupStatus(this.widget.plugin.settings.language || 'ja');
             };
 
             // 強制バックアップボタンを追加
-            const forceBackupBtn = filterBar.createEl('button', { text: '💾 強制バックアップ', cls: 'tweet-force-backup-btn' });
+            const forceBackupBtn = filterBar.createEl('button', { text: this.t('forceBackupButton'), cls: 'tweet-force-backup-btn' });
             forceBackupBtn.onclick = async () => {
                 await this.forceCreateBackup();
             };
@@ -337,7 +337,8 @@ export class TweetWidgetUI {
             (restoredData) => {
                 // 復元後の処理: ウィジェットを再読み込み
                 this.widget.reloadTweetData();
-            }
+            },
+            this.widget.plugin.settings.language || 'ja'
         );
         emergencyModal.open();
     }
@@ -1552,14 +1553,14 @@ export class TweetWidgetUI {
      * 強制バックアップ実行
      */
     private async forceCreateBackup(): Promise<void> {
-        console.log('[TweetWidgetUI] 💾 強制バックアップボタンがクリックされました');
+        console.log(`[TweetWidgetUI] ${this.t('forceBackupStarted')}`);
         
         try {
             const lang = this.widget.plugin.settings.language || 'ja';
             
             // 現在のデータを取得
             const currentData = this.widget.currentSettings;
-            console.log('[TweetWidgetUI] 強制バックアップ開始');
+            console.log(`[TweetWidgetUI] ${this.t('forceBackupInProgress')}`);
             console.log(`[TweetWidgetUI] データ内容: 投稿=${currentData.posts?.length || 0}件, スケジュール投稿=${currentData.scheduledPosts?.length || 0}件`);
             
             // BackupManagerのonDataSaveを直接呼び出し
@@ -1568,13 +1569,13 @@ export class TweetWidgetUI {
             
             await backupManager.onDataSave(currentData);
             
-            new Notice('強制バックアップが完了しました');
-            console.log('[TweetWidgetUI] ✅ 強制バックアップ完了');
+            new Notice(this.t('forceBackupCompleted'));
+            console.log(`[TweetWidgetUI] ${this.t('forceBackupSuccess')}`);
             
         } catch (error) {
-            console.error('[TweetWidgetUI] ❌ 強制バックアップエラー:', error);
+            console.error(`[TweetWidgetUI] ${this.t('forceBackupError')}:`, error);
             console.error('[TweetWidgetUI] エラースタック:', error.stack);
-            new Notice(`強制バックアップでエラーが発生しました: ${error.message}`);
+            new Notice(`${this.t('forceBackupErrorMessage')}: ${error.message}`);
         }
     }
 }

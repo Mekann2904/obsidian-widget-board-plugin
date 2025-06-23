@@ -2,6 +2,8 @@ import { App, Modal, Setting, ButtonComponent } from 'obsidian';
 import type { TweetWidgetSettings } from '../types';
 import { EmergencyRecoveryManager } from './EmergencyRecoveryManager';
 import type { RecoverySource, RecoveryResult } from './EmergencyRecoveryManager';
+import { t } from '../../../i18n';
+import type { Language } from '../../../i18n';
 
 /**
  * 緊急復元モーダル
@@ -12,15 +14,18 @@ export class EmergencyRecoveryModal extends Modal {
     private onRecover: (data: TweetWidgetSettings) => void;
     private sources: RecoverySource[] = [];
     private loading = false;
+    private lang: Language;
 
     constructor(
         app: App, 
         recoveryManager: EmergencyRecoveryManager, 
-        onRecover: (data: TweetWidgetSettings) => void
+        onRecover: (data: TweetWidgetSettings) => void,
+        lang: Language = 'ja'
     ) {
         super(app);
         this.recoveryManager = recoveryManager;
         this.onRecover = onRecover;
+        this.lang = lang;
     }
 
     async onOpen() {
@@ -30,7 +35,7 @@ export class EmergencyRecoveryModal extends Modal {
 
         // ヘッダー
         const headerEl = contentEl.createDiv({ cls: 'recovery-modal-header' });
-        const titleEl = headerEl.createEl('h2', { text: '🚨 緊急復元' });
+        const titleEl = headerEl.createEl('h2', { text: t(this.lang, 'emergencyRestoreTitle') });
         titleEl.addClass('recovery-title');
 
         const descEl = headerEl.createEl('p', { 
