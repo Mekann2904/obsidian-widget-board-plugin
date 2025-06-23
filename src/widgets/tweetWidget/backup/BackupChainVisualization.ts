@@ -1,9 +1,10 @@
 import { App } from 'obsidian';
 import type { BackupFileInfo } from './types';
 import { BackupManager } from './BackupManager';
-import { renderMermaidInWorker } from '../../../utils';
+// import { renderMermaidInWorker } from '../../../utils';
 import { t, StringKey } from '../../../i18n';
 import type { Language } from '../../../i18n/types';
+import { MarkdownRenderer } from 'obsidian';
 import { BaseModal } from './BaseModal';
 
 /**
@@ -248,7 +249,49 @@ export class BackupChainVisualization extends BaseModal {
     }
 
     private async renderGraphTab(container: HTMLElement): Promise<void> {
-        await this.generateVisualization(container);
+        // テスト用の簡単な表示から始める
+        this.showLoading(container, '可視化を生成中...');
+        
+        try {
+            // バックアップ一覧を取得
+            const backups = await this.backupManager.getAvailableBackups();
+            console.log('[BackupChainVisualization] バックアップデータ:', backups);
+            
+            this.hideLoading(container);
+            
+            // 簡単なデバッグ情報を表示
+            const debugInfo = this.createElement({
+                tagName: 'div',
+                className: 'backup-debug-info',
+                children: [
+                    {
+                        tagName: 'h3',
+                        textContent: 'バックアップ情報'
+                    },
+                    {
+                        tagName: 'p',
+                        textContent: `世代バックアップ: ${backups.generations.length}件`
+                    },
+                    {
+                        tagName: 'p', 
+                        textContent: `差分バックアップ: ${backups.incremental.length}件`
+                    }
+                ]
+            });
+            
+            container.appendChild(debugInfo);
+            
+            // まずはMermaidなしで動作確認
+            if (backups.generations.length > 0 || backups.incremental.length > 0) {
+                // Mermaidグラフを試す
+                await this.generateVisualization(container);
+            }
+            
+        } catch (error) {
+            console.error('[BackupChainVisualization] グラフタブエラー:', error);
+            this.hideLoading(container);
+            this.showError(container, error instanceof Error ? error.message : String(error));
+        }
     }
 
     private async renderTimelineTab(container: HTMLElement): Promise<void> {
@@ -286,7 +329,7 @@ export class BackupChainVisualization extends BaseModal {
     private async generateVisualization(container: HTMLElement) {
         try {
             // ローディング表示
-            this.showLoading(container, this.t('visualizationLoading'));
+            this.showLoading(container, '可視化を生成中...');
 
             // 既存の可視化内容をクリア
             const existingGraph = container.querySelector('.backup-chain-graph');
@@ -297,21 +340,17 @@ export class BackupChainVisualization extends BaseModal {
             
             if (backups.generations.length === 0 && backups.incremental.length === 0) {
                 this.hideLoading(container);
-                container.createDiv({
-                    text: this.t('noBackupsToVisualize'),
-                    cls: 'backup-chain-empty'
+                const emptyEl = this.createElement({
+                    tagName: 'div',
+                    textContent: 'バックアップが見つかりません',
+                    className: 'backup-chain-empty'
                 });
+                container.appendChild(emptyEl);
                 return;
             }
 
-            // Mermaidグラフ生成
-            const mermaidCode = this.generateMermaidGraph(backups.generations, backups.incremental);
-            
-            // グラフコンテナ作成
-            const graphContainer = container.createDiv({ cls: 'backup-chain-graph' });
-            
-            // Mermaidレンダリング
-            await this.renderMermaidGraph(graphContainer, mermaidCode);
+            // GitGraphを実際にレンダリング
+            await this.renderGitGraphWithHTML(container, backups);
             
             this.hideLoading(container);
 
@@ -320,15 +359,33 @@ export class BackupChainVisualization extends BaseModal {
             
             this.hideLoading(container);
             
-            const errorEl = container.createDiv({ cls: 'backup-chain-error' });
-            errorEl.createEl('h3', { text: 'エラー' });
-            errorEl.createEl('p', { text: error instanceof Error ? error.message : String(error) });
+            const errorEl = this.createElement({
+                tagName: 'div',
+                className: 'backup-chain-error',
+                children: [
+                    {
+                        tagName: 'h3',
+                        textContent: 'エラー'
+                    },
+                    {
+                        tagName: 'p',
+                        textContent: error instanceof Error ? error.message : String(error)
+                    }
+                ]
+            });
+            container.appendChild(errorEl);
         }
     }
 
     private showLoading(container: HTMLElement, message: string) {
-        const loadingEl = container.querySelector('.backup-chain-loading') as HTMLElement || 
-                          container.createDiv({ cls: 'backup-chain-loading' });
+        let loadingEl = container.querySelector('.backup-chain-loading') as HTMLElement;
+        if (!loadingEl) {
+            loadingEl = this.createElement({
+                tagName: 'div',
+                className: 'backup-chain-loading'
+            });
+            container.appendChild(loadingEl);
+        }
         loadingEl.textContent = message;
         loadingEl.style.display = 'block';
     }
@@ -345,136 +402,469 @@ export class BackupChainVisualization extends BaseModal {
         incremental: BackupFileInfo[]
     ): string {
         const lines: string[] = [];
-        lines.push('graph TD');
+        lines.push('gitGraph:');
+        
+        // 基本的なメインブランチから開始
+        lines.push('    commit id: "Start"');
 
-        // ノード定義セクション
-        const nodeDefinitions: string[] = [];
-        const edgeDefinitions: string[] = [];
-
-        // 世代バックアップをノード化（四角形）
-        generations.forEach(backup => {
-            const nodeId = this.sanitizeNodeId(backup.id);
-            const label = this.formatBackupLabel(backup);
-            const style = this.getBackupNodeStyle(backup.id, 'generation');
+        // 世代バックアップを時系列順にメインラインに配置
+        if (generations.length > 0) {
+            const sortedGenerations = [...generations].sort((a, b) => a.timestamp - b.timestamp);
             
-            nodeDefinitions.push(`    ${nodeId}[${label}]`);
-            if (style) {
-                nodeDefinitions.push(`    ${style}`);
+            for (const backup of sortedGenerations) {
+                const date = new Date(backup.timestamp);
+                const dateStr = date.toLocaleDateString('ja-JP', { 
+                    month: '2-digit', 
+                    day: '2-digit' 
+                });
+                const timeStr = date.toLocaleTimeString('ja-JP', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                const period = backup.generation?.period || 'Gen';
+                const commitId = `${period}${dateStr}${timeStr}`.replace(/[^a-zA-Z0-9]/g, '');
+                lines.push(`    commit id: "${period} ${dateStr} ${timeStr}"`);
             }
-        });
-
-        // 差分バックアップをノード化（円形）
-        incremental.forEach(backup => {
-            const nodeId = this.sanitizeNodeId(backup.id);
-            const label = this.formatBackupLabel(backup);
-            const style = this.getBackupNodeStyle(backup.id, 'incremental');
+        }
+        
+        // 差分バックアップ用のブランチを作成
+        if (incremental.length > 0) {
+            // ベースバックアップごとにグループ化
+            const incrementalByBase = new Map<string, BackupFileInfo[]>();
             
-            nodeDefinitions.push(`    ${nodeId}((${label}))`);
-            if (style) {
-                nodeDefinitions.push(`    ${style}`);
+            for (const backup of incremental) {
+                const baseId = backup.incremental?.baseBackupId || 'unknown';
+                if (!incrementalByBase.has(baseId)) {
+                    incrementalByBase.set(baseId, []);
+                }
+                incrementalByBase.get(baseId)!.push(backup);
             }
-        });
-
-        // エッジ定義（世代バックアップの継承関係）
-        generations.forEach(backup => {
-            if (backup.generation?.previousBackupId) {
-                const fromNodeId = this.sanitizeNodeId(backup.generation.previousBackupId);
-                const toNodeId = this.sanitizeNodeId(backup.id);
-                edgeDefinitions.push(`    ${fromNodeId} --> ${toNodeId}`);
+            
+            // 各ベースバックアップから差分ブランチを作成
+            let branchIndex = 0;
+            for (const [baseId, incrementalList] of incrementalByBase) {
+                const branchName = `incremental${branchIndex++}`;
+                lines.push(`    branch ${branchName}`);
+                
+                // 時系列順にソート
+                const sortedIncremental = incrementalList.sort((a, b) => a.timestamp - b.timestamp);
+                
+                for (const backup of sortedIncremental) {
+                    const date = new Date(backup.timestamp);
+                    const timeStr = date.toLocaleTimeString('ja-JP', { 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    });
+                    
+                    lines.push(`    commit id: "差分 ${timeStr}"`);
+                }
+                
+                // メインラインに戻る（最後のブランチでない場合）
+                if (branchIndex < incrementalByBase.size) {
+                    lines.push(`    checkout main`);
+                }
             }
-        });
-
-        // エッジ定義（差分バックアップのベース関係）
-        incremental.forEach(backup => {
-            if (backup.incremental?.baseBackupId) {
-                const baseNodeId = this.sanitizeNodeId(backup.incremental.baseBackupId);
-                const diffNodeId = this.sanitizeNodeId(backup.id);
-                edgeDefinitions.push(`    ${baseNodeId} -.-> ${diffNodeId}`);
-            }
-        });
-
-        // Mermaidコードを組み立て
-        lines.push(...nodeDefinitions);
-        lines.push(...edgeDefinitions);
+        }
 
         return lines.join('\n');
     }
 
+    // GitGraphでは使用しないが、将来の拡張のために保持
     private sanitizeNodeId(id: string): string {
-        // Mermaidで使用可能な文字のみに変換
         return id.replace(/[^a-zA-Z0-9]/g, '_');
     }
 
-    private formatBackupLabel(backup: BackupFileInfo): string {
-        const date = new Date(backup.timestamp);
-        const dateStr = date.toLocaleDateString('ja-JP', { month: '2-digit', day: '2-digit' });
-        const timeStr = date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
-        
-        if (backup.generation) {
-            return `"${backup.generation.period}<br/>${dateStr} ${timeStr}"`;
-        } else if (backup.incremental) {
-            return `"${this.t('incrementalBackup')}<br/>${dateStr} ${timeStr}"`;
-        } else {
-            return `"${dateStr} ${timeStr}"`;
+    private async renderGitGraphWithHTML(container: HTMLElement, backups: { generations: BackupFileInfo[], incremental: BackupFileInfo[] }) {
+        try {
+            // GitGraphコードを生成
+            const gitGraphCode = this.generateMermaidGraph(backups.generations, backups.incremental);
+            console.log('[BackupChainVisualization] 生成されたGitGraphコード:', gitGraphCode);
+            
+            // ObsidianのMarkdownレンダラー用のコンテナを作成
+            const mermaidContainer = this.createElement({
+                tagName: 'div',
+                className: 'mermaid-container'
+            });
+            
+            mermaidContainer.style.cssText = `
+                width: 100%;
+                min-height: 400px;
+                background: var(--background-secondary);
+                border-radius: 8px;
+                padding: 20px;
+                overflow: auto;
+            `;
+            
+            // GitGraphの表示を試行
+            await this.tryRenderGitGraph(mermaidContainer, gitGraphCode, backups);
+            
+            container.appendChild(mermaidContainer);
+            
+            // GitGraphコードの詳細表示も追加
+            const detailsContainer = this.createElement({
+                tagName: 'div',
+                className: 'backup-chain-details',
+                children: [
+                    {
+                        tagName: 'h4',
+                        textContent: '生成されたGitGraphコード'
+                    },
+                    {
+                        tagName: 'details',
+                        children: [
+                            {
+                                tagName: 'summary',
+                                textContent: 'GitGraphコードを表示'
+                            },
+                            {
+                                tagName: 'pre',
+                                textContent: gitGraphCode
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            detailsContainer.style.cssText = `
+                margin-top: 20px;
+                padding: 16px;
+                background: var(--background-primary);
+                border-radius: 8px;
+            `;
+
+            container.appendChild(detailsContainer);
+            
+        } catch (error) {
+            console.error('[BackupChainVisualization] GitGraph表示エラー:', error);
+            this.showError(container, error instanceof Error ? error.message : String(error));
         }
     }
 
-    private getBackupNodeStyle(backupId: string, type: 'generation' | 'incremental'): string | null {
-        if (!this.integrityResults) return null;
+    private async tryRenderGitGraph(container: HTMLElement, gitGraphCode: string, backups: { generations: BackupFileInfo[], incremental: BackupFileInfo[] }) {
+        try {
+            // まずObsidianのMarkdownRendererを試す
+            const markdownContent = '```mermaid\n' + gitGraphCode + '\n```';
+            
+            await MarkdownRenderer.render(
+                this.widget.app,
+                markdownContent,
+                container,
+                '', // sourcePath
+                null as any // component
+            );
+            
+            console.log('[BackupChainVisualization] GitGraph正常レンダリング完了');
+            
+            // レンダリング後にMermaidが適用されているかチェック
+            setTimeout(() => {
+                const svgElements = container.querySelectorAll('svg');
+                if (svgElements.length === 0) {
+                    console.warn('[BackupChainVisualization] SVGが生成されていません、フォールバックします');
+                    this.renderGitGraphFallback(container, gitGraphCode, backups);
+                } else {
+                    console.log('[BackupChainVisualization] GitGraph SVG生成成功');
+                }
+            }, 1000);
+            
+        } catch (renderError) {
+            console.error('[BackupChainVisualization] GitGraphレンダリングエラー:', renderError);
+            this.renderGitGraphFallback(container, gitGraphCode, backups);
+        }
+    }
+
+    private async renderGitGraphFallback(container: HTMLElement, gitGraphCode: string, backups: { generations: BackupFileInfo[], incremental: BackupFileInfo[] }) {
+        // コンテナをクリア
+        container.innerHTML = '';
         
-        const result = this.integrityResults.get(backupId);
-        if (!result) return null;
+        // GitGraph風のASCIIアート表示
+        const asciiGraphContainer = this.createElement({
+            tagName: 'div',
+            className: 'gitgraph-ascii',
+            children: [
+                {
+                    tagName: 'h4',
+                    textContent: '🌳 バックアップ系譜図'
+                },
+                {
+                    tagName: 'div',
+                    className: 'ascii-graph-content'
+                }
+            ]
+        });
+
+        const graphContent = asciiGraphContainer.querySelector('.ascii-graph-content') as HTMLElement;
         
-        const nodeId = this.sanitizeNodeId(backupId);
+        let asciiGraph = '';
         
-        if (!result.isHealthy) {
-            // 破損したバックアップは赤色
-            return `    classDef damaged fill:#ffdddd,stroke:#ff0000,stroke-width:2px
-    class ${nodeId} damaged`;
-        } else {
-            // 正常なバックアップは青色/緑色
-            const color = type === 'generation' ? '#ddeeff' : '#ddffdd';
-            const strokeColor = type === 'generation' ? '#0066cc' : '#00aa00';
-            return `    classDef healthy${type} fill:${color},stroke:${strokeColor},stroke-width:2px
-    class ${nodeId} healthy${type}`;
+        // メインライン（世代バックアップ）
+        if (backups.generations.length > 0) {
+            asciiGraph += '📦 メインライン (世代バックアップ)\n';
+            asciiGraph += '│\n';
+            
+            const sortedGenerations = [...backups.generations].sort((a, b) => a.timestamp - b.timestamp);
+            sortedGenerations.forEach((backup, index) => {
+                const date = new Date(backup.timestamp);
+                const dateStr = date.toLocaleDateString('ja-JP');
+                const timeStr = date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                const period = backup.generation?.period || 'Gen';
+                
+                asciiGraph += `●─── ${period} ${dateStr} ${timeStr}\n`;
+                if (index < sortedGenerations.length - 1) {
+                    asciiGraph += '│\n';
+                }
+            });
+        }
+        
+        // 差分バックアップブランチ
+        if (backups.incremental.length > 0) {
+            asciiGraph += '\n\n📄 差分ブランチ\n';
+            
+            const incrementalByBase = new Map<string, any[]>();
+            for (const backup of backups.incremental) {
+                const baseId = backup.incremental?.baseBackupId || 'unknown';
+                if (!incrementalByBase.has(baseId)) {
+                    incrementalByBase.set(baseId, []);
+                }
+                incrementalByBase.get(baseId)!.push(backup);
+            }
+            
+            let branchIndex = 0;
+            for (const [baseId, incrementalList] of incrementalByBase) {
+                asciiGraph += `\n├─┐ ブランチ${branchIndex + 1} (ベース: ${baseId.substring(0, 8)}...)\n`;
+                
+                const sortedIncremental = incrementalList.sort((a, b) => a.timestamp - b.timestamp);
+                sortedIncremental.forEach((backup, index) => {
+                    const date = new Date(backup.timestamp);
+                    const timeStr = date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+                    
+                    const isLast = index === sortedIncremental.length - 1;
+                    const connector = isLast ? '  └──' : '  ├──';
+                    asciiGraph += `${connector} ◯ 差分 ${timeStr}\n`;
+                });
+                
+                branchIndex++;
+            }
+        }
+        
+        if (asciiGraph === '') {
+            asciiGraph = '❌ バックアップデータがありません';
+        }
+        
+        graphContent.textContent = asciiGraph;
+        
+        // スタイル設定
+        asciiGraphContainer.style.cssText = `
+            padding: 20px;
+            background: var(--background-secondary);
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            white-space: pre;
+            overflow-x: auto;
+            border: 2px dashed var(--text-muted);
+        `;
+        
+        container.appendChild(asciiGraphContainer);
+    }
+
+    private async renderSimpleGraph(container: HTMLElement, backups: { generations: BackupFileInfo[], incremental: BackupFileInfo[] }) {
+        try {
+            // 簡易版グラフ表示（テキストベース）
+            const graphContainer = this.createElement({
+                tagName: 'div',
+                className: 'backup-chain-simple-graph'
+            });
+
+            graphContainer.style.cssText = `
+                padding: 20px;
+                background: var(--background-secondary);
+                border-radius: 8px;
+                font-family: monospace;
+                font-size: 14px;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                overflow-x: auto;
+            `;
+
+            let graphText = '📊 バックアップ関係図\n\n';
+            
+            if (backups.generations.length > 0) {
+                graphText += '🏗️ 世代バックアップ:\n';
+                backups.generations.forEach((backup, index) => {
+                    const date = new Date(backup.timestamp).toLocaleString('ja-JP');
+                    const connector = index < backups.generations.length - 1 ? '  ↓' : '';
+                    graphText += `  📦 ${backup.generation?.period || 'Unknown'} (${date})\n${connector}\n`;
+                });
+                graphText += '\n';
+            }
+
+            if (backups.incremental.length > 0) {
+                graphText += '📄 差分バックアップ:\n';
+                backups.incremental.forEach(backup => {
+                    const date = new Date(backup.timestamp).toLocaleString('ja-JP');
+                    const baseId = backup.incremental?.baseBackupId || 'Unknown';
+                    graphText += `  📄 ${date} (ベース: ${baseId.substring(0, 8)}...)\n`;
+                });
+            }
+
+            if (backups.generations.length === 0 && backups.incremental.length === 0) {
+                graphText += '❌ バックアップが見つかりません';
+            }
+
+            graphContainer.textContent = graphText;
+            container.appendChild(graphContainer);
+
+            // GitGraphコードも表示
+            const gitGraphCode = this.generateMermaidGraph(backups.generations, backups.incremental);
+            const detailsContainer = this.createElement({
+                tagName: 'div',
+                className: 'backup-chain-details',
+                children: [
+                    {
+                        tagName: 'h4',
+                        textContent: '生成されたGitGraphコード'
+                    },
+                    {
+                        tagName: 'details',
+                        children: [
+                            {
+                                tagName: 'summary',
+                                textContent: 'GitGraphコードを表示'
+                            },
+                            {
+                                tagName: 'pre',
+                                textContent: gitGraphCode
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            detailsContainer.style.cssText = `
+                margin-top: 20px;
+                padding: 16px;
+                background: var(--background-primary);
+                border-radius: 8px;
+            `;
+
+            container.appendChild(detailsContainer);
+
+        } catch (error) {
+            console.error('[BackupChainVisualization] 簡易グラフ表示エラー:', error);
+            this.showError(container, error instanceof Error ? error.message : String(error));
         }
     }
 
     private async renderMermaidGraph(container: HTMLElement, mermaidCode: string) {
         try {
-            console.log('[BackupChainVisualization] Mermaidコード:', mermaidCode);
+            console.log('[BackupChainVisualization] GitGraphコード:', mermaidCode);
             
-            // Mermaidレンダリング
-            const result = await renderMermaidInWorker(mermaidCode, 'backup-chain');
+            // 簡易版グラフ表示（テキストベース）
+            const graphContainer = this.createElement({
+                tagName: 'div',
+                className: 'backup-chain-simple-graph'
+            });
+
+            graphContainer.style.cssText = `
+                padding: 20px;
+                background: var(--background-secondary);
+                border-radius: 8px;
+                font-family: monospace;
+                font-size: 14px;
+                line-height: 1.6;
+                white-space: pre-wrap;
+                overflow-x: auto;
+            `;
+
+            // バックアップ一覧を取得して簡易的にグラフ化
+            const backups = await this.backupManager.getAvailableBackups();
+            let graphText = '📊 バックアップ関係図\n\n';
             
-            if (result) {
-                if (typeof result === 'string') {
-                    // HTML文字列の場合
-                    container.innerHTML = result;
-                } else {
-                    // Element の場合
-                    container.appendChild(result);
-                }
-                
-                // SVGのスタイル調整
-                const svgEl = container.querySelector('svg') as SVGElement;
-                if (svgEl) {
-                    svgEl.style.width = '100%';
-                    svgEl.style.height = 'auto';
-                    svgEl.style.maxHeight = '60vh';
-                }
-            } else {
-                throw new Error('Mermaidレンダリングに失敗しました');
+            if (backups.generations.length > 0) {
+                graphText += '🏗️ 世代バックアップ:\n';
+                backups.generations.forEach((backup, index) => {
+                    const date = new Date(backup.timestamp).toLocaleString('ja-JP');
+                    const connector = index < backups.generations.length - 1 ? '  ↓' : '';
+                    graphText += `  📦 ${backup.generation?.period || 'Unknown'} (${date})\n${connector}\n`;
+                });
+                graphText += '\n';
             }
 
+            if (backups.incremental.length > 0) {
+                graphText += '📄 差分バックアップ:\n';
+                backups.incremental.forEach(backup => {
+                    const date = new Date(backup.timestamp).toLocaleString('ja-JP');
+                    const baseId = backup.incremental?.baseBackupId || 'Unknown';
+                    graphText += `  📄 ${date} (ベース: ${baseId.substring(0, 8)}...)\n`;
+                });
+            }
+
+            if (backups.generations.length === 0 && backups.incremental.length === 0) {
+                graphText += '❌ バックアップが見つかりません';
+            }
+
+            graphContainer.textContent = graphText;
+            container.appendChild(graphContainer);
+
+            // さらに詳細情報も追加
+            const detailsContainer = this.createElement({
+                tagName: 'div',
+                className: 'backup-chain-details',
+                children: [
+                    {
+                        tagName: 'h4',
+                        textContent: '生成されたGitGraphコード'
+                    },
+                    {
+                        tagName: 'details',
+                        children: [
+                            {
+                                tagName: 'summary',
+                                textContent: 'GitGraphコードを表示'
+                            },
+                            {
+                                tagName: 'pre',
+                                textContent: mermaidCode
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            detailsContainer.style.cssText = `
+                margin-top: 20px;
+                padding: 16px;
+                background: var(--background-primary);
+                border-radius: 8px;
+            `;
+
+            container.appendChild(detailsContainer);
+
         } catch (error) {
-            console.error('[BackupChainVisualization] Mermaidレンダリングエラー:', error);
+            console.error('[BackupChainVisualization] グラフ表示エラー:', error);
             
-            // フォールバック: テキスト表示
-            const fallbackEl = container.createDiv({ cls: 'backup-chain-fallback' });
-            fallbackEl.createEl('h4', { text: 'Mermaidグラフ（テキスト形式）' });
-            const preEl = fallbackEl.createEl('pre');
-            preEl.textContent = mermaidCode;
+            // フォールバック: エラー表示
+            const fallbackEl = this.createElement({
+                tagName: 'div',
+                className: 'backup-chain-fallback',
+                children: [
+                    {
+                        tagName: 'h4',
+                        textContent: 'グラフ表示エラー'
+                    },
+                    {
+                        tagName: 'p',
+                        textContent: `エラー: ${error instanceof Error ? error.message : String(error)}`
+                    },
+                    {
+                        tagName: 'pre',
+                        textContent: mermaidCode
+                    }
+                ]
+            });
+            container.appendChild(fallbackEl);
         }
     }
 
