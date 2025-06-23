@@ -133,6 +133,8 @@ export class DiffCalculator {
      * 差分を適用して新しい投稿配列を生成
      */
     static applyDiffs(posts: TweetWidgetPost[], diffs: TweetDiff[]): TweetWidgetPost[] {
+        console.log(`[DiffCalculator] 差分適用開始: ${posts.length}件の投稿, ${diffs.length}件の差分`);
+        
         let result = [...posts];
         const postsMap = new Map<string, number>();
         
@@ -141,33 +143,58 @@ export class DiffCalculator {
             postsMap.set(post.id, index);
         });
 
-        for (const diff of diffs) {
+        console.log(`[DiffCalculator] 初期インデックスマップ作成完了: ${postsMap.size}件`);
+
+        for (let i = 0; i < diffs.length; i++) {
+            const diff = diffs[i];
+            console.log(`[DiffCalculator] 差分適用 ${i + 1}/${diffs.length}: ${diff.type} (${diff.postId})`);
+            
             switch (diff.type) {
                 case 'add':
                     if (diff.newPost) {
                         result.push({ ...diff.newPost });
                         postsMap.set(diff.newPost.id, result.length - 1);
+                        console.log(`[DiffCalculator] 投稿追加: ${diff.newPost.id}, 新しい配列サイズ: ${result.length}`);
+                    } else {
+                        console.warn(`[DiffCalculator] add操作でnewPostがありません: ${diff.postId}`);
                     }
                     break;
 
                 case 'remove':
                     const removeIndex = postsMap.get(diff.postId);
                     if (removeIndex !== undefined) {
+                        console.log(`[DiffCalculator] 投稿削除: ${diff.postId}, インデックス: ${removeIndex}`);
                         result.splice(removeIndex, 1);
                         // インデックスマップを更新
                         this.updateIndicesAfterRemoval(postsMap, removeIndex);
+                        console.log(`[DiffCalculator] 削除後配列サイズ: ${result.length}`);
+                    } else {
+                        console.warn(`[DiffCalculator] 削除対象の投稿が見つかりません: ${diff.postId}`);
                     }
                     break;
 
                 case 'modify':
                     const modifyIndex = postsMap.get(diff.postId);
                     if (modifyIndex !== undefined && diff.newPost) {
+                        console.log(`[DiffCalculator] 投稿変更: ${diff.postId}, インデックス: ${modifyIndex}`);
                         result[modifyIndex] = { ...diff.newPost };
+                    } else {
+                        if (modifyIndex === undefined) {
+                            console.warn(`[DiffCalculator] 変更対象の投稿が見つかりません: ${diff.postId}`);
+                        }
+                        if (!diff.newPost) {
+                            console.warn(`[DiffCalculator] modify操作でnewPostがありません: ${diff.postId}`);
+                        }
                     }
+                    break;
+                    
+                default:
+                    console.warn(`[DiffCalculator] 未知の差分タイプ: ${diff.type}`);
                     break;
             }
         }
 
+        console.log(`[DiffCalculator] 差分適用完了: ${posts.length}件 → ${result.length}件`);
         return result;
     }
 

@@ -5,8 +5,10 @@ import { DEFAULT_TWEET_WIDGET_SETTINGS } from './constants'; // constants.ts か
 import { t, type Language } from '../../i18n';
 import { TweetVersionControl } from './versionControl/TweetVersionControl';
 import type { HistoryEntry, RestoreOptions } from './versionControl/types';
-import { BackupManager } from './backup/BackupManager';
+import { SimpleBackupManager } from './backup/SimpleBackupManager';
 import { EmergencyRecoveryManager } from './backup/EmergencyRecoveryManager';
+import { BranchManager } from './backup/BranchManager';
+import type { BackupCollection } from './backup/types';
 
 // グローバルなファイル保存ロック
 const fileSaveLocks = new Map<string, Promise<void>>();
@@ -17,8 +19,9 @@ export class TweetRepository {
     private saveInProgress: boolean = false;
     private pendingSave: Promise<void> | null = null;
     private versionControl: TweetVersionControl;
-    private backupManager: BackupManager;
+    private backupManager: SimpleBackupManager;
     private emergencyRecovery: EmergencyRecoveryManager;
+    private branchManager: BranchManager;
     private lastKnownSettings: TweetWidgetSettings | null = null;
 
     constructor(app: App, dbPath: string) {
@@ -27,8 +30,9 @@ export class TweetRepository {
         this.versionControl = new TweetVersionControl(app, dbPath);
         // バックアップマネージャーを初期化（dbPathからベースパスを取得）
         const basePath = this.dbPath.replace('/tweets.json', '');
-        this.backupManager = new BackupManager(app, basePath);
+        this.backupManager = new SimpleBackupManager(app, basePath);
         this.emergencyRecovery = new EmergencyRecoveryManager(app, dbPath);
+        this.branchManager = new BranchManager(app, basePath);
     }
 
     /**
@@ -39,8 +43,9 @@ export class TweetRepository {
         this.versionControl = new TweetVersionControl(this.app, path);
         // バックアップマネージャーのパスも更新
         const basePath = path.replace('/tweets.json', '');
-        this.backupManager = new BackupManager(this.app, basePath);
+        this.backupManager = new SimpleBackupManager(this.app, basePath);
         this.emergencyRecovery = new EmergencyRecoveryManager(this.app, path);
+        this.branchManager = new BranchManager(this.app, basePath);
     }
 
     /**
@@ -108,8 +113,11 @@ export class TweetRepository {
 
             // 投稿データの検証
             if (Array.isArray(settings.posts)) {
-                settings.posts = settings.posts.filter(post => validatePost(post));
+                settings.posts = settings.posts.map(post => validatePost(post));
             }
+
+            // ブランチ管理システムを初期化
+            await this.branchManager.initialize(settings);
 
             this.lastKnownSettings = settings;
             return settings;
@@ -164,44 +172,70 @@ export class TweetRepository {
      * @param commitMessage 手動コミットメッセージ（オプショナル）
      */
     async save(settings: TweetWidgetSettings, lang: Language, commitMessage?: string): Promise<void> {
+        console.log('[TweetRepository] save() 開始');
+        console.log('[TweetRepository] ファイルパス:', this.dbPath);
+        console.log('[TweetRepository] 設定データ概要:', {
+            posts: settings.posts?.length || 0,
+            scheduledPosts: settings.scheduledPosts?.length || 0,
+            userId: settings.userId
+        });
+        
         // グローバルなファイルパス基準のロック
         const existingLock = fileSaveLocks.get(this.dbPath);
         if (existingLock) {
+            console.log('[TweetRepository] 既存のロックを検出、待機中...');
             await existingLock;
+            console.log('[TweetRepository] 既存ロック解除完了');
         }
 
         // 既に保存処理が進行中の場合は、それを待機
         if (this.saveInProgress && this.pendingSave) {
+            console.log('[TweetRepository] 保存処理が既に進行中、待機中...');
             await this.pendingSave;
+            console.log('[TweetRepository] 進行中の保存処理完了');
             return;
         }
 
+        console.log('[TweetRepository] 新しい保存処理を開始');
         this.saveInProgress = true;
         this.pendingSave = this.performSave(settings, lang, commitMessage);
         fileSaveLocks.set(this.dbPath, this.pendingSave);
         
         try {
+            console.log('[TweetRepository] performSave() 実行開始');
             await this.pendingSave;
+            console.log('[TweetRepository] performSave() 実行完了');
         } catch (error) {
-            console.error(`Failed to save tweet data to ${this.dbPath}:`, error);
+            console.error(`[TweetRepository] save() でエラー発生 - ファイル: ${this.dbPath}:`, error);
+            console.error(`[TweetRepository] save() エラー詳細:`, error.stack);
         } finally {
+            console.log('[TweetRepository] save() 後処理開始');
             this.saveInProgress = false;
             this.pendingSave = null;
             fileSaveLocks.delete(this.dbPath);
+            console.log('[TweetRepository] save() 後処理完了');
         }
+        console.log('[TweetRepository] save() 完了');
     }
 
     private async performSave(settings: TweetWidgetSettings, lang: Language, commitMessage?: string): Promise<void> {
+        console.log('[TweetRepository] performSave() 開始');
         try {
+            console.log('[TweetRepository] 設定サニタイズ開始');
             const sanitizedSettings = this.ensureSettingsSchema(settings);
+            console.log('[TweetRepository] 設定サニタイズ完了');
+            
+            console.log('[TweetRepository] フォルダ確認開始');
             const lastSlash = this.dbPath.lastIndexOf('/');
             const folder = lastSlash !== -1 ? this.dbPath.substring(0, lastSlash) : '';
 
             if (folder) {
                 await this.ensureFolderExists(folder);
             }
+            console.log('[TweetRepository] フォルダ確認完了');
 
             // バージョン管理: 変更前のデータでコミット
+            console.log('[TweetRepository] バージョン管理開始');
             try {
                 if (this.lastKnownSettings) {
                     const commitId = await this.versionControl.commit(
@@ -217,23 +251,41 @@ export class TweetRepository {
             } catch (versionError) {
                 console.warn('バージョン管理エラー（保存は続行）:', versionError);
             }
+            console.log('[TweetRepository] バージョン管理完了');
 
+            console.log('[TweetRepository] ファイル書き込み開始');
             const dataToSave = JSON.stringify(sanitizedSettings, null, 2);
             await this.app.vault.adapter.write(this.dbPath, dataToSave);
+            console.log('[TweetRepository] ファイル書き込み完了');
             
             // 保存成功後、最新の設定を記録
             this.lastKnownSettings = sanitizedSettings;
 
             // バックアップシステム: データ保存後にバックアップ処理を実行
+            console.log('[TweetRepository] バックアップ処理開始');
             try {
-                await this.backupManager.onDataSave(sanitizedSettings);
+                console.log('[TweetRepository] BackupManager.onDataSave() 呼び出し開始');
+                console.log('[TweetRepository] バックアップマネージャー存在確認:', !!this.backupManager);
+                console.log('[TweetRepository] 渡すデータ:', {
+                    posts: sanitizedSettings.posts?.length || 0,
+                    scheduledPosts: sanitizedSettings.scheduledPosts?.length || 0,
+                    keys: Object.keys(sanitizedSettings)
+                });
+                
+                await this.backupManager.onDataSave(sanitizedSettings, commitMessage);
+                
+                console.log('[TweetRepository] BackupManager.onDataSave() 完了');
             } catch (backupError) {
-                console.warn('バックアップ処理エラー（保存は成功）:', backupError);
+                console.error('[TweetRepository] バックアップ処理エラー（保存は成功）:', backupError);
+                console.error('[TweetRepository] バックアップエラー詳細:', backupError.stack);
             }
+            console.log('[TweetRepository] バックアップ処理完了');
         } catch (e) {
-            console.error("Error saving tweet data:", e);
+            console.error("[TweetRepository] performSave() エラー:", e);
+            console.error("[TweetRepository] performSave() エラー詳細:", e.stack);
             new Notice(t(lang, 'saveError'));
         }
+        console.log('[TweetRepository] performSave() 完了');
     }
 
     /**
@@ -361,10 +413,7 @@ export class TweetRepository {
     /**
      * 利用可能なバックアップ一覧を取得
      */
-    async getAvailableBackups(): Promise<{
-        generations: any[];
-        incremental: any[];
-    }> {
+    async getAvailableBackups(): Promise<BackupCollection> {
         try {
             return await this.backupManager.getAvailableBackups();
         } catch (error) {
@@ -376,10 +425,10 @@ export class TweetRepository {
     /**
      * 手動バックアップを作成
      */
-    async createManualBackup(lang: Language, description?: string): Promise<boolean> {
+    async createManualBackup(lang: Language, type: 'daily' | 'weekly' | 'monthly' = 'daily'): Promise<boolean> {
         try {
             const currentSettings = this.lastKnownSettings || await this.load(lang);
-            const result = await this.backupManager.createManualBackup(currentSettings, description);
+            const result = await this.backupManager.createManualBackup(currentSettings, type);
             
             if (result.success) {
                 new Notice(`手動バックアップを作成しました: ${result.backupId}`);
@@ -400,39 +449,62 @@ export class TweetRepository {
      */
     async restoreFromBackup(backupId: string, lang: Language): Promise<boolean> {
         try {
-            console.log(`[TweetRepository] 復元開始: バックアップID ${backupId}`);
+            console.log(`[TweetRepository] 復元開始: バックアップID ${backupId}, 言語: ${lang}`);
             
-            const result = await this.backupManager.restoreFromBackup({
-                backupId: backupId,
-                type: 'full',
-                createCurrentBackup: true,
-                verifyIntegrity: true
-            });
+            const result = await this.backupManager.restoreFromBackup(backupId);
 
             console.log(`[TweetRepository] バックアップマネージャー結果:`, {
                 success: result.success,
                 error: result.error,
-                stats: result.stats
+                stats: result.stats,
+                hasData: !!result.data
             });
 
-            if (result.success && result.restoredData) {
-                console.log(`[TweetRepository] 復元成功: ${result.stats.restoredPosts}件の投稿を復元`);
+            if (result.success && result.data) {
+                console.log(`[TweetRepository] 復元成功: ${result.stats?.restoredPosts || 0}件の投稿を復元`);
                 
                 // 復元されたデータの妥当性を確認
-                const posts = result.restoredData.posts || [];
-                const scheduledPosts = result.restoredData.scheduledPosts || [];
+                const posts = result.data.posts || [];
+                const scheduledPosts = result.data.scheduledPosts || [];
                 console.log(`[TweetRepository] 復元データ詳細: 投稿=${posts.length}件, スケジュール=${scheduledPosts.length}件`);
+                console.log(`[TweetRepository] 復元データ構造:`, {
+                    keys: Object.keys(result.data),
+                    postsType: Array.isArray(posts) ? 'array' : typeof posts,
+                    scheduledPostsType: Array.isArray(scheduledPosts) ? 'array' : typeof scheduledPosts
+                });
                 
-                await this.save(result.restoredData, lang, `バックアップから復元: ${backupId.substring(0, 8)}`);
-                new Notice(`バックアップから復元しました: ${result.stats.restoredPosts}件の投稿`);
+                // データ保存実行
+                console.log(`[TweetRepository] データ保存開始`);
+                const saveMessage = `バックアップから復元: ${backupId.substring(0, 8)}`;
+                console.log(`[TweetRepository] 保存メッセージ: ${saveMessage}`);
+                
+                await this.save(result.data, lang, saveMessage);
+                console.log(`[TweetRepository] データ保存完了`);
+                
+                new Notice(`バックアップから復元しました: ${result.stats?.restoredPosts || 0}件の投稿`);
+                console.log(`[TweetRepository] 復元処理完了 - 成功`);
                 return true;
             } else {
                 console.error(`[TweetRepository] 復元失敗: ${result.error}`);
+                console.error(`[TweetRepository] 復元失敗の詳細:`, {
+                    success: result.success,
+                    hasData: !!result.data,
+                    errorMessage: result.error,
+                    stats: result.stats
+                });
                 new Notice(`復元に失敗しました: ${result.error || '不明なエラー'}`);
                 return false;
             }
         } catch (error) {
             console.error('[TweetRepository] バックアップ復元エラー:', error);
+            console.error('[TweetRepository] エラー詳細:', error.stack);
+            
+            // エラーの詳細情報を追加
+            if (error instanceof Error) {
+                console.error(`[TweetRepository] エラー名: ${error.name}`);
+                console.error(`[TweetRepository] エラーメッセージ: ${error.message}`);
+            }
+            
             const errorMessage = error instanceof Error ? error.message : String(error);
             new Notice(`復元に失敗しました: ${errorMessage}`);
             return false;
@@ -442,7 +514,7 @@ export class TweetRepository {
     /**
      * バックアップマネージャーを取得（UI用）
      */
-    getBackupManager(): BackupManager {
+    getBackupManager(): SimpleBackupManager {
         return this.backupManager;
     }
 
@@ -451,6 +523,91 @@ export class TweetRepository {
      */
     getEmergencyRecoveryManager(): EmergencyRecoveryManager {
         return this.emergencyRecovery;
+    }
+
+    /**
+     * ブランチマネージャーを取得（UI用）
+     */
+    getBranchManager(): BranchManager {
+        return this.branchManager;
+    }
+
+    /**
+     * バックアップからブランチをチェックアウト
+     */
+    async checkoutFromBackup(backupId: string, lang: Language): Promise<boolean> {
+        try {
+            console.log(`[TweetRepository] バックアップからブランチチェックアウト: ${backupId}`);
+            
+            // バックアップデータを取得
+            const result = await this.backupManager.restoreFromBackup(backupId);
+            
+            if (!result.success || !result.data) {
+                console.error(`[TweetRepository] バックアップデータ取得失敗: ${result.error}`);
+                return false;
+            }
+            
+            // ブランチを作成してチェックアウト
+            const checkoutResult = await this.branchManager.checkoutFromBackup(
+                backupId,
+                result.data,
+                `バックアップ ${backupId} からのブランチ`
+            );
+            
+            if (checkoutResult.success && checkoutResult.data) {
+                console.log(`[TweetRepository] ブランチチェックアウト成功: ${checkoutResult.branchName}`);
+                new Notice(`ブランチ '${checkoutResult.branchName}' にチェックアウトしました`);
+                return true;
+            } else {
+                console.error(`[TweetRepository] ブランチチェックアウト失敗: ${checkoutResult.error}`);
+                new Notice(`ブランチチェックアウトに失敗しました: ${checkoutResult.error}`);
+                return false;
+            }
+            
+        } catch (error) {
+            console.error('[TweetRepository] ブランチチェックアウトエラー:', error);
+            new Notice(`ブランチチェックアウトに失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+            return false;
+        }
+    }
+
+    /**
+     * ブランチを切り替え
+     */
+    async switchBranch(branchName: string): Promise<boolean> {
+        try {
+            console.log(`[TweetRepository] ブランチ切り替え: ${branchName}`);
+            
+            const result = await this.branchManager.checkoutBranch(branchName);
+            
+            if (result.success && result.data) {
+                console.log(`[TweetRepository] ブランチ切り替え成功: ${branchName}`);
+                new Notice(`ブランチ '${branchName}' に切り替えました`);
+                return true;
+            } else {
+                console.error(`[TweetRepository] ブランチ切り替え失敗: ${result.error}`);
+                new Notice(`ブランチ切り替えに失敗しました: ${result.error}`);
+                return false;
+            }
+            
+        } catch (error) {
+            console.error('[TweetRepository] ブランチ切り替えエラー:', error);
+            new Notice(`ブランチ切り替えに失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+            return false;
+        }
+    }
+
+    /**
+     * 現在のブランチのデータを取得
+     */
+    async getCurrentBranchData(): Promise<TweetWidgetSettings | null> {
+        try {
+            const branch = await this.branchManager.getCurrentBranch();
+            return branch ? branch.data : null;
+        } catch (error) {
+            console.error('[TweetRepository] 現在ブランチデータ取得エラー:', error);
+            return null;
+        }
     }
 
     /**

@@ -7,27 +7,29 @@ import type { BackupFileInfo } from './types';
 import type { Language } from '../../../i18n/types';
 import { BaseModal } from './BaseModal';
 import { TweetWidget } from '../tweetWidget';
+import { BackupUtils } from './BackupUtils';
+import { TestDataProvider } from './TestDataProvider';
 
 /**
  * バックアップ復元プレビューモーダル
  * 復元前にデータの差分を表示し、確認を求める
  */
 export class RestorePreviewModal extends BaseModal {
-    private backupManager: BackupManager;
+    private backupManager: BackupManager | null;
     private backup: BackupFileInfo;
     private currentData: TweetWidgetSettings;
     private language: Language;
-    private onConfirm: (backup: BackupFileInfo) => Promise<void>;
+    private onConfirm: (backup: BackupFileInfo, createBackup: boolean) => Promise<void>;
     private previewData: TweetWidgetSettings | null = null;
     private differences: any = null;
 
     constructor(
         widget: TweetWidget,
-        backupManager: BackupManager,
+        backupManager: BackupManager | null,
         backup: BackupFileInfo,
         currentData: TweetWidgetSettings,
         language: Language,
-        onConfirm: (backup: BackupFileInfo) => Promise<void>
+        onConfirm: (backup: BackupFileInfo, createBackup: boolean) => Promise<void>
     ) {
         super(widget);
         this.backupManager = backupManager;
@@ -59,27 +61,60 @@ export class RestorePreviewModal extends BaseModal {
             // バックアップデータをプレビュー
             let result;
             
-            try {
-                result = await this.backupManager.previewRestore(
-                    {
-                        backupId: this.backup.id,
-                        type: 'full',
-                        createCurrentBackup: false,
-                        verifyIntegrity: true
-                    },
-                    this.currentData
-                );
-            } catch (previewError) {
-                console.warn('実際のプレビューに失敗、テストデータを使用:', previewError);
-                // テストデータでプレビューを表示
+            // テストデータかどうかを判定
+            const isTestData = TestDataProvider.isTestData(this.backup.id);
+            console.log(`[RestorePreviewModal] データタイプ判定: ${isTestData ? 'テストデータ' : '実際のバックアップ'}`);
+            
+            if (isTestData) {
+                // テストデータの場合
+                console.log('[RestorePreviewModal] テストデータプロバイダーからプレビューを作成');
                 result = this.createTestPreviewData();
+            } else if (this.backupManager) {
+                // 実際のバックアップの場合
+                // バックアップIDから正しい型を判定
+                let restoreType: 'full' | 'incremental';
+                
+                if (this.backup.id.startsWith('incr_')) {
+                    restoreType = 'incremental';
+                } else if (this.backup.type === 'incremental' || this.backup.incremental) {
+                    restoreType = 'incremental';
+                } else {
+                    restoreType = 'full';
+                }
+                
+                console.log(`[RestorePreviewModal] 復元タイプ判定: ${restoreType} (ID: ${this.backup.id})`);
+                
+                try {
+                    result = await this.backupManager.previewRestore(
+                        {
+                            backupId: this.backup.id,
+                            type: restoreType,
+                            createCurrentBackup: false,
+                            verifyIntegrity: true
+                        },
+                        this.currentData
+                    );
+                } catch (previewError) {
+                    console.warn('実際のプレビューに失敗:', previewError);
+                    result = { success: false, error: `プレビューに失敗しました: ${previewError instanceof Error ? previewError.message : String(previewError)}` };
+                }
+            } else {
+                result = { success: false, error: 'バックアップマネージャーが利用できません' };
             }
 
             if (result.success && result.previewData) {
                 this.previewData = result.previewData;
                 this.differences = result.differences;
-                this.renderPreviewContent();
+                console.log('[RestorePreviewModal] プレビューデータ設定完了, renderPreviewContent()を実行');
+                try {
+                    this.renderPreviewContent();
+                } catch (renderError) {
+                    console.error('[RestorePreviewModal] renderPreviewContent()でエラー:', renderError);
+                    this.showError(`プレビュー表示でエラーが発生しました: ${renderError instanceof Error ? renderError.message : String(renderError)}`);
+                    return;
+                }
             } else {
+                console.error('[RestorePreviewModal] プレビュー結果が無効:', { success: result.success, hasPreviewData: !!result.previewData, error: result.error });
                 this.showError(result.error || '復元プレビューの読み込みに失敗しました');
             }
             
@@ -106,6 +141,8 @@ export class RestorePreviewModal extends BaseModal {
         };
         error?: string;
     } {
+        console.log('[RestorePreviewModal] テストデータ作成開始, currentData:', this.currentData);
+        
         // テスト用のプレビューデータを作成
         const testPreviewData: TweetWidgetSettings = {
             posts: [
@@ -113,16 +150,35 @@ export class RestorePreviewModal extends BaseModal {
                     id: 'test-restored-1',
                     text: 'どうなんだろうね',
                     created: Date.now() - 86400000, // 1日前
-                    userId: 'user1',
-                    userName: 'テストユーザー1',
+                    userId: this.currentData.userId || 'test-user',
+                    userName: this.currentData.userName || 'テストユーザー',
                     files: [],
                     tags: ['復元テスト'],
                     links: [],
                     edited: false,
-                    deleted: false
+                    deleted: false,
+                    like: 0,
+                    liked: false,
+                    retweet: 0,
+                    retweeted: false,
+                    replyCount: 0,
+                    visibility: 'public' as const,
+                    bookmark: false,
+                    noteQuality: 'fleeting' as const,
+                    verified: false
                 }
             ],
-            scheduledPosts: []
+            scheduledPosts: [],
+            userId: this.currentData.userId || 'test-user',
+            userName: this.currentData.userName || 'テストユーザー',
+            avatarUrl: this.currentData.avatarUrl || '',
+            verified: this.currentData.verified || false,
+            aiGovernance: this.currentData.aiGovernance || {
+                minuteMap: {},
+                dayMap: {}
+            },
+            width: this.currentData.width,
+            height: this.currentData.height
         } as TweetWidgetSettings;
 
         // 現在のデータと比較した差分を計算
@@ -146,7 +202,7 @@ export class RestorePreviewModal extends BaseModal {
             }
         }
 
-        return {
+        const result = {
             success: true,
             previewData: testPreviewData,
             differences: {
@@ -158,6 +214,9 @@ export class RestorePreviewModal extends BaseModal {
                 modifiedPosts
             }
         };
+        
+        console.log('[RestorePreviewModal] テストデータ作成完了:', result);
+        return result;
     }
 
     private renderHeader(): void {
@@ -247,7 +306,7 @@ export class RestorePreviewModal extends BaseModal {
 
         const errorHint = this.createElement({
             tagName: 'p',
-            textContent: 'テストデータでプレビューを確認することができます。',
+            textContent: 'テストデータでプレビューを確認することができません。',
             className: 'error-hint'
         });
 
@@ -550,8 +609,6 @@ export class RestorePreviewModal extends BaseModal {
                 className: 'diff-text'
             });
 
-
-
             itemEl.appendChild(textEl);
             contentEl.appendChild(itemEl);
         });
@@ -563,8 +620,6 @@ export class RestorePreviewModal extends BaseModal {
                 textContent: `他 ${items.length - 10} 件...`,
                 className: 'diff-more'
             });
-
-
 
             contentEl.appendChild(moreEl);
         }
@@ -716,7 +771,10 @@ export class RestorePreviewModal extends BaseModal {
             }) as HTMLButtonElement;
 
             backupBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent); margin-right: 12px;';
-            backupBtn.onclick = () => this.confirmRestore(true);
+            backupBtn.onclick = () => {
+                console.log('[RestorePreviewModal] backup-and-restore-btn クリック');
+                this.confirmRestore(true);
+            };
 
             const directBtn = this.createElement({
                 tagName: 'button',
@@ -725,7 +783,10 @@ export class RestorePreviewModal extends BaseModal {
             }) as HTMLButtonElement;
 
             directBtn.style.cssText = buttonStyle + 'background: var(--text-warning); color: var(--text-on-accent);';
-            directBtn.onclick = () => this.confirmRestore(false);
+            directBtn.onclick = () => {
+                console.log('[RestorePreviewModal] direct-restore-btn クリック');
+                this.confirmRestore(false);
+            };
 
             leftButtons.appendChild(backupBtn);
             leftButtons.appendChild(directBtn);
@@ -781,17 +842,26 @@ export class RestorePreviewModal extends BaseModal {
     }
 
     private async confirmRestore(createBackup: boolean): Promise<void> {
+        console.log('[RestorePreviewModal] confirmRestore 呼び出し:', { createBackup });
+        
         const action = createBackup ? 'バックアップを作成してから復元' : '直接復元';
         const message = `本当に${action}しますか？\n\nこの操作は取り消すことができません。`;
 
+        console.log('[RestorePreviewModal] 確認ダイアログ表示:', { action, message });
+        
         if (confirm(message)) {
+            console.log('[RestorePreviewModal] ユーザーが復元を確認');
             try {
-                await this.onConfirm(this.backup);
+                console.log('[RestorePreviewModal] onConfirm 実行開始:', this.backup, 'createBackup:', createBackup);
+                await this.onConfirm(this.backup, createBackup);
+                console.log('[RestorePreviewModal] onConfirm 完了、モーダルを閉じます');
                 this.close();
             } catch (error) {
-                console.error('復元エラー:', error);
+                console.error('[RestorePreviewModal] 復元エラー:', error);
                 alert(`復元に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
             }
+        } else {
+            console.log('[RestorePreviewModal] ユーザーが復元をキャンセル');
         }
     }
 } 

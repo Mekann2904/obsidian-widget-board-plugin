@@ -345,7 +345,7 @@ export class ManualBackupModal extends BaseModal {
         try {
             const result = await this.backupManager.createManualBackup(
                 this.currentData,
-                this.description
+                'daily'  // 手動バックアップは常にdailyタイプとして作成
             );
 
             if (result.success) {

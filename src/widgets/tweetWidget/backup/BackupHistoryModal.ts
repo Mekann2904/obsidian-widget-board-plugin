@@ -1,10 +1,15 @@
 import type { TweetWidgetSettings } from '../types';
-import type { BackupFileInfo, RestoreOptions } from './types';
+import type { BackupFileInfo, RestoreOptions, BackupCollection } from './types';
 import { BackupManager } from './BackupManager';
 import { ManualBackupModal } from './ManualBackupModal';
 import type { Language } from '../../../i18n/types';
 import { BaseModal } from './BaseModal';
 import { TweetWidget } from '../tweetWidget';
+import { BackupChainVisualization } from './BackupChainVisualization';
+import { RestorePreviewModal } from './RestorePreviewModal';
+import { TestDataProvider } from './TestDataProvider';
+import { SimpleRestorePreviewModal } from './SimpleRestorePreviewModal';
+import { Notice } from 'obsidian';
 
 /**
  * 拡張バックアップ履歴モーダル
@@ -52,20 +57,49 @@ export class BackupHistoryModal extends BaseModal {
         this.showLoading();
 
         try {
-            console.log('バックアップ一覧の読み込み開始');
+            console.log('[BackupHistoryModal] バックアップ一覧の読み込み開始');
             const backups = await this.backupManager.getAvailableBackups();
-            console.log('バックアップ一覧:', backups);
+            console.log('[BackupHistoryModal] バックアップ一覧:', backups);
             
             this.generations = backups.generations;
             this.incremental = backups.incremental;
 
-            console.log(`世代バックアップ: ${this.generations.length}件`);
-            console.log(`差分バックアップ: ${this.incremental.length}件`);
+            console.log(`[BackupHistoryModal] 世代バックアップ: ${this.generations.length}件`);
+            console.log(`[BackupHistoryModal] 差分バックアップ: ${this.incremental.length}件`);
+            
+            // 詳細なデバッグ情報
+            if (this.generations.length > 0) {
+                console.log('[BackupHistoryModal] 世代バックアップ詳細:', this.generations.map(g => ({
+                    id: g.id,
+                    type: g.type,
+                    filePath: g.filePath,
+                    timestamp: g.timestamp,
+                    generation: g.generation
+                })));
+            }
+            
+            if (this.incremental.length > 0) {
+                console.log('[BackupHistoryModal] 差分バックアップ詳細:', this.incremental.map(i => ({
+                    id: i.id,
+                    type: i.type,
+                    filePath: i.filePath,
+                    timestamp: i.timestamp,
+                    incremental: i.incremental
+                })));
+            } else {
+                console.warn('[BackupHistoryModal] 差分バックアップが0件です。以下を確認してください:');
+                console.warn('1. 差分バックアップが有効化されているか');
+                console.warn('2. データ変更が発生しているか');
+                console.warn('3. ベースとなる世代バックアップが存在するか');
+                console.warn('4. BackupManagerのlastSaveDataが設定されているか');
+                
+                // 現在の設定状況をデバッグ出力
+                this.debugIncrementalBackupStatus();
+            }
 
-            // データが空の場合はテストデータを作成
+            // データが空の場合は適切なメッセージを表示
             if (this.generations.length === 0 && this.incremental.length === 0) {
-                console.log('バックアップデータが空のため、テストデータを表示します');
-                this.createTestData();
+                console.log('バックアップが作成されていません。手動バックアップの作成を推奨します。');
             }
 
             // バックアップリストを表示
@@ -74,9 +108,10 @@ export class BackupHistoryModal extends BaseModal {
         } catch (error) {
             console.error('バックアップ一覧読み込みエラー:', error);
             
-            // エラーの場合もテストデータを作成
-            console.log('エラーのため、テストデータを表示します');
-            this.createTestData();
+            // エラーの場合は空の配列を設定
+            this.generations = [];
+            this.incremental = [];
+            
             this.renderBackupList();
         }
     }
@@ -85,90 +120,145 @@ export class BackupHistoryModal extends BaseModal {
         // クリーンアップ処理
     }
 
-    private createTestData(): void {
-        const now = Date.now();
-        const hour = 1000 * 60 * 60;
-        const day = hour * 24;
-
-        // テスト用世代バックアップデータ
-        this.generations = [
-            {
-                id: 'daily_20241101',
-                type: 'daily',
-                filePath: '/backups/daily_20241101.json',
-                timestamp: now - day,
-                size: 2048576, // 2MB
-                checksum: 'abc123',
-                compressed: false,
-                description: '日次自動バックアップ',
-                generation: {
-                    period: '2024-11-01'
-                }
-            },
-            {
-                id: 'weekly_20241028',
-                type: 'weekly',
-                filePath: '/backups/weekly_20241028.json',
-                timestamp: now - (day * 3),
-                size: 1536000, // 1.5MB
-                checksum: 'def456',
-                compressed: true,
-                description: '週次自動バックアップ',
-                generation: {
-                    period: '2024-W44'
-                }
-            },
-            {
-                id: 'manual_20241030',
-                type: 'manual',
-                filePath: '/backups/manual_20241030.json',
-                timestamp: now - (day * 2),
-                size: 3145728, // 3MB
-                checksum: 'ghi789',
-                compressed: false,
-                description: '手動バックアップ - データ整理前',
-                generation: {
-                    period: '2024-10-30'
-                }
-            }
-        ];
-
-        // テスト用差分バックアップデータ
-        this.incremental = [
-            {
-                id: 'inc_20241101_001',
-                type: 'incremental',
-                filePath: '/backups/incremental/inc_20241101_001.json',
-                timestamp: now - (hour * 2),
-                size: 524288, // 512KB
-                checksum: 'inc001',
-                compressed: true,
-                incremental: {
-                    baseBackupId: 'daily_20241101',
-                    changedPostsCount: 5,
-                    diffSize: 524288
-                }
-            },
-            {
-                id: 'inc_20241101_002',
-                type: 'incremental',
-                filePath: '/backups/incremental/inc_20241101_002.json',
-                timestamp: now - hour,
-                size: 262144, // 256KB
-                checksum: 'inc002',
-                compressed: true,
-                incremental: {
-                    baseBackupId: 'daily_20241101',
-                    changedPostsCount: 2,
-                    diffSize: 262144
-                }
-            }
-        ];
-
-        console.log('テストデータを作成しました:', {
-            generations: this.generations.length,
-            incremental: this.incremental.length
+    private renderEmptyBackupMessage(): void {
+        const emptyContainer = this.createElement({
+            tagName: 'div',
+            className: 'empty-backup-container'
         });
+
+        emptyContainer.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 40px;
+            text-align: center;
+            min-height: 400px;
+        `;
+
+        // アイコン
+        const icon = this.createElement({
+            tagName: 'div',
+            textContent: '📦',
+            className: 'empty-icon'
+        });
+
+        icon.style.cssText = `
+            font-size: 64px;
+            margin-bottom: 24px;
+            opacity: 0.6;
+        `;
+
+        // メインメッセージ
+        const title = this.createElement({
+            tagName: 'h3',
+            textContent: 'バックアップが作成されていません',
+            className: 'empty-title'
+        });
+
+        title.style.cssText = `
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: var(--text-normal);
+        `;
+
+        // 説明文
+        const description = this.createElement({
+            tagName: 'p',
+            textContent: 'データの安全性を確保するため、手動でバックアップを作成することをお勧めします。',
+            className: 'empty-description'
+        });
+
+        description.style.cssText = `
+            font-size: 16px;
+            color: var(--text-muted);
+            margin-bottom: 32px;
+            line-height: 1.5;
+            max-width: 400px;
+        `;
+
+        // バックアップ作成ボタン
+        const createButton = this.createElement({
+            tagName: 'button',
+            textContent: '今すぐバックアップを作成',
+            className: 'mod-cta empty-backup-btn'
+        });
+
+        createButton.style.cssText = `
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 6px;
+            background: var(--interactive-accent);
+            color: var(--text-on-accent);
+            border: none;
+            cursor: pointer;
+            margin-bottom: 16px;
+        `;
+
+        createButton.addEventListener('click', async () => {
+            await this.createManualBackup();
+        });
+
+        // 説明リンク
+        const helpText = this.createElement({
+            tagName: 'p',
+            className: 'empty-help'
+        });
+
+        helpText.style.cssText = `
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-top: 16px;
+        `;
+
+        helpText.innerHTML = `
+            バックアップは自動的に作成されます。<br>
+            手動作成も可能で、重要な変更前に推奨されます。
+        `;
+
+        emptyContainer.appendChild(icon);
+        emptyContainer.appendChild(title);
+        emptyContainer.appendChild(description);
+        emptyContainer.appendChild(createButton);
+        emptyContainer.appendChild(helpText);
+
+        this.contentEl.appendChild(emptyContainer);
+
+        // 閉じるボタンも追加
+        this.createCloseButton();
+    }
+
+    private createCloseButton(): void {
+        const closeButtonContainer = this.createElement({
+            tagName: 'div',
+            className: 'empty-close-container'
+        });
+
+        closeButtonContainer.style.cssText = `
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            border-top: 1px solid var(--background-modifier-border);
+            margin-top: 20px;
+        `;
+
+        const closeButton = this.createElement({
+            tagName: 'button',
+            textContent: '閉じる',
+            className: 'mod-secondary'
+        });
+
+        closeButton.style.cssText = `
+            padding: 8px 16px;
+            border-radius: 4px;
+        `;
+
+        closeButton.addEventListener('click', () => {
+            this.close();
+        });
+
+        closeButtonContainer.appendChild(closeButton);
+        this.contentEl.appendChild(closeButtonContainer);
     }
 
     private renderHeader(): void {
@@ -242,6 +332,12 @@ export class BackupHistoryModal extends BaseModal {
             loadingEl.remove();
         }
 
+        // バックアップが空の場合は特別なメッセージを表示
+        if (this.generations.length === 0 && this.incremental.length === 0) {
+            this.renderEmptyBackupMessage();
+            return;
+        }
+
         // タブナビゲーション
         this.renderTabs();
         
@@ -267,21 +363,68 @@ export class BackupHistoryModal extends BaseModal {
     }
 
     private async createManualBackup(): Promise<void> {
-        const manualBackupModal = new ManualBackupModal(
-            this.widget,
-            this.backupManager,
-            this.currentData,
-            this.language,
-            async () => {
-                // バックアップ作成後にリストを再読み込み
-                const backups = await this.backupManager.getAvailableBackups();
-                this.generations = backups.generations;
-                this.incremental = backups.incremental;
-                this.updateTabContent();
-                this.updateTabs();
+        console.log('[BackupHistoryModal] 手動バックアップ作成開始');
+        
+        // ローディング表示
+        const loadingOverlay = this.createElement({
+            tagName: 'div',
+            textContent: 'バックアップを作成中...',
+            className: 'backup-creating-overlay'
+        });
+        
+        loadingOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            z-index: 10000;
+        `;
+        
+        document.body.appendChild(loadingOverlay);
+        
+        try {
+            // 手動バックアップを作成
+            const result = await this.backupManager.createManualBackup(this.currentData, 'daily');
+            
+            if (result.success) {
+                console.log('[BackupHistoryModal] 手動バックアップ作成成功:', result);
+                
+                // バックアップ一覧を再読み込み
+                await this.reloadBackupList();
+                
+                // 成功メッセージ
+                new Notice('バックアップが正常に作成されました');
+            } else {
+                console.error('[BackupHistoryModal] 手動バックアップ作成失敗:', result.error);
+                alert(`バックアップの作成に失敗しました: ${result.error}`);
             }
-        );
-        manualBackupModal.open();
+        } catch (error) {
+            console.error('[BackupHistoryModal] 手動バックアップ作成エラー:', error);
+            alert(`バックアップの作成中にエラーが発生しました: ${error instanceof Error ? error.message : String(error)}`);
+        } finally {
+            // ローディングオーバーレイを削除
+            document.body.removeChild(loadingOverlay);
+        }
+    }
+    
+    private async reloadBackupList(): Promise<void> {
+        console.log('[BackupHistoryModal] バックアップ一覧を再読み込み中');
+        
+        // コンテンツをクリア
+        this.contentEl.innerHTML = '';
+        
+        // ヘッダーを再表示
+        this.renderHeader();
+        
+        // バックアップ一覧を再読み込み
+        await this.onOpen();
     }
 
     private updateTabContent(): void {
@@ -431,8 +574,41 @@ export class BackupHistoryModal extends BaseModal {
         visualizationBtn.style.cssText = buttonStyle;
         visualizationBtn.onclick = () => this.showBackupVisualization();
 
+        // テスト復元ボタン
+        const testRestoreBtn = this.createElement({
+            tagName: 'button',
+            textContent: 'テスト復元',
+            className: 'footer-button test-restore-btn'
+        }) as HTMLButtonElement;
+
+        testRestoreBtn.style.cssText = buttonStyle + 'background: var(--color-orange); color: var(--text-on-accent);';
+        testRestoreBtn.onclick = () => this.testRestore();
+
+        // 整合性チェックボタン
+        const integrityCheckBtn = this.createElement({
+            tagName: 'button',
+            textContent: '整合性チェック',
+            className: 'footer-button integrity-check-btn'
+        }) as HTMLButtonElement;
+
+        integrityCheckBtn.style.cssText = buttonStyle + 'background: var(--color-purple); color: var(--text-on-accent);';
+        integrityCheckBtn.onclick = () => this.checkIntegrity();
+
+        // 差分バックアップテストボタン（デバッグ用）
+        const testIncrementalBtn = this.createElement({
+            tagName: 'button',
+            textContent: '差分テスト',
+            className: 'footer-button test-incremental-btn'
+        }) as HTMLButtonElement;
+
+        testIncrementalBtn.style.cssText = buttonStyle + 'background: var(--color-green); color: var(--text-on-accent);';
+        testIncrementalBtn.onclick = () => this.testIncrementalBackup();
+
         leftButtons.appendChild(manualBackupBtn);
         leftButtons.appendChild(visualizationBtn);
+        leftButtons.appendChild(testRestoreBtn);
+        leftButtons.appendChild(integrityCheckBtn);
+        leftButtons.appendChild(testIncrementalBtn);
 
         // 右側のボタン
         const rightButtons = this.createElement({
@@ -458,15 +634,16 @@ export class BackupHistoryModal extends BaseModal {
 
     private async handlePreview(backup: BackupFileInfo): Promise<void> {
         try {
-            const { RestorePreviewModal } = await import('./RestorePreviewModal.js');
-            const previewModal = new RestorePreviewModal(
+            console.log(`[BackupHistoryModal] シンプルプレビュー開始: ID=${backup.id}, type=${backup.type}`);
+            
+            // 新しいシンプルプレビューモーダルを使用
+            const previewModal = new SimpleRestorePreviewModal(
                 this.widget,
-                this.backupManager,
                 backup,
                 this.currentData,
                 this.language,
-                async (confirmedBackup: BackupFileInfo) => {
-                    await this.handleRestore(confirmedBackup);
+                async (confirmedBackup: BackupFileInfo, createBackup: boolean) => {
+                    await this.handleRestoreWithBackup(confirmedBackup, createBackup);
                 }
             );
             previewModal.open();
@@ -476,27 +653,165 @@ export class BackupHistoryModal extends BaseModal {
         }
     }
 
+    private async handleRestoreWithBackup(backup: BackupFileInfo, createBackup: boolean): Promise<void> {
+        try {
+            console.log(`[BackupHistoryModal] handleRestoreWithBackup 開始:`, {
+                backupId: backup.id,
+                createBackup: createBackup
+            });
+
+            if (createBackup) {
+                console.log(`[BackupHistoryModal] 復元前に現在のデータのバックアップを作成中...`);
+                try {
+                    await this.backupManager.createManualBackup(this.currentData);
+                    console.log(`[BackupHistoryModal] 復元前バックアップ作成完了`);
+                } catch (error) {
+                    console.error(`[BackupHistoryModal] 復元前バックアップ作成エラー:`, error);
+                    const proceed = confirm(`復元前のバックアップ作成に失敗しました: ${error instanceof Error ? error.message : String(error)}\n\nそれでも復元を続行しますか？`);
+                    if (!proceed) {
+                        return;
+                    }
+                }
+            }
+
+            await this.handleRestore(backup);
+        } catch (error) {
+            console.error(`[BackupHistoryModal] handleRestoreWithBackup エラー:`, error);
+            alert(`復元に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    /**
+     * バックアップからブランチをチェックアウト
+     */
+    private async handleCheckout(backup: BackupFileInfo): Promise<void> {
+        try {
+            console.log(`[BackupHistoryModal] チェックアウト開始:`, {
+                id: backup.id,
+                type: backup.type,
+                timestamp: backup.timestamp
+            });
+
+            // プレビューモーダルを表示してユーザーに確認
+            const checkoutModal = new SimpleRestorePreviewModal(
+                this.widget,
+                backup,
+                this.currentData,
+                this.language,
+                async (backup: BackupFileInfo, createBackup: boolean) => {
+                    try {
+                        // TweetRepositoryのチェックアウトメソッドを呼び出し
+                        const success = await this.widget.getRepository().checkoutFromBackup(backup.id, this.language);
+                        
+                        if (success) {
+                            // チェックアウト成功時はウィジェットを再読み込み
+                            await this.widget.reloadTweetData();
+                            this.close();
+                        }
+                        
+                    } catch (error) {
+                        console.error(`[BackupHistoryModal] チェックアウトエラー:`, error);
+                        alert(`チェックアウトに失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+                    }
+                }
+            );
+            
+            checkoutModal.open();
+            
+        } catch (error) {
+            console.error(`[BackupHistoryModal] チェックアウト処理エラー:`, error);
+            alert(`チェックアウト処理に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
     private async handleRestore(backup: BackupFileInfo): Promise<void> {
         try {
-            console.log('復元開始:', backup);
+            console.log(`[BackupHistoryModal] 復元開始:`, {
+                id: backup.id,
+                type: backup.type,
+                timestamp: backup.timestamp,
+                filePath: backup.filePath,
+                size: backup.size,
+                generation: backup.generation,
+                incremental: backup.incremental
+            });
 
-            const restoreOptions = {
-                backupId: backup.id,
-                type: 'full' as const,
-                createCurrentBackup: true,
-                verifyIntegrity: true
-            };
-            const result = await this.backupManager.restoreFromBackup(restoreOptions);
+            // テストデータかどうかを判定
+            const isTestData = TestDataProvider.isTestData(backup.id);
             
-            if (result.success && result.restoredData) {
-                console.log('復元成功:', result);
-                this.onRestore(result.restoredData);
+            if (isTestData) {
+                // テストデータの場合
+                console.log(`[BackupHistoryModal] テストデータから復元: ${backup.id}`);
+                const restoreResult = await TestDataProvider.restoreFromTestData(backup.id);
+                
+                if (restoreResult.success && restoreResult.data) {
+                    console.log(`[BackupHistoryModal] テストデータ復元成功`);
+                    this.onRestore(restoreResult.data);
+                    this.close();
+                } else {
+                    throw new Error(restoreResult.error || 'テストデータの復元に失敗しました');
+                }
+                return;
+            }
+            
+            // 実際のバックアップの場合
+            // バックアップIDから正しい型を判定
+            let restoreType: 'full' | 'incremental';
+            
+            if (backup.id.startsWith('inc_')) {
+                restoreType = 'incremental';
+                console.log(`[BackupHistoryModal] ID接頭辞により差分バックアップと判定: ${backup.id}`);
+            } else if (backup.type === 'incremental' || backup.incremental) {
+                restoreType = 'incremental';
+                console.log(`[BackupHistoryModal] typeまたはincrementalプロパティにより差分バックアップと判定`);
+            } else {
+                restoreType = 'full';
+                console.log(`[BackupHistoryModal] 世代バックアップと判定`);
+            }
+            
+            console.log(`[BackupHistoryModal] 復元タイプ決定: ${restoreType}`);
+
+            console.log(`[BackupHistoryModal] バックアップマネージャーの復元を開始: ${backup.id}`);
+            
+            const result = await this.backupManager.restoreFromBackup(backup.id);
+            
+            console.log(`[BackupHistoryModal] バックアップマネージャー結果:`, {
+                success: result.success,
+                error: result.error,
+                stats: result.stats,
+                hasData: !!result.data,
+                hasRestoredData: !!result.restoredData
+            });
+            
+            // SimpleBackupManagerは'data'プロパティを返すため、互換性のため両方をチェック
+            const restoredData = result.data || result.restoredData;
+            
+            if (result.success && restoredData) {
+                console.log(`[BackupHistoryModal] 復元成功: ${result.stats?.restoredPosts || 'N/A'}件の投稿を復元`);
+                console.log(`[BackupHistoryModal] 復元データ詳細:`, {
+                    posts: restoredData.posts?.length || 0,
+                    scheduledPosts: restoredData.scheduledPosts?.length || 0,
+                    keys: Object.keys(restoredData)
+                });
+                
+                console.log(`[BackupHistoryModal] onRestoreコールバック実行`);
+                this.onRestore(restoredData);
+                console.log(`[BackupHistoryModal] モーダルクローズ`);
                 this.close();
             } else {
+                console.error(`[BackupHistoryModal] 復元失敗:`, result.error);
                 throw new Error(result.error || '不明なエラー');
             }
         } catch (error) {
-            console.error('復元エラー:', error);
+            console.error(`[BackupHistoryModal] 復元エラー:`, error);
+            console.error(`[BackupHistoryModal] エラー詳細:`, error.stack);
+            
+            // エラーの詳細情報を追加
+            if (error instanceof Error) {
+                console.error(`[BackupHistoryModal] エラー名: ${error.name}`);
+                console.error(`[BackupHistoryModal] エラーメッセージ: ${error.message}`);
+            }
+            
             alert(`復元に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
@@ -817,14 +1132,23 @@ export class BackupHistoryModal extends BaseModal {
         previewBtn.style.cssText = buttonStyle;
         previewBtn.onclick = () => this.handlePreview(backup);
 
-        const restoreBtn = this.createElement({
+        const checkoutBtn = this.createElement({
             tagName: 'button',
-            textContent: '復元',
-            className: 'backup-action-btn restore-btn'
+            textContent: 'チェックアウト',
+            className: 'backup-action-btn checkout-btn'
         }) as HTMLButtonElement;
 
-        restoreBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent);';
-        restoreBtn.onclick = () => this.handleRestore(backup);
+        checkoutBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent);';
+        checkoutBtn.onclick = () => this.handleCheckout(backup);
+
+        const diagnoseBtn = this.createElement({
+            tagName: 'button',
+            textContent: '診断',
+            className: 'backup-action-btn diagnose-btn'
+        }) as HTMLButtonElement;
+
+        diagnoseBtn.style.cssText = buttonStyle + 'background: var(--color-orange); color: var(--text-on-accent);';
+        diagnoseBtn.onclick = () => this.handleDiagnose(backup);
 
         const detailBtn = this.createElement({
             tagName: 'button',
@@ -836,7 +1160,8 @@ export class BackupHistoryModal extends BaseModal {
         detailBtn.onclick = () => this.showBackupDetails(backup);
 
         actions.appendChild(previewBtn);
-        actions.appendChild(restoreBtn);
+        actions.appendChild(checkoutBtn);
+        actions.appendChild(diagnoseBtn);
         actions.appendChild(detailBtn);
 
         item.appendChild(typeEl);
@@ -906,14 +1231,32 @@ export class BackupHistoryModal extends BaseModal {
             font-size: 12px;
         `;
 
-        const restoreBtn = this.createElement({
+        const previewBtn = this.createElement({
             tagName: 'button',
-            textContent: '復元',
-            className: 'backup-action-btn restore-btn'
+            textContent: 'プレビュー',
+            className: 'backup-action-btn preview-btn'
         }) as HTMLButtonElement;
 
-        restoreBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent);';
-        restoreBtn.onclick = () => this.handleRestore(backup);
+        previewBtn.style.cssText = buttonStyle + 'background: var(--color-blue); color: var(--text-on-accent); margin-right: 4px;';
+        previewBtn.onclick = () => this.handlePreview(backup);
+
+        const checkoutBtn = this.createElement({
+            tagName: 'button',
+            textContent: 'チェックアウト',
+            className: 'backup-action-btn checkout-btn'
+        }) as HTMLButtonElement;
+
+        checkoutBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent); margin-right: 4px;';
+        checkoutBtn.onclick = () => this.handleCheckout(backup);
+
+        const diagnoseBtn = this.createElement({
+            tagName: 'button',
+            textContent: '診断',
+            className: 'backup-action-btn diagnose-btn'
+        }) as HTMLButtonElement;
+
+        diagnoseBtn.style.cssText = buttonStyle + 'background: var(--color-orange); color: var(--text-on-accent);';
+        diagnoseBtn.onclick = () => this.handleDiagnose(backup);
 
         const detailBtn = this.createElement({
             tagName: 'button',
@@ -924,7 +1267,9 @@ export class BackupHistoryModal extends BaseModal {
         detailBtn.style.cssText = buttonStyle;
         detailBtn.onclick = () => this.showBackupDetails(backup);
 
-        actions.appendChild(restoreBtn);
+        actions.appendChild(previewBtn);
+        actions.appendChild(checkoutBtn);
+        actions.appendChild(diagnoseBtn);
         actions.appendChild(detailBtn);
 
         item.appendChild(baseEl);
@@ -951,5 +1296,670 @@ export class BackupHistoryModal extends BaseModal {
         const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    /**
+     * 診断処理
+     */
+    private async handleDiagnose(backup: BackupFileInfo): Promise<void> {
+        try {
+            console.log(`[BackupHistoryModal] 診断開始: ${backup.id}`);
+            
+            // 基本的な診断を手動で実行
+            const diagnosis = await this.performBasicDiagnosis(backup);
+            
+            // 診断結果をアラートで表示
+            let message = `=== バックアップ診断結果 ===\n`;
+            message += `バックアップID: ${backup.id}\n`;
+            message += `ファイルパス: ${diagnosis.filePath}\n`;
+            message += `ファイル存在: ${diagnosis.fileExists ? '✓' : '✗'}\n`;
+            message += `ファイル読み込み: ${diagnosis.fileReadable ? '✓' : '✗'}\n`;
+            message += `ファイルサイズ: ${diagnosis.fileSize > 0 ? this.formatFileSize(diagnosis.fileSize) : '不明'}\n`;
+            message += `JSON解析: ${diagnosis.jsonValid ? '✓' : '✗'}\n`;
+            message += `データ構造: ${diagnosis.dataStructureValid ? '✓' : '✗'}\n`;
+            
+            if (diagnosis.error) {
+                message += `\nエラー: ${diagnosis.error}\n`;
+            }
+            
+            alert(message);
+            console.log(`[BackupHistoryModal] 診断結果:`, diagnosis);
+            
+        } catch (error) {
+            console.error(`[BackupHistoryModal] 診断エラー:`, error);
+            alert(`診断に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    /**
+     * 基本的な診断を実行（共通関数を使用）
+     */
+    private async performBasicDiagnosis(backup: BackupFileInfo): Promise<{
+        filePath: string;
+        fileExists: boolean;
+        fileReadable: boolean;
+        fileSize: number;
+        jsonValid: boolean;
+        dataStructureValid: boolean;
+        error?: string;
+    }> {
+        const filePath = this.getBackupFilePath(backup);
+        
+        console.log(`[BackupHistoryModal] 基本診断開始: ${backup.id}`);
+        console.log(`[BackupHistoryModal] 対象パス: ${filePath}`);
+        
+        try {
+            // ファイル読み込みを共通関数で実行（スマート検索）
+            const readResult = await this.readBackupFile(backup);
+            
+            if (!readResult.success) {
+                return {
+                    filePath: readResult.actualPath || filePath,
+                    fileExists: false,
+                    fileReadable: false,
+                    fileSize: readResult.size,
+                    jsonValid: false,
+                    dataStructureValid: false,
+                    error: readResult.error
+                };
+            }
+
+            // JSON解析確認
+            let data: any;
+            try {
+                data = JSON.parse(readResult.content!);
+                console.log(`[BackupHistoryModal] JSON解析成功:`, {
+                    backupId: backup.id,
+                    hasContent: !!readResult.content,
+                    contentLength: readResult.content?.length || 0
+                });
+            } catch (error) {
+                console.error(`[BackupHistoryModal] JSON解析エラー:`, error);
+                return {
+                    filePath,
+                    fileExists: true,
+                    fileReadable: true,
+                    fileSize: readResult.size,
+                    jsonValid: false,
+                    dataStructureValid: false,
+                    error: `JSON解析エラー: ${error instanceof Error ? error.message : String(error)}`
+                };
+            }
+
+            // データ構造確認
+            const dataStructureValid = this.validateDataStructure(data);
+            console.log(`[BackupHistoryModal] データ構造検証:`, {
+                backupId: backup.id,
+                isValid: dataStructureValid,
+                hasData: !!data,
+                dataKeys: data ? Object.keys(data) : []
+            });
+
+            return {
+                filePath: readResult.actualPath || filePath,
+                fileExists: true,
+                fileReadable: true,
+                fileSize: readResult.size,
+                jsonValid: true,
+                dataStructureValid,
+                error: dataStructureValid ? undefined : 'データ構造が無効です'
+            };
+
+        } catch (error) {
+            console.error(`[BackupHistoryModal] 診断処理エラー:`, error);
+            return {
+                filePath,
+                fileExists: false,
+                fileReadable: false,
+                fileSize: 0,
+                jsonValid: false,
+                dataStructureValid: false,
+                error: `診断処理エラー: ${error instanceof Error ? error.message : String(error)}`
+            };
+        }
+    }
+
+    /**
+     * BackupManagerと同じロジックでベースパスを取得
+     */
+    private getBackupBasePath(): string {
+        // TweetRepositoryと同じロジック: dbPathからファイル名を除いてベースパスを取得
+        const dbPath = this.getTweetDbPath();
+        return dbPath.replace('/tweets.json', '');
+    }
+
+    /**
+     * TweetWidgetのgetTweetDbPath()と同じロジックでパスを取得
+     */
+    private getTweetDbPath(): string {
+        const baseFolder = this.widget.plugin.settings.baseFolder || '';
+        return baseFolder ? `${baseFolder}/tweets.json` : 'tweets.json';
+    }
+
+    /**
+     * バックアップファイルの完全パスを取得（実際のファイル構造に基づく）
+     */
+    private getBackupFilePath(backup: BackupFileInfo): string {
+        const basePath = this.getBackupBasePath();
+        const backupDir = `${basePath}/backups`;
+        
+        console.log(`[BackupHistoryModal] パス生成:`, {
+            backupId: backup.id,
+            backupType: backup.type,
+            basePath,
+            backupDir,
+            hasFilePath: !!backup.filePath,
+            originalFilePath: backup.filePath
+        });
+        
+        // 既にfilePath情報がある場合はそれを使用
+        if (backup.filePath) {
+            console.log(`[BackupHistoryModal] 既存filePathを使用: ${backup.filePath}`);
+            return backup.filePath;
+        }
+        
+        // filePathがない場合は推測で構築
+        if (backup.id.startsWith('inc_') || backup.type === 'incremental') {
+            const fullPath = `${backupDir}/incremental/${backup.id}.json`;
+            console.log(`[BackupHistoryModal] 差分バックアップパス（推測）: ${fullPath}`);
+            return fullPath;
+        } else {
+            // 世代バックアップの場合は、GenerationBackupManagerの構造に従う
+            // generations/{type}/{period}.json 形式
+            const backupType = backup.type || 'daily'; // デフォルトはdaily
+            const period = backup.generation?.period || backup.id.split('_')[1] || 'unknown';
+            const fullPath = `${backupDir}/generations/${backupType}/${period}.json`;
+            console.log(`[BackupHistoryModal] 世代バックアップパス（推測）: ${fullPath}`, {
+                backupType,
+                period,
+                generationInfo: backup.generation
+            });
+            return fullPath;
+        }
+    }
+
+    /**
+     * ファイル存在確認（ログ付き）
+     */
+    private async checkFileExists(filePath: string): Promise<boolean> {
+        try {
+            const exists = await this.widget.app.vault.adapter.exists(filePath);
+            console.log(`[BackupHistoryModal] ファイル存在確認: ${filePath} = ${exists}`);
+            return exists;
+        } catch (error) {
+            console.error(`[BackupHistoryModal] ファイル存在確認エラー: ${filePath}`, error);
+            return false;
+        }
+    }
+
+    /**
+     * 複数のパスパターンを試行してファイルを見つける
+     */
+    private async findBackupFile(backup: BackupFileInfo): Promise<{ path: string; exists: boolean }> {
+        const basePath = this.getBackupBasePath();
+        const backupDir = `${basePath}/backups`;
+        
+        // 試行するパスパターンのリスト
+        const pathPatterns: string[] = [];
+        
+        // 1. 既存のfilePathがある場合は最優先
+        if (backup.filePath) {
+            pathPatterns.push(backup.filePath);
+        }
+        
+        // 2. 世代バックアップの場合の各パターン
+        if (backup.type !== 'incremental' && !backup.id.startsWith('inc_')) {
+            const backupType = backup.type || 'daily';
+            const period = backup.generation?.period || backup.id.split('_')[1] || 'unknown';
+            
+            // GenerationBackupManagerの正しい構造
+            pathPatterns.push(`${backupDir}/generations/${backupType}/${period}.json`);
+            
+            // 古い構造への対応
+            pathPatterns.push(`${backupDir}/${backup.id}.json`);
+            pathPatterns.push(`${backupDir}/${period}.json`);
+            
+            // ファイル名だけの場合
+            pathPatterns.push(`${backupDir}/${backup.id.split('_').slice(1).join('_')}.json`);
+        }
+        
+        // 3. 差分バックアップの場合
+        if (backup.type === 'incremental' || backup.id.startsWith('inc_')) {
+            pathPatterns.push(`${backupDir}/incremental/${backup.id}.json`);
+            pathPatterns.push(`${backupDir}/${backup.id}.json`);
+        }
+        
+        console.log(`[BackupHistoryModal] ファイル検索開始:`, {
+            backupId: backup.id,
+            backupType: backup.type,
+            pathPatterns
+        });
+        
+        // 各パターンを順番に試行
+        for (const path of pathPatterns) {
+            const exists = await this.checkFileExists(path);
+            if (exists) {
+                console.log(`[BackupHistoryModal] ファイル発見: ${path}`);
+                return { path, exists: true };
+            }
+        }
+        
+        console.warn(`[BackupHistoryModal] ファイルが見つかりませんでした:`, {
+            backupId: backup.id,
+            triedPaths: pathPatterns
+        });
+        
+        return { path: pathPatterns[0] || backup.filePath || '', exists: false };
+    }
+
+    /**
+     * バックアップファイル読み込み（エラーハンドリング付き・スマート検索）
+     */
+    private async readBackupFile(backup: BackupFileInfo): Promise<{ success: boolean; content?: string; size: number; error?: string; actualPath?: string }> {
+        try {
+            console.log(`[BackupHistoryModal] ファイル読み込み開始: ${backup.id}`);
+            
+            // スマート検索でファイルを見つける
+            const findResult = await this.findBackupFile(backup);
+            
+            if (!findResult.exists) {
+                return {
+                    success: false,
+                    size: 0,
+                    error: 'ファイルが存在しません',
+                    actualPath: findResult.path
+                };
+            }
+
+            const content = await this.widget.app.vault.adapter.read(findResult.path);
+            const size = content.length;
+            
+            console.log(`[BackupHistoryModal] ファイル読み込み成功: ${findResult.path} (${size} bytes)`);
+            
+            return {
+                success: true,
+                content,
+                size,
+                actualPath: findResult.path
+            };
+            
+        } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            console.error(`[BackupHistoryModal] ファイル読み込みエラー: ${backup.id}`, error);
+            
+            return {
+                success: false,
+                size: 0,
+                error: `読み込みエラー: ${errorMsg}`
+            };
+        }
+    }
+
+    /**
+     * データ構造を検証（詳細ログ付き・バックアップ形式対応）
+     */
+    private validateDataStructure(data: any): boolean {
+        console.log(`[BackupHistoryModal] データ構造検証開始:`, {
+            hasData: !!data,
+            dataType: typeof data,
+            isObject: data && typeof data === 'object',
+            keys: data ? Object.keys(data) : []
+        });
+
+        if (!data || typeof data !== 'object') {
+            console.warn(`[BackupHistoryModal] データが無効: null, undefined, または非オブジェクト`);
+            return false;
+        }
+        
+        // バックアップファイルの構造を判定
+        let targetData = data;
+        let isBackupFormat = false;
+        
+        // GenerationBackupManagerの形式（data.dataにTweetWidgetSettingsが格納）
+        if (data.type === 'generation' && data.data && typeof data.data === 'object') {
+            targetData = data.data;
+            isBackupFormat = true;
+            console.log(`[BackupHistoryModal] GenerationBackupManager形式を検出`);
+        }
+        // IncrementalBackupManagerの形式の場合の対応も可能
+        else if (data.type === 'incremental' && data.data && typeof data.data === 'object') {
+            targetData = data.data;
+            isBackupFormat = true;
+            console.log(`[BackupHistoryModal] IncrementalBackupManager形式を検出`);
+        }
+        // 直接TweetWidgetSettings形式の場合
+        else if ('posts' in data || 'scheduledPosts' in data) {
+            console.log(`[BackupHistoryModal] 直接TweetWidgetSettings形式を検出`);
+        }
+        else {
+            console.warn(`[BackupHistoryModal] 不明なデータ形式`);
+        }
+        
+        // 基本的なプロパティの存在確認
+        const hasValidPosts = Array.isArray(targetData.posts);
+        const hasValidScheduledPosts = Array.isArray(targetData.scheduledPosts);
+        
+        console.log(`[BackupHistoryModal] プロパティ検証:`, {
+            isBackupFormat,
+            targetData: {
+                keys: Object.keys(targetData),
+                hasData: !!targetData
+            },
+            posts: {
+                exists: 'posts' in targetData,
+                isArray: hasValidPosts,
+                length: hasValidPosts ? targetData.posts.length : 'N/A'
+            },
+            scheduledPosts: {
+                exists: 'scheduledPosts' in targetData,
+                isArray: hasValidScheduledPosts,
+                length: hasValidScheduledPosts ? targetData.scheduledPosts.length : 'N/A'
+            },
+            otherProperties: Object.keys(targetData).filter(key => !['posts', 'scheduledPosts'].includes(key))
+        });
+        
+        if (!hasValidPosts) {
+            console.warn(`[BackupHistoryModal] posts配列が無効`);
+            return false;
+        }
+        
+        if (!hasValidScheduledPosts) {
+            console.warn(`[BackupHistoryModal] scheduledPosts配列が無効`);
+            return false;
+        }
+        
+        console.log(`[BackupHistoryModal] データ構造検証成功`);
+        return true;
+    }
+
+    /**
+     * 差分バックアップの状況をデバッグ出力
+     */
+    private async debugIncrementalBackupStatus(): Promise<void> {
+        try {
+            console.log('[BackupHistoryModal] === 差分バックアップ状況デバッグ ===');
+            
+            // バックアップディレクトリの確認
+            const basePath = this.getBackupBasePath();
+            const backupDir = `${basePath}/backups`;
+            const incrementalDir = `${backupDir}/incremental`;
+            
+            console.log('[BackupHistoryModal] パス情報:', {
+                basePath,
+                backupDir,
+                incrementalDir
+            });
+            
+            // ディレクトリ存在確認
+            const backupDirExists = await this.checkFileExists(backupDir);
+            const incrementalDirExists = await this.checkFileExists(incrementalDir);
+            
+            console.log('[BackupHistoryModal] ディレクトリ存在確認:', {
+                backupDirExists,
+                incrementalDirExists
+            });
+            
+            if (incrementalDirExists) {
+                // 差分バックアップファイルの直接確認
+                try {
+                    const incrementalFiles = await this.listDirectoryFiles(incrementalDir);
+                    console.log('[BackupHistoryModal] 差分ディレクトリ内ファイル:', incrementalFiles);
+                } catch (error) {
+                    console.warn('[BackupHistoryModal] 差分ディレクトリ一覧取得エラー:', error);
+                }
+            }
+            
+            // バックアップインデックスの確認
+            const indexPath = `${backupDir}/index.json`;
+            const indexExists = await this.checkFileExists(indexPath);
+            console.log('[BackupHistoryModal] インデックスファイル存在:', indexExists);
+            
+            if (indexExists) {
+                try {
+                    const indexContent = await this.widget.app.vault.adapter.read(indexPath);
+                    const index = JSON.parse(indexContent);
+                    console.log('[BackupHistoryModal] インデックス内容:', {
+                        version: index.version,
+                        incrementalEnabled: index.config?.incremental?.enabled,
+                        incrementalMaxCount: index.config?.incremental?.maxCount,
+                        incrementalBackupsCount: index.backups?.incremental?.length || 0,
+                        incrementalBackups: index.backups?.incremental || []
+                    });
+                } catch (error) {
+                    console.error('[BackupHistoryModal] インデックス読み込みエラー:', error);
+                }
+            }
+            
+        } catch (error) {
+            console.error('[BackupHistoryModal] デバッグ状況確認エラー:', error);
+        }
+    }
+
+    /**
+     * ディレクトリ内のファイル一覧を取得（簡易版）
+     */
+    private async listDirectoryFiles(dirPath: string): Promise<string[]> {
+        try {
+            // Obsidianのvault.adapter経由でディレクトリ内容を取得
+            // 注：直接的なディレクトリ一覧取得メソッドがないため、推測で実装
+            const files: string[] = [];
+            
+            // 一般的な差分バックアップファイル名パターンを試行
+            for (let i = 0; i < 10; i++) {
+                const patterns = [
+                    `incr_${Date.now() - (i * 3600000)}.json`,  // 1時間ごと
+                    `inc_${Date.now() - (i * 3600000)}.json`,   // 別の命名パターン
+                    `incremental_${i}.json`
+                ];
+                
+                for (const pattern of patterns) {
+                    const fullPath = `${dirPath}/${pattern}`;
+                    if (await this.checkFileExists(fullPath)) {
+                        files.push(pattern);
+                    }
+                }
+            }
+            
+            return files;
+        } catch (error) {
+            console.error('[BackupHistoryModal] ディレクトリファイル一覧取得エラー:', error);
+            return [];
+        }
+    }
+
+    /**
+     * バックアップ整合性チェック
+     */
+    private async checkIntegrity(): Promise<void> {
+        try {
+            console.log(`[BackupHistoryModal] 整合性チェック開始`);
+            
+            // 手動で整合性チェックを実行
+            const result = await this.performIntegrityCheck();
+            
+            let message = `=== バックアップ整合性チェック結果 ===\n`;
+            message += `総バックアップ数: ${result.totalBackups}件\n`;
+            message += `問題のあるファイル: ${result.problemFiles}件\n`;
+            message += `読み込めないファイル: ${result.unreadableFiles}件\n`;
+            
+            if (result.issues.length > 0) {
+                message += `\n検出された問題:\n`;
+                result.issues.forEach((issue: string, index: number) => {
+                    message += `${index + 1}. ${issue}\n`;
+                });
+            } else {
+                message += `\n✅ 問題は検出されませんでした\n`;
+            }
+            
+            alert(message);
+            console.log(`[BackupHistoryModal] 整合性チェック完了:`, result);
+            
+        } catch (error) {
+            console.error(`[BackupHistoryModal] 整合性チェックエラー:`, error);
+            alert(`整合性チェックに失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    /**
+     * 整合性チェックを実行
+     */
+    private async performIntegrityCheck(): Promise<{
+        totalBackups: number;
+        problemFiles: number;
+        unreadableFiles: number;
+        issues: string[];
+    }> {
+        const issues: string[] = [];
+        let totalBackups = 0;
+        let problemFiles = 0;
+        let unreadableFiles = 0;
+
+        try {
+            // 利用可能なバックアップを取得
+            const backups = await this.backupManager.getAvailableBackups();
+            const allBackups = [...backups.generations, ...backups.incremental];
+            totalBackups = allBackups.length;
+
+            console.log(`[BackupHistoryModal] チェック対象: ${totalBackups}件のバックアップ`);
+
+            // 各バックアップの診断を実行
+            for (const backup of allBackups) {
+                const diagnosis = await this.performBasicDiagnosis(backup);
+                
+                if (!diagnosis.fileExists) {
+                    issues.push(`${backup.id}: ファイルが存在しません`);
+                    problemFiles++;
+                } else if (!diagnosis.fileReadable) {
+                    issues.push(`${backup.id}: ファイルが読み込めません`);
+                    unreadableFiles++;
+                } else if (!diagnosis.jsonValid) {
+                    issues.push(`${backup.id}: JSON解析エラー`);
+                    problemFiles++;
+                } else if (!diagnosis.dataStructureValid) {
+                    issues.push(`${backup.id}: データ構造が無効です`);
+                    problemFiles++;
+                } else if (diagnosis.fileSize === 0) {
+                    issues.push(`${backup.id}: ファイルサイズが0です`);
+                    problemFiles++;
+                }
+            }
+
+            return {
+                totalBackups,
+                problemFiles,
+                unreadableFiles,
+                issues
+            };
+
+        } catch (error) {
+            issues.push(`整合性チェック処理エラー: ${error instanceof Error ? error.message : String(error)}`);
+            return {
+                totalBackups,
+                problemFiles,
+                unreadableFiles,
+                issues
+            };
+        }
+    }
+
+    /**
+     * テスト用復元処理
+     */
+    private async testRestore(): Promise<void> {
+        try {
+            console.log(`[BackupHistoryModal] テスト復元開始`);
+            
+            // 利用可能なバックアップを確認
+            const backups = await this.backupManager.getAvailableBackups();
+            console.log(`[BackupHistoryModal] 利用可能なバックアップ:`, {
+                generations: backups.generations.length,
+                incremental: backups.incremental.length
+            });
+            
+            if (backups.generations.length === 0 && backups.incremental.length === 0) {
+                alert('復元対象のバックアップが見つかりません。まず手動バックアップを作成してください。');
+                return;
+            }
+            
+            // 最新の世代バックアップまたは差分バックアップを選択
+            const targetBackup = backups.generations[0] || backups.incremental[0];
+            
+            if (!targetBackup) {
+                alert('テスト復元対象が見つかりません');
+                return;
+            }
+            
+            console.log(`[BackupHistoryModal] テスト復元対象:`, targetBackup);
+            
+            // 診断を実行
+            console.log(`[BackupHistoryModal] 診断実行開始`);
+            const diagnosis = await this.performBasicDiagnosis(targetBackup);
+            console.log(`[BackupHistoryModal] 診断結果:`, diagnosis);
+            
+            if (!diagnosis.fileExists || diagnosis.error) {
+                alert(`復元前診断で問題が検出されました:\n${diagnosis.error || '不明なエラー'}`);
+                return;
+            }
+            
+            if (confirm(`診断結果: 問題なし\nバックアップID: ${targetBackup.id}\nファイルサイズ: ${this.formatFileSize(diagnosis.fileSize)}\n\n復元を続行しますか？`)) {
+                // 実際の復元を実行
+                await this.handleRestore(targetBackup);
+            }
+            
+        } catch (error) {
+            console.error(`[BackupHistoryModal] テスト復元エラー:`, error);
+            alert(`テスト復元に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    /**
+     * 差分バックアップ作成をテストする（デバッグ用）
+     */
+    private async testIncrementalBackup(): Promise<void> {
+        try {
+            console.log('[BackupHistoryModal] === 差分バックアップテスト開始 ===');
+            
+            // 現在のデータを少し変更してテスト用データを作成
+            const testData = JSON.parse(JSON.stringify(this.currentData));
+            testData.posts = testData.posts || [];
+            
+            // テスト用投稿を追加
+            const testPost = {
+                id: `test_${Date.now()}`,
+                content: `テスト投稿 - ${new Date().toLocaleString('ja-JP')}`,
+                timestamp: Date.now(),
+                scheduledTime: null,
+                type: 'regular' as const,
+                aiGenerated: false,
+                edited: false,
+                originalContent: '',
+                editHistory: [],
+                favorited: false,
+                replies: []
+            };
+            
+            testData.posts.push(testPost);
+            
+            console.log('[BackupHistoryModal] テスト用データ作成完了:', {
+                originalPostsCount: this.currentData.posts?.length || 0,
+                testPostsCount: testData.posts.length,
+                testPostId: testPost.id
+            });
+            
+            // BackupManagerのonDataSaveを直接呼び出してテスト
+            console.log('[BackupHistoryModal] BackupManager.onDataSave() を呼び出し中...');
+            await this.backupManager.onDataSave(testData);
+            
+            console.log('[BackupHistoryModal] データ保存完了、バックアップ一覧を再読み込み...');
+            
+            // 少し待ってからバックアップ一覧を再読み込み
+            setTimeout(async () => {
+                await this.reloadBackupList();
+                console.log('[BackupHistoryModal] === 差分バックアップテスト完了 ===');
+            }, 1000);
+            
+        } catch (error) {
+            console.error('[BackupHistoryModal] 差分バックアップテストエラー:', error);
+        }
     }
 }

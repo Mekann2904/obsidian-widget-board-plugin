@@ -61,13 +61,21 @@ export interface BackupFileInfo {
 }
 
 /**
+ * バックアップコレクション
+ */
+export interface BackupCollection {
+    generations: BackupFileInfo[];
+    incremental: BackupFileInfo[];
+}
+
+/**
  * バックアップインデックス
  */
 export interface BackupIndex {
     version: string;
     lastUpdated: number;
     config: GenerationBackupConfig;
-    backups: BackupFileInfo[];
+    backups: BackupCollection;
     
     // 統計情報
     statistics: {
@@ -103,16 +111,14 @@ export interface RestoreOptions {
  */
 export interface BackupResult {
     success: boolean;
+    error?: string;
     backupId?: string;
     filePath?: string;
-    error?: string;
-    
-    // 処理統計
-    stats: {
-        processedPosts: number;
-        createdFiles: number;
-        totalSize: number;
-        processingTime: number;
+    stats?: {
+        processedPosts?: number;
+        createdFiles?: number;
+        totalSize?: number;
+        processingTime?: number;
     };
 }
 
@@ -121,15 +127,14 @@ export interface BackupResult {
  */
 export interface RestoreResult {
     success: boolean;
-    restoredData?: TweetWidgetSettings;
     error?: string;
-    
-    // 復元統計
-    stats: {
-        restoredPosts: number;
-        processedBackups: number;
-        totalSize: number;
-        processingTime: number;
+    restoredData?: TweetWidgetSettings;
+    data?: TweetWidgetSettings;  // 後方互換性のため残す
+    stats?: {
+        restoredPosts?: number;
+        processedBackups?: number;
+        totalSize?: number;
+        processingTime?: number;
     };
 }
 
@@ -188,4 +193,16 @@ export const DEFAULT_BACKUP_CONFIG: GenerationBackupConfig = {
         maxCount: 1000,
         compressAfterDays: 7
     }
+};
+
+export interface BackupCheckResult {
+    success: boolean;
+    backupId: string;
+    error?: string;
+}
+
+export type RestoreRange = {
+    startDate?: number;
+    endDate?: number;
+    includeDeleted?: boolean;
 }; 

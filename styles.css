@@ -753,6 +753,238 @@ body.wb-modal-left-outer-open {
   transition: opacity 0.2s, background 0.2s;
 }
 
+/* --- Backup Dashboard Styles --- */
+.backup-dashboard-modal {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.backup-tab-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 18px;
+  border-bottom: 1.5px solid var(--background-modifier-border);
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.backup-dashboard-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.backup-tab-btn {
+  flex: 1 1 0;
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  font-size: 1.08em;
+  font-weight: bold;
+  padding: 12px 0 10px 0;
+  cursor: pointer;
+  border-bottom: 2.5px solid transparent;
+  transition: color 0.18s, border-color 0.18s, background 0.18s;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.backup-tab-btn .tab-icon {
+  display: flex;
+  align-items: center;
+}
+
+.backup-tab-btn .tab-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.backup-tab-btn.active {
+  color: var(--text-accent);
+  border-bottom: 2.5px solid var(--text-accent);
+  background: var(--background-secondary);
+}
+
+.backup-dashboard-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.overview-title, .graph-title, .timeline-title {
+  color: var(--text-normal);
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.overview-subtitle, .graph-subtitle, .timeline-subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.backup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty-state .empty-title {
+  color: var(--text-normal);
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+}
+
+.empty-state .empty-message {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.backup-timeline {
+  position: relative;
+}
+
+.backup-timeline::before {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--background-modifier-border);
+}
+
+.backup-timeline-item {
+  position: relative;
+  padding: 16px 0 16px 40px;
+  margin-bottom: 16px;
+}
+
+.backup-timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 20px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-accent);
+  border: 2px solid var(--background-primary);
+}
+
+.backup-timeline-item.latest::before {
+  background: var(--interactive-accent);
+  box-shadow: 0 0 8px rgba(0,0,0,0.3);
+}
+
+.backup-timeline-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.backup-list-item {
+  padding: 8px 12px !important;
+  margin-bottom: 4px !important;
+}
+
+.backup-list-item .widget-content {
+  flex: 1;
+  padding: 0 !important;
+}
+
+.backup-item-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive Design for Backup Dashboard */
+@media (max-width: 1400px) {
+  .backup-dashboard-modal .modal {
+    width: 90vw !important;
+    height: 85vh !important;
+  }
+}
+
+@media (max-width: 1200px) {
+  .backup-dashboard-stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  
+  .overview-main-container,
+  .graph-main-container,
+  .timeline-main-container {
+    padding: 12px 16px 16px 16px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .backup-dashboard-modal .modal {
+    width: 95vw !important;
+    height: 90vh !important;
+    min-width: 320px !important;
+  }
+  
+  .backup-tab-btn .tab-label {
+    display: none;
+  }
+  
+  .backup-tab-btn {
+    padding: 8px 4px 6px 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .backup-dashboard-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  
+  .backup-timeline-item {
+    padding-left: 30px;
+  }
+  
+  .backup-timeline::before {
+    left: 12px;
+  }
+  
+  .backup-timeline-item::before {
+    left: 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .backup-dashboard-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  
+  .overview-title, .graph-title, .timeline-title {
+    font-size: 20px;
+  }
+  
+  .overview-main-container,
+  .graph-main-container,
+  .timeline-main-container {
+    padding: 8px 12px 12px 12px !important;
+  }
+}
+
 /* --- Settings Panel Scroll --- */
 .wb-settings-panel {
   max-height: 60vh;
@@ -3863,7 +4095,6 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 .integrity-issue {
     margin-bottom: 16px;
     padding: 12px;
-    background: var(--background-modifier-error);
     border: 1px solid var(--color-red);
     border-radius: 4px;
 }
@@ -4577,6 +4808,213 @@ body.wb-modal-open .workspace-leaf-resize-handle {
     .restore-no-changes {
         margin-bottom: 60px;
     }
+}
+
+/* === Tweet Widget プレビューシステム関連スタイル === */
+.preview-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: var(--text-muted);
+}
+
+.preview-spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--background-modifier-border);
+    border-top: 2px solid var(--interactive-accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 8px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.preview-empty {
+    padding: 20px;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.preview-error {
+    padding: 16px;
+    border-radius: 4px;
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+}
+
+.preview-error-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preview-error-icon {
+    font-size: 16px;
+}
+
+.preview-error-message {
+    color: var(--text-error);
+    font-size: 14px;
+}
+
+.tweet-input-preview-markdown {
+    background: var(--background-primary);
+    color: var(--text-normal);
+    /* 投稿入力プレビュー専用 - メインの投稿表示には影響しない */
+}
+
+.preview-mermaid-wrapper {
+    text-align: center;
+    margin: 16px 0;
+}
+
+.preview-mermaid-error {
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    border-radius: 4px;
+}
+
+.preview-mermaid-error-note {
+    color: var(--text-error);
+    font-size: 12px;
+    padding: 4px 8px;
+    text-align: center;
+}
+
+/* ファイルプレビュー */
+.preview-file-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-secondary);
+}
+
+.preview-file-item {
+    position: relative;
+    border-radius: 4px;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+    overflow: hidden;
+}
+
+.preview-file-image,
+.preview-file-video {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.preview-file-audio {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 120px;
+}
+
+.preview-file-generic {
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 80px;
+    text-align: center;
+}
+
+.preview-file-icon {
+    font-size: 24px;
+}
+
+.preview-file-name {
+    font-size: 12px;
+    color: var(--text-normal);
+    word-break: break-all;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preview-file-size {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.preview-file-remove {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: none;
+    background: var(--text-error);
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.preview-file-remove:hover {
+    background: var(--text-error);
+    opacity: 0.8;
+}
+
+.preview-file-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border: 1px dashed var(--background-modifier-border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    font-size: 12px;
+    min-width: 80px;
+}
+
+.preview-file-empty {
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 20px;
+}
+
+/* シンプル復元プレビューモーダル */
+.simple-restore-preview-modal {
+    z-index: 100000 !important; /* Obsidianの最高レベルのz-index */
+    position: fixed !important;
+}
+
+.simple-restore-preview-modal .modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 100001 !important;
+}
+
+.simple-restore-preview-modal .modal-bg {
+    z-index: 99999 !important; /* モーダル背景も最高レベル */
+    position: fixed !important;
+}
+
+/* モーダル容器も確実に前面表示 */
+.modal-container:has(.simple-restore-preview-modal) {
+    z-index: 100000 !important;
 }
 
 @media (max-width: 768px) {

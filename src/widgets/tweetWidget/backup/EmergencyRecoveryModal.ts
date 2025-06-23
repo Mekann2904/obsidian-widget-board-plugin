@@ -157,14 +157,18 @@ export class EmergencyRecoveryModal extends BaseModal {
             const allBackups = [...backups.generations, ...backups.incremental];
             
             // バックアップの整合性をチェック
-            const integrityResults = await this.backupManager.checkAllBackupsIntegrity();
+            const integrityResults = await this.backupManager.checkAllBackupsIntegrity((message) => {
+                console.log(`[EmergencyRecoveryModal] 整合性チェック: ${message}`);
+            });
+
+            console.log('[EmergencyRecoveryModal] 整合性チェック結果:', integrityResults);
 
             this.recoveryOptions = [];
 
             // 最新の健全なバックアップを探す
             const healthyBackups = allBackups.filter(backup => {
-                const integrity = integrityResults.get(backup.id);
-                return integrity?.isHealthy !== false;
+                const integrity = integrityResults.find(result => result.backupId === backup.id);
+                return integrity?.success !== false;
             });
 
             if (healthyBackups.length > 0) {
@@ -547,12 +551,7 @@ export class EmergencyRecoveryModal extends BaseModal {
             throw new Error('バックアップが選択されていません');
         }
 
-        const result = await this.backupManager.restoreFromBackup({
-            backupId: this.selectedOption.backup.id,
-            type: 'full',
-            createCurrentBackup: false, // 緊急時なので現在データのバックアップは行わない
-            verifyIntegrity: true
-        });
+        const result = await this.backupManager.restoreFromBackup(this.selectedOption.backup.id);
 
         if (!result.success || !result.restoredData) {
             throw new Error(result.error || '復元に失敗しました');

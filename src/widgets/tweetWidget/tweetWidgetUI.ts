@@ -7,6 +7,7 @@ import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
 import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { renderMermaidInWorker } from '../../utils';
 import { debugLog } from '../../utils/logger';
+import { PreviewManager } from './ui/PreviewManager';
 import { StringKey, t } from '../../i18n';
 import { BackupHistoryModal } from './backup/BackupHistoryModal';
 import { EmergencyRecoveryModal } from './backup/EmergencyRecoveryModal';
@@ -53,6 +54,7 @@ export class TweetWidgetUI {
     private app: App;
     private postsById: Map<string, TweetWidgetPost>;
     private needsRender = false;
+    private previewManager: PreviewManager;
     // showAvatarModalで使うためのハンドラ参照を保持
     private _escHandlerForAvatarModal: ((ev: KeyboardEvent) => void) | null = null;
     private _escHandlerForImageModal: ((ev: KeyboardEvent) => void) | null = null;
@@ -62,6 +64,7 @@ export class TweetWidgetUI {
         this.container = container;
         this.app = widget.app;
         this.postsById = widget.postsById;
+        this.previewManager = new PreviewManager(widget.app);
     }
 
     private t(key: StringKey, vars?: Record<string, string | number>): string {
@@ -308,7 +311,7 @@ export class TweetWidgetUI {
     private showBackupModal() {
         const backupModal = new BackupHistoryModal(
             this.widget,
-            this.widget.getRepository().getBackupManager(),
+            this.widget.getRepository().getBackupManager() as any,
             this.widget.currentSettings,
             this.widget.plugin.settings.language || 'ja',
             (restoredData: TweetWidgetSettings) => {
@@ -431,8 +434,13 @@ export class TweetWidgetUI {
             if (isPreview) {
                 previewArea.style.display = '';
                 input.style.display = 'none';
-                previewArea.empty();
-                await this.renderMarkdownWithMermaid(previewArea, input.value);
+                const result = await this.previewManager.renderMarkdownPreview(previewArea, input.value, {
+                    debounceMs: 0, // 即座にプレビュー
+                    maxHeight: '300px'
+                });
+                if (!result.success) {
+                    console.error('プレビューエラー:', result.error);
+                }
             } else {
                 previewArea.style.display = 'none';
                 input.style.display = '';
@@ -605,8 +613,16 @@ export class TweetWidgetUI {
     }
 
     public renderFilePreview(container: HTMLElement): void {
-        // 画像プレビューはMarkdownレンダリングに統一したため、何もしない
-        container.empty();
+        // ファイルプレビューを新しいPreviewManagerで処理
+        const files = this.widget.attachedFiles;
+        this.previewManager.renderFilePreview(container, files, {
+            maxItems: 5,
+            showRemoveButtons: true,
+            onRemove: (index: number) => {
+                this.widget.attachedFiles.splice(index, 1);
+                this.renderFilePreview(container); // 再描画
+            }
+        });
     }
 
     private updateCharCount(el: HTMLElement, len: number): void {
@@ -936,7 +952,7 @@ export class TweetWidgetUI {
         });
         // --- ここまで追加 ---
 
-        await this.renderMarkdownWithMermaid(textDiv, replacedText);
+                    await this.renderMarkdownWithMermaid(textDiv, replacedText);
         // 画像の幅を親要素に合わせる
         Array.from(textDiv.querySelectorAll('img')).forEach(img => {
             img.style.width = '100%';
@@ -1529,6 +1545,10 @@ export class TweetWidgetUI {
         if (this._escHandlerForImageModal) {
             window.removeEventListener('keydown', this._escHandlerForImageModal);
         }
+        
+        // プレビューマネージャーのクリーンアップ
+        this.previewManager.cleanup();
+        
         // 必要に応じて他のクリーンアップ処理をここに追加
     }
 

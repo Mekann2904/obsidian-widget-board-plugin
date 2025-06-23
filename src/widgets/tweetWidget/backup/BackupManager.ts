@@ -1,402 +1,600 @@
 import { App } from 'obsidian';
-import type { TweetWidgetSettings } from '../types';
-import type { 
-    BackupResult, 
-    RestoreResult, 
-    RestoreOptions,
-    GenerationBackupConfig, 
-    BackupFileInfo
-} from './types';
-import { DEFAULT_BACKUP_CONFIG } from './types';
 import { GenerationBackupManager } from './GenerationBackupManager';
 import { IncrementalBackupManager } from './IncrementalBackupManager';
-import { AsyncJobQueue, JobPriority } from './AsyncJobQueue';
-import { FastPatchManager } from './FastPatchManager';
-import { ShardingManager } from './ShardingManager';
-import { PerformanceMonitor } from './PerformanceMonitor';
+import type {
+    BackupIndex,
+    BackupFileInfo,
+    BackupCollection,
+    RestoreResult,
+    GenerationBackupConfig,
+    BackupResult,
+    RestoreOptions,
+    BackupCheckResult
+} from './types';
+import { DEFAULT_BACKUP_CONFIG } from './types';
+import type { TweetWidgetSettings } from '../types';
+import { BackupUtils } from './BackupUtils';
+import { DiffCalculator } from '../versionControl/DiffCalculator';
 
 /**
- * 統合バックアップマネージャー
+ * バックアップ管理の中核となるクラス
  * 世代バックアップと差分バックアップを統合管理
  */
 export class BackupManager {
     private app: App;
     private basePath: string;
+    private backupPath: string;
     private generationManager: GenerationBackupManager;
     private incrementalManager: IncrementalBackupManager;
     private config: GenerationBackupConfig;
     private lastSaveData: TweetWidgetSettings | null = null;
-    private lastKnownData: TweetWidgetSettings | null = null;
-    
-    // Performance enhancement components
-    private jobQueue: AsyncJobQueue;
-    private fastPatchManager: FastPatchManager;
-    private shardingManager: ShardingManager;
-    private performanceMonitor: PerformanceMonitor;
     private isPerformanceOptimizationEnabled: boolean = true;
 
     constructor(app: App, basePath: string) {
         this.app = app;
         this.basePath = basePath;
-        this.generationManager = new GenerationBackupManager(app, basePath);
-        this.incrementalManager = new IncrementalBackupManager(app, basePath);
+        this.backupPath = `${basePath}/backups`;
         this.config = DEFAULT_BACKUP_CONFIG;
         
-        // Initialize performance enhancement components
-        this.jobQueue = new AsyncJobQueue(3); // Max 3 concurrent backup jobs
-        this.fastPatchManager = new FastPatchManager();
-        this.shardingManager = new ShardingManager();
-        this.performanceMonitor = new PerformanceMonitor();
+        this.generationManager = new GenerationBackupManager(app, this.basePath);
+        this.incrementalManager = new IncrementalBackupManager(app, this.basePath);
         
-        // Start performance monitoring
-        this.performanceMonitor.startMonitoring();
-        
-        console.log('[BackupManager] パフォーマンス最適化機能を初期化しました');
+        console.log('[BackupManager] 初期化完了');
     }
 
-    /**
-     * データ保存時のバックアップ処理
-     */
-    async onDataSave(currentData: TweetWidgetSettings): Promise<void> {
-        console.log('[BackupManager] onDataSave() 開始');
-        console.log(`[BackupManager] 現在のデータ: 投稿=${currentData.posts?.length || 0}件, スケジュール=${currentData.scheduledPosts?.length || 0}件`);
-        
+    private async loadBackupIndex(): Promise<BackupIndex> {
+        const indexPath = `${this.backupPath}/index.json`;
         try {
-            // 差分バックアップを作成（前回データがある場合）
-            if (this.lastSaveData && this.config.incremental.enabled) {
-                console.log('[BackupManager] 差分バックアップ作成開始');
-                console.log(`[BackupManager] 前回データ: 投稿=${this.lastSaveData.posts?.length || 0}件`);
-                
-                const incrementalResult = await this.incrementalManager.createIncrementalBackup(
-                    currentData,
-                    this.lastSaveData,
-                    this.config
-                );
-                
-                if (incrementalResult.success) {
-                    console.log(`[BackupManager] 差分バックアップ作成完了: ${incrementalResult.backupId}`);
-                } else {
-                    console.warn('[BackupManager] 差分バックアップ作成に失敗:', incrementalResult.error);
-                }
-            } else {
-                if (!this.lastSaveData) {
-                    console.log('[BackupManager] 差分バックアップスキップ: 前回データなし（初回保存）');
-                } else if (!this.config.incremental.enabled) {
-                    console.log('[BackupManager] 差分バックアップスキップ: 設定で無効化');
-                }
-            }
-
-            // 世代バックアップのスケジュールチェック
-            console.log('[BackupManager] 世代バックアップスケジュールチェック開始');
-            await this.checkAndCreateGenerationBackups(currentData);
-
-            // 今回のデータを保存
-            this.lastSaveData = JSON.parse(JSON.stringify(currentData));
-            console.log('[BackupManager] onDataSave() 完了');
-
-        } catch (error) {
-            console.error('[BackupManager] バックアップ処理エラー:', error);
-        }
-    }
-
-    /**
-     * 手動バックアップ作成（パフォーマンス最適化版）
-     */
-    async createManualBackup(
-        data: TweetWidgetSettings, 
-        description?: string
-    ): Promise<BackupResult> {
-        if (!this.isPerformanceOptimizationEnabled) {
-            // パフォーマンス最適化無効時は従来の方法
-            return this.createManualBackupLegacy(data, description);
-        }
-
-        const operationId = this.performanceMonitor.recordOperationStart('manual_backup', {
-            description,
-            dataSize: JSON.stringify(data).length
-        });
-
-        try {
-            console.log('[BackupManager] 高速手動バックアップ作成開始');
-
-            // ジョブをキューに追加
-            const jobId = this.jobQueue.addJob(
-                'manual_backup',
-                async (payload, updateProgress) => {
-                    updateProgress({ current: 0, total: 100, message: 'バックアップ開始' });
-
-                    // データサイズをチェックしてシャーディングを判断
-                    const dataSize = new Blob([JSON.stringify(payload.data)]).size;
-                    const shardingThreshold = 10 * 1024 * 1024; // 10MB
-
-                    if (dataSize > shardingThreshold) {
-                        console.log(`[BackupManager] 大容量データ検出: ${(dataSize / 1024 / 1024).toFixed(2)}MB - シャーディング実行`);
-                        
-                        updateProgress({ current: 20, total: 100, message: 'データをシャードに分割中' });
-                        
-                        // データをシャードに分割
-                        const shardingResult = await this.shardingManager.shardData(payload.data);
-                        
-                        updateProgress({ current: 40, total: 100, message: 'シャードを並列処理中' });
-                        
-                        // シャード処理（簡易実装）
-                        updateProgress({ current: 60, total: 100, message: 'シャード処理中' });
-                        
-                        // 最初のシャードでバックアップ作成
-                        const mainShard = shardingResult.shards[0];
-                        const result = await this.generationManager.createGenerationBackup(
-                            mainShard?.data || payload.data,
-                            'daily',
-                            this.config
-                        );
-                        
-                        updateProgress({ current: 100, total: 100, message: '完了' });
-                        
-                        return result;
-                        
-                    } else {
-                        updateProgress({ current: 50, total: 100, message: '通常バックアップ実行中' });
-                        
-                        // 通常サイズの場合は従来の方法
-                        const result = await this.generationManager.createGenerationBackup(
-                            payload.data,
-                            'daily',
-                            this.config
-                        );
-                        
-                        updateProgress({ current: 100, total: 100, message: '完了' });
-                        return result;
-                    }
-                },
-                { data, description },
-                {
-                    priority: 'high' as JobPriority,
-                    maxRetries: 2,
-                    onProgress: (progress) => {
-                        this.performanceMonitor.updateQueueStats(this.jobQueue.getStats());
-                    }
-                }
-            );
-
-            // ジョブの完了を待機
-            const job = this.jobQueue.getJob(jobId);
-            if (!job) {
-                throw new Error('ジョブの作成に失敗しました');
-            }
-
-            // ジョブの完了を監視
-            return new Promise((resolve, reject) => {
-                const checkJob = () => {
-                    const currentJob = this.jobQueue.getJob(jobId);
-                    if (!currentJob) {
-                        reject(new Error('ジョブが見つかりません'));
-                        return;
-                    }
-
-                    switch (currentJob.status) {
-                        case 'completed':
-                            this.performanceMonitor.recordOperationComplete(operationId, {
-                                jobId: currentJob.id,
-                                result: 'success'
-                            });
-                            
-                            if (description) {
-                                console.log(`[BackupManager] 高速手動バックアップ作成完了: ${description}`);
-                            }
-                            
-                            resolve(currentJob.result as BackupResult);
-                            break;
-                            
-                        case 'failed':
-                            this.performanceMonitor.recordOperationFail(operationId, currentJob.error, {
-                                jobId: currentJob.id
-                            });
-                            
-                            reject(currentJob.error || new Error('バックアップジョブが失敗しました'));
-                            break;
-                            
-                        case 'cancelled':
-                            this.performanceMonitor.recordOperationFail(operationId, 'Job cancelled', {
-                                jobId: currentJob.id
-                            });
-                            
-                            reject(new Error('バックアップジョブがキャンセルされました'));
-                            break;
-                            
-                        default:
-                            // まだ実行中
-                            setTimeout(checkJob, 100);
-                            break;
+            const exists = await this.app.vault.adapter.exists(indexPath);
+            if (!exists) {
+                console.log('[BackupManager] index.json が見つからないため、初期化します。');
+                const initialIndex: BackupIndex = {
+                    version: "1.0.0",
+                    lastUpdated: Date.now(),
+                    config: {
+                        daily: { enabled: true, retentionDays: 30, createTime: "02:00" },
+                        weekly: { enabled: true, retentionWeeks: 12, dayOfWeek: 0, createTime: "02:30" },
+                        monthly: { enabled: true, retentionMonths: 12, dayOfMonth: 1, createTime: "03:00" },
+                        incremental: { enabled: true, maxCount: 1000, compressAfterDays: 7 }
+                    },
+                    backups: {
+                        generations: [],
+                        incremental: []
+                    },
+                    statistics: {
+                        totalBackups: 0,
+                        totalSize: 0,
+                        corruptedBackups: []
                     }
                 };
-                
-                checkJob();
-            });
-
-        } catch (error) {
-            this.performanceMonitor.recordOperationFail(operationId, error);
-            
-            return {
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-                stats: {
-                    processedPosts: 0,
-                    createdFiles: 0,
-                    totalSize: 0,
-                    processingTime: 0
-                }
-            };
-        }
-    }
-
-    /**
-     * 従来の手動バックアップ作成（互換性のため）
-     */
-    private async createManualBackupLegacy(
-        data: TweetWidgetSettings, 
-        description?: string
-    ): Promise<BackupResult> {
-        try {
-            const result = await this.generationManager.createGenerationBackup(
-                data,
-                'daily',
-                this.config
-            );
-            
-            if (result.success && description) {
-                console.log(`[BackupManager] 手動バックアップ作成: ${description}`);
+                await this.saveBackupIndex(initialIndex);
+                return initialIndex;
             }
-            
-            return result;
+            const jsonData = await this.app.vault.adapter.read(indexPath);
+            const rawIndex = JSON.parse(jsonData) as Partial<BackupIndex>;
+
+            // 不足しているフィールドを補完
+            const completeIndex: BackupIndex = {
+                version: rawIndex.version || "1.0.0",
+                lastUpdated: rawIndex.lastUpdated ?? 0,
+                config: rawIndex.config || DEFAULT_BACKUP_CONFIG,
+                backups: {
+                    generations: rawIndex.backups?.generations || [],
+                    incremental: rawIndex.backups?.incremental || []
+                },
+                statistics: {
+                    totalBackups: rawIndex.statistics?.totalBackups ?? 0,
+                    totalSize: rawIndex.statistics?.totalSize ?? 0,
+                    oldestBackup: rawIndex.statistics?.oldestBackup,
+                    newestBackup: rawIndex.statistics?.newestBackup,
+                    corruptedBackups: rawIndex.statistics?.corruptedBackups || []
+                }
+            };
+            return completeIndex;
         } catch (error) {
+            BackupUtils.logError('BackupManager', 'loadBackupIndex', error);
             return {
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-                stats: {
-                    processedPosts: 0,
-                    createdFiles: 0,
+                version: "1.0.0",
+                lastUpdated: 0,
+                config: DEFAULT_BACKUP_CONFIG,
+                backups: {
+                    generations: [],
+                    incremental: []
+                },
+                statistics: {
+                    totalBackups: 0,
                     totalSize: 0,
-                    processingTime: 0
+                    corruptedBackups: []
                 }
             };
         }
     }
 
-    /**
-     * パフォーマンス統計を取得
-     */
-    public getPerformanceStats() {
+    private async saveBackupIndex(index: BackupIndex): Promise<void> {
+        const indexPath = `${this.backupPath}/index.json`;
+        try {
+            index.lastUpdated = Date.now();
+            index.statistics = this.recalculateStatistics(index);
+            await this.app.vault.adapter.write(indexPath, JSON.stringify(index, null, 2));
+        } catch (error) {
+            BackupUtils.logError('BackupManager', 'saveBackupIndex', error);
+            throw error;
+        }
+    }
+
+    private recalculateStatistics(index: BackupIndex): BackupIndex['statistics'] {
+        const allBackups = [...index.backups.generations, ...index.backups.incremental];
+        const totalBackups = allBackups.length;
+        const totalSize = allBackups.reduce((sum, b) => sum + (b.size || 0), 0);
+        const timestamps = allBackups.map(b => b.timestamp);
+        const newestBackup = totalBackups > 0 ? Math.max(...timestamps) : 0;
+        const oldestBackup = totalBackups > 0 ? Math.min(...timestamps) : 0;
+        const corruptedBackups = index.statistics?.corruptedBackups || [];
+
         return {
-            jobQueue: this.jobQueue.getStats(),
-            performance: this.performanceMonitor.getStats(),
-            detailedMetrics: this.performanceMonitor.getDetailedMetrics(),
-            report: this.performanceMonitor.getPerformanceReport()
+            totalBackups,
+            totalSize,
+            newestBackup,
+            oldestBackup,
+            corruptedBackups
         };
     }
 
-    /**
-     * パフォーマンス最適化の有効/無効を切り替え
-     */
-    public togglePerformanceOptimization(enabled: boolean): void {
-        this.isPerformanceOptimizationEnabled = enabled;
-        console.log(`[BackupManager] パフォーマンス最適化: ${enabled ? '有効' : '無効'}`);
+    private async addBackupToIndex(backupInfo: BackupFileInfo): Promise<void> {
+        const index = await this.loadBackupIndex();
+        
+        if (backupInfo.type === 'incremental') {
+            index.backups.incremental.push(backupInfo);
+            index.backups.incremental.sort((a, b) => b.timestamp - a.timestamp);
+        } else {
+            const existingIndex = index.backups.generations.findIndex(b =>
+                b.generation?.period && b.generation.period === backupInfo.generation?.period &&
+                b.type === backupInfo.type
+            );
+
+            if (existingIndex !== -1) {
+                const oldBackup = index.backups.generations[existingIndex];
+                console.log(`[BackupManager] 既存の世代バックアップを置換: ${oldBackup.id} -> ${backupInfo.id}`);
+                index.backups.generations[existingIndex] = backupInfo;
+            } else {
+                index.backups.generations.push(backupInfo);
+            }
+            index.backups.generations.sort((a, b) => b.timestamp - a.timestamp);
+        }
+        
+        await this.saveBackupIndex(index);
     }
 
-    /**
-     * リソースをクリーンアップ
-     */
-    public cleanup(): void {
-        this.jobQueue.stop();
-        this.performanceMonitor.stopMonitoring();
-        console.log('[BackupManager] パフォーマンス監視とジョブキューを停止しました');
+    private async removeBackupFromIndex(backupId: string): Promise<void> {
+        const index = await this.loadBackupIndex();
+        const originalGenerationsCount = index.backups.generations.length;
+        const originalIncrementalCount = index.backups.incremental.length;
+
+        index.backups.generations = index.backups.generations.filter(b => b.id !== backupId);
+        index.backups.incremental = index.backups.incremental.filter(b => b.id !== backupId);
+
+        if (index.backups.generations.length < originalGenerationsCount ||
+            index.backups.incremental.length < originalIncrementalCount) {
+            console.log(`[BackupManager] インデックスからバックアップを削除: ${backupId}`);
+            await this.saveBackupIndex(index);
+        }
     }
 
-    /**
-     * バックアップから復元
-     */
-    async restoreFromBackup(options: RestoreOptions): Promise<RestoreResult> {
-        const startTime = Date.now();
+    async onDataSave(currentData: TweetWidgetSettings, commitMessage?: string): Promise<void> {
+        console.log('[BackupManager] onDataSave() 開始', { commitMessage });
         
         try {
-            console.log(`[BackupManager] 復元開始: ID=${options.backupId}, type=${options.type}`);
-            let restoredData: TweetWidgetSettings | null = null;
+            const index = await this.loadBackupIndex();
+            const config = index.config;
+            const latestBackup = index.backups.generations[0] || index.backups.incremental[0];
 
-            switch (options.type) {
-                case 'full':
-                    // 世代バックアップから復元
-                    console.log(`[BackupManager] 世代バックアップからの復元を開始`);
-                    restoredData = await this.generationManager.restoreFromGeneration(options.backupId);
-                    break;
+            // 重要な変更を検出
+            const isImportantChange = commitMessage && (
+                commitMessage.includes('ツイート作成') ||
+                commitMessage.includes('ツイート削除') ||
+                commitMessage.includes('ツイート重要変更') ||
+                commitMessage.includes('スレッド削除')
+            );
+
+            if (config.incremental.enabled) {
+                const previousData = this.lastSaveData;
+                
+                // lastSaveDataがない場合は、最初の保存として差分バックアップを有効にする準備
+                if (!previousData) {
+                    console.log('[BackupManager] 初回データ保存のため、次回から差分バックアップが利用可能になります');
+                    // 最初の保存なので、単純に記録するだけ
+                } else {
+                    // 条件を緩和：軽微な変更でも差分バックアップを作成
+                    const hasDataChanges = this.hasSignificantDataChanges(previousData, currentData);
                     
-                case 'incremental':
-                    // 差分バックアップから復元
-                    console.log(`[BackupManager] 差分バックアップからの復元を開始`);
-                    restoredData = await this.incrementalManager.restoreFromIncrementalChain(options.backupId);
-                    break;
+                    // 条件を緩和：コミットメッセージがあるか、変更があれば差分バックアップを作成
+                    const shouldCreateIncremental = commitMessage || isImportantChange || hasDataChanges;
                     
-                case 'hybrid':
-                    // ハイブリッド復元（現在は未実装）
-                    throw new Error('ハイブリッド復元は未実装です');
-                    
-                default:
-                    throw new Error(`未対応の復元タイプ: ${options.type}`);
-            }
-
-            if (!restoredData) {
-                const errorMsg = `${options.type}バックアップ（ID: ${options.backupId}）からのデータ復元に失敗しました`;
-                console.error(`[BackupManager] ${errorMsg}`);
-                throw new Error(errorMsg);
-            }
-
-            console.log(`[BackupManager] 復元データ検証: ${restoredData.posts?.length || 0}件の投稿`);
-
-            // 復元範囲の適用（指定されている場合）
-            if (options.restoreRange) {
-                console.log(`[BackupManager] 復元範囲を適用`);
-                restoredData = this.applyRestoreRange(restoredData, options.restoreRange);
-            }
-
-            const processingTime = Date.now() - startTime;
-            console.log(`[BackupManager] 復元完了: 処理時間=${processingTime}ms`);
-
-            return {
-                success: true,
-                restoredData: restoredData,
-                stats: {
-                    restoredPosts: restoredData.posts?.length || 0,
-                    processedBackups: 1,
-                    totalSize: JSON.stringify(restoredData).length,
-                    processingTime: processingTime
+                    if (shouldCreateIncremental) {
+                        let baseBackupId = latestBackup?.id;
+                        
+                        // ベースバックアップがない場合は作成
+                        if (!baseBackupId) {
+                            console.log('[BackupManager] ベースバックアップが見つからないため作成します');
+                            const baseBackupInfo = await this.generationManager.createGenerationBackup(currentData, 'daily');
+                            if (baseBackupInfo) {
+                                await this.addBackupToIndex(baseBackupInfo);
+                                console.log(`[BackupManager] ベースバックアップ作成完了: ${baseBackupInfo.id}`);
+                                baseBackupId = baseBackupInfo.id;
+                            }
+                        }
+                        
+                        if (baseBackupId) {
+                            console.log('[BackupManager] 差分バックアップ作成開始 - 理由:', commitMessage || '自動検出');
+                            const incrementalInfo = await this.incrementalManager.createIncrementalBackup(
+                                currentData,
+                                previousData,
+                                baseBackupId
+                            );
+                            
+                            if (incrementalInfo) {
+                                await this.addBackupToIndex(incrementalInfo);
+                                console.log(`[BackupManager] 差分バックアップ作成完了: ${incrementalInfo.id} (理由: ${commitMessage || '自動検出'})`);
+                            } else {
+                                console.log('[BackupManager] 差分がないため差分バックアップをスキップ');
+                            }
+                        }
+                    } else {
+                        console.log('[BackupManager] 変更が検出されませんでした');
+                    }
                 }
-            };
+            }
 
+            await this.checkAndCreateGenerationBackups(currentData, index);
+
+            this.lastSaveData = JSON.parse(JSON.stringify(currentData));
+            console.log('[BackupManager] onDataSave() 完了');
         } catch (error) {
-            const processingTime = Date.now() - startTime;
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`[BackupManager] バックアップ復元エラー:`, error);
-            
-            // より詳細なエラー情報を含める
-            const detailedError = `復元失敗: ${errorMessage} (タイプ: ${options.type}, ID: ${options.backupId})`;
-            
-            return {
-                success: false,
-                error: detailedError,
-                stats: {
-                    restoredPosts: 0,
-                    processedBackups: 0,
-                    totalSize: 0,
-                    processingTime: processingTime
-                }
-            };
+            BackupUtils.logError('BackupManager', 'onDataSave', error);
         }
     }
 
     /**
-     * Dry-Run: バックアップ復元のプレビュー
-     * 実際に復元は行わず、変更内容を分析して返す
+     * データに変更があるかどうかを判定（条件を緩和）
      */
+    private hasSignificantDataChanges(previousData: TweetWidgetSettings, currentData: TweetWidgetSettings): boolean {
+        // JSON文字列として比較（最も確実な方法）
+        const prevDataStr = JSON.stringify(previousData);
+        const currDataStr = JSON.stringify(currentData);
+        
+        if (prevDataStr !== currDataStr) {
+            console.log('[BackupManager] データ変更検出（JSON比較）');
+            return true;
+        }
+
+        // 投稿数の変化をチェック
+        const prevPostCount = previousData.posts?.length || 0;
+        const currPostCount = currentData.posts?.length || 0;
+        
+        if (prevPostCount !== currPostCount) {
+            console.log(`[BackupManager] 投稿数変化検出: ${prevPostCount} -> ${currPostCount}`);
+            return true;
+        }
+
+        // 投稿内容の変化をチェック（効率的な比較）
+        if (previousData.posts && currentData.posts) {
+            const prevPostIds = new Set(previousData.posts.map(p => p.id));
+            const currPostIds = new Set(currentData.posts.map(p => p.id));
+            
+            // 新しい投稿または削除された投稿があるかチェック
+            if (prevPostIds.size !== currPostIds.size) {
+                console.log('[BackupManager] 投稿ID数変化検出');
+                return true;
+            }
+            
+            // 投稿IDの差分をチェック
+            for (const id of currPostIds) {
+                if (!prevPostIds.has(id)) {
+                    console.log(`[BackupManager] 新規投稿検出: ${id}`);
+                    return true;
+                }
+            }
+            
+            // 投稿内容の変更をチェック（より幅広いフィールド）
+            const currPostsById = new Map(currentData.posts.map(p => [p.id, p]));
+            for (const prevPost of previousData.posts) {
+                const currPost = currPostsById.get(prevPost.id);
+                if (currPost) {
+                    // より多くのフィールドの変更をチェック
+                    if (prevPost.text !== currPost.text ||
+                        prevPost.deleted !== currPost.deleted ||
+                        prevPost.bookmark !== currPost.bookmark ||
+                        prevPost.like !== currPost.like ||
+                        prevPost.liked !== currPost.liked ||
+                        prevPost.retweet !== currPost.retweet ||
+                        prevPost.retweeted !== currPost.retweeted ||
+                        prevPost.edited !== currPost.edited ||
+                        prevPost.visibility !== currPost.visibility ||
+                        JSON.stringify(prevPost.tags) !== JSON.stringify(currPost.tags) ||
+                        JSON.stringify(prevPost.files) !== JSON.stringify(currPost.files)) {
+                        console.log(`[BackupManager] 投稿内容変更検出: ${prevPost.id}`);
+                        return true;
+                    }
+                }
+            }
+        }
+
+        // スケジュール投稿の変化もチェック
+        const prevScheduledCount = previousData.scheduledPosts?.length || 0;
+        const currScheduledCount = currentData.scheduledPosts?.length || 0;
+        
+        if (prevScheduledCount !== currScheduledCount) {
+            console.log(`[BackupManager] スケジュール投稿数変化検出: ${prevScheduledCount} -> ${currScheduledCount}`);
+            return true;
+        }
+
+        // その他の設定変更をチェック
+        if (previousData.userId !== currentData.userId ||
+            previousData.userName !== currentData.userName ||
+            previousData.verified !== currentData.verified ||
+            JSON.stringify(previousData.aiGovernance) !== JSON.stringify(currentData.aiGovernance)) {
+            console.log('[BackupManager] ユーザー設定変更検出');
+            return true;
+        }
+        
+        console.log('[BackupManager] 変更なし');
+        return false;
+    }
+
+    async createManualBackup(data: TweetWidgetSettings, type: 'daily' | 'weekly' | 'monthly' = 'daily'): Promise<BackupResult> {
+        console.log(`[BackupManager] 手動バックアップ作成開始: ${type}`);
+        const startTime = Date.now();
+        try {
+            const backupInfo = await this.generationManager.createGenerationBackup(data, type);
+            if (backupInfo) {
+                await this.addBackupToIndex(backupInfo);
+                console.log(`[BackupManager] 手動バックアップ作成成功: ${backupInfo.id}`);
+                return { success: true, backupId: backupInfo.id, filePath: backupInfo.filePath };
+            } else {
+                throw new Error('世代バックアップファイルの作成に失敗しました。');
+            }
+        } catch (error) {
+            BackupUtils.logError('BackupManager', 'createManualBackup', error);
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+    }
+    
+    async restoreFromBackup(backupId: string): Promise<RestoreResult> {
+        console.log(`[BackupManager] 復元プロセス開始: ${backupId}`);
+        try {
+            const index = await this.loadBackupIndex();
+            console.log(`[BackupManager] インデックス読み込み完了:`, {
+                generationsCount: index.backups.generations?.length || 0,
+                incrementalCount: index.backups.incremental?.length || 0,
+                generations: index.backups.generations?.map(b => ({ id: b.id, type: b.type })) || [],
+                incremental: index.backups.incremental?.map(b => ({ id: b.id, type: b.type })) || []
+            });
+            
+            const targetBackup = index.backups.generations.find(b => b.id === backupId) || index.backups.incremental.find(b => b.id === backupId);
+            console.log(`[BackupManager] バックアップ検索結果:`, { backupId, found: !!targetBackup });
+
+            if (!targetBackup) {
+                console.error(`[BackupManager] バックアップが見つかりません:`, {
+                    searchId: backupId,
+                    availableGenerations: index.backups.generations?.map(b => b.id) || [],
+                    availableIncremental: index.backups.incremental?.map(b => b.id) || []
+                });
+                return { success: false, error: `バックアップが見つかりません: ${backupId}` };
+            }
+
+            let finalData: TweetWidgetSettings | null = null;
+            const backupType = BackupUtils.determineBackupType(targetBackup);
+
+            if (backupType === 'generation') {
+                finalData = await this.generationManager.restoreFromGeneration(targetBackup);
+            } else if (backupType === 'incremental') {
+                finalData = await this.restoreFromIncrementalChain(targetBackup, index);
+            } else {
+                return { success: false, error: `不明なバックアップタイプです: ${targetBackup.type}` };
+            }
+
+            if (finalData) {
+                console.log(`[BackupManager] 復元成功: ${backupId}`);
+                return { success: true, data: finalData, restoredData: finalData };
+            } else {
+                throw new Error('データの復元に失敗しました。');
+            }
+        } catch (error) {
+            BackupUtils.logError('BackupManager', 'restoreFromBackup', error);
+            return { success: false, error: error instanceof Error ? error.message : String(error) };
+        }
+    }
+
+    private async restoreFromIncrementalChain(
+        targetBackup: BackupFileInfo,
+        index: BackupIndex
+    ): Promise<TweetWidgetSettings | null> {
+        const baseBackupId = targetBackup.incremental?.baseBackupId;
+        if (!baseBackupId) {
+            throw new Error(`差分バックアップにベースIDがありません: ${targetBackup.id}`);
+        }
+
+        const baseBackup = index.backups.generations.find(b => b.id === baseBackupId) || index.backups.incremental.find(b => b.id === baseBackupId);
+        if (!baseBackup || !baseBackup.generation) {
+            throw new Error(`ベースとなる世代バックアップが見つかりません: ${baseBackupId}`);
+        }
+
+        let currentData = await this.generationManager.restoreFromGeneration(baseBackup);
+        if (!currentData) {
+            throw new Error(`ベースバックアップの読み込みに失敗しました: ${baseBackupId}`);
+        }
+
+        const chain = this.buildDiffChain(baseBackupId, targetBackup.id, index);
+        console.log(`[BackupManager] 差分チェーンを構築: ${chain.length}件`);
+
+        for (const diffBackup of chain) {
+            const diffs = await this.incrementalManager.loadIncrementalBackup(diffBackup);
+            if (diffs) {
+                currentData.posts = DiffCalculator.applyDiffs(currentData.posts, diffs);
+            } else {
+                console.warn(`差分データの読み込みに失敗したためスキップします: ${diffBackup.id}`);
+            }
+        }
+        
+        return currentData;
+    }
+
+    private buildDiffChain(baseBackupId: string, targetBackupId: string, index: BackupIndex): BackupFileInfo[] {
+        const chain: BackupFileInfo[] = [];
+        let currentId = targetBackupId;
+    
+        while (currentId && currentId !== baseBackupId) {
+            const currentBackup = index.backups.generations.find(b => b.id === currentId) || index.backups.incremental.find(b => b.id === currentId);
+            if (!currentBackup || !currentBackup.incremental) {
+                console.error(`差分チェーンが途切れています。バックアップID: ${currentId} が見つからないか、差分バックアップではありません。`);
+                return [];
+            }
+            chain.unshift(currentBackup);
+            currentId = currentBackup.incremental.baseBackupId;
+        }
+    
+        return chain;
+    }
+
+    async getAvailableBackups(): Promise<BackupCollection> {
+        const index = await this.loadBackupIndex();
+        
+        // フィールド欠損に備えてフォールバック
+        const result = {
+            generations: index.backups?.generations || [],
+            incremental: index.backups?.incremental || []
+        };
+        
+        return result;
+    }
+
+    updateConfig(newConfig: Partial<GenerationBackupConfig>): void {
+        this.config = { ...this.config, ...newConfig };
+    }
+
+    private async checkAndCreateGenerationBackups(data: TweetWidgetSettings, index: BackupIndex): Promise<void> {
+        const now = new Date();
+        const config = index.config;
+        
+        if (config.daily.enabled && await this.shouldCreateBackup(now, 'daily', index)) {
+            const backupInfo = await this.generationManager.createGenerationBackup(data, 'daily');
+            if (backupInfo) {
+                await this.addBackupToIndex(backupInfo);
+                console.log(`[BackupManager] 日次バックアップ作成: ${backupInfo.id}`);
+            }
+        }
+        
+        if (config.weekly.enabled && await this.shouldCreateBackup(now, 'weekly', index)) {
+            const backupInfo = await this.generationManager.createGenerationBackup(data, 'weekly');
+            if (backupInfo) {
+                await this.addBackupToIndex(backupInfo);
+                console.log(`[BackupManager] 週次バックアップ作成: ${backupInfo.id}`);
+            }
+        }
+        
+        if (config.monthly.enabled && await this.shouldCreateBackup(now, 'monthly', index)) {
+            const backupInfo = await this.generationManager.createGenerationBackup(data, 'monthly');
+            if (backupInfo) {
+                await this.addBackupToIndex(backupInfo);
+                console.log(`[BackupManager] 月次バックアップ作成: ${backupInfo.id}`);
+            }
+        }
+    }
+
+    private async shouldCreateBackup(now: Date, type: 'daily' | 'weekly' | 'monthly', index: BackupIndex): Promise<boolean> {
+        const periodId = BackupUtils.generatePeriodIdentifier(type);
+        const lastBackupForPeriod = index.backups.generations.find(b => b.type === type && b.generation?.period === periodId) || index.backups.incremental.find(b => b.type === type && b.generation?.period === periodId);
+        return !lastBackupForPeriod;
+    }
+
+    async cleanupBackups(): Promise<void> {
+        console.log('[BackupManager] バックアップのクリーンアップを開始します。');
+        try {
+            const index = await this.loadBackupIndex();
+            const config = index.config;
+
+            await this.generationManager.cleanupOldBackups(index.backups.generations, config, 'daily');
+            await this.generationManager.cleanupOldBackups(index.backups.generations, config, 'weekly');
+            await this.generationManager.cleanupOldBackups(index.backups.generations, config, 'monthly');
+
+            const finalIndex = await this.loadBackupIndex();
+            const allFiles = new Set(finalIndex.backups.generations.map(b => b.filePath).concat(finalIndex.backups.incremental.map(b => b.filePath)));
+            const cleanedBackups = finalIndex.backups.generations.concat(finalIndex.backups.incremental).filter(b => allFiles.has(b.filePath));
+
+            if(cleanedBackups.length < finalIndex.backups.generations.length + finalIndex.backups.incremental.length) {
+                finalIndex.backups.generations = cleanedBackups.filter(b => b.type === 'daily' || b.type === 'weekly' || b.type === 'monthly');
+                finalIndex.backups.incremental = cleanedBackups.filter(b => b.type === 'incremental');
+                await this.saveBackupIndex(finalIndex);
+                console.log('[BackupManager] クリーンアップ後のインデックスを更新しました。');
+            }
+
+        } catch (error) {
+            BackupUtils.logError('BackupManager', 'cleanupBackups', error);
+        }
+    }
+
+    async checkAllBackupsIntegrity(log: (message: string) => void): Promise<BackupCheckResult[]> {
+        const results: BackupCheckResult[] = [];
+        log('整合性チェックを開始します...');
+
+        try {
+            const backups = await this.getAvailableBackups();
+            log(`バックアップ読み込み完了: ${backups.generations.length}件の世代バックアップと${backups.incremental.length}件の差分バックアップ`);
+
+            if (backups.generations.length === 0 && backups.incremental.length === 0) {
+                log('チェック対象のバックアップはありません。');
+                return [];
+            }
+
+            for (const backup of backups.generations) {
+                const result = await this.checkBackupIntegrity(backup);
+                if (result.success) {
+                    log(`✅ バックアップOK: ${backup.id}`);
+                } else {
+                    log(`❌ バックアップ破損: ${backup.id} - ${result.error}`);
+                }
+                results.push(result);
+            }
+
+            for (const backup of backups.incremental) {
+                const result = await this.checkBackupIntegrity(backup);
+                if (result.success) {
+                    log(`✅ バックアップOK: ${backup.id}`);
+                } else {
+                    log(`❌ バックアップ破損: ${backup.id} - ${result.error}`);
+                }
+                results.push(result);
+            }
+
+        } catch (error) {
+            BackupUtils.logError('BackupManager', 'checkAllBackupsIntegrity', error);
+        }
+
+        return results;
+    }
+
+    private async checkBackupIntegrity(backup: BackupFileInfo): Promise<BackupCheckResult> {
+        try {
+            const filePath = backup.filePath;
+            const exists = await this.app.vault.adapter.exists(filePath);
+            if (!exists) {
+                return { success: false, backupId: backup.id, error: `ファイルが見つかりません: ${filePath}` };
+            }
+
+            const fileContent = await this.app.vault.adapter.read(filePath);
+            const fileSize = Buffer.from(fileContent).length;
+            if (fileSize !== backup.size) {
+                return { success: false, backupId: backup.id, error: `ファイルサイズが異なります: 期待値: ${backup.size}, 実際: ${fileSize}` };
+            }
+
+            return { success: true, backupId: backup.id };
+        } catch (error) {
+            return { success: false, backupId: backup.id, error: error instanceof Error ? error.message : String(error) };
+        }
+    }
+
     async previewRestore(
-        options: RestoreOptions, 
+        options: RestoreOptions,
         currentData: TweetWidgetSettings
     ): Promise<{
         success: boolean;
@@ -412,582 +610,51 @@ export class BackupManager {
         error?: string;
     }> {
         try {
-            console.log(`[BackupManager] 復元プレビュー開始: ID=${options.backupId}, type=${options.type}`);
+            const result = await this.restoreFromBackup(options.backupId);
+            if (!result.success || !result.restoredData) {
+                return { success: false, error: result.error || 'プレビューの読み込みに失敗しました' };
+            }
+
+            const previewData = result.restoredData;
+            const currentPosts = currentData.posts || [];
+            const restoredPosts = previewData.posts || [];
             
-            // まず復元データを取得（実際のファイルシステムへの書き込みは行わない）
-            let previewData: TweetWidgetSettings | null = null;
-
-            switch (options.type) {
-                case 'full':
-                    previewData = await this.generationManager.restoreFromGeneration(options.backupId);
-                    break;
-                case 'incremental':
-                    previewData = await this.incrementalManager.restoreFromIncrementalChain(options.backupId);
-                    break;
-                default:
-                    throw new Error(`未対応の復元タイプ: ${options.type}`);
+            const currentPostIds = new Set(currentPosts.map(post => post.id));
+            const restoredPostIds = new Set(restoredPosts.map(post => post.id));
+            
+            const addedPosts = restoredPosts.filter(post => !currentPostIds.has(post.id));
+            const removedPosts = currentPosts.filter(post => !restoredPostIds.has(post.id));
+            
+            const modifiedPosts: { original: any; updated: any }[] = [];
+            for (const currentPost of currentPosts) {
+                const restoredPost = restoredPosts.find(p => p.id === currentPost.id);
+                if (restoredPost && JSON.stringify(currentPost) !== JSON.stringify(restoredPost)) {
+                    modifiedPosts.push({
+                        original: currentPost,
+                        updated: restoredPost
+                    });
+                }
             }
-
-            if (!previewData) {
-                throw new Error(`バックアップデータの読み込みに失敗しました`);
-            }
-
-            // 復元範囲の適用
-            if (options.restoreRange) {
-                previewData = this.applyRestoreRange(previewData, options.restoreRange);
-            }
-
-            // 差分分析
-            const differences = this.analyzeDifferences(currentData, previewData);
-
-            console.log(`[BackupManager] 復元プレビュー完了: 追加=${differences.postsToAdd}, 削除=${differences.postsToRemove}, 変更=${differences.postsToModify}`);
 
             return {
                 success: true,
                 previewData,
-                differences
+                differences: {
+                    postsToAdd: addedPosts.length,
+                    postsToRemove: removedPosts.length,
+                    postsToModify: modifiedPosts.length,
+                    addedPosts,
+                    removedPosts,
+                    modifiedPosts
+                }
             };
-
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`[BackupManager] 復元プレビューエラー:`, error);
-            
+            console.error('復元プレビューエラー:', error);
             return {
                 success: false,
-                error: errorMessage
-            };
-        }
-    }
-
-    /**
-     * 現在のデータとバックアップデータの差分を分析
-     */
-    private analyzeDifferences(
-        currentData: TweetWidgetSettings, 
-        backupData: TweetWidgetSettings
-    ): {
-        postsToAdd: number;
-        postsToRemove: number;
-        postsToModify: number;
-        addedPosts: any[];
-        removedPosts: any[];
-        modifiedPosts: { original: any; updated: any }[];
-    } {
-        const currentPosts = currentData.posts || [];
-        const backupPosts = backupData.posts || [];
-
-        // 投稿をIDでマップ化
-        const currentPostsMap = new Map(currentPosts.map(post => [post.id, post]));
-        const backupPostsMap = new Map(backupPosts.map(post => [post.id, post]));
-
-        const addedPosts: any[] = [];
-        const removedPosts: any[] = [];
-        const modifiedPosts: { original: any; updated: any }[] = [];
-
-        // バックアップにあって現在にない投稿（追加される投稿）
-        for (const [id, post] of backupPostsMap) {
-            if (!currentPostsMap.has(id)) {
-                addedPosts.push(post);
-            }
-        }
-
-        // 現在にあってバックアップにない投稿（削除される投稿）
-        for (const [id, post] of currentPostsMap) {
-            if (!backupPostsMap.has(id)) {
-                removedPosts.push(post);
-            }
-        }
-
-        // 両方にあるが内容が異なる投稿（変更される投稿）
-        for (const [id, currentPost] of currentPostsMap) {
-            const backupPost = backupPostsMap.get(id);
-            if (backupPost && JSON.stringify(currentPost) !== JSON.stringify(backupPost)) {
-                modifiedPosts.push({
-                    original: currentPost,
-                    updated: backupPost
-                });
-            }
-        }
-
-        return {
-            postsToAdd: addedPosts.length,
-            postsToRemove: removedPosts.length,
-            postsToModify: modifiedPosts.length,
-            addedPosts,
-            removedPosts,
-            modifiedPosts
-        };
-    }
-
-    /**
-     * バックアップの整合性チェック
-     */
-    async checkBackupIntegrity(backupId: string, type: 'full' | 'incremental'): Promise<{
-        success: boolean;
-        isHealthy: boolean;
-        issues?: string[];
-        error?: string;
-    }> {
-        try {
-            console.log(`[BackupManager] 整合性チェック開始: ID=${backupId}, type=${type}`);
-
-            let backupData: TweetWidgetSettings | null = null;
-
-            // バックアップデータを読み込み
-            switch (type) {
-                case 'full':
-                    backupData = await this.generationManager.restoreFromGeneration(backupId);
-                    break;
-                case 'incremental':
-                    backupData = await this.incrementalManager.restoreFromIncrementalChain(backupId);
-                    break;
-                default:
-                    throw new Error(`未対応のバックアップタイプ: ${type}`);
-            }
-
-            if (!backupData) {
-                return {
-                    success: true,
-                    isHealthy: false,
-                    issues: ['バックアップデータの読み込みに失敗しました']
-                };
-            }
-
-            // データ構造の整合性チェック
-            const issues: string[] = [];
-
-            // 必須フィールドの存在チェック
-            if (!backupData.posts) {
-                issues.push('posts フィールドが存在しません');
-            } else if (!Array.isArray(backupData.posts)) {
-                issues.push('posts フィールドが配列ではありません');
-            }
-
-            if (!backupData.scheduledPosts) {
-                issues.push('scheduledPosts フィールドが存在しません');
-            } else if (!Array.isArray(backupData.scheduledPosts)) {
-                issues.push('scheduledPosts フィールドが配列ではありません');
-            }
-
-            // 投稿データの整合性チェック
-            if (backupData.posts && Array.isArray(backupData.posts)) {
-                const postIds = new Set<string>();
-                for (let i = 0; i < backupData.posts.length; i++) {
-                    const post = backupData.posts[i];
-                    
-                    if (!post.id) {
-                        issues.push(`投稿[${i}]: ID が存在しません`);
-                        continue;
-                    }
-                    
-                    if (postIds.has(post.id)) {
-                        issues.push(`投稿[${i}]: 重複したID: ${post.id}`);
-                    }
-                    postIds.add(post.id);
-                    
-                    if (typeof post.created !== 'number') {
-                        issues.push(`投稿[${i}]: 作成日時が数値ではありません`);
-                    }
-                    
-                    if (typeof post.text !== 'string') {
-                        issues.push(`投稿[${i}]: テキストが文字列ではありません`);
-                    }
-                }
-            }
-
-            // スケジュール投稿の整合性チェック
-            if (backupData.scheduledPosts && Array.isArray(backupData.scheduledPosts)) {
-                for (let i = 0; i < backupData.scheduledPosts.length; i++) {
-                    const scheduled = backupData.scheduledPosts[i];
-                    
-                    if (!scheduled.id) {
-                        issues.push(`スケジュール投稿[${i}]: ID が存在しません`);
-                    }
-                    
-                    if (typeof scheduled.nextTime !== 'number') {
-                        issues.push(`スケジュール投稿[${i}]: 次回実行時刻が数値ではありません`);
-                    }
-                }
-            }
-
-            // JSON パースエラーチェック（再シリアライゼーション）
-            try {
-                JSON.stringify(backupData);
-            } catch (error) {
-                issues.push(`JSON シリアライゼーションエラー: ${error instanceof Error ? error.message : String(error)}`);
-            }
-
-            const isHealthy = issues.length === 0;
-            
-            console.log(`[BackupManager] 整合性チェック完了: ${isHealthy ? '正常' : '問題あり'} (${issues.length}件の問題)`);
-
-            return {
-                success: true,
-                isHealthy,
-                issues: issues.length > 0 ? issues : undefined
-            };
-
-        } catch (error) {
-            console.error(`[BackupManager] 整合性チェックエラー:`, error);
-            return {
-                success: false,
-                isHealthy: false,
                 error: error instanceof Error ? error.message : String(error)
             };
         }
     }
 
-    /**
-     * 全バックアップの整合性チェック
-     */
-    async checkAllBackupsIntegrity(): Promise<Map<string, {
-        isHealthy: boolean;
-        issues?: string[];
-        error?: string;
-    }>> {
-        const results = new Map<string, {
-            isHealthy: boolean;
-            issues?: string[];
-            error?: string;
-        }>();
-
-        try {
-            const backups = await this.getAvailableBackups();
-            
-            // 世代バックアップをチェック
-            for (const backup of backups.generations) {
-                const result = await this.checkBackupIntegrity(backup.id, 'full');
-                if (result.success) {
-                    results.set(backup.id, {
-                        isHealthy: result.isHealthy,
-                        issues: result.issues,
-                        error: result.error
-                    });
-                } else {
-                    results.set(backup.id, {
-                        isHealthy: false,
-                        error: result.error
-                    });
-                }
-            }
-            
-            // 差分バックアップをチェック
-            for (const backup of backups.incremental) {
-                const result = await this.checkBackupIntegrity(backup.id, 'incremental');
-                if (result.success) {
-                    results.set(backup.id, {
-                        isHealthy: result.isHealthy,
-                        issues: result.issues,
-                        error: result.error
-                    });
-                } else {
-                    results.set(backup.id, {
-                        isHealthy: false,
-                        error: result.error
-                    });
-                }
-            }
-
-        } catch (error) {
-            console.error('[BackupManager] 全バックアップ整合性チェックエラー:', error);
-        }
-
-        return results;
-    }
-
-    /**
-     * 利用可能なバックアップ一覧を取得
-     */
-    async getAvailableBackups(): Promise<{
-        generations: BackupFileInfo[];
-        incremental: BackupFileInfo[];
-    }> {
-        try {
-            const [generations, incremental] = await Promise.all([
-                this.generationManager.getAvailableGenerations(),
-                this.incrementalManager.getAvailableIncrementalBackups()
-            ]);
-
-            return { generations, incremental };
-        } catch (error) {
-            console.error('バックアップ一覧取得エラー:', error);
-            return { generations: [], incremental: [] };
-        }
-    }
-
-    /**
-     * バックアップ設定を更新
-     */
-    updateConfig(newConfig: Partial<GenerationBackupConfig>): void {
-        this.config = { ...this.config, ...newConfig };
-    }
-
-    /**
-     * 世代バックアップのスケジュールチェック
-     */
-    private async checkAndCreateGenerationBackups(data: TweetWidgetSettings): Promise<void> {
-        const now = new Date();
-        console.log(`[BackupManager] 現在時刻: ${now.toLocaleString()}`);
-        console.log(`[BackupManager] バックアップ設定:`, this.config);
-        
-        try {
-            // 日次バックアップのチェック
-            if (this.config.daily.enabled) {
-                console.log('[BackupManager] 日次バックアップ条件チェック');
-                const shouldCreate = await this.shouldCreateDailyBackup(now);
-                console.log(`[BackupManager] 日次バックアップ必要: ${shouldCreate}`);
-                
-                if (shouldCreate) {
-                    console.log('[BackupManager] 日次バックアップ作成開始');
-                    const result = await this.generationManager.createGenerationBackup(
-                        data, 
-                        'daily', 
-                        this.config
-                    );
-                    if (result.success) {
-                        console.log(`[BackupManager] 日次バックアップ作成完了: ${result.backupId}`);
-                    } else {
-                        console.error(`[BackupManager] 日次バックアップ作成失敗: ${result.error}`);
-                    }
-                }
-            } else {
-                console.log('[BackupManager] 日次バックアップ無効');
-            }
-
-            // 週次バックアップのチェック
-            if (this.config.weekly.enabled) {
-                console.log('[BackupManager] 週次バックアップ条件チェック');
-                const shouldCreate = await this.shouldCreateWeeklyBackup(now);
-                console.log(`[BackupManager] 週次バックアップ必要: ${shouldCreate}`);
-                
-                if (shouldCreate) {
-                    console.log('[BackupManager] 週次バックアップ作成開始');
-                    const result = await this.generationManager.createGenerationBackup(
-                        data, 
-                        'weekly', 
-                        this.config
-                    );
-                    if (result.success) {
-                        console.log(`[BackupManager] 週次バックアップ作成完了: ${result.backupId}`);
-                    } else {
-                        console.error(`[BackupManager] 週次バックアップ作成失敗: ${result.error}`);
-                    }
-                }
-            } else {
-                console.log('[BackupManager] 週次バックアップ無効');
-            }
-
-            // 月次バックアップのチェック
-            if (this.config.monthly.enabled) {
-                console.log('[BackupManager] 月次バックアップ条件チェック');
-                const shouldCreate = await this.shouldCreateMonthlyBackup(now);
-                console.log(`[BackupManager] 月次バックアップ必要: ${shouldCreate}`);
-                
-                if (shouldCreate) {
-                    console.log('[BackupManager] 月次バックアップ作成開始');
-                    const result = await this.generationManager.createGenerationBackup(
-                        data, 
-                        'monthly', 
-                        this.config
-                    );
-                    if (result.success) {
-                        console.log(`[BackupManager] 月次バックアップ作成完了: ${result.backupId}`);
-                    } else {
-                        console.error(`[BackupManager] 月次バックアップ作成失敗: ${result.error}`);
-                    }
-                }
-            } else {
-                console.log('[BackupManager] 月次バックアップ無効');
-            }
-
-        } catch (error) {
-            console.error('[BackupManager] 世代バックアップスケジュールチェックエラー:', error);
-        }
-    }
-
-    /**
-     * 日次バックアップが必要かチェック
-     */
-    private async shouldCreateDailyBackup(now: Date): Promise<boolean> {
-        try {
-            // 設定時刻をチェック
-            const [hour, minute] = this.config.daily.createTime.split(':').map(Number);
-            const createTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute);
-            
-            console.log(`[BackupManager] 日次バックアップ設定時刻: ${createTime.toLocaleString()}`);
-            console.log(`[BackupManager] 現在時刻との比較: ${now >= createTime}`);
-            
-            // 設定時刻を過ぎていない場合は作成しない
-            if (now < createTime) {
-                return false;
-            }
-            
-            // 今日の期間識別子を生成
-            const todayPeriod = this.generateDailyPeriodId(now);
-            console.log(`[BackupManager] 今日の期間ID: ${todayPeriod}`);
-            
-            // 既存バックアップをチェック
-            const existingBackups = await this.generationManager.getAvailableGenerations();
-            const todayBackup = existingBackups.find(backup => 
-                backup.type === 'daily' && backup.generation?.period === todayPeriod
-            );
-            
-            const alreadyExists = !!todayBackup;
-            console.log(`[BackupManager] 今日のバックアップ既存: ${alreadyExists}`);
-            if (todayBackup) {
-                console.log(`[BackupManager] 既存バックアップ: ${todayBackup.id} (${new Date(todayBackup.timestamp).toLocaleString()})`);
-            }
-            
-            return !alreadyExists;
-            
-        } catch (error) {
-            console.error('[BackupManager] 日次バックアップ条件チェックエラー:', error);
-            return false;
-        }
-    }
-
-    /**
-     * 週次バックアップが必要かチェック
-     */
-    private async shouldCreateWeeklyBackup(now: Date): Promise<boolean> {
-        try {
-            // 設定された曜日をチェック
-            const dayOfWeek = now.getDay();
-            console.log(`[BackupManager] 現在の曜日: ${dayOfWeek}, 設定曜日: ${this.config.weekly.dayOfWeek}`);
-            
-            if (dayOfWeek !== this.config.weekly.dayOfWeek) {
-                return false;
-            }
-
-            // 設定時刻をチェック
-            const [hour, minute] = this.config.weekly.createTime.split(':').map(Number);
-            const createTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute);
-            
-            console.log(`[BackupManager] 週次バックアップ設定時刻: ${createTime.toLocaleString()}`);
-            
-            if (now < createTime) {
-                return false;
-            }
-            
-            // 今週の期間識別子を生成
-            const weekPeriod = this.generateWeeklyPeriodId(now);
-            console.log(`[BackupManager] 今週の期間ID: ${weekPeriod}`);
-            
-            // 既存バックアップをチェック
-            const existingBackups = await this.generationManager.getAvailableGenerations();
-            const weekBackup = existingBackups.find(backup => 
-                backup.type === 'weekly' && backup.generation?.period === weekPeriod
-            );
-            
-            const alreadyExists = !!weekBackup;
-            console.log(`[BackupManager] 今週のバックアップ既存: ${alreadyExists}`);
-            
-            return !alreadyExists;
-            
-        } catch (error) {
-            console.error('[BackupManager] 週次バックアップ条件チェックエラー:', error);
-            return false;
-        }
-    }
-
-    /**
-     * 月次バックアップが必要かチェック
-     */
-    private async shouldCreateMonthlyBackup(now: Date): Promise<boolean> {
-        try {
-            // 設定された日をチェック
-            const dayOfMonth = now.getDate();
-            console.log(`[BackupManager] 現在の日: ${dayOfMonth}, 設定日: ${this.config.monthly.dayOfMonth}`);
-            
-            if (dayOfMonth !== this.config.monthly.dayOfMonth) {
-                return false;
-            }
-
-            // 設定時刻をチェック
-            const [hour, minute] = this.config.monthly.createTime.split(':').map(Number);
-            const createTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, minute);
-            
-            console.log(`[BackupManager] 月次バックアップ設定時刻: ${createTime.toLocaleString()}`);
-            
-            if (now < createTime) {
-                return false;
-            }
-            
-            // 今月の期間識別子を生成
-            const monthPeriod = this.generateMonthlyPeriodId(now);
-            console.log(`[BackupManager] 今月の期間ID: ${monthPeriod}`);
-            
-            // 既存バックアップをチェック
-            const existingBackups = await this.generationManager.getAvailableGenerations();
-            const monthBackup = existingBackups.find(backup => 
-                backup.type === 'monthly' && backup.generation?.period === monthPeriod
-            );
-            
-            const alreadyExists = !!monthBackup;
-            console.log(`[BackupManager] 今月のバックアップ既存: ${alreadyExists}`);
-            
-            return !alreadyExists;
-            
-        } catch (error) {
-            console.error('[BackupManager] 月次バックアップ条件チェックエラー:', error);
-            return false;
-        }
-    }
-
-    /**
-     * 期間識別子生成メソッド
-     */
-    private generateDailyPeriodId(date: Date): string {
-        return date.toISOString().split('T')[0]; // YYYY-MM-DD
-    }
-
-    private generateWeeklyPeriodId(date: Date): string {
-        const year = date.getFullYear();
-        const startOfYear = new Date(year, 0, 1);
-        const dayOfYear = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
-        const weekNumber = Math.ceil((dayOfYear + startOfYear.getDay() + 1) / 7);
-        return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
-    }
-
-    private generateMonthlyPeriodId(date: Date): string {
-        const year = date.getFullYear();
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        return `${year}-${month}`;
-    }
-
-    /**
-     * 復元範囲を適用
-     */
-    private applyRestoreRange(
-        data: TweetWidgetSettings, 
-        range: RestoreOptions['restoreRange']
-    ): TweetWidgetSettings {
-        if (!range || !data.posts) {
-            return data;
-        }
-
-        const filteredPosts = data.posts.filter(post => {
-            const postTime = new Date(post.created).getTime();
-            
-            // 日付範囲チェック
-            if (range.startDate && postTime < range.startDate) {
-                return false;
-            }
-            if (range.endDate && postTime > range.endDate) {
-                return false;
-            }
-
-            // 削除されたアイテムの処理
-            if (!range.includeDeleted && post.deleted) {
-                return false;
-            }
-
-            return true;
-        });
-
-        return {
-            ...data,
-            posts: filteredPosts
-        };
-    }
 }

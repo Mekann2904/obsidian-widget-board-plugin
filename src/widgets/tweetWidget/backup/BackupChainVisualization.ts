@@ -1,5 +1,5 @@
-import { App } from 'obsidian';
-import type { BackupFileInfo } from './types';
+import { App, setIcon } from 'obsidian';
+import type { BackupFileInfo, BackupCheckResult } from './types';
 import { BackupManager } from './BackupManager';
 // import { renderMermaidInWorker } from '../../../utils';
 import { t, StringKey } from '../../../i18n';
@@ -14,11 +14,7 @@ import { BaseModal } from './BaseModal';
 export class BackupChainVisualization extends BaseModal {
     private backupManager: BackupManager;
     private language: Language;
-    private integrityResults: Map<string, {
-        isHealthy: boolean;
-        issues?: string[];
-        error?: string;
-    }> | null = null;
+    private integrityResults: BackupCheckResult[] | null = null;
     private currentTab: 'overview' | 'graph' | 'timeline' | 'integrity' = 'overview';
 
     constructor(
@@ -35,6 +31,14 @@ export class BackupChainVisualization extends BaseModal {
     protected onOpen(): void {
         this.contentEl.innerHTML = '';
         this.contentEl.className = 'backup-dashboard-modal';
+        
+        // モーダルサイズを設定（コンテンツに合わせて最適化）
+        this.modalEl.style.width = '85vw';
+        this.modalEl.style.height = '90vh';
+        this.modalEl.style.maxWidth = '1400px';
+        this.modalEl.style.maxHeight = '900px';
+        this.modalEl.style.minWidth = '800px';
+        this.modalEl.style.minHeight = '600px';
         
         // ヘッダー部分
         this.renderHeader();
@@ -73,9 +77,10 @@ export class BackupChainVisualization extends BaseModal {
         });
 
         header.style.cssText = `
-            padding: 24px;
+            padding: 20px 24px;
             border-bottom: 1px solid var(--background-modifier-border);
             background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-primary) 100%);
+            flex-shrink: 0;
         `;
 
         this.contentEl.appendChild(header);
@@ -84,32 +89,41 @@ export class BackupChainVisualization extends BaseModal {
     private renderTabNavigation(): void {
         const tabNav = this.createElement({
             tagName: 'div',
-            className: 'backup-dashboard-tabs'
+            className: 'backup-tab-bar'
         });
 
         const tabs = [
-            { id: 'overview', label: '概要', icon: '📊' },
-            { id: 'graph', label: 'グラフ', icon: '🔗' },
-            { id: 'timeline', label: 'タイムライン', icon: '📅' },
-            { id: 'integrity', label: '整合性', icon: '🔍' }
+            { id: 'overview', label: '概要', icon: 'bar-chart-3' },
+            { id: 'graph', label: 'グラフ', icon: 'git-branch' },
+            { id: 'timeline', label: 'タイムライン', icon: 'calendar' },
+            { id: 'integrity', label: '整合性', icon: 'shield-check' }
         ] as const;
 
         tabs.forEach(tab => {
             const tabBtn = this.createElement({
                 tagName: 'button',
-                className: `dashboard-tab ${this.currentTab === tab.id ? 'active' : ''}`,
-                innerHTML: `${tab.icon} ${tab.label}`
+                className: `backup-tab-btn ${this.currentTab === tab.id ? 'active' : ''}`
             }) as HTMLButtonElement;
 
+            // アイコンコンテナを作成
+            const iconContainer = this.createElement({
+                tagName: 'span',
+                className: 'tab-icon'
+            });
+            setIcon(iconContainer, tab.icon);
+
+            // テキストラベル
+            const textLabel = this.createElement({
+                tagName: 'span',
+                textContent: tab.label,
+                className: 'tab-label'
+            });
+
+            tabBtn.appendChild(iconContainer);
+            tabBtn.appendChild(textLabel);
             tabBtn.onclick = () => this.switchTab(tab.id);
             tabNav.appendChild(tabBtn);
         });
-
-        tabNav.style.cssText = `
-            display: flex;
-            background: var(--background-secondary);
-            border-bottom: 1px solid var(--background-modifier-border);
-        `;
 
         this.contentEl.appendChild(tabNav);
     }
@@ -118,7 +132,7 @@ export class BackupChainVisualization extends BaseModal {
         this.currentTab = tabId;
         
         // タブボタンの状態更新
-        const tabs = this.contentEl.querySelectorAll('.dashboard-tab');
+        const tabs = this.contentEl.querySelectorAll('.backup-tab-btn');
         tabs.forEach((tab, index) => {
             const tabIds = ['overview', 'graph', 'timeline', 'integrity'];
             if (tabIds[index] === tabId) {
@@ -161,26 +175,62 @@ export class BackupChainVisualization extends BaseModal {
             const backups = await this.backupManager.getAvailableBackups();
             this.hideLoading(container);
 
+            // メインコンテナ
+            const mainContainer = this.createElement({
+                tagName: 'div',
+                className: 'overview-main-container'
+            });
+            mainContainer.style.cssText = `
+                padding: 16px 20px 20px 20px;
+                max-width: 1200px;
+                margin: 0 auto;
+            `;
+
+            // タイトルセクション
+            const titleSection = this.createElement({
+                tagName: 'div',
+                className: 'overview-title-section',
+                children: [
+                    {
+                        tagName: 'h2',
+                        textContent: 'バックアップ統計',
+                        className: 'overview-title'
+                    },
+                    {
+                        tagName: 'p',
+                        textContent: 'システム全体のバックアップ状況をご確認いただけます',
+                        className: 'overview-subtitle'
+                    }
+                ]
+            });
+            titleSection.style.cssText = `
+                margin-bottom: 30px;
+                text-align: center;
+            `;
+
             // 統計カード
             const statsGrid = this.createElement({
                 tagName: 'div',
-                className: 'backup-stats-grid'
+                className: 'backup-dashboard-stats-grid'
             });
+            statsGrid.style.cssText = `
+                margin-bottom: 40px;
+            `;
 
             // 世代バックアップ統計
             const generationCard = this.createStatsCard(
                 '世代バックアップ',
-                backups.generations.length.toString(),
-                '📦',
-                '#e3f2fd'
+                `${backups.generations.length} 件`,
+                'archive',
+                'var(--background-modifier-form-field)'
             );
 
             // 差分バックアップ統計  
             const incrementalCard = this.createStatsCard(
                 '差分バックアップ',
-                backups.incremental.length.toString(),
-                '📄',
-                '#f3e5f5'
+                `${backups.incremental.length} 件`,
+                'file-diff',
+                'var(--background-modifier-form-field)'
             );
 
             // 最新バックアップ
@@ -190,8 +240,8 @@ export class BackupChainVisualization extends BaseModal {
             const latestCard = this.createStatsCard(
                 '最新バックアップ',
                 latestBackup ? new Date(latestBackup.timestamp).toLocaleDateString('ja-JP') : '未作成',
-                '🕐',
-                '#e8f5e8'
+                'clock',
+                'var(--background-modifier-form-field)'
             );
 
             // 合計サイズ
@@ -201,8 +251,8 @@ export class BackupChainVisualization extends BaseModal {
             const sizeCard = this.createStatsCard(
                 '合計サイズ',
                 this.formatFileSize(totalSize),
-                '💾',
-                '#fff3e0'
+                'hard-drive',
+                'var(--background-modifier-form-field)'
             );
 
             statsGrid.appendChild(generationCard);
@@ -210,37 +260,80 @@ export class BackupChainVisualization extends BaseModal {
             statsGrid.appendChild(latestCard);
             statsGrid.appendChild(sizeCard);
 
-            // バックアップ一覧
-            const backupList = this.createElement({
-                tagName: 'div',
-                className: 'backup-list-section'
-            });
+            // バックアップ一覧セクション
+            if (backups.generations.length > 0 || backups.incremental.length > 0) {
+                const backupListSection = this.createElement({
+                    tagName: 'div',
+                    className: 'backup-list-section'
+                });
 
-            const listTitle = this.createElement({
-                tagName: 'h3',
-                textContent: '最近のバックアップ',
-                className: 'section-title'
-            });
+                const listTitle = this.createElement({
+                    tagName: 'h3',
+                    textContent: '最近のバックアップ',
+                    className: 'section-title'
+                });
+                listTitle.style.cssText = `
+                    margin-bottom: 16px;
+                    color: var(--text-normal);
+                    font-size: 18px;
+                    font-weight: 600;
+                `;
 
-            const recentBackups = [...backups.generations, ...backups.incremental]
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 10);
+                const recentBackups = [...backups.generations, ...backups.incremental]
+                    .sort((a, b) => b.timestamp - a.timestamp)
+                    .slice(0, 8);
 
-            const listContainer = this.createElement({
-                tagName: 'div',
-                className: 'backup-list'
-            });
+                const listContainer = this.createElement({
+                    tagName: 'div',
+                    className: 'backup-list'
+                });
 
-            recentBackups.forEach(backup => {
-                const item = this.createBackupListItem(backup);
-                listContainer.appendChild(item);
-            });
+                recentBackups.forEach(backup => {
+                    const item = this.createBackupListItem(backup);
+                    listContainer.appendChild(item);
+                });
 
-            backupList.appendChild(listTitle);
-            backupList.appendChild(listContainer);
+                backupListSection.appendChild(listTitle);
+                backupListSection.appendChild(listContainer);
+                
+                mainContainer.appendChild(titleSection);
+                mainContainer.appendChild(statsGrid);
+                mainContainer.appendChild(backupListSection);
+            } else {
+                // バックアップが存在しない場合の表示
+                const emptyState = this.createElement({
+                    tagName: 'div',
+                    className: 'empty-state',
+                    children: [
+                        {
+                            tagName: 'div',
+                            textContent: '📋',
+                            className: 'empty-icon'
+                        },
+                        {
+                            tagName: 'h3',
+                            textContent: 'バックアップが見つかりません',
+                            className: 'empty-title'
+                        },
+                        {
+                            tagName: 'p',
+                            textContent: '最初のバックアップを作成してください',
+                            className: 'empty-message'
+                        }
+                    ]
+                });
+                emptyState.style.cssText = `
+                    text-align: center;
+                    padding: 60px 20px;
+                    color: var(--text-muted);
+                `;
 
-            container.appendChild(statsGrid);
-            container.appendChild(backupList);
+                mainContainer.appendChild(titleSection);
+                mainContainer.appendChild(statsGrid);
+                mainContainer.appendChild(emptyState);
+            }
+
+            container.appendChild(mainContainer);
 
         } catch (error) {
             this.hideLoading(container);
@@ -249,43 +342,164 @@ export class BackupChainVisualization extends BaseModal {
     }
 
     private async renderGraphTab(container: HTMLElement): Promise<void> {
-        // テスト用の簡単な表示から始める
-        this.showLoading(container, '可視化を生成中...');
+        this.showLoading(container, '関係性グラフを生成中...');
         
         try {
-            // バックアップ一覧を取得
             const backups = await this.backupManager.getAvailableBackups();
-            console.log('[BackupChainVisualization] バックアップデータ:', backups);
-            
             this.hideLoading(container);
-            
-            // 簡単なデバッグ情報を表示
-            const debugInfo = this.createElement({
+
+            // メインコンテナ
+            const graphContainer = this.createElement({
                 tagName: 'div',
-                className: 'backup-debug-info',
+                className: 'graph-main-container'
+            });
+            graphContainer.style.cssText = `
+                padding: 16px 20px 20px 20px;
+                max-width: 1200px;
+                margin: 0 auto;
+            `;
+
+            // タイトルセクション
+            const titleSection = this.createElement({
+                tagName: 'div',
+                className: 'graph-title-section',
                 children: [
                     {
-                        tagName: 'h3',
-                        textContent: 'バックアップ情報'
+                        tagName: 'h2',
+                        textContent: 'バックアップ関係性グラフ',
+                        className: 'graph-title'
                     },
                     {
                         tagName: 'p',
-                        textContent: `世代バックアップ: ${backups.generations.length}件`
-                    },
-                    {
-                        tagName: 'p', 
-                        textContent: `差分バックアップ: ${backups.incremental.length}件`
+                        textContent: 'バックアップ間の依存関係と継承構造を視覚化',
+                        className: 'graph-subtitle'
                     }
                 ]
             });
-            
-            container.appendChild(debugInfo);
-            
-            // まずはMermaidなしで動作確認
-            if (backups.generations.length > 0 || backups.incremental.length > 0) {
-                // Mermaidグラフを試す
-                await this.generateVisualization(container);
+            titleSection.style.cssText = `
+                margin-bottom: 30px;
+                text-align: center;
+            `;
+
+            graphContainer.appendChild(titleSection);
+
+            if (backups.generations.length === 0 && backups.incremental.length === 0) {
+                // バックアップが存在しない場合
+                const emptyState = this.createElement({
+                    tagName: 'div',
+                    className: 'graph-empty-state',
+                    children: [
+                        {
+                            tagName: 'div',
+                            className: 'empty-icon'
+                        },
+                        {
+                            tagName: 'h3',
+                            textContent: 'グラフを生成するデータがありません',
+                            className: 'empty-title'
+                        },
+                        {
+                            tagName: 'p',
+                            textContent: 'バックアップを作成してから再度お試しください',
+                            className: 'empty-message'
+                        }
+                    ]
+                });
+
+                const emptyIcon = emptyState.querySelector('.empty-icon') as HTMLElement;
+                setIcon(emptyIcon, 'git-branch');
+
+                emptyState.style.cssText = `
+                    text-align: center;
+                    padding: 80px 20px;
+                    color: var(--text-muted);
+                `;
+
+                emptyIcon.style.cssText = `
+                    font-size: 64px;
+                    margin-bottom: 20px;
+                    opacity: 0.3;
+                `;
+
+                graphContainer.appendChild(emptyState);
+            } else {
+                // 統計情報表示
+                const statsInfo = this.createElement({
+                    tagName: 'div',
+                    className: 'graph-stats-info',
+                    children: [
+                        {
+                            tagName: 'div',
+                            className: 'stat-item',
+                            children: [
+                                {
+                                    tagName: 'span',
+                                    className: 'stat-icon'
+                                },
+                                {
+                                    tagName: 'span',
+                                    textContent: `世代バックアップ: ${backups.generations.length}件`,
+                                    className: 'stat-text'
+                                }
+                            ]
+                        },
+                        {
+                            tagName: 'div',
+                            className: 'stat-item',
+                            children: [
+                                {
+                                    tagName: 'span',
+                                    className: 'stat-icon'
+                                },
+                                {
+                                    tagName: 'span',
+                                    textContent: `差分バックアップ: ${backups.incremental.length}件`,
+                                    className: 'stat-text'
+                                }
+                            ]
+                        }
+                    ]
+                });
+
+                const genIcon = statsInfo.querySelector('.stat-item:first-child .stat-icon') as HTMLElement;
+                const incIcon = statsInfo.querySelector('.stat-item:last-child .stat-icon') as HTMLElement;
+                setIcon(genIcon, 'archive');
+                setIcon(incIcon, 'file-diff');
+
+                statsInfo.style.cssText = `
+                    display: flex;
+                    justify-content: center;
+                    gap: 40px;
+                    margin-bottom: 30px;
+                    padding: 20px;
+                    background: var(--background-secondary);
+                    border-radius: 8px;
+                    border: 1px solid var(--background-modifier-border);
+                `;
+
+                statsInfo.querySelectorAll('.stat-item').forEach(item => {
+                    (item as HTMLElement).style.cssText = `
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        color: var(--text-normal);
+                        font-weight: 500;
+                    `;
+                });
+
+                statsInfo.querySelectorAll('.stat-icon').forEach(icon => {
+                    (icon as HTMLElement).style.cssText = `
+                        color: var(--text-accent);
+                    `;
+                });
+
+                graphContainer.appendChild(statsInfo);
+
+                // Mermaidグラフまたはフォールバック表示
+                await this.generateVisualization(graphContainer);
             }
+
+            container.appendChild(graphContainer);
             
         } catch (error) {
             console.error('[BackupChainVisualization] グラフタブエラー:', error);
@@ -301,20 +515,147 @@ export class BackupChainVisualization extends BaseModal {
             const backups = await this.backupManager.getAvailableBackups();
             this.hideLoading(container);
 
-            const timeline = this.createElement({
+            // メインコンテナ
+            const timelineContainer = this.createElement({
                 tagName: 'div',
-                className: 'backup-timeline'
+                className: 'timeline-main-container'
             });
+            timelineContainer.style.cssText = `
+                padding: 16px 20px 20px 20px;
+                max-width: 800px;
+                margin: 0 auto;
+            `;
+
+            // タイトルセクション
+            const titleSection = this.createElement({
+                tagName: 'div',
+                className: 'timeline-title-section',
+                children: [
+                    {
+                        tagName: 'h2',
+                        textContent: 'バックアップタイムライン',
+                        className: 'timeline-title'
+                    },
+                    {
+                        tagName: 'p',
+                        textContent: '時系列でバックアップの作成履歴を表示',
+                        className: 'timeline-subtitle'
+                    }
+                ]
+            });
+            titleSection.style.cssText = `
+                margin-bottom: 40px;
+                text-align: center;
+            `;
+
+            timelineContainer.appendChild(titleSection);
 
             const allBackups = [...backups.generations, ...backups.incremental]
                 .sort((a, b) => b.timestamp - a.timestamp);
 
-            allBackups.forEach((backup, index) => {
-                const timelineItem = this.createTimelineItem(backup, index);
-                timeline.appendChild(timelineItem);
-            });
+            if (allBackups.length === 0) {
+                // バックアップが存在しない場合
+                const emptyState = this.createElement({
+                    tagName: 'div',
+                    className: 'timeline-empty-state',
+                    children: [
+                        {
+                            tagName: 'div',
+                            className: 'empty-icon'
+                        },
+                        {
+                            tagName: 'h3',
+                            textContent: 'タイムラインに表示するデータがありません',
+                            className: 'empty-title'
+                        },
+                        {
+                            tagName: 'p',
+                            textContent: 'バックアップを作成すると、ここに履歴が表示されます',
+                            className: 'empty-message'
+                        }
+                    ]
+                });
 
-            container.appendChild(timeline);
+                const emptyIcon = emptyState.querySelector('.empty-icon') as HTMLElement;
+                setIcon(emptyIcon, 'calendar');
+
+                emptyState.style.cssText = `
+                    text-align: center;
+                    padding: 80px 20px;
+                    color: var(--text-muted);
+                `;
+
+                emptyIcon.style.cssText = `
+                    font-size: 64px;
+                    margin-bottom: 20px;
+                    opacity: 0.3;
+                `;
+
+                timelineContainer.appendChild(emptyState);
+            } else {
+                // タイムライン統計
+                const timelineStats = this.createElement({
+                    tagName: 'div',
+                    className: 'timeline-stats',
+                    children: [
+                        {
+                            tagName: 'div',
+                            className: 'timeline-stat',
+                            children: [
+                                {
+                                    tagName: 'span',
+                                    textContent: allBackups.length.toString(),
+                                    className: 'stat-number'
+                                },
+                                {
+                                    tagName: 'span',
+                                    textContent: '総バックアップ数',
+                                    className: 'stat-label'
+                                }
+                            ]
+                        }
+                    ]
+                });
+
+                timelineStats.style.cssText = `
+                    text-align: center;
+                    margin-bottom: 30px;
+                    padding: 20px;
+                    background: var(--background-secondary);
+                    border-radius: 8px;
+                    border: 1px solid var(--background-modifier-border);
+                `;
+
+                timelineStats.querySelector('.stat-number')!.setAttribute('style', `
+                    display: block;
+                    font-size: 32px;
+                    font-weight: bold;
+                    color: var(--text-accent);
+                    margin-bottom: 4px;
+                `);
+
+                timelineStats.querySelector('.stat-label')!.setAttribute('style', `
+                    color: var(--text-muted);
+                    font-size: 14px;
+                `);
+
+                timelineContainer.appendChild(timelineStats);
+
+                // タイムライン
+                const timeline = this.createElement({
+                    tagName: 'div',
+                    className: 'backup-timeline'
+                });
+
+                allBackups.forEach((backup, index) => {
+                    const timelineItem = this.createTimelineItem(backup, index);
+                    timeline.appendChild(timelineItem);
+                });
+
+                timelineContainer.appendChild(timeline);
+            }
+
+            container.appendChild(timelineContainer);
 
         } catch (error) {
             this.hideLoading(container);
@@ -631,7 +972,8 @@ export class BackupChainVisualization extends BaseModal {
             
             let branchIndex = 0;
             for (const [baseId, incrementalList] of incrementalByBase) {
-                asciiGraph += `\n├─┐ ブランチ${branchIndex + 1} (ベース: ${baseId.substring(0, 8)}...)\n`;
+                const baseIdDisplay = baseId ? baseId.substring(0, 8) + '...' : '不明なベース';
+                asciiGraph += `\n├─┐ ブランチ${branchIndex + 1} (ベース: ${baseIdDisplay})\n`;
                 
                 const sortedIncremental = incrementalList.sort((a, b) => a.timestamp - b.timestamp);
                 sortedIncremental.forEach((backup, index) => {
@@ -705,7 +1047,8 @@ export class BackupChainVisualization extends BaseModal {
                 backups.incremental.forEach(backup => {
                     const date = new Date(backup.timestamp).toLocaleString('ja-JP');
                     const baseId = backup.incremental?.baseBackupId || 'Unknown';
-                    graphText += `  📄 ${date} (ベース: ${baseId.substring(0, 8)}...)\n`;
+                    const baseIdDisplay = baseId && baseId !== 'Unknown' ? baseId.substring(0, 8) + '...' : baseId;
+                    graphText += `  📄 ${date} (ベース: ${baseIdDisplay})\n`;
                 });
             }
 
@@ -797,7 +1140,8 @@ export class BackupChainVisualization extends BaseModal {
                 backups.incremental.forEach(backup => {
                     const date = new Date(backup.timestamp).toLocaleString('ja-JP');
                     const baseId = backup.incremental?.baseBackupId || 'Unknown';
-                    graphText += `  📄 ${date} (ベース: ${baseId.substring(0, 8)}...)\n`;
+                    const baseIdDisplay = baseId && baseId !== 'Unknown' ? baseId.substring(0, 8) + '...' : baseId;
+                    graphText += `  📄 ${date} (ベース: ${baseIdDisplay})\n`;
                 });
             }
 
@@ -870,10 +1214,12 @@ export class BackupChainVisualization extends BaseModal {
 
     private async performIntegrityCheck(container: HTMLElement) {
         try {
-            this.showLoading(container, this.t('backupIntegrityCheck') + '...');
+            this.showLoading(container, t(this.language, 'backupIntegrityCheck') + '...');
 
             // 全バックアップの整合性チェック実行
-            this.integrityResults = await this.backupManager.checkAllBackupsIntegrity();
+            this.integrityResults = await this.backupManager.checkAllBackupsIntegrity(
+                (message: string) => console.log('[BackupChainVisualization] 整合性チェック:', message)
+            );
             
             console.log('[BackupChainVisualization] 整合性チェック結果:', this.integrityResults);
             
@@ -902,30 +1248,24 @@ export class BackupChainVisualization extends BaseModal {
         if (existingResults) existingResults.remove();
 
         const resultsContainer = container.createDiv({ cls: 'backup-integrity-results' });
-        resultsContainer.createEl('h3', { text: this.t('backupIntegrityCheck') });
+        resultsContainer.createEl('h3', { text: t(this.language, 'backupIntegrityCheck') });
 
         let healthyCount = 0;
         let damagedCount = 0;
 
-        this.integrityResults.forEach((result, backupId) => {
-            if (result.isHealthy) {
+        this.integrityResults.forEach(result => {
+            if (result.success) {
                 healthyCount++;
             } else {
                 damagedCount++;
                 
                 // 破損したバックアップの詳細表示
                 const issueEl = resultsContainer.createDiv({ cls: 'integrity-issue' });
+                const backupIdDisplay = result.backupId ? result.backupId.substring(0, 8) + '...' : '不明なID';
                 issueEl.createEl('h4', { 
-                    text: `${this.t('damagedBackup')}: ${backupId.substring(0, 8)}...`,
+                    text: `${t(this.language, 'damagedBackup') || '破損したバックアップ'}: ${backupIdDisplay}`,
                     cls: 'issue-title'
                 });
-                
-                if (result.issues && result.issues.length > 0) {
-                    const issueList = issueEl.createEl('ul');
-                    result.issues.forEach(issue => {
-                        issueList.createEl('li', { text: issue });
-                    });
-                }
                 
                 if (result.error) {
                     issueEl.createEl('p', { 
@@ -939,33 +1279,35 @@ export class BackupChainVisualization extends BaseModal {
         // サマリー表示
         const summaryEl = resultsContainer.createDiv({ cls: 'integrity-summary' });
         summaryEl.createEl('p', { 
-            text: `${this.t('healthyBackup')}: ${healthyCount}件, ${this.t('damagedBackup')}: ${damagedCount}件`
+            text: `${t(this.language, 'healthyBackup') || '正常なバックアップ'}: ${healthyCount}件, ${t(this.language, 'damagedBackup') || '破損したバックアップ'}: ${damagedCount}件`
         });
     }
 
-    private createStatsCard(title: string, value: string, icon: string, bgColor: string): HTMLElement {
+    private createStatsCard(title: string, value: string, iconName: string, bgColor: string): HTMLElement {
         const card = this.createElement({
             tagName: 'div',
-            className: 'backup-stats-card'
+            className: 'widget backup-stats-card'
         });
 
         card.style.cssText = `
             background: ${bgColor};
-            border: 1px solid var(--background-modifier-border);
-            border-radius: 12px;
-            padding: 20px;
+            color: var(--text-normal);
             text-align: center;
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid var(--background-modifier-border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         `;
 
         const iconEl = this.createElement({
             tagName: 'div',
-            textContent: icon,
             className: 'card-icon'
         });
+        setIcon(iconEl, iconName);
         iconEl.style.cssText = `
-            font-size: 2em;
-            margin-bottom: 8px;
+            font-size: 2.5em;
+            margin-bottom: 12px;
+            opacity: 0.8;
+            color: var(--text-accent);
         `;
 
         const titleEl = this.createElement({
@@ -974,9 +1316,12 @@ export class BackupChainVisualization extends BaseModal {
             className: 'card-title'
         });
         titleEl.style.cssText = `
-            margin: 0 0 4px 0;
+            margin: 0 0 8px 0;
             font-size: 14px;
+            font-weight: 500;
             color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         `;
 
         const valueEl = this.createElement({
@@ -986,13 +1331,23 @@ export class BackupChainVisualization extends BaseModal {
         });
         valueEl.style.cssText = `
             font-size: 24px;
-            font-weight: bold;
+            font-weight: 600;
             color: var(--text-normal);
         `;
 
         card.appendChild(iconEl);
         card.appendChild(titleEl);
         card.appendChild(valueEl);
+
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-2px)';
+            card.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
+        });
+
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0)';
+            card.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+        });
 
         return card;
     }
@@ -1008,34 +1363,90 @@ export class BackupChainVisualization extends BaseModal {
     private createBackupListItem(backup: BackupFileInfo): HTMLElement {
         const item = this.createElement({
             tagName: 'div',
-            className: 'backup-list-item'
+            className: 'widget backup-list-item',
+            children: [
+                {
+                    tagName: 'div',
+                    className: 'backup-item-icon'
+                },
+                {
+                    tagName: 'div',
+                    className: 'widget-content backup-item-content',
+                    children: [
+                        {
+                            tagName: 'div',
+                            className: 'backup-item-title',
+                            textContent: `${backup.generation ? '世代' : '差分'}バックアップ`
+                        },
+                        {
+                            tagName: 'div',
+                            className: 'backup-item-meta',
+                            textContent: `${new Date(backup.timestamp).toLocaleString('ja-JP')} • ${this.formatFileSize(backup.size || 0)}`
+                        }
+                    ]
+                },
+                {
+                    tagName: 'div',
+                    className: 'backup-item-id',
+                    textContent: backup.id ? backup.id.substring(0, 8) + '...' : '不明なID'
+                }
+            ]
         });
-
-        const typeIcon = backup.generation ? '📦' : '📄';
-        const typeName = backup.generation ? '世代' : '差分';
-        const date = new Date(backup.timestamp).toLocaleString('ja-JP');
-        const size = this.formatFileSize(backup.size || 0);
 
         item.style.cssText = `
             display: flex;
             align-items: center;
-            padding: 12px;
-            border: 1px solid var(--background-modifier-border);
-            border-radius: 8px;
+            gap: 12px;
             margin-bottom: 8px;
-            background: var(--background-secondary);
+            transition: background 0.2s ease;
+            cursor: pointer;
         `;
 
-        item.innerHTML = `
-            <span style="font-size: 1.2em; margin-right: 12px;">${typeIcon}</span>
-            <div style="flex: 1;">
-                <div style="font-weight: 500;">${typeName}バックアップ</div>
-                <div style="font-size: 12px; color: var(--text-muted);">${date} • ${size}</div>
-            </div>
-            <div style="font-size: 12px; color: var(--text-muted);">
-                ${backup.id.substring(0, 8)}...
-            </div>
-        `;
+        const icon = item.querySelector('.backup-item-icon') as HTMLElement;
+        const title = item.querySelector('.backup-item-title') as HTMLElement;
+        const meta = item.querySelector('.backup-item-meta') as HTMLElement;
+        const id = item.querySelector('.backup-item-id') as HTMLElement;
+
+        if (icon) {
+            setIcon(icon, backup.generation ? 'archive' : 'file-diff');
+            icon.style.cssText = `
+                font-size: 1.2em;
+                flex-shrink: 0;
+                color: var(--text-accent);
+            `;
+        }
+
+        if (title) {
+            title.style.cssText = `
+                font-weight: 500;
+                color: var(--text-normal);
+                margin-bottom: 2px;
+            `;
+        }
+
+        if (meta) {
+            meta.style.cssText = `
+                font-size: 12px;
+                color: var(--text-muted);
+            `;
+        }
+
+        if (id) {
+            id.style.cssText = `
+                font-size: 12px;
+                color: var(--text-muted);
+                font-family: monospace;
+                flex-shrink: 0;
+            `;
+        }
+
+        item.addEventListener('mouseenter', () => {
+            item.style.background = 'var(--background-modifier-hover)';
+        });
+
+        item.addEventListener('mouseleave', () => {
+            item.style.background = 'transparent';
+        });
 
         return item;
     }
@@ -1046,7 +1457,6 @@ export class BackupChainVisualization extends BaseModal {
             className: 'timeline-item'
         });
 
-        const typeIcon = backup.generation ? '📦' : '📄';
         const typeName = backup.generation ? '世代' : '差分';
         const date = new Date(backup.timestamp);
         const dateStr = date.toLocaleDateString('ja-JP');
@@ -1064,9 +1474,9 @@ export class BackupChainVisualization extends BaseModal {
 
         const marker = this.createElement({
             tagName: 'div',
-            textContent: typeIcon,
             className: 'timeline-marker'
         });
+        setIcon(marker, backup.generation ? 'archive' : 'file-diff');
         marker.style.cssText = `
             position: absolute;
             left: -12px;
@@ -1079,7 +1489,8 @@ export class BackupChainVisualization extends BaseModal {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 10px;
+            color: var(--text-accent);
         `;
 
         const content = this.createElement({
@@ -1090,7 +1501,7 @@ export class BackupChainVisualization extends BaseModal {
             <div style="font-weight: 500; margin-bottom: 4px;">${typeName}バックアップ作成</div>
             <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;">${dateStr} ${timeStr}</div>
             <div style="font-size: 12px; color: var(--text-muted);">
-                ID: ${backup.id.substring(0, 12)}... | サイズ: ${this.formatFileSize(backup.size || 0)}
+                ID: ${backup.id ? backup.id.substring(0, 12) + '...' : '不明なID'} | サイズ: ${this.formatFileSize(backup.size || 0)}
             </div>
         `;
 

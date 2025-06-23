@@ -17,7 +17,9 @@ import { parseTags, parseLinks, formatTimeAgo, readFileAsDataUrl, wrapSelection 
 
 import { TweetWidgetUI } from './tweetWidgetUI';
 import { TweetRepository } from './TweetRepository';
-import { TweetStore } from './TweetStore';
+import { TweetStore, TweetStoreListener, TweetStoreEventData } from './TweetStore';
+import { TweetScheduler } from './TweetScheduler';
+import { TweetFileHandler } from './TweetFileHandler';
 import { computeNextTime, ScheduleOptions } from './scheduleUtils';
 import type { ScheduledTweet } from './types';
 
@@ -47,8 +49,8 @@ export class TweetWidget implements WidgetImplementation {
     private ui!: TweetWidgetUI;
     private store!: TweetStore;
     private repository!: TweetRepository;
+    private scheduler!: TweetScheduler;
     private saveTimeout: number | null = null;
-    private scheduleCheckId: number | null = null;
 
     /**
      * Getters to provide store data to the UI layer
@@ -68,7 +70,7 @@ export class TweetWidget implements WidgetImplementation {
      */
     public async reloadTweetData(): Promise<void> {
         const settings = await this.repository.load(this.plugin.settings.language || 'ja');
-        this.store = new TweetStore(settings);
+        this.store.updateSettings(settings);
         this.recalculateQuoteCounts();
         this.ui.render();
     }
@@ -102,6 +104,24 @@ export class TweetWidget implements WidgetImplementation {
         this.repository = new TweetRepository(this.app, dbPath);
         const initialSettings = await this.repository.load(this.plugin.settings.language || 'ja');
         this.store = new TweetStore(initialSettings);
+        
+        // データ変更リスナーを追加（自動保存・バックアップ）
+        const dataChangeListener: TweetStoreListener = (eventType, data?: TweetStoreEventData) => {
+            console.log(`[TweetWidget] データ変更イベント: ${eventType}`, data);
+            
+            if (data?.needsBackup) {
+                // 重要な変更（作成、削除、重要な更新）は即座に差分バックアップ
+                console.log(`[TweetWidget] 重要変更検出 - 即座にバックアップ: ${data.reason}`);
+                this.saveDataImmediately(data.reason);
+            } else {
+                // 軽微な変更は通常の遅延保存
+                console.log(`[TweetWidget] 軽微変更 - 遅延保存: ${data?.reason || 'unknown'}`);
+                this.saveDataDebounced();
+            }
+        };
+        this.store.addListener(dataChangeListener);
+        
+        this.scheduler = new TweetScheduler();
         this.recalculateQuoteCounts();
         this.ui = new TweetWidgetUI(this, this.widgetEl);
         this.ui.render();
@@ -128,13 +148,44 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     private saveDataDebounced() {
+        console.log('[TweetWidget] saveDataDebounced() 実行 - タイマー設定中');
         if (this.saveTimeout) clearTimeout(this.saveTimeout);
         this.saveTimeout = window.setTimeout(async () => {
             // update path in case settings changed while widget is open
             this.repository.setPath(this.getTweetDbPath());
-            await this.repository.save(this.store.settings, this.plugin.settings.language || 'ja');
+            try {
+                console.log('[TweetWidget] データ保存開始');
+                await this.repository.save(this.store.settings, this.plugin.settings.language || 'ja');
+                console.log('[TweetWidget] データ保存完了 - バックアップも自動作成済み');
+            } catch (error) {
+                console.error('[TweetWidget] データ保存エラー:', error);
+            }
             this.saveTimeout = null;
         }, 500);
+    }
+
+    /**
+     * 重要な変更の場合に即座にデータ保存とバックアップを実行
+     */
+    private async saveDataImmediately(reason: string = '重要変更') {
+        console.log(`[TweetWidget] saveDataImmediately() 実行 - 理由: ${reason}`);
+        
+        // 既存のタイマーをキャンセル
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+            this.saveTimeout = null;
+        }
+        
+        // パスを更新
+        this.repository.setPath(this.getTweetDbPath());
+        
+        try {
+            console.log(`[TweetWidget] 即座データ保存開始 - ${reason}`);
+            await this.repository.save(this.store.settings, this.plugin.settings.language || 'ja', reason);
+            console.log(`[TweetWidget] 即座データ保存完了 - 差分バックアップも自動作成済み`);
+        } catch (error) {
+            console.error(`[TweetWidget] 即座データ保存エラー (${reason}):`, error);
+        }
     }
     
     public async switchTab(tab: 'home' | 'notification') {
@@ -160,10 +211,13 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     public async submitPost(text: string) {
+        console.log('[TweetWidget] 投稿処理開始:', text.substring(0, 50));
+        
         const trimmedText = text.trim();
         if (!trimmedText && this.attachedFiles.length === 0) return;
 
         if (this.editingPostId) {
+            console.log('[TweetWidget] 投稿編集処理:', this.editingPostId);
             this.store.updatePost(this.editingPostId, {
                 text: trimmedText,
                 files: this.attachedFiles,
@@ -173,7 +227,9 @@ export class TweetWidget implements WidgetImplementation {
             });
             new Notice(t(this.plugin.settings.language || 'ja', 'tweetEdited'));
         } else {
+            console.log('[TweetWidget] 新規投稿作成処理');
             const newPost = this.createNewPostObject(trimmedText);
+            console.log('[TweetWidget] 新規投稿データ:', { id: newPost.id, text: newPost.text.substring(0, 50) });
             this.store.addPost(newPost);
             this.plugin.updateTweetPostCount(newPost.created, 1);
             new Notice(this.replyingToParentId ? t(this.plugin.settings.language || 'ja', 'replyPosted') : t(this.plugin.settings.language || 'ja', 'tweetPosted'));
@@ -181,8 +237,11 @@ export class TweetWidget implements WidgetImplementation {
         }
 
         this.resetInputState();
+        console.log('[TweetWidget] saveDataDebounced() 呼び出し前');
         this.saveDataDebounced();
+        console.log('[TweetWidget] saveDataDebounced() 呼び出し完了');
         this.ui.render();
+        console.log('[TweetWidget] 投稿処理完了');
     }
 
     public async submitReply(text: string, parentId: string) {
@@ -700,9 +759,6 @@ export class TweetWidget implements WidgetImplementation {
         if (this.saveTimeout) {
             clearTimeout(this.saveTimeout);
         }
-        if (this.scheduleCheckId) {
-            window.clearInterval(this.scheduleCheckId);
-        }
         this.widgetEl.removeEventListener('keydown', this.handleKeyDown);
         if (this.ui && typeof this.ui.onunload === 'function') {
             this.ui.onunload();
@@ -710,132 +766,29 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     private startScheduleLoop() {
-        this.checkScheduledPosts();
-        if (this.scheduleCheckId) clearInterval(this.scheduleCheckId);
-        this.scheduleCheckId = window.setInterval(() => this.checkScheduledPosts(), 60000);
+        this.scheduler.startScheduleLoop(() => this.checkScheduledPosts());
     }
 
     private async checkScheduledPosts() {
-        if (!this.store?.settings?.scheduledPosts) return;
-        const now = Date.now();
-        let changed = false;
-        for (const s of [...this.store.settings.scheduledPosts]) {
-            if (s.nextTime <= now) {
-                let postText = s.text;
-                // --- 追加: aiPromptの変数展開 ---
-                let aiPrompt = s.aiPrompt;
-                if (aiPrompt) {
-                    // 投稿一覧取得用の関数（{postDate}形式で日付を付与）
-                    const getPostsText = (filterFn: (p: TweetWidgetPost) => boolean) => {
-                        return this.store.settings.posts
-                            .filter(filterFn)
-                            .map(p => {
-                                const date = new Date(p.created);
-                                const dateStr = `${date.getFullYear()}年${date.getMonth()+1}月${date.getDate()}日 ${date.getHours()}時${pad2(date.getMinutes())}分`;
-                                function getTimeZoneLabel(date: Date): string {
-                                    const hour = date.getHours();
-                                    if (hour >= 0 && hour < 3) return "未明";
-                                    if (hour >= 3 && hour < 6) return "明け方";
-                                    if (hour >= 6 && hour < 9) return "朝";
-                                    if (hour >= 9 && hour < 12) return "昼前";
-                                    if (hour >= 12 && hour < 15) return "昼過ぎ";
-                                    if (hour >= 15 && hour < 18) return "夕方";
-                                    if (hour >= 18 && hour < 21) return "夜のはじめ頃";
-                                    if (hour >= 21 && hour < 24) return "夜遅く";
-                                    return "";
-                                }
-                                const timeZoneLabel = getTimeZoneLabel(date);
-                                const dateWithZone = `${dateStr}（この時間帯は「${timeZoneLabel}」です）`;
-                                return `[${dateWithZone}] ${p.text}`;
-                            })
-                            .join('\n');
-                    };
-                    // 今日の投稿一覧
-                    if (aiPrompt.includes('{{today}}')) {
-                        const todayStr = getDateKeyLocal(new Date());
-                        const todayPostsText = getPostsText(p => !p.deleted && getDateKeyLocal(new Date(p.created)) === todayStr);
-                        aiPrompt = aiPrompt.replace(/\{\{today\}\}/g, todayPostsText);
-                    }
-                    // 今週の投稿一覧
-                    if (aiPrompt.includes('{{week}}')) {
-                        const [weekStart, weekEnd] = getWeekRange(this.plugin.settings.weekStartDay);
-                        const weekStartStr = weekStart.replace(/-/g, '-');
-                        const weekEndStr = weekEnd.replace(/-/g, '-');
-                        const weekPostsText = getPostsText(p => {
-                            if (p.deleted) return false;
-                            const dateStr = getDateKeyLocal(new Date(p.created));
-                            return dateStr >= weekStartStr && dateStr <= weekEndStr;
-                        });
-                        aiPrompt = aiPrompt.replace(/\{\{week\}\}/g, weekPostsText);
-                    }
-                }
-                // AIプロンプトが指定されていて{{ai}}が含まれている場合はAIで生成
-                if (aiPrompt && s.text.includes('{{ai}}')) {
-                    try {
-                        const aiResult = await GeminiProvider.generateReply(aiPrompt, {
-                            plugin: this.plugin,
-                            apiKey: deobfuscate(this.plugin.settings.llm?.gemini?.apiKey || ''),
-                            model: s.aiModel || this.plugin.settings.tweetAiModel || this.plugin.settings.llm?.gemini?.model || 'gemini-1.5-flash-latest',
-                        });
-                        let aiText = aiResult;
-                        try {
-                            const parsed = JSON.parse(aiResult);
-                            if (parsed && typeof parsed.reply === 'string') aiText = parsed.reply;
-                        } catch { /* ignore parse errors */ }
-                        // デバッグモードでも通常と同じく{{ai}}に埋め込む
-                        postText = s.text.replace('{{ai}}', aiText);
-                        if (this.plugin.settings.debugLogging) {
-                            debugLog(this.plugin, '[予約投稿AIデバッグ] AI生成結果:', aiText);
-                        }
-                    } catch (e) {
-                        postText = s.text.replace('{{ai}}', '[AI生成失敗]');
-                        console.error('[予約投稿AIエラー]', e);
-                    }
-                }
-                const post = this.createNewPostObject(postText);
-                if (s.userId) {
-                    post.userId = s.userId;
-                    // グローバル設定からuserNameとavatarUrlも反映
-                    const profile = this.plugin.settings.userProfiles?.find(p => p.userId === s.userId);
-                    if (profile) {
-                        post.userName = profile.userName;
-                        post.avatarUrl = profile.avatarUrl;
-                    }
-                }
+        const executed = await this.scheduler.checkScheduledPosts(
+            this.store.settings,
+            this.plugin.settings.language || 'ja',
+            (post: TweetWidgetPost) => {
                 this.store.addPost(post);
-                this.plugin.updateTweetPostCount(post.created, 1);
-                const next = computeNextTime(s, new Date(now + 60000));
-                if (next) {
-                    s.nextTime = next;
-                } else {
-                    this.store.settings.scheduledPosts = this.store.settings.scheduledPosts!.filter(p => p.id !== s.id);
-                }
-                changed = true;
-            }
-        }
-        if (changed) {
-            this.saveDataDebounced();
+                this.recalculateQuoteCounts();
+            },
+            (timestamp: number, count: number) => this.plugin.updateTweetPostCount(timestamp, count),
+            (post: TweetWidgetPost) => this.triggerAiReply(post),
+            this.plugin
+        );
+
+        if (executed) {
             this.ui.render();
         }
     }
 
     public schedulePost(text: string, opts: ScheduleOptions & {userId?: string; userName?: string}) {
-        const next = computeNextTime(opts);
-        if (next === null) return;
-        const sched: ScheduledTweet = {
-            id: 'sch-' + Date.now() + '-' + Math.random().toString(36).slice(2,8),
-            text,
-            hour: opts.hour,
-            minute: opts.minute,
-            daysOfWeek: opts.daysOfWeek,
-            startDate: opts.startDate,
-            endDate: opts.endDate,
-            nextTime: next,
-            userId: opts.userId,
-            userName: opts.userName,
-        };
-        if (!this.store.settings.scheduledPosts) this.store.settings.scheduledPosts = [];
-        this.store.settings.scheduledPosts.push(sched);
-        this.saveDataDebounced();
+        this.scheduler.schedulePost(text, opts, this.store.settings);
+        // saveDataDebouncedはObserverで自動実行
     }
 }

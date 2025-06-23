@@ -1,10 +1,9 @@
 import { App, Notice } from 'obsidian';
 import type { TweetWidgetSettings } from '../types';
-import type { BackupFileInfo } from './types';
-import { BackupManager } from './BackupManager';
+import type { BackupFileInfo, BackupIndex } from './types';
 import { TweetVersionControl } from '../versionControl/TweetVersionControl';
-import type { HistoryEntry } from '../versionControl/types';
-import { DEFAULT_TWEET_WIDGET_SETTINGS } from '../constants';
+import { BackupUtils } from './BackupUtils';
+import { DEFAULT_BACKUP_CONFIG } from './types';
 
 /**
  * 緊急復元ソース
@@ -46,15 +45,59 @@ export class EmergencyRecoveryManager {
     private app: App;
     private basePath: string;
     private dbPath: string;
-    private backupManager: BackupManager;
+    private backupPath: string;
     private versionControl: TweetVersionControl;
 
     constructor(app: App, dbPath: string) {
         this.app = app;
         this.dbPath = dbPath;
         this.basePath = dbPath.replace('/tweets.json', '');
-        this.backupManager = new BackupManager(app, this.basePath);
+        this.backupPath = `${this.basePath}/backups`;
         this.versionControl = new TweetVersionControl(app, dbPath);
+    }
+
+    /**
+     * バックアップインデックスを読み込む
+     */
+    private async loadBackupIndex(): Promise<BackupIndex> {
+        const indexPath = `${this.backupPath}/index.json`;
+        try {
+            const exists = await this.app.vault.adapter.exists(indexPath);
+            if (!exists) {
+                return {
+                    version: "1.0.0",
+                    lastUpdated: 0,
+                    config: DEFAULT_BACKUP_CONFIG,
+                    backups: {
+                        generations: [],
+                        incremental: []
+                    },
+                    statistics: {
+                        totalBackups: 0,
+                        totalSize: 0,
+                        corruptedBackups: []
+                    }
+                };
+            }
+            const jsonData = await this.app.vault.adapter.read(indexPath);
+            return JSON.parse(jsonData) as BackupIndex;
+        } catch (error) {
+            console.error('バックアップインデックス読み込みエラー:', error);
+            return {
+                version: "1.0.0",
+                lastUpdated: 0,
+                config: DEFAULT_BACKUP_CONFIG,
+                backups: {
+                    generations: [],
+                    incremental: []
+                },
+                statistics: {
+                    totalBackups: 0,
+                    totalSize: 0,
+                    corruptedBackups: []
+                }
+            };
+        }
     }
 
     /**
@@ -64,15 +107,18 @@ export class EmergencyRecoveryManager {
         console.log('[EmergencyRecoveryManager] 復元ソース検索開始');
         const sources: RecoverySource[] = [];
 
+        // バックアップインデックスを読み込む
+        const index = await this.loadBackupIndex();
+
         // 世代バックアップを検索
         console.log('[EmergencyRecoveryManager] 世代バックアップ検索開始');
-        const generationSources = await this.findGenerationBackupSources();
+        const generationSources = await this.findGenerationBackupSources(index);
         console.log(`[EmergencyRecoveryManager] 世代バックアップ: ${generationSources.length}件`);
         sources.push(...generationSources);
 
         // 差分バックアップを検索
         console.log('[EmergencyRecoveryManager] 差分バックアップ検索開始');
-        const incrementalSources = await this.findIncrementalBackupSources();
+        const incrementalSources = await this.findIncrementalBackupSources(index);
         console.log(`[EmergencyRecoveryManager] 差分バックアップ: ${incrementalSources.length}件`);
         sources.push(...incrementalSources);
 
@@ -102,6 +148,113 @@ export class EmergencyRecoveryManager {
         });
 
         return sources;
+    }
+
+    /**
+     * 世代バックアップソースを検索
+     */
+    private async findGenerationBackupSources(index: BackupIndex): Promise<RecoverySource[]> {
+        const sources: RecoverySource[] = [];
+        
+        for (const backup of index.backups.generations) {
+            if (await this.isBackupValid(backup)) {
+                sources.push({
+                    id: backup.id,
+                    type: 'generation',
+                    name: `世代バックアップ (${backup.type})`,
+                    timestamp: backup.timestamp,
+                    description: backup.description || `${backup.type}バックアップ`,
+                    confidence: 'high'
+                });
+            }
+        }
+
+        return sources;
+    }
+
+    /**
+     * 差分バックアップソースを検索
+     */
+    private async findIncrementalBackupSources(index: BackupIndex): Promise<RecoverySource[]> {
+        const sources: RecoverySource[] = [];
+        
+        for (const backup of index.backups.incremental) {
+            if (await this.isBackupValid(backup)) {
+                sources.push({
+                    id: backup.id,
+                    type: 'incremental',
+                    name: '差分バックアップ',
+                    timestamp: backup.timestamp,
+                    description: backup.description || '差分バックアップ',
+                    confidence: 'medium'
+                });
+            }
+        }
+
+        return sources;
+    }
+
+    /**
+     * バックアップファイルの有効性を確認
+     */
+    private async isBackupValid(backup: BackupFileInfo): Promise<boolean> {
+        try {
+            const exists = await this.app.vault.adapter.exists(backup.filePath);
+            if (!exists) return false;
+
+            const content = await this.app.vault.adapter.read(backup.filePath);
+            const checksum = BackupUtils.calculateChecksum(content);
+            return checksum === backup.checksum;
+        } catch (error) {
+            console.error('バックアップ検証エラー:', error);
+            return false;
+        }
+    }
+
+    /**
+     * バージョン管理ソースを検索
+     */
+    private async findVersionControlSources(): Promise<RecoverySource[]> {
+        try {
+            const history = await this.versionControl.getHistory();
+            if (!history || history.length === 0) return [];
+
+            return history.map(entry => ({
+                id: entry.commit.id,
+                type: 'version-control' as const,
+                name: 'バージョン管理',
+                timestamp: entry.commit.timestamp,
+                description: `バージョン管理 - ${entry.commit.message || '変更なし'}`,
+                confidence: 'medium'
+            }));
+
+        } catch (error) {
+            console.warn('バージョン管理検索エラー:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 破損バックアップを検索
+     */
+    private async findCorruptedBackupSources(): Promise<RecoverySource[]> {
+        try {
+            const index = await this.loadBackupIndex();
+            const corruptedBackups = index.statistics.corruptedBackups || [];
+            
+            return corruptedBackups.map(backupId => ({
+                id: backupId,
+                type: 'corrupted-backup' as const,
+                name: '破損バックアップ',
+                timestamp: Date.now(), // 破損バックアップの場合、正確なタイムスタンプは不明
+                description: `破損バックアップ - ${backupId}`,
+                confidence: 'low'
+            }));
+
+        } catch (error) {
+            console.warn('破損バックアップ検索エラー:', error);
+            return [];
+        }
     }
 
     /**
@@ -194,181 +347,39 @@ export class EmergencyRecoveryManager {
     }
 
     /**
-     * 世代バックアップソースを検索
-     */
-    private async findGenerationBackupSources(): Promise<RecoverySource[]> {
-        try {
-            console.log('[EmergencyRecoveryManager] BackupManager.getAvailableBackups()呼び出し');
-            const backups = await this.backupManager.getAvailableBackups();
-            console.log(`[EmergencyRecoveryManager] 取得したバックアップ: 世代=${backups.generations.length}件, 差分=${backups.incremental.length}件`);
-            
-            if (backups.generations.length > 0) {
-                console.log('[EmergencyRecoveryManager] 世代バックアップ詳細:');
-                backups.generations.forEach((backup, index) => {
-                    console.log(`[EmergencyRecoveryManager] - ${index + 1}: ID=${backup.id}, 期間=${backup.generation?.period}, 時刻=${new Date(backup.timestamp).toLocaleString()}`);
-                });
-            }
-            
-            return backups.generations.map(backup => ({
-                id: backup.id,
-                type: 'generation' as const,
-                name: `世代バックアップ (${backup.generation?.period})`,
-                timestamp: backup.timestamp,
-                description: `${backup.generation?.period}バックアップ - ${new Date(backup.timestamp).toLocaleString()}`,
-                confidence: 'high' as const,
-                dataPreview: {
-                    postCount: 0, // 世代バックアップでは投稿数は不明
-                    lastModified: backup.timestamp,
-                    hasScheduled: false // 世代バックアップではスケジュール情報は不明
-                }
-            }));
-
-        } catch (error) {
-            console.error('[EmergencyRecoveryManager] 世代バックアップ検索エラー:', error);
-            return [];
-        }
-    }
-
-    /**
-     * 差分バックアップソースを検索
-     */
-    private async findIncrementalBackupSources(): Promise<RecoverySource[]> {
-        try {
-            const backups = await this.backupManager.getAvailableBackups();
-            
-            return backups.incremental.map(backup => ({
-                id: backup.id,
-                type: 'incremental' as const,
-                name: `差分バックアップ`,
-                timestamp: backup.timestamp,
-                description: `差分バックアップ - ${backup.incremental?.changedPostsCount || 0}件の変更`,
-                confidence: 'medium' as const,
-                dataPreview: {
-                    postCount: backup.incremental?.changedPostsCount || 0,
-                    lastModified: backup.timestamp,
-                    hasScheduled: false
-                }
-            }));
-
-        } catch (error) {
-            console.warn('差分バックアップ検索エラー:', error);
-            return [];
-        }
-    }
-
-    /**
-     * バージョン管理ソースを検索
-     */
-    private async findVersionControlSources(): Promise<RecoverySource[]> {
-        try {
-            const history = await this.versionControl.getHistory(10);
-            
-            return history.map(entry => ({
-                id: entry.commit.id,
-                type: 'version-control' as const,
-                name: `コミット ${entry.commit.id.substring(0, 8)}`,
-                timestamp: entry.commit.timestamp,
-                description: `${entry.displayMessage} - ${entry.summary}`,
-                confidence: 'high' as const,
-                dataPreview: {
-                    postCount: entry.commit.settingsSnapshot?.posts?.length || 0,
-                    lastModified: entry.commit.timestamp,
-                    hasScheduled: (entry.commit.settingsSnapshot?.scheduledPosts?.length || 0) > 0
-                }
-            }));
-
-        } catch (error) {
-            console.warn('バージョン管理検索エラー:', error);
-            return [];
-        }
-    }
-
-    /**
-     * 破損バックアップソースを検索
-     */
-    private async findCorruptedBackupSources(): Promise<RecoverySource[]> {
-        try {
-            const sources: RecoverySource[] = [];
-            
-            // .bak_ ファイルを検索
-            const files = await this.findBackupFiles();
-            
-            for (const file of files) {
-                if (file.path.includes('.bak_')) {
-                    sources.push({
-                        id: file.path,
-                        type: 'corrupted-backup',
-                        name: `破損バックアップ ${file.path.split('.bak_')[1]?.substring(0, 8)}`,
-                        timestamp: file.stat?.mtime || 0,
-                        description: `破損データのバックアップファイル`,
-                        confidence: 'low'
-                    });
-                }
-            }
-
-            return sources;
-
-        } catch (error) {
-            console.warn('破損バックアップ検索エラー:', error);
-            return [];
-        }
-    }
-
-    /**
-     * バックアップファイルを検索
-     */
-    private async findBackupFiles(): Promise<Array<{ path: string; stat?: any }>> {
-        try {
-            const baseFolderPath = this.basePath;
-            const files: Array<{ path: string; stat?: any }> = [];
-
-            // ベースフォルダ内のファイルを検索
-            try {
-                const folderFiles = await this.app.vault.adapter.list(baseFolderPath);
-                for (const file of folderFiles.files) {
-                    if (file.includes('tweets') && (file.includes('.bak') || file.includes('.json'))) {
-                        const stat = await this.app.vault.adapter.stat(file);
-                        files.push({ path: file, stat });
-                    }
-                }
-            } catch (error) {
-                // フォルダが存在しない場合は無視
-            }
-
-            return files;
-
-        } catch (error) {
-            console.warn('ファイル検索エラー:', error);
-            return [];
-        }
-    }
-
-    /**
      * 世代バックアップから復元
      */
     private async recoverFromGenerationBackup(backupId: string): Promise<TweetWidgetSettings | null> {
-        const result = await this.backupManager.restoreFromBackup({
-            backupId: backupId,
-            type: 'full',
-            createCurrentBackup: false,
-            verifyIntegrity: true
-        });
+        try {
+            const index = await this.loadBackupIndex();
+            const backup = index.backups.generations.find(b => b.id === backupId);
+            if (!backup) throw new Error('バックアップが見つかりません');
 
-        return result.success ? result.restoredData || null : null;
+            const content = await this.app.vault.adapter.read(backup.filePath);
+            return JSON.parse(content) as TweetWidgetSettings;
+
+        } catch (error) {
+            console.error('世代バックアップ復元エラー:', error);
+            return null;
+        }
     }
 
     /**
      * 差分バックアップから復元
      */
     private async recoverFromIncrementalBackup(backupId: string): Promise<TweetWidgetSettings | null> {
-        const result = await this.backupManager.restoreFromBackup({
-            backupId: backupId,
-            type: 'incremental',
-            createCurrentBackup: false,
-            verifyIntegrity: true
-        });
+        try {
+            const index = await this.loadBackupIndex();
+            const backup = index.backups.incremental.find(b => b.id === backupId);
+            if (!backup) throw new Error('バックアップが見つかりません');
 
-        return result.success ? result.restoredData || null : null;
+            const content = await this.app.vault.adapter.read(backup.filePath);
+            return JSON.parse(content) as TweetWidgetSettings;
+
+        } catch (error) {
+            console.error('差分バックアップ復元エラー:', error);
+            return null;
+        }
     }
 
     /**
@@ -376,15 +387,12 @@ export class EmergencyRecoveryManager {
      */
     private async recoverFromVersionControl(commitId: string): Promise<TweetWidgetSettings | null> {
         try {
-            const restoredPosts = await this.versionControl.restore({
-                commitId: commitId,
-                createBackup: false
-            });
-
-            return {
-                ...DEFAULT_TWEET_WIDGET_SETTINGS,
-                posts: restoredPosts
-            };
+            const history = await this.versionControl.getHistory();
+            const targetCommit = history.find(entry => entry.commit.id === commitId);
+            if (!targetCommit || !targetCommit.commit.settingsSnapshot) {
+                throw new Error('コミットが見つからないか、スナップショットがありません');
+            }
+            return targetCommit.commit.settingsSnapshot as TweetWidgetSettings;
 
         } catch (error) {
             console.error('バージョン管理復元エラー:', error);
@@ -398,17 +406,14 @@ export class EmergencyRecoveryManager {
     private async recoverFromCorruptedBackup(filePath: string): Promise<TweetWidgetSettings | null> {
         try {
             const content = await this.app.vault.adapter.read(filePath);
-            const data = JSON.parse(content);
-            
-            // データの基本的な検証
-            if (data && typeof data === 'object') {
-                return {
-                    ...DEFAULT_TWEET_WIDGET_SETTINGS,
-                    ...data
-                };
+            const data = JSON.parse(content) as TweetWidgetSettings;
+
+            // 最低限の検証
+            if (!data || !data.posts) {
+                throw new Error('無効なデータ形式');
             }
 
-            return null;
+            return data;
 
         } catch (error) {
             console.error('破損バックアップ復元エラー:', error);
@@ -417,28 +422,33 @@ export class EmergencyRecoveryManager {
     }
 
     /**
-     * 復元されたデータをメインファイルに保存
+     * 復元したデータを保存
      */
     private async saveRecoveredData(data: TweetWidgetSettings): Promise<void> {
-        // フォルダを確保
-        const folder = this.basePath;
-        const exists = await this.app.vault.adapter.exists(folder);
-        if (!exists) {
-            await this.app.vault.adapter.mkdir(folder);
+        try {
+            await this.app.vault.adapter.write(this.dbPath, JSON.stringify(data, null, 2));
+            new Notice('データを復元しました');
+        } catch (error) {
+            console.error('データ保存エラー:', error);
+            throw error;
         }
-
-        // データを保存
-        const jsonData = JSON.stringify(data, null, 2);
-        await this.app.vault.adapter.write(this.dbPath, jsonData);
-
-        console.log(`緊急復元完了: ${this.dbPath}`);
     }
 
     /**
-     * 緊急復元が必要かチェック
+     * 緊急復元が必要かどうかを判定
      */
     async needsEmergencyRecovery(): Promise<boolean> {
-        const exists = await this.app.vault.adapter.exists(this.dbPath);
-        return !exists;
+        try {
+            const exists = await this.app.vault.adapter.exists(this.dbPath);
+            if (!exists) return true;
+
+            const content = await this.app.vault.adapter.read(this.dbPath);
+            const data = JSON.parse(content) as TweetWidgetSettings;
+            return !data || !data.posts;
+
+        } catch (error) {
+            console.error('ファイル検証エラー:', error);
+            return true;
+        }
     }
 } 
