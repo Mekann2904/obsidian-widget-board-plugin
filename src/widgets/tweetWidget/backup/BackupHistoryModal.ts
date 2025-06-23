@@ -612,15 +612,13 @@ export class BackupHistoryModal extends BaseModal {
 
     private async showBackupVisualization(): Promise<void> {
         try {
-            // TODO: BackupChainVisualizationの実装が完了したらコメントアウトを外す
-            // const visualization = new BackupChainVisualization(
-            //     this.widget,
-            //     this.backupManager,
-            //     this.language
-            // );
-            // visualization.open();
-            console.log('バックアップ可視化機能は開発中です');
-            alert('バックアップ可視化機能は現在開発中です');
+            const { BackupChainVisualization } = await import('./BackupChainVisualization.js');
+            const visualization = new BackupChainVisualization(
+                this.widget,
+                this.backupManager,
+                this.language
+            );
+            visualization.open();
         } catch (error) {
             console.error('可視化エラー:', error);
             alert('バックアップ可視化の表示に失敗しました');
