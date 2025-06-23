@@ -3,381 +3,603 @@ import type { TweetWidgetSettings } from '../types';
 import { EmergencyRecoveryManager } from './EmergencyRecoveryManager';
 import type { RecoverySource, RecoveryResult } from './EmergencyRecoveryManager';
 import { t } from '../../../i18n';
-import type { Language } from '../../../i18n';
+import type { Language } from '../../../i18n/types';
+import type { BackupFileInfo } from './types';
+import { BackupManager } from './BackupManager';
+import { BaseModal } from './BaseModal';
+import { TweetWidget } from '../tweetWidget';
 
 /**
- * 緊急復元モーダル
- * tweets.jsonが削除された場合の復元オプションを表示
+ * 緊急復旧モーダル
+ * データ破損時の緊急復旧機能を提供
  */
-export class EmergencyRecoveryModal extends Modal {
-    private recoveryManager: EmergencyRecoveryManager;
-    private onRecover: (data: TweetWidgetSettings) => void;
-    private sources: RecoverySource[] = [];
-    private loading = false;
-    private lang: Language;
+export class EmergencyRecoveryModal extends BaseModal {
+    private backupManager: BackupManager;
+    private onRestore: (data: TweetWidgetSettings) => void;
+    private language: Language;
+    private recoveryOptions: RecoveryOption[] = [];
+    private selectedOption: RecoveryOption | null = null;
 
     constructor(
-        app: App, 
-        recoveryManager: EmergencyRecoveryManager, 
-        onRecover: (data: TweetWidgetSettings) => void,
-        lang: Language = 'ja'
+        widget: TweetWidget,
+        backupManager: BackupManager,
+        language: Language,
+        onRestore: (data: TweetWidgetSettings) => void
     ) {
-        super(app);
-        this.recoveryManager = recoveryManager;
-        this.onRecover = onRecover;
-        this.lang = lang;
+        super(widget);
+        this.backupManager = backupManager;
+        this.language = language;
+        this.onRestore = onRestore;
+        
+        // 大きなモーダルサイズを設定
+        this.setSize('900px', '600px');
     }
 
-    async onOpen() {
-        const { contentEl } = this;
-        contentEl.empty();
-        contentEl.addClass('emergency-recovery-modal');
-
-        // ヘッダー
-        const headerEl = contentEl.createDiv({ cls: 'recovery-modal-header' });
-        const titleEl = headerEl.createEl('h2', { text: t(this.lang, 'emergencyRestoreTitle') });
-        titleEl.addClass('recovery-title');
-
-        const descEl = headerEl.createEl('p', { 
-            text: 'データファイル (tweets.json) が見つかりません。利用可能なバックアップから復元できます。',
-            cls: 'recovery-description'
-        });
-
-        // ローディング表示
-        const loadingEl = contentEl.createEl('div', { 
-            text: '復元可能なソースを検索中...', 
-            cls: 'recovery-loading' 
-        });
-
-        try {
-            // 復元ソースを検索
-            this.sources = await this.recoveryManager.detectAndFindRecoverySources();
-            loadingEl.remove();
-
-            if (this.sources.length === 0) {
-                this.renderNoSourcesFound(contentEl);
-            } else {
-                this.renderRecoverySources(contentEl);
-            }
-
-        } catch (error) {
-            loadingEl.setText('復元ソースの検索に失敗しました');
-            console.error('復元ソース検索エラー:', error);
-            
-            const errorEl = contentEl.createEl('p', { 
-                text: `エラー: ${error instanceof Error ? error.message : String(error)}`,
-                cls: 'recovery-error'
-            });
-        }
-    }
-
-    /**
-     * 復元ソースが見つからない場合の表示
-     */
-    private renderNoSourcesFound(container: HTMLElement): void {
-        const noSourcesEl = container.createDiv({ cls: 'no-sources-container' });
-        
-        const iconEl = noSourcesEl.createEl('div', { cls: 'no-sources-icon' });
-        iconEl.innerHTML = '📁';
-        
-        noSourcesEl.createEl('h3', { text: '復元可能なソースが見つかりません' });
-        
-        const msgEl = noSourcesEl.createEl('p', { cls: 'no-sources-message' });
-        msgEl.innerHTML = `
-            以下の場所を確認してください：<br>
-            • バックアップディレクトリ: <code>backups/</code><br>
-            • バージョン管理: <code>.wb-git/</code><br>
-            • 破損バックアップ: <code>*.bak_*</code>
+    protected async onOpen() {
+        this.contentEl.className = 'emergency-recovery-modal-content';
+        this.contentEl.style.cssText = `
+            padding: 24px;
+            min-height: 500px;
+            display: flex;
+            flex-direction: column;
         `;
 
-        // 新規作成ボタン
-        const buttonContainer = noSourcesEl.createDiv({ cls: 'button-container' });
+        // ヘッダー
+        this.renderHeader();
         
-        new ButtonComponent(buttonContainer)
-            .setButtonText('新規データファイルを作成')
-            .setClass('mod-cta')
-            .onClick(() => {
-                this.createNewDataFile();
-            });
+        // ローディング表示
+        this.showLoading();
 
-        new ButtonComponent(buttonContainer)
-            .setButtonText('キャンセル')
-            .onClick(() => this.close());
-    }
-
-    /**
-     * 復元ソース一覧を表示
-     */
-    private renderRecoverySources(container: HTMLElement): void {
-        const sourcesContainer = container.createDiv({ cls: 'recovery-sources-container' });
-        
-        // 統計情報
-        const statsEl = sourcesContainer.createEl('div', { cls: 'recovery-stats' });
-        statsEl.createEl('p', { 
-            text: `${this.sources.length}個の復元ソースが見つかりました`,
-            cls: 'stats-text'
-        });
-
-        // 自動復元ボタン
-        const autoRecoverContainer = sourcesContainer.createDiv({ cls: 'auto-recover-container' });
-        autoRecoverContainer.createEl('h3', { text: '推奨: 自動復元' });
-        autoRecoverContainer.createEl('p', { 
-            text: '最も信頼度の高いソースから自動的に復元します',
-            cls: 'auto-recover-description'
-        });
-
-        const autoButtonContainer = autoRecoverContainer.createDiv({ cls: 'button-container' });
-        
-        new ButtonComponent(autoButtonContainer)
-            .setButtonText('🔄 自動復元を実行')
-            .setClass('mod-cta')
-            .onClick(() => {
-                this.performAutoRecovery();
-            });
-
-        // 手動選択セクション
-        const manualSection = sourcesContainer.createDiv({ cls: 'manual-recovery-section' });
-        manualSection.createEl('h3', { text: '手動選択' });
-        
-        // ソース一覧
-        const sourcesList = manualSection.createDiv({ cls: 'sources-list' });
-        
-        this.sources.forEach((source, index) => {
-            this.renderRecoverySource(sourcesList, source, index === 0);
-        });
-
-        // キャンセルボタン
-        const cancelContainer = sourcesContainer.createDiv({ cls: 'cancel-container' });
-        new ButtonComponent(cancelContainer)
-            .setButtonText('キャンセル')
-            .onClick(() => this.close());
-    }
-
-    /**
-     * 個別の復元ソースを表示
-     */
-    private renderRecoverySource(container: HTMLElement, source: RecoverySource, isRecommended: boolean): void {
-        const sourceEl = container.createDiv({ cls: 'recovery-source-item' });
-        
-        if (isRecommended) {
-            sourceEl.addClass('recommended');
-            sourceEl.createEl('span', { text: '推奨', cls: 'recommended-badge' });
-        }
-
-        // 信頼度アイコン
-        const confidenceIcon = this.getConfidenceIcon(source.confidence);
-        const headerEl = sourceEl.createDiv({ cls: 'source-header' });
-        headerEl.createEl('span', { text: confidenceIcon, cls: 'confidence-icon' });
-        headerEl.createEl('h4', { text: source.name, cls: 'source-name' });
-
-        // 詳細情報
-        const detailsEl = sourceEl.createDiv({ cls: 'source-details' });
-        detailsEl.createEl('p', { text: source.description });
-        
-        const timestampEl = detailsEl.createEl('p', { cls: 'source-timestamp' });
-        timestampEl.innerHTML = `<strong>作成日時:</strong> ${new Date(source.timestamp).toLocaleString()}`;
-
-        if (source.dataPreview) {
-            const previewEl = detailsEl.createEl('p', { cls: 'source-preview' });
-            previewEl.innerHTML = `
-                <strong>プレビュー:</strong> 
-                ${source.dataPreview.postCount}件の投稿
-                ${source.dataPreview.hasScheduled ? ', スケジュール投稿あり' : ''}
-            `;
-        }
-
-        // 復元ボタン
-        const actionEl = sourceEl.createDiv({ cls: 'source-action' });
-        
-        new ButtonComponent(actionEl)
-            .setButtonText('この ソースから復元')
-            .setClass(isRecommended ? 'mod-cta' : '')
-            .onClick(() => {
-                this.recoverFromSource(source);
-            });
-    }
-
-    /**
-     * 信頼度アイコンを取得
-     */
-    private getConfidenceIcon(confidence: 'high' | 'medium' | 'low'): string {
-        switch (confidence) {
-            case 'high': return '🟢';
-            case 'medium': return '🟡';
-            case 'low': return '🔴';
-            default: return '⚪';
-        }
-    }
-
-    /**
-     * 自動復元を実行
-     */
-    private async performAutoRecovery(): Promise<void> {
-        if (this.loading) return;
-        
-        this.loading = true;
-        const originalContent = this.contentEl.innerHTML;
-        
         try {
-            // ローディング表示
-            this.contentEl.empty();
-            this.contentEl.addClass('recovery-loading-state');
-            
-            const loadingContainer = this.contentEl.createDiv({ cls: 'loading-container' });
-            loadingContainer.createEl('h2', { text: '🔄 復元中...' });
-            loadingContainer.createEl('p', { text: '自動復元を実行しています。しばらくお待ちください。' });
-
-            const result = await this.recoveryManager.performAutoRecovery();
-            
-            if (result && result.success && result.recoveredData) {
-                this.showRecoverySuccess(result);
-                
-                // 復元データをコールバックに渡す
-                setTimeout(() => {
-                    this.onRecover(result.recoveredData!);
-                    this.close();
-                }, 2000);
-                
-            } else {
-                this.showRecoveryError('自動復元に失敗しました', result?.error);
-            }
+            // 復旧オプションを分析
+            await this.analyzeRecoveryOptions();
+            this.renderRecoveryOptions();
             
         } catch (error) {
-            console.error('自動復元エラー:', error);
-            this.showRecoveryError('自動復元中にエラーが発生しました', error instanceof Error ? error.message : String(error));
-        } finally {
-            this.loading = false;
+            console.error('緊急復旧分析エラー:', error);
+            this.showError(`復旧オプションの分析に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
-    /**
-     * 指定されたソースから復元
-     */
-    private async recoverFromSource(source: RecoverySource): Promise<void> {
-        if (this.loading) return;
-        
-        this.loading = true;
-        
-        try {
-            // 確認ダイアログ
-            const confirmed = confirm(
-                `「${source.name}」から復元しますか？\n` +
-                `${source.description}\n\n` +
-                `この操作により、新しいデータファイルが作成されます。`
-            );
-
-            if (!confirmed) {
-                this.loading = false;
-                return;
-            }
-
-            // ローディング表示
-            this.contentEl.empty();
-            this.contentEl.addClass('recovery-loading-state');
-            
-            const loadingContainer = this.contentEl.createDiv({ cls: 'loading-container' });
-            loadingContainer.createEl('h2', { text: '🔄 復元中...' });
-            loadingContainer.createEl('p', { text: `「${source.name}」から復元しています...` });
-
-            const result = await this.recoveryManager.recoverFromSource(source);
-            
-            if (result.success && result.recoveredData) {
-                this.showRecoverySuccess(result);
-                
-                // 復元データをコールバックに渡す
-                setTimeout(() => {
-                    this.onRecover(result.recoveredData!);
-                    this.close();
-                }, 2000);
-                
-            } else {
-                this.showRecoveryError('復元に失敗しました', result.error);
-            }
-            
-        } catch (error) {
-            console.error('復元エラー:', error);
-            this.showRecoveryError('復元中にエラーが発生しました', error instanceof Error ? error.message : String(error));
-        } finally {
-            this.loading = false;
-        }
+    protected onClose() {
+        // クリーンアップ処理
     }
 
-    /**
-     * 復元成功を表示
-     */
-    private showRecoverySuccess(result: RecoveryResult): void {
-        this.contentEl.empty();
-        this.contentEl.addClass('recovery-success-state');
-        
-        const successContainer = this.contentEl.createDiv({ cls: 'success-container' });
-        successContainer.createEl('h2', { text: '✅ 復元完了' });
-        
-        const statsEl = successContainer.createDiv({ cls: 'recovery-success-stats' });
-        statsEl.createEl('p', { text: `復元ソース: ${result.source.name}` });
-        statsEl.createEl('p', { text: `復元された投稿: ${result.stats.recoveredPosts}件` });
-        statsEl.createEl('p', { text: `スケジュール投稿: ${result.stats.recoveredScheduled}件` });
-        statsEl.createEl('p', { text: `処理時間: ${result.stats.processingTime}ms` });
-        
-        successContainer.createEl('p', { 
-            text: 'データファイルが正常に復元されました。2秒後に自動で閉じます。',
-            cls: 'success-message'
+    private renderHeader(): void {
+        const header = this.createElement({
+            tagName: 'div',
+            className: 'emergency-recovery-header'
         });
+
+        header.style.cssText = `
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--background-modifier-border);
+            padding-bottom: 16px;
+        `;
+
+        const title = this.createElement({
+            tagName: 'h2',
+            textContent: '🚨 緊急復旧',
+            className: 'emergency-recovery-title'
+        });
+
+        title.style.cssText = `
+            margin: 0 0 8px 0;
+            color: var(--text-error);
+        `;
+
+        const description = this.createElement({
+            tagName: 'p',
+            textContent: 'データに問題が検出されました。以下から復旧方法を選択してください。',
+            className: 'emergency-description'
+        });
+
+        description.style.cssText = `
+            margin: 0;
+            color: var(--text-muted);
+            line-height: 1.4;
+        `;
+
+        header.appendChild(title);
+        header.appendChild(description);
+        this.contentEl.appendChild(header);
     }
 
-    /**
-     * 復元エラーを表示
-     */
-    private showRecoveryError(title: string, error?: string): void {
-        this.contentEl.empty();
-        this.contentEl.addClass('recovery-error-state');
-        
-        const errorContainer = this.contentEl.createDiv({ cls: 'error-container' });
-        errorContainer.createEl('h2', { text: `❌ ${title}` });
-        
-        if (error) {
-            errorContainer.createEl('p', { 
-                text: `エラー詳細: ${error}`,
-                cls: 'error-details'
-            });
+    private showLoading(): void {
+        const loadingEl = this.createElement({
+            tagName: 'div',
+            className: 'emergency-recovery-loading',
+            textContent: '復旧オプションを分析中...'
+        });
+
+        loadingEl.style.cssText = `
+            text-align: center;
+            padding: 48px;
+            color: var(--text-muted);
+            font-style: italic;
+        `;
+
+        this.contentEl.appendChild(loadingEl);
+    }
+
+    private showError(message: string): void {
+        // ローディング要素を削除
+        const loadingEl = this.contentEl.querySelector('.emergency-recovery-loading');
+        if (loadingEl) {
+            loadingEl.remove();
         }
-        
-        const buttonContainer = errorContainer.createDiv({ cls: 'button-container' });
-        
-        new ButtonComponent(buttonContainer)
-            .setButtonText('戻る')
-            .onClick(() => {
-                this.onOpen(); // 元の画面に戻る
-            });
-            
-        new ButtonComponent(buttonContainer)
-            .setButtonText('閉じる')
-            .onClick(() => this.close());
+
+        const errorEl = this.createElement({
+            tagName: 'div',
+            className: 'emergency-recovery-error',
+            textContent: message
+        });
+
+        errorEl.style.cssText = `
+            text-align: center;
+            padding: 48px;
+            color: var(--text-error);
+            background: var(--background-modifier-error);
+            border-radius: 8px;
+            margin: 24px 0;
+        `;
+
+        this.contentEl.appendChild(errorEl);
+        this.renderButtons();
     }
 
-    /**
-     * 新規データファイルを作成
-     */
-    private createNewDataFile(): void {
-        const confirmed = confirm(
-            '新しい空のデータファイルを作成しますか？\n' +
-            'この操作により、既存のデータは失われます（復元可能な場合を除く）。'
-        );
+    private async analyzeRecoveryOptions(): Promise<void> {
+        console.log('復旧オプションを分析中...');
 
-        if (confirmed) {
-            // 空の設定で復元コールバックを呼ぶ
-            this.onRecover({
-                posts: [],
-                scheduledPosts: [],
-                lastSync: 0,
-                lastUpdated: Date.now()
-            } as TweetWidgetSettings);
+        try {
+            // 利用可能なバックアップを取得
+            const backups = await this.backupManager.getAvailableBackups();
+            const allBackups = [...backups.generations, ...backups.incremental];
+            
+            // バックアップの整合性をチェック
+            const integrityResults = await this.backupManager.checkAllBackupsIntegrity();
+
+            this.recoveryOptions = [];
+
+            // 最新の健全なバックアップを探す
+            const healthyBackups = allBackups.filter(backup => {
+                const integrity = integrityResults.get(backup.id);
+                return integrity?.isHealthy !== false;
+            });
+
+            if (healthyBackups.length > 0) {
+                // 最新の健全なバックアップ
+                const latestHealthy = healthyBackups
+                    .sort((a, b) => b.timestamp - a.timestamp)[0];
+
+                this.recoveryOptions.push({
+                    id: 'latest-backup',
+                    title: '最新の健全なバックアップから復元',
+                    description: `${new Date(latestHealthy.timestamp).toLocaleString('ja-JP')} のバックアップから復元します`,
+                    severity: 'safe',
+                    backup: latestHealthy,
+                    dataLoss: this.calculateDataLoss(latestHealthy.timestamp)
+                });
+            }
+
+            // 複数のバックアップから部分復元
+            if (allBackups.length > 1) {
+                this.recoveryOptions.push({
+                    id: 'partial-restore',
+                    title: '複数のバックアップから部分復元',
+                    description: '複数のバックアップを組み合わせて可能な限りデータを復元します',
+                    severity: 'moderate',
+                    backup: null,
+                    dataLoss: '不明'
+                });
+            }
+
+            // 手動データ修復
+            this.recoveryOptions.push({
+                id: 'manual-repair',
+                title: '手動データ修復',
+                description: '現在のデータを手動で修復します（上級者向け）',
+                severity: 'dangerous',
+                backup: null,
+                dataLoss: '最小限'
+            });
+
+            // 完全リセット
+            this.recoveryOptions.push({
+                id: 'complete-reset',
+                title: '完全リセット',
+                description: '全てのデータを削除して初期状態に戻します',
+                severity: 'dangerous',
+                backup: null,
+                dataLoss: '全て'
+            });
+
+        } catch (error) {
+            console.error('復旧オプション分析エラー:', error);
+            
+            // エラー時は最低限のオプションを提供
+            this.recoveryOptions = [
+                {
+                    id: 'complete-reset',
+                    title: '完全リセット',
+                    description: '全てのデータを削除して初期状態に戻します',
+                    severity: 'dangerous',
+                    backup: null,
+                    dataLoss: '全て'
+                }
+            ];
+        }
+    }
+
+    private calculateDataLoss(backupTimestamp: number): string {
+        const now = Date.now();
+        const diffHours = Math.floor((now - backupTimestamp) / (1000 * 60 * 60));
+        
+        if (diffHours < 1) {
+            return '1時間未満';
+        } else if (diffHours < 24) {
+            return `約${diffHours}時間`;
+        } else {
+            const diffDays = Math.floor(diffHours / 24);
+            return `約${diffDays}日`;
+        }
+    }
+
+    private renderRecoveryOptions(): void {
+        // ローディング要素を削除
+        const loadingEl = this.contentEl.querySelector('.emergency-recovery-loading');
+        if (loadingEl) {
+            loadingEl.remove();
+        }
+
+        if (this.recoveryOptions.length === 0) {
+            this.showError('利用可能な復旧オプションがありません');
+            return;
+        }
+
+        const optionsContainer = this.createElement({
+            tagName: 'div',
+            className: 'recovery-options'
+        });
+
+        optionsContainer.style.cssText = `
+            flex: 1;
+            margin: 24px 0;
+            overflow-y: auto;
+        `;
+
+        const optionsTitle = this.createElement({
+            tagName: 'h3',
+            textContent: '復旧オプション',
+            className: 'options-title'
+        });
+
+        optionsTitle.style.cssText = `
+            margin: 0 0 16px 0;
+            color: var(--text-normal);
+        `;
+
+        optionsContainer.appendChild(optionsTitle);
+
+        // 復旧オプションを表示
+        this.recoveryOptions.forEach((option, index) => {
+            const optionEl = this.createRecoveryOptionElement(option, index === 0);
+            optionsContainer.appendChild(optionEl);
+        });
+
+        this.contentEl.appendChild(optionsContainer);
+        this.renderButtons();
+    }
+
+    private createRecoveryOptionElement(option: RecoveryOption, isDefault: boolean): HTMLElement {
+        const optionEl = this.createElement({
+            tagName: 'div',
+            className: `recovery-option ${isDefault ? 'selected' : ''}`
+        });
+
+        optionEl.style.cssText = `
+            margin-bottom: 16px;
+            padding: 16px;
+            border: 2px solid ${isDefault ? 'var(--interactive-accent)' : 'var(--background-modifier-border)'};
+            border-radius: 8px;
+            background: var(--background-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        `;
+
+        // クリックイベント
+        optionEl.onclick = () => {
+            // 他の選択を解除
+            this.contentEl.querySelectorAll('.recovery-option').forEach(el => {
+                el.classList.remove('selected');
+                (el as HTMLElement).style.borderColor = 'var(--background-modifier-border)';
+            });
+
+            // 現在の選択を設定
+            optionEl.classList.add('selected');
+            optionEl.style.borderColor = 'var(--interactive-accent)';
+            this.selectedOption = option;
+        };
+
+        // 重要度バッジ
+        const severityBadge = this.createElement({
+            tagName: 'span',
+            textContent: this.getSeverityLabel(option.severity),
+            className: 'severity-badge'
+        });
+
+        severityBadge.style.cssText = `
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+            background: ${this.getSeverityColor(option.severity)};
+            margin-bottom: 8px;
+        `;
+
+        // タイトル
+        const titleEl = this.createElement({
+            tagName: 'h4',
+            textContent: option.title,
+            className: 'option-title'
+        });
+
+        titleEl.style.cssText = `
+            margin: 0 0 8px 0;
+            color: var(--text-normal);
+            font-size: 16px;
+        `;
+
+        // 説明
+        const descEl = this.createElement({
+            tagName: 'p',
+            textContent: option.description,
+            className: 'option-description'
+        });
+
+        descEl.style.cssText = `
+            margin: 0 0 8px 0;
+            color: var(--text-muted);
+            line-height: 1.4;
+        `;
+
+        // データ損失情報
+        const dataLossEl = this.createElement({
+            tagName: 'div',
+            className: 'data-loss-info'
+        });
+
+        dataLossEl.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-muted);
+        `;
+
+        const dataLossLabel = this.createElement({
+            tagName: 'span',
+            textContent: `予想データ損失: ${option.dataLoss}`,
+            className: 'data-loss-label'
+        });
+
+        if (option.backup) {
+            const backupInfo = this.createElement({
+                tagName: 'span',
+                textContent: `バックアップサイズ: ${this.formatFileSize(option.backup.size)}`,
+                className: 'backup-info'
+            });
+            dataLossEl.appendChild(backupInfo);
+        }
+
+        dataLossEl.appendChild(dataLossLabel);
+
+        optionEl.appendChild(severityBadge);
+        optionEl.appendChild(titleEl);
+        optionEl.appendChild(descEl);
+        optionEl.appendChild(dataLossEl);
+
+        // デフォルト選択
+        if (isDefault) {
+            this.selectedOption = option;
+        }
+
+        return optionEl;
+    }
+
+    private getSeverityLabel(severity: string): string {
+        switch (severity) {
+            case 'safe': return '安全';
+            case 'moderate': return '注意';
+            case 'dangerous': return '危険';
+            default: return '不明';
+        }
+    }
+
+    private getSeverityColor(severity: string): string {
+        switch (severity) {
+            case 'safe': return 'var(--text-success)';
+            case 'moderate': return 'var(--text-warning)';
+            case 'dangerous': return 'var(--text-error)';
+            default: return 'var(--text-muted)';
+        }
+    }
+
+    private formatFileSize(bytes: number): string {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    private renderButtons(): void {
+        const footer = this.createElement({
+            tagName: 'div',
+            className: 'emergency-recovery-footer'
+        });
+
+        footer.style.cssText = `
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--background-modifier-border);
+        `;
+
+        const buttonStyle = `
+            padding: 8px 16px;
+            border: 1px solid var(--background-modifier-border);
+            border-radius: 6px;
+            background: var(--background-primary);
+            color: var(--text-normal);
+            cursor: pointer;
+        `;
+
+        // 左側のボタン
+        const leftButtons = this.createElement({
+            tagName: 'div',
+            className: 'footer-left-buttons'
+        });
+
+        if (this.selectedOption) {
+            const executeBtn = this.createElement({
+                tagName: 'button',
+                textContent: '復旧を実行',
+                className: 'execute-recovery-btn'
+            }) as HTMLButtonElement;
+
+            const btnColor = this.selectedOption.severity === 'dangerous' ? 
+                'background: var(--text-error); color: white;' :
+                'background: var(--interactive-accent); color: var(--text-on-accent);';
+
+            executeBtn.style.cssText = buttonStyle + btnColor;
+            executeBtn.onclick = () => this.executeRecovery();
+
+            leftButtons.appendChild(executeBtn);
+        }
+
+        // 右側のボタン
+        const rightButtons = this.createElement({
+            tagName: 'div',
+            className: 'footer-right-buttons'
+        });
+
+        const cancelBtn = this.createElement({
+            tagName: 'button',
+            textContent: 'キャンセル',
+            className: 'cancel-btn'
+        }) as HTMLButtonElement;
+
+        cancelBtn.style.cssText = buttonStyle;
+        cancelBtn.onclick = () => this.close();
+
+        rightButtons.appendChild(cancelBtn);
+
+        footer.appendChild(leftButtons);
+        footer.appendChild(rightButtons);
+        this.contentEl.appendChild(footer);
+    }
+
+    private async executeRecovery(): Promise<void> {
+        if (!this.selectedOption) return;
+
+        const confirmMessage = `緊急復旧「${this.selectedOption.title}」を実行しますか？\n\n` +
+            `予想データ損失: ${this.selectedOption.dataLoss}\n\n` +
+            `この操作は取り消すことができません。`;
+
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        try {
+            switch (this.selectedOption.id) {
+                case 'latest-backup':
+                    await this.restoreFromLatestBackup();
+                    break;
+                case 'partial-restore':
+                    await this.executePartialRestore();
+                    break;
+                case 'manual-repair':
+                    await this.executeManualRepair();
+                    break;
+                case 'complete-reset':
+                    await this.executeCompleteReset();
+                    break;
+                default:
+                    throw new Error('不明な復旧オプション');
+            }
+
+            alert('緊急復旧が完了しました');
             this.close();
+
+        } catch (error) {
+            console.error('緊急復旧エラー:', error);
+            alert(`緊急復旧に失敗しました: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 
-    onClose() {
-        const { contentEl } = this;
-        contentEl.empty();
-        contentEl.removeClass('emergency-recovery-modal', 'recovery-loading-state', 'recovery-success-state', 'recovery-error-state');
+    private async restoreFromLatestBackup(): Promise<void> {
+        if (!this.selectedOption?.backup) {
+            throw new Error('バックアップが選択されていません');
+        }
+
+        const result = await this.backupManager.restoreFromBackup({
+            backupId: this.selectedOption.backup.id,
+            type: 'full',
+            createCurrentBackup: false, // 緊急時なので現在データのバックアップは行わない
+            verifyIntegrity: true
+        });
+
+        if (!result.success || !result.restoredData) {
+            throw new Error(result.error || '復元に失敗しました');
+        }
+
+        this.onRestore(result.restoredData);
     }
+
+    private async executePartialRestore(): Promise<void> {
+        // 複数バックアップからの部分復元（簡易実装）
+        throw new Error('部分復元機能は現在開発中です');
+    }
+
+    private async executeManualRepair(): Promise<void> {
+        // 手動修復（基本的なデータ構造の修復）
+        const defaultData: TweetWidgetSettings = {
+            posts: [],
+            scheduledPosts: [],
+            pinnedPosts: [],
+            categories: [],
+            tags: [],
+            // 他の必要なプロパティを追加
+        } as TweetWidgetSettings;
+
+        this.onRestore(defaultData);
+    }
+
+    private async executeCompleteReset(): Promise<void> {
+        // 完全リセット
+        const emptyData: TweetWidgetSettings = {
+            posts: [],
+            scheduledPosts: [],
+            pinnedPosts: [],
+            categories: [],
+            tags: [],
+            // 他の必要なプロパティを追加
+        } as TweetWidgetSettings;
+
+        this.onRestore(emptyData);
+    }
+}
+
+interface RecoveryOption {
+    id: string;
+    title: string;
+    description: string;
+    severity: 'safe' | 'moderate' | 'dangerous';
+    backup: BackupFileInfo | null;
+    dataLoss: string;
 } 

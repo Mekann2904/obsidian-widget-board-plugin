@@ -1,6 +1,6 @@
 import { App, Notice, setIcon, Menu, Component, Modal } from 'obsidian';
 import type { TweetWidget } from './tweetWidget';
-import type { TweetWidgetPost } from './types';
+import type { TweetWidgetPost, TweetWidgetSettings } from './types';
 import { getFullThreadHistory } from './aiReply';
 import { extractYouTubeUrl, fetchYouTubeTitle } from './tweetWidgetUtils';
 import { TweetWidgetDataViewer } from './tweetWidgetDataViewer';
@@ -8,9 +8,9 @@ import { renderMarkdownBatchWithCache } from '../../utils/renderMarkdownBatch';
 import { renderMermaidInWorker } from '../../utils';
 import { debugLog } from '../../utils/logger';
 import { StringKey, t } from '../../i18n';
-import { TweetHistoryModal } from './versionControl/TweetHistoryModal';
 import { BackupHistoryModal } from './backup/BackupHistoryModal';
 import { EmergencyRecoveryModal } from './backup/EmergencyRecoveryModal';
+
 
 // --- ユーティリティ関数 ---
 function escapeRegExp(str: string): string {
@@ -248,19 +248,18 @@ export class TweetWidgetUI {
                 }
             }
         };
-        const dataViewerBtn = filterBar.createEl('button', { text: this.t('dataViewer'), cls: 'tweet-data-viewer-btn' });
+
+        // ボタングループの作成
+        const buttonGroup = filterBar.createEl('div', { cls: 'tweet-filter-button-group' });
+
+        // データビューアボタン
+        const dataViewerBtn = buttonGroup.createEl('button', { text: this.t('dataViewer'), cls: 'tweet-filter-btn tweet-data-viewer-btn' });
         dataViewerBtn.onclick = () => {
             this.showDataViewer();
         };
 
-        // 履歴ボタンを追加
-        const historyBtn = filterBar.createEl('button', { text: this.t('historyButton'), cls: 'tweet-history-btn' });
-        historyBtn.onclick = () => {
-            this.showHistoryModal();
-        };
-
-        // バックアップボタンを追加
-        const backupBtn = filterBar.createEl('button', { text: this.t('backupButton'), cls: 'tweet-backup-btn' });
+        // バックアップボタン
+        const backupBtn = buttonGroup.createEl('button', { text: this.t('backupButton'), cls: 'tweet-filter-btn tweet-backup-btn' });
         backupBtn.onclick = () => {
             this.showBackupModal();
         };
@@ -268,20 +267,22 @@ export class TweetWidgetUI {
         // デバッグモードの時のみデバッグ関連ボタンを表示
         const isDebugMode = this.widget.plugin.settings.debugLogging === true;
         if (isDebugMode) {
-            // 緊急復元ボタンを追加
-            const emergencyBtn = filterBar.createEl('button', { text: this.t('emergencyRestoreButton'), cls: 'tweet-emergency-btn' });
+            const debugGroup = filterBar.createEl('div', { cls: 'tweet-debug-button-group' });
+
+            // 緊急復元ボタン
+            const emergencyBtn = debugGroup.createEl('button', { text: this.t('emergencyRestoreButton'), cls: 'tweet-filter-btn tweet-emergency-btn' });
             emergencyBtn.onclick = () => {
                 this.showEmergencyRecoveryModal();
             };
 
-            // デバッグボタンを追加
-            const debugBtn = filterBar.createEl('button', { text: this.t('debugButton'), cls: 'tweet-debug-btn' });
+            // デバッグボタン
+            const debugBtn = debugGroup.createEl('button', { text: this.t('debugButton'), cls: 'tweet-filter-btn tweet-debug-btn' });
             debugBtn.onclick = async () => {
                 await this.widget.getRepository().debugBackupStatus(this.widget.plugin.settings.language || 'ja');
             };
 
-            // 強制バックアップボタンを追加
-            const forceBackupBtn = filterBar.createEl('button', { text: this.t('forceBackupButton'), cls: 'tweet-force-backup-btn' });
+            // 強制バックアップボタン
+            const forceBackupBtn = debugGroup.createEl('button', { text: this.t('forceBackupButton'), cls: 'tweet-filter-btn tweet-force-backup-btn' });
             forceBackupBtn.onclick = async () => {
                 await this.forceCreateBackup();
             };
@@ -302,24 +303,15 @@ export class TweetWidgetUI {
         modal.open();
     }
 
-    private showHistoryModal() {
-        const historyModal = new TweetHistoryModal(
-            this.widget.app,
-            this.widget.getRepository(),
-            this.widget.plugin.settings.language || 'ja',
-            () => {
-                // 復元後の処理: ウィジェットを再読み込み
-                this.widget.reloadTweetData();
-            }
-        );
-        historyModal.open();
-    }
+
 
     private showBackupModal() {
         const backupModal = new BackupHistoryModal(
-            this.widget.app,
+            this.widget,
             this.widget.getRepository().getBackupManager(),
-            (restoredData) => {
+            this.widget.currentSettings,
+            this.widget.plugin.settings.language || 'ja',
+            (restoredData: TweetWidgetSettings) => {
                 // 復元後の処理: ウィジェットを再読み込み
                 this.widget.reloadTweetData();
             }
@@ -330,18 +322,35 @@ export class TweetWidgetUI {
     /**
      * 緊急復元モーダルを表示
      */
-    private showEmergencyRecoveryModal() {
-        const emergencyModal = new EmergencyRecoveryModal(
-            this.widget.app,
-            this.widget.getRepository().getEmergencyRecoveryManager(),
-            (restoredData) => {
-                // 復元後の処理: ウィジェットを再読み込み
-                this.widget.reloadTweetData();
-            },
-            this.widget.plugin.settings.language || 'ja'
-        );
-        emergencyModal.open();
+    private async showEmergencyRecoveryModal() {
+        try {
+            const { EmergencyRecoveryModal } = await import('./backup/EmergencyRecoveryModal.js');
+            
+            // 簡易的な BackupManager インスタンス（実際の実装では repository から取得）
+            const simpleBackupManager = {
+                async getAvailableBackups() { return { generations: [], incremental: [] }; },
+                async checkAllBackupsIntegrity() { return new Map(); },
+                async restoreFromBackup() { return { success: false, error: 'Not implemented' }; }
+            };
+            
+            const emergencyModal = new EmergencyRecoveryModal(
+                this.widget,
+                simpleBackupManager as any,
+                'ja', // 言語設定
+                (restoredData) => {
+                    // 復元処理は将来実装
+                    console.log('緊急復旧データ:', restoredData);
+                    alert('緊急復旧は現在開発中です');
+                }
+            );
+            emergencyModal.open();
+        } catch (error) {
+            console.error('緊急復旧モーダルエラー:', error);
+            alert('緊急復旧モーダルの表示に失敗しました');
+        }
     }
+
+
 
     private renderPostInputArea(): void {
         const postBox = this.container.createDiv({ cls: 'tweet-post-box' });

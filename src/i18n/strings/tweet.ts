@@ -406,12 +406,12 @@ export const TWEET_STRINGS = {
   },
   deleteScheduledPostConfirm: {
     ja: 'この予約投稿を削除しますか？',
-    en: 'Delete this scheduled post?',
+    en: 'Delete this scheduled post? (Cannot be undone)',
     zh: '要删除这条定时推文吗？（无法撤销）',
-    es: '¿Desea eliminar este tweet programado?',
-    de: 'Diesen geplanten Beitrag löschen?',
-    fr: 'Supprimer cette publication programmée?',
-    ko: '이 예약된 게시물을 삭제하시겠습니까?',
+    es: '¿Eliminar esta publicación de forma permanente? (No se puede deshacer)',
+    de: 'Diesen Beitrag endgültig löschen? (Kann nicht rückgängig gemacht werden)',
+    fr: 'Supprimer définitivement cette publication ? (Irréversible)',
+    ko: '이 게시물을 영구적으로 삭제하시겠습니까? (되돌릴 수 없습니다)',
   },
   scheduledPostDeleted: {
     ja: '予約投稿を削除しました',
@@ -1559,4 +1559,760 @@ export const TWEET_STRINGS = {
     fr: 'Restauration d\'urgence terminée',
     ko: '긴급 복원 완료',
   },
+  // --- 手動バックアップ関連 ---
+  manualBackupButton: {
+    ja: '手動バックアップ',
+    en: 'Manual Backup',
+    zh: '手动备份',
+    es: 'Copia de Seguridad Manual',
+    de: 'Manuelles Backup',
+    fr: 'Sauvegarde manuelle',
+    ko: '수동 백업',
+  },
+  manualBackupTitle: {
+    ja: '手動バックアップの作成',
+    en: 'Create Manual Backup',
+    zh: '创建手动备份',
+    es: 'Crear Copia de Seguridad Manual',
+    de: 'Manuelles Backup erstellen',
+    fr: 'Créer une sauvegarde manuelle',
+    ko: '수동 백업 생성',
+  },
+  manualBackupDescription: {
+    ja: '現在のデータの完全バックアップを作成します。',
+    en: 'Create a complete backup of current data.',
+    zh: '创建当前数据的完整备份。',
+    es: 'Crear una copia completa de los datos actuales.',
+    de: 'Vollständiges Backup der aktuellen Daten erstellen.',
+    fr: 'Créer une sauvegarde complète des données actuelles.',
+    ko: '현재 데이터의 완전한 백업을 생성합니다.'
+  },
+  backupTypeLabel: {
+    ja: 'バックアップの種類',
+    en: 'Backup Type',
+    zh: '备份类型',
+    es: 'Tipo de Copia de Seguridad',
+    de: 'Backup-Typ',
+    fr: 'Type de sauvegarde',
+    ko: '백업 유형',
+  },
+  backupTypeGeneration: {
+    ja: '世代バックアップ（完全バックアップ）',
+    en: 'Generation Backup (Full Backup)',
+    zh: '世代备份（完整备份）',
+    es: 'Copia de Seguridad Generacional (Completa)',
+    de: 'Generationsbackup (Vollständig)',
+    fr: 'Sauvegarde générationnelle (Complète)',
+    ko: '세대 백업 (전체 백업)',
+  },
+  backupTypeIncremental: {
+    ja: '差分バックアップ（変更分のみ）',
+    en: 'Incremental Backup (Changes Only)',
+    zh: '增量备份（仅变更部分）',
+    es: 'Copia de Seguridad Incremental (Solo Cambios)',
+    de: 'Inkrementelles Backup (Nur Änderungen)',
+    fr: 'Sauvegarde incrémentielle (Changements uniquement)',
+    ko: '차분 백업 (변경사항만)',
+  },
+  backupDescriptionLabel: {
+    ja: '説明（任意）',
+    en: 'Description (Optional)',
+    zh: '描述（可选）',
+    es: 'Descripción (Opcional)',
+    de: 'Beschreibung (Optional)',
+    fr: 'Description (Optionnel)',
+    ko: '설명 (선택사항)',
+  },
+  backupDescriptionPlaceholder: {
+    ja: 'このバックアップの説明を入力...',
+    en: 'Enter description for this backup...',
+    zh: '输入此备份的描述...',
+    es: 'Ingrese la descripción de esta copia de seguridad...',
+    de: 'Beschreibung für dieses Backup eingeben...',
+    fr: 'Entrez la description de cette sauvegarde...',
+    ko: '이 백업에 대한 설명을 입력하세요...',
+  },
+  createBackupButton: {
+    ja: 'バックアップ作成',
+    en: 'Create Backup',
+    zh: '创建备份',
+    es: 'Crear Copia de Seguridad',
+    de: 'Backup erstellen',
+    fr: 'Créer la sauvegarde',
+    ko: '백업 생성',
+  },
+  creatingBackupMessage: {
+    ja: 'バックアップを作成中...',
+    en: 'Creating backup...',
+    zh: '正在创建备份...',
+    es: 'Creando copia de seguridad...',
+    de: 'Backup wird erstellt...',
+    fr: 'Création de la sauvegarde...',
+    ko: '백업 생성 중...',
+  },
+  manualBackupSuccess: {
+    ja: '手動バックアップが正常に作成されました',
+    en: 'Manual backup created successfully',
+    zh: '手动备份创建成功',
+    es: 'Copia de seguridad manual creada exitosamente',
+    de: 'Manuelles Backup erfolgreich erstellt',
+    fr: 'Sauvegarde manuelle créée avec succès',
+    ko: '수동 백업이 성공적으로 생성되었습니다',
+  },
+  manualBackupError: {
+    ja: '手動バックアップの作成に失敗しました',
+    en: 'Failed to create manual backup',
+    zh: '创建手动备份失败',
+    es: 'Error al crear la copia de seguridad manual',
+    de: 'Fehler beim Erstellen des manuellen Backups',
+    fr: 'Échec de la création de la sauvegarde manuelle',
+    ko: '수동 백업 생성에 실패했습니다',
+  },
+  manualBackupCreateButtonText: {
+    ja: '手動バックアップ作成',
+    en: 'Create Manual Backup',
+    zh: '创建手动备份',
+    es: 'Crear Copia de Seguridad Manual',
+    de: 'Manuelles Backup erstellen',
+    fr: 'Créer une sauvegarde manuelle',
+    ko: '수동 백업 생성',
+  },
+  cancelButton: {
+    ja: 'キャンセル',
+    en: 'Cancel',
+    zh: '取消',
+    es: 'Cancelar',
+    de: 'Abbrechen',
+    fr: 'Annuler',
+    ko: '취소',
+  },
+  // Dry-Run and Preview related
+  previewButton: {
+    ja: 'プレビュー',
+    en: 'Preview',
+    zh: '预览',
+    es: 'Vista Previa',
+    de: 'Vorschau',
+    fr: 'Aperçu',
+    ko: '미리보기'
+  },
+  restorePreviewTitle: {
+    ja: '復元プレビュー',
+    en: 'Restore Preview',
+    zh: '恢复预览',
+    es: 'Vista Previa de Restauración',
+    de: 'Wiederherstellungsvorschau',
+    fr: 'Aperçu de Restauration',
+    ko: '복원 미리보기'
+  },
+  restorePreviewDescription: {
+    ja: 'このバックアップを復元した場合の変更内容をプレビューします。',
+    en: 'Preview the changes if this backup is restored.',
+    zh: '预览恢复此备份时的更改内容。',
+    es: 'Vista previa de los cambios si se restaura esta copia.',
+    de: 'Vorschau der Änderungen bei Wiederherstellung dieses Backups.',
+    fr: 'Aperçu des modifications lors de la restauration de cette sauvegarde.',
+    ko: '이 백업을 복원할 때의 변경 사항을 미리 봅니다.'
+  },
+  showDifferences: {
+    ja: '差分を表示',
+    en: 'Show Differences',
+    zh: '显示差异',
+    es: 'Mostrar Diferencias',
+    de: 'Unterschiede Anzeigen',
+    fr: 'Afficher les Différences',
+    ko: '차이점 표시'
+  },
+  noChangesDetected: {
+    ja: '変更は検出されませんでした',
+    en: 'No changes detected',
+    zh: '未检测到更改',
+    es: 'No se detectaron cambios',
+    de: 'Keine Änderungen erkannt',
+    fr: 'Aucune modification détectée',
+    ko: '변경 사항이 감지되지 않았습니다'
+  },
+  postsWillBeAdded: {
+    ja: '追加される投稿: {{count}}件',
+    en: 'Posts to be added: {{count}}',
+    zh: '将添加的帖子：{{count}}条',
+    es: 'Publicaciones a agregar: {{count}}',
+    de: 'Hinzuzufügende Beiträge: {{count}}',
+    fr: 'Publications à ajouter : {{count}}',
+    ko: '추가될 게시물: {{count}}개'
+  },
+  postsWillBeRemoved: {
+    ja: '削除される投稿: {{count}}件',
+    en: 'Posts to be removed: {{count}}',
+    zh: '将删除的帖子：{{count}}条',
+    es: 'Publicaciones a eliminar: {{count}}',
+    de: 'Zu entfernende Beiträge: {{count}}',
+    fr: 'Publications à supprimer : {{count}}',
+    ko: '제거될 게시물: {{count}}개'
+  },
+  postsWillBeModified: {
+    ja: '変更される投稿: {{count}}件',
+    en: 'Posts to be modified: {{count}}',
+    zh: '将修改的帖子：{{count}}条',
+    es: 'Publicaciones a modificar: {{count}}',
+    de: 'Zu ändernde Beiträge: {{count}}',
+    fr: 'Publications à modifier : {{count}}',
+    ko: '수정될 게시물: {{count}}개'
+  },
+  proceedWithRestore: {
+    ja: 'この内容で復元を実行',
+    en: 'Proceed with Restore',
+    zh: '继续执行恢复',
+    es: 'Proceder con la Restauración',
+    de: 'Mit Wiederherstellung Fortfahren',
+    fr: 'Procéder à la Restauration',
+    ko: '복원 진행'
+  },
+  // Backup visualization related
+  backupChainVisualization: {
+    ja: 'バックアップチェーンの可視化',
+    en: 'Backup Chain Visualization',
+    zh: '备份链可视化',
+    es: 'Visualización de Cadena de Copias',
+    de: 'Backup-Ketten-Visualisierung',
+    fr: 'Visualisation de la Chaîne de Sauvegarde',
+    ko: '백업 체인 시각화'
+  },
+  showBackupGraph: {
+    ja: 'バックアップグラフを表示',
+    en: 'Show Backup Graph',
+    zh: '显示备份图',
+    es: 'Mostrar Gráfico de Copias',
+    de: 'Backup-Graph Anzeigen',
+    fr: 'Afficher le Graphique de Sauvegarde',
+    ko: '백업 그래프 표시'
+  },
+  corruptedBackup: {
+    ja: '破損したバックアップ',
+    en: 'Corrupted Backup',
+    zh: '损坏的备份',
+    es: 'Copia Corrupta',
+    de: 'Beschädigtes Backup',
+    fr: 'Sauvegarde Corrompue',
+    ko: '손상된 백업'
+  },
+  // Auto-restore related
+  autoRestoreEnabled: {
+    ja: '自動復元が有効',
+    en: 'Auto-restore Enabled',
+    zh: '自动恢复已启用',
+    es: 'Restauración Automática Habilitada',
+    de: 'Automatische Wiederherstellung Aktiviert',
+    fr: 'Restauration Automatique Activée',
+    ko: '자동 복원 활성화됨'
+  },
+  dataCorruptionDetected: {
+    ja: 'データの破損を検出しました',
+    en: 'Data corruption detected',
+    zh: '检测到数据损坏',
+    es: 'Corrupción de datos detectada',
+    de: 'Datenbeschädigung erkannt',
+    fr: 'Corruption de données détectée',
+    ko: '데이터 손상이 감지되었습니다'
+  },
+  attemptingAutoRestore: {
+    ja: '自動復元を試行しています...',
+    en: 'Attempting auto-restore...',
+    zh: '正在尝试自动恢复...',
+    es: 'Intentando restauración automática...',
+    de: 'Versuche automatische Wiederherstellung...',
+    fr: 'Tentative de restauration automatique...',
+    ko: '자동 복원을 시도하는 중...'
+  },
+  autoRestoreSuccess: {
+    ja: '自動復元が成功しました',
+    en: 'Auto-restore successful',
+    zh: '自动恢复成功',
+    es: 'Restauración automática exitosa',
+    de: 'Automatische Wiederherstellung erfolgreich',
+    fr: 'Restauration automatique réussie',
+    ko: '자동 복원 성공'
+  },
+  autoRestoreFailed: {
+    ja: '自動復元に失敗しました',
+    en: 'Auto-restore failed',
+    zh: '自动恢复失败',
+    es: 'Falló la restauración automática',
+    de: 'Automatische Wiederherstellung fehlgeschlagen',
+    fr: 'Échec de la restauration automatique',
+    ko: '자동 복원 실패'
+  },
+  // Additional common strings for restore preview
+  backupInfo: {
+    ja: 'バックアップ情報',
+    en: 'Backup Information',
+    'zh-cn': '备份信息',
+    es: 'Información de Copia',
+    de: 'Backup-Informationen',
+    fr: 'Informations de Sauvegarde',
+    ko: '백업 정보'
+  },
+  backupId: {
+    ja: 'バックアップID',
+    en: 'Backup ID',
+    'zh-cn': '备份ID',
+    es: 'ID de Copia',
+    de: 'Backup-ID',
+    fr: 'ID de Sauvegarde',
+    ko: '백업 ID'
+  },
+  backupType: {
+    ja: 'バックアップタイプ',
+    en: 'Backup Type',
+    'zh-cn': '备份类型',
+    es: 'Tipo de Copia',
+    de: 'Backup-Typ',
+    fr: 'Type de Sauvegarde',
+    ko: '백업 타입'
+  },
+  analyzing: {
+    ja: '解析中',
+    en: 'Analyzing',
+    'zh-cn': '分析中',
+    es: 'Analizando',
+    de: 'Analysiere',
+    fr: 'Analyse en cours',
+    ko: '분석 중'
+  },
+  unknownError: {
+    ja: '不明なエラー',
+    en: 'Unknown error',
+    'zh-cn': '未知错误',
+    es: 'Error desconocido',
+    de: 'Unbekannter Fehler',
+    fr: 'Erreur inconnue',
+    ko: '알 수 없는 오류'
+  },
+  noPreviewData: {
+    ja: 'プレビューデータがありません',
+    en: 'No preview data available',
+    'zh-cn': '无预览数据',
+    es: 'No hay datos de vista previa',
+    de: 'Keine Vorschaudaten verfügbar',
+    fr: 'Aucune donnée d\'aperçu disponible',
+    ko: '미리보기 데이터가 없습니다'
+  },
+  changeSummary: {
+    ja: '変更概要',
+    en: 'Change Summary',
+    'zh-cn': '更改摘要',
+    es: 'Resumen de Cambios',
+    de: 'Änderungsübersicht',
+    fr: 'Résumé des Modifications',
+    ko: '변경 요약'
+  },
+  hideDifferences: {
+    ja: '差分を隠す',
+    en: 'Hide Differences',
+    'zh-cn': '隐藏差异',
+    es: 'Ocultar Diferencias',
+    de: 'Unterschiede Verbergen',
+    fr: 'Masquer les Différences',
+    ko: '차이점 숨기기'
+  },
+  postsToBeAdded: {
+    ja: '追加される投稿',
+    en: 'Posts to be Added',
+    'zh-cn': '将添加的帖子',
+    es: 'Publicaciones a Agregar',
+    de: 'Hinzuzufügende Beiträge',
+    fr: 'Publications à Ajouter',
+    ko: '추가될 게시물'
+  },
+  postsToBeRemoved: {
+    ja: '削除される投稿',
+    en: 'Posts to be Removed',
+    'zh-cn': '将删除的帖子',
+    es: 'Publicaciones a Eliminar',
+    de: 'Zu Entfernende Beiträge',
+    fr: 'Publications à Supprimer',
+    ko: '제거될 게시물'
+  },
+  postsToBeModified: {
+    ja: '変更される投稿',
+    en: 'Posts to be Modified',
+    'zh-cn': '将修改的帖子',
+    es: 'Publicaciones a Modificar',
+    de: 'Zu Ändernde Beiträge',
+    fr: 'Publications à Modifier',
+    ko: '수정될 게시물'
+  },
+  noContent: {
+    ja: '内容なし',
+    en: 'No content',
+    'zh-cn': '无内容',
+    es: 'Sin contenido',
+    de: 'Kein Inhalt',
+    fr: 'Aucun contenu',
+    ko: '내용 없음'
+  },
+  andMore: {
+    ja: 'その他{{count}}件',
+    en: 'and {{count}} more',
+    'zh-cn': '还有{{count}}个',
+    es: 'y {{count}} más',
+    de: 'und {{count}} weitere',
+    fr: 'et {{count}} de plus',
+    ko: '그 외 {{count}}개'
+  },
+  before: {
+    ja: '変更前',
+    en: 'Before',
+    'zh-cn': '之前',
+    es: 'Antes',
+    de: 'Vorher',
+    fr: 'Avant',
+    ko: '이전'
+  },
+      after: {
+        ja: '変更後',
+        en: 'After',
+        'zh-cn': '之后',
+        es: 'Después',
+        de: 'Nachher',
+        fr: 'Après',
+        ko: '이후'
+    },
+
+    // Backup Chain Visualization
+    backupChainTitle: {
+        ja: 'バックアップチェーン',
+        en: 'Backup Chain',
+        'zh-cn': '备份链',
+        es: 'Cadena de Copias',
+        de: 'Backup-Kette',
+        fr: 'Chaîne de Sauvegarde',
+        ko: '백업 체인'
+    },
+    visualizationLoading: {
+        ja: '可視化を生成中...',
+        en: 'Generating visualization...',
+        'zh-cn': '正在生成可视化...',
+        es: 'Generando visualización...',
+        de: 'Erzeuge Visualisierung...',
+        fr: 'Génération de la visualisation...',
+        ko: '시각화 생성 중...'
+    },
+    healthyBackup: {
+        ja: '正常',
+        en: 'Healthy',
+        'zh-cn': '正常',
+        es: 'Saludable',
+        de: 'Gesund',
+        fr: 'Sain',
+        ko: '정상'
+    },
+    damagedBackup: {
+        ja: '破損',
+        en: 'Damaged',
+        'zh-cn': '损坏',
+        es: 'Dañado',
+        de: 'Beschädigt',
+        fr: 'Endommagé',
+        ko: '손상됨'
+    },
+    backupGraphDescription: {
+        ja: '四角は世代バックアップ、円は差分バックアップを表します。赤色は破損したバックアップです。',
+        en: 'Squares represent generation backups, circles represent incremental backups. Red indicates corrupted backups.',
+        'zh-cn': '方块代表世代备份，圆圈代表增量备份。红色表示损坏的备份。',
+        es: 'Los cuadrados representan copias generacionales, los círculos representan copias incrementales. El rojo indica copias corruptas.',
+        de: 'Quadrate stellen Generationsbackups dar, Kreise stellen inkrementelle Backups dar. Rot zeigt beschädigte Backups an.',
+        fr: 'Les carrés représentent les sauvegardes générationnelles, les cercles représentent les sauvegardes incrémentales. Le rouge indique des sauvegardes corrompues.',
+        ko: '사각형은 세대 백업, 원형은 증분 백업을 나타냅니다. 빨간색은 손상된 백업을 의미합니다.'
+    },
+    refreshVisualization: {
+        ja: '可視化を更新',
+        en: 'Refresh Visualization',
+        'zh-cn': '刷新可视化',
+        es: 'Actualizar Visualización',
+        de: 'Visualisierung Aktualisieren',
+        fr: 'Actualiser la Visualisation',
+        ko: '시각화 새로고침'
+    },
+    noBackupsToVisualize: {
+        ja: '可視化するバックアップがありません',
+        en: 'No backups to visualize',
+        'zh-cn': '没有备份可视化',
+        es: 'No hay copias para visualizar',
+        de: 'Keine Backups zur Visualisierung',
+        fr: 'Aucune sauvegarde à visualiser',
+        ko: '시각화할 백업이 없습니다'
+    },
+    generationBackup: {
+        ja: '世代',
+        en: 'Generation',
+        'zh-cn': '世代',
+        es: 'Generación',
+        de: 'Generation',
+        fr: 'Génération',
+        ko: '세대'
+    },
+    incrementalBackup: {
+        ja: '差分',
+        en: 'Incremental',
+        'zh-cn': '增量',
+        es: 'Incremental',
+        de: 'Inkrementell',
+        fr: 'Incrémental',
+        ko: '증분'
+    },
+    backupIntegrityCheck: {
+        ja: '整合性チェック',
+        en: 'Integrity Check',
+        'zh-cn': '完整性检查',
+        es: 'Verificación de Integridad',
+        de: 'Integritätsprüfung',
+        fr: 'Vérification d\'Intégrité',
+        ko: '무결성 검사'
+    },
+    performIntegrityCheck: {
+        ja: '整合性チェックを実行',
+        en: 'Perform Integrity Check',
+        'zh-cn': '执行完整性检查',
+        es: 'Realizar Verificación de Integridad',
+        de: 'Integritätsprüfung Durchführen',
+        fr: 'Effectuer une Vérification d\'Intégrité',
+        ko: '무결성 검사 수행'
+    },
+
+    // Performance & Job Queue
+    performanceMonitor: {
+        ja: 'パフォーマンス監視',
+        en: 'Performance Monitor',
+        'zh-cn': '性能监控',
+        es: 'Monitor de Rendimiento',
+        de: 'Performance-Monitor',
+        fr: 'Moniteur de Performance',
+        ko: '성능 모니터'
+    },
+    jobQueue: {
+        ja: 'ジョブキュー',
+        en: 'Job Queue',
+        'zh-cn': '作业队列',
+        es: 'Cola de Trabajos',
+        de: 'Job-Warteschlange',
+        fr: 'File d\'Attente des Tâches',
+        ko: '작업 큐'
+    },
+    queueStatus: {
+        ja: 'キュー状態',
+        en: 'Queue Status',
+        'zh-cn': '队列状态',
+        es: 'Estado de Cola',
+        de: 'Warteschlangen-Status',
+        fr: 'État de la File',
+        ko: '큐 상태'
+    },
+    jobsInQueue: {
+        ja: 'キュー内ジョブ',
+        en: 'Jobs in Queue',
+        'zh-cn': '队列中的作业',
+        es: 'Trabajos en Cola',
+        de: 'Jobs in Warteschlange',
+        fr: 'Tâches en Attente',
+        ko: '큐 내 작업'
+    },
+    activeJobs: {
+        ja: '実行中ジョブ',
+        en: 'Active Jobs',
+        'zh-cn': '活动作业',
+        es: 'Trabajos Activos',
+        de: 'Aktive Jobs',
+        fr: 'Tâches Actives',
+        ko: '활성 작업'
+    },
+    completedJobs: {
+        ja: '完了ジョブ',
+        en: 'Completed Jobs',
+        'zh-cn': '已完成作业',
+        es: 'Trabajos Completados',
+        de: 'Abgeschlossene Jobs',
+        fr: 'Tâches Terminées',
+        ko: '완료된 작업'
+    },
+    failedJobs: {
+        ja: '失敗ジョブ',
+        en: 'Failed Jobs',
+        'zh-cn': '失败作业',
+        es: 'Trabajos Fallidos',
+        de: 'Fehlgeschlagene Jobs',
+        fr: 'Tâches Échouées',
+        ko: '실패한 작업'
+    },
+    jobPriority: {
+        ja: '優先度',
+        en: 'Priority',
+        'zh-cn': '优先级',
+        es: 'Prioridad',
+        de: 'Priorität',
+        fr: 'Priorité',
+        ko: '우선순위'
+    },
+    highPriority: {
+        ja: '高',
+        en: 'High',
+        'zh-cn': '高',
+        es: 'Alta',
+        de: 'Hoch',
+        fr: 'Haute',
+        ko: '높음'
+    },
+    normalPriority: {
+        ja: '通常',
+        en: 'Normal',
+        'zh-cn': '普通',
+        es: 'Normal',
+        de: 'Normal',
+        fr: 'Normale',
+        ko: '보통'
+    },
+    lowPriority: {
+        ja: '低',
+        en: 'Low',
+        'zh-cn': '低',
+        es: 'Baja',
+        de: 'Niedrig',
+        fr: 'Basse',
+        ko: '낮음'
+    },
+    processingTime: {
+        ja: '処理時間',
+        en: 'Processing Time',
+        'zh-cn': '处理时间',
+        es: 'Tiempo de Procesamiento',
+        de: 'Verarbeitungszeit',
+        fr: 'Temps de Traitement',
+        ko: '처리 시간'
+    },
+    estimatedTimeRemaining: {
+        ja: '残り時間',
+        en: 'Est. Time Remaining',
+        'zh-cn': '预计剩余时间',
+        es: 'Tiempo Estimado Restante',
+        de: 'Geschätzte Restzeit',
+        fr: 'Temps Restant Estimé',
+        ko: '예상 남은 시간'
+    },
+    memoryUsage: {
+        ja: 'メモリ使用量',
+        en: 'Memory Usage',
+        'zh-cn': '内存使用量',
+        es: 'Uso de Memoria',
+        de: 'Speicherverbrauch',
+        fr: 'Utilisation Mémoire',
+        ko: '메모리 사용량'
+    },
+    cpuUsage: {
+        ja: 'CPU使用率',
+        en: 'CPU Usage',
+        'zh-cn': 'CPU使用率',
+        es: 'Uso de CPU',
+        de: 'CPU-Auslastung',
+        fr: 'Utilisation CPU',
+        ko: 'CPU 사용률'
+    },
+    shardProcessing: {
+        ja: 'シャード処理',
+        en: 'Shard Processing',
+        'zh-cn': '分片处理',
+        es: 'Procesamiento de Fragmentos',
+        de: 'Shard-Verarbeitung',
+        fr: 'Traitement des Fragments',
+        ko: '샤드 처리'
+    },
+    shardsTotal: {
+        ja: '総シャード数',
+        en: 'Total Shards',
+        'zh-cn': '总分片数',
+        es: 'Total de Fragmentos',
+        de: 'Gesamte Shards',
+        fr: 'Total des Fragments',
+        ko: '총 샤드 수'
+    },
+    shardsCompleted: {
+        ja: '完了シャード',
+        en: 'Completed Shards',
+        'zh-cn': '已完成分片',
+        es: 'Fragmentos Completados',
+        de: 'Abgeschlossene Shards',
+        fr: 'Fragments Terminés',
+        ko: '완료된 샤드'
+    },
+    fastPatchOptimization: {
+        ja: '高速差分最適化',
+        en: 'Fast Patch Optimization',
+        'zh-cn': '快速补丁优化',
+        es: 'Optimización de Parches Rápidos',
+        de: 'Schnelle Patch-Optimierung',
+        fr: 'Optimisation de Patch Rapide',
+        ko: '빠른 패치 최적화'
+    },
+    patchesGenerated: {
+        ja: '生成パッチ数',
+        en: 'Patches Generated',
+        'zh-cn': '生成的补丁数',
+        es: 'Parches Generados',
+        de: 'Generierte Patches',
+        fr: 'Patches Générés',
+        ko: '생성된 패치 수'
+    },
+    compressionRatio: {
+        ja: '圧縮率',
+        en: 'Compression Ratio',
+        'zh-cn': '压缩比',
+        es: 'Relación de Compresión',
+        de: 'Komprimierungsrate',
+        fr: 'Taux de Compression',
+        ko: '압축률'
+    },
+    optimizationEnabled: {
+        ja: '最適化有効',
+        en: 'Optimization Enabled',
+        'zh-cn': '已启用优化',
+        es: 'Optimización Habilitada',
+        de: 'Optimierung Aktiviert',
+        fr: 'Optimisation Activée',
+        ko: '최적화 활성화'
+    },
+    backgroundProcessing: {
+        ja: 'バックグラウンド処理',
+        en: 'Background Processing',
+        'zh-cn': '后台处理',
+        es: 'Procesamiento en Segundo Plano',
+        de: 'Hintergrundverarbeitung',
+        fr: 'Traitement en Arrière-plan',
+        ko: '백그라운드 처리'
+    },
+    cancelJob: {
+        ja: 'ジョブ中止',
+        en: 'Cancel Job',
+        'zh-cn': '取消作业',
+        es: 'Cancelar Trabajo',
+        de: 'Job Abbrechen',
+        fr: 'Annuler Tâche',
+        ko: '작업 취소'
+    },
+    retryJob: {
+        ja: 'ジョブ再試行',
+        en: 'Retry Job',
+        'zh-cn': '重试作业',
+        es: 'Reintentar Trabajo',
+        de: 'Job Wiederholen',
+        fr: 'Réessayer Tâche',
+        ko: '작업 재시도'
+    },
+    clearQueue: {
+        ja: 'キューをクリア',
+        en: 'Clear Queue',
+        'zh-cn': '清空队列',
+        es: 'Limpiar Cola',
+        de: 'Warteschlange Leeren',
+        fr: 'Vider la File',
+        ko: '큐 지우기'
+    },
 } as const; 
