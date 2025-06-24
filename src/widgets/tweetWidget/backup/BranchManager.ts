@@ -46,8 +46,8 @@ export class BranchManager {
     constructor(app: App, basePath: string) {
         this.app = app;
         this.basePath = basePath;
-        this.branchPath = `${basePath}/branches`;
-        this.statePath = `${basePath}/current-branch.json`;
+        this.branchPath = `${app.vault.configDir}/plugins/obsidian-widget-board-plugin/branches`;
+        this.statePath = `${app.vault.configDir}/plugins/obsidian-widget-board-plugin/current-branch.json`;
     }
 
     /**

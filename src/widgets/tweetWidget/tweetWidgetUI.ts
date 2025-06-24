@@ -722,6 +722,8 @@ export class TweetWidgetUI {
     }
 
     private renderPostList(listEl: HTMLElement): void {
+        console.log('[TweetWidgetUI] renderPostList() 開始');
+        
         const parent = listEl.parentElement;
         if (parent) {
             const newListEl = listEl.cloneNode(false) as HTMLElement;
@@ -729,11 +731,35 @@ export class TweetWidgetUI {
             listEl = newListEl;
         }
         if (this.widget.detailPostId) {
+            console.log('[TweetWidgetUI] 詳細表示モード:', this.widget.detailPostId);
             this.renderDetailView(listEl, this.widget.detailPostId);
             return;
         }
+        
+        // 【重要】フィルタリング前後のデータを詳細確認
+        console.log('[TweetWidgetUI] データ確認開始');
+        console.log('[TweetWidgetUI] this.postsById サイズ:', this.postsById.size);
+        console.log('[TweetWidgetUI] this.postsById 内容サンプル:', Array.from(this.postsById.entries()).slice(0, 3).map(([id, post]) => ({
+            id,
+            text: post.text.substring(0, 30),
+            created: post.created,
+            deleted: post.deleted
+        })));
+        
         const filteredPosts = this.widget.getFilteredPosts();
+        console.log('[TweetWidgetUI] フィルタリング結果:', {
+            totalPosts: filteredPosts.length,
+            samplePosts: filteredPosts.slice(0, 3).map(p => ({
+                id: p.id,
+                text: p.text.substring(0, 30),
+                created: p.created,
+                deleted: p.deleted,
+                threadId: p.threadId
+            }))
+        });
+        
         if (filteredPosts.length === 0) {
+            console.log('[TweetWidgetUI] 投稿が0件のため空メッセージを表示');
             listEl.createEl('div', { cls: 'tweet-empty-notice', text: this.t('noTweetsYet') });
             return;
         }

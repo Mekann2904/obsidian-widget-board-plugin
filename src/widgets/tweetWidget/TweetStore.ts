@@ -195,6 +195,39 @@ export class TweetStore {
     }
 
     /**
+     * 全データを完全に置換（ブランチチェックアウト等で使用）
+     */
+    replaceAllData(newSettings: TweetWidgetSettings): void {
+        console.log('[TweetStore] 全データ完全置換:', {
+            newPosts: newSettings.posts?.length || 0,
+            newScheduledPosts: newSettings.scheduledPosts?.length || 0
+        });
+        
+        // 完全にデータを置換
+        this.settings = { ...newSettings };
+        
+        // 全インデックスを完全再構築
+        this.postsById.clear();
+        this.childrenByThreadId.clear();
+        this.quotesById.clear();
+        
+        this.rebuildPostsIndex();
+        
+        console.log('[TweetStore] 全データ置換完了:', {
+            totalPosts: this.settings.posts.length,
+            indexedPosts: this.postsById.size,
+            threadGroups: this.childrenByThreadId.size,
+            quoteGroups: this.quotesById.size
+        });
+        
+        this.notifyListeners('settings_changed', {
+            eventType: 'settings_changed',
+            reason: '全データ置換',
+            needsBackup: false
+        });
+    }
+
+    /**
      * 返信を取得
      */
     getReplies(parentId: string): TweetWidgetPost[] {

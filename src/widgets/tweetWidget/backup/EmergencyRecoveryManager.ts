@@ -52,7 +52,8 @@ export class EmergencyRecoveryManager {
         this.app = app;
         this.dbPath = dbPath;
         this.basePath = dbPath.replace('/tweets.json', '');
-        this.backupPath = `${this.basePath}/backups`;
+        // バックアップファイルを.obsidianディレクトリ内のプラグイン専用フォルダに保存
+        this.backupPath = `${app.vault.configDir}/plugins/obsidian-widget-board-plugin/backups`;
         this.versionControl = new TweetVersionControl(app, dbPath);
     }
 

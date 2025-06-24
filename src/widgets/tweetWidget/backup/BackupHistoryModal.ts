@@ -704,8 +704,24 @@ export class BackupHistoryModal extends BaseModal {
                         const success = await this.widget.getRepository().checkoutFromBackup(backup.id, this.language);
                         
                         if (success) {
-                            // チェックアウト成功時はウィジェットを再読み込み
+                            // チェックアウト成功時は強制的にUIを更新
+                            console.log('[BackupHistoryModal] チェックアウト成功 - UI強制更新開始');
+                            
+                            // 複数回のリロードを実行（念のため）
                             await this.widget.reloadTweetData();
+                            
+                            // 少し待ってからもう一度
+                            setTimeout(async () => {
+                                console.log('[BackupHistoryModal] 遅延リロード実行');
+                                await this.widget.reloadTweetData();
+                            }, 100);
+                            
+                            // さらにもう一度（確実に反映させるため）
+                            setTimeout(async () => {
+                                console.log('[BackupHistoryModal] 追加遅延リロード実行');
+                                this.widget.forceUpdateUI();
+                            }, 300);
+                            
                             this.close();
                         }
                         
@@ -793,6 +809,43 @@ export class BackupHistoryModal extends BaseModal {
                     scheduledPosts: restoredData.scheduledPosts?.length || 0,
                     keys: Object.keys(restoredData)
                 });
+                
+                // 【重要】復元時もブランチを作成して切り替え
+                try {
+                    console.log(`[BackupHistoryModal] 復元用ブランチ作成開始: ${backup.id}`);
+                    const branchManager = this.widget.getRepository().getBranchManager();
+                    const checkoutResult = await branchManager.checkoutFromBackup(
+                        backup.id,
+                        restoredData,
+                        `復元: ${backup.id} (${restoredData.posts?.length || 0}件の投稿)`
+                    );
+                    
+                    if (checkoutResult.success) {
+                        console.log(`[BackupHistoryModal] 復元用ブランチ作成成功: ${checkoutResult.branchName}`);
+                        
+                        // メインファイルも強制上書き
+                        const repository = this.widget.getRepository();
+                        const dbPath = repository['dbPath']; // プライベートプロパティにアクセス
+                        
+                        if (dbPath) {
+                            console.log(`[BackupHistoryModal] 復元後メインファイル上書き開始`);
+                            const sanitizedData = repository['ensureSettingsSchema'](restoredData);
+                            const jsonContent = JSON.stringify(sanitizedData, null, 2);
+                            
+                            // ファイル削除→再作成
+                            if (await this.widget.app.vault.adapter.exists(dbPath)) {
+                                await this.widget.app.vault.adapter.remove(dbPath);
+                            }
+                            await this.widget.app.vault.adapter.write(dbPath, jsonContent);
+                            console.log(`[BackupHistoryModal] 復元後メインファイル上書き完了`);
+                        }
+                        
+                    } else {
+                        console.error(`[BackupHistoryModal] 復元用ブランチ作成失敗: ${checkoutResult.error}`);
+                    }
+                } catch (branchError) {
+                    console.error(`[BackupHistoryModal] 復元用ブランチ作成エラー:`, branchError);
+                }
                 
                 console.log(`[BackupHistoryModal] onRestoreコールバック実行`);
                 this.onRestore(restoredData);
@@ -1440,13 +1493,12 @@ export class BackupHistoryModal extends BaseModal {
      * バックアップファイルの完全パスを取得（実際のファイル構造に基づく）
      */
     private getBackupFilePath(backup: BackupFileInfo): string {
-        const basePath = this.getBackupBasePath();
-        const backupDir = `${basePath}/backups`;
+        // バックアップファイルは.obsidianディレクトリ内のプラグイン専用フォルダに保存
+        const backupDir = `${this.widget.app.vault.configDir}/plugins/obsidian-widget-board-plugin/backups`;
         
         console.log(`[BackupHistoryModal] パス生成:`, {
             backupId: backup.id,
             backupType: backup.type,
-            basePath,
             backupDir,
             hasFilePath: !!backup.filePath,
             originalFilePath: backup.filePath
@@ -1496,8 +1548,8 @@ export class BackupHistoryModal extends BaseModal {
      * 複数のパスパターンを試行してファイルを見つける
      */
     private async findBackupFile(backup: BackupFileInfo): Promise<{ path: string; exists: boolean }> {
-        const basePath = this.getBackupBasePath();
-        const backupDir = `${basePath}/backups`;
+        // バックアップファイルは.obsidianディレクトリ内のプラグイン専用フォルダに保存
+        const backupDir = `${this.widget.app.vault.configDir}/plugins/obsidian-widget-board-plugin/backups`;
         
         // 試行するパスパターンのリスト
         const pathPatterns: string[] = [];
@@ -1614,32 +1666,85 @@ export class BackupHistoryModal extends BaseModal {
         // バックアップファイルの構造を判定
         let targetData = data;
         let isBackupFormat = false;
+        let backupType = 'unknown';
         
         // GenerationBackupManagerの形式（data.dataにTweetWidgetSettingsが格納）
-        if (data.type === 'generation' && data.data && typeof data.data === 'object') {
+        if ((data.type === 'generation' || data.type === 'daily' || data.type === 'weekly' || data.type === 'monthly') && data.data && typeof data.data === 'object') {
             targetData = data.data;
             isBackupFormat = true;
-            console.log(`[BackupHistoryModal] GenerationBackupManager形式を検出`);
+            backupType = 'generation';
+            console.log(`[BackupHistoryModal] GenerationBackupManager形式を検出: ${data.type}`);
         }
-        // IncrementalBackupManagerの形式の場合の対応も可能
+        // IncrementalBackupManagerの形式の場合（差分データ構造）
+        else if (data.type === 'incremental' && data.diff && typeof data.diff === 'object') {
+            // 差分バックアップの場合は、diff情報を確認
+            const hasDiffOps = Array.isArray(data.diff.operations);
+            console.log(`[BackupHistoryModal] IncrementalBackupManager（差分）形式を検出:`, {
+                hasDiff: !!data.diff,
+                hasOperations: hasDiffOps,
+                operationCount: hasDiffOps ? data.diff.operations.length : 0,
+                baseBackupId: data.baseBackupId,
+                metadata: data.metadata
+            });
+            
+            // 差分バックアップの場合は、差分操作があれば有効とみなす
+            if (hasDiffOps) {
+                console.log(`[BackupHistoryModal] 差分バックアップ構造検証成功`);
+                return true;
+            } else {
+                console.warn(`[BackupHistoryModal] 差分バックアップに操作データが見つかりません`);
+                return false;
+            }
+        }
+        // IncrementalBackupManagerの形式の場合（データ全体）
         else if (data.type === 'incremental' && data.data && typeof data.data === 'object') {
             targetData = data.data;
             isBackupFormat = true;
-            console.log(`[BackupHistoryModal] IncrementalBackupManager形式を検出`);
+            backupType = 'incremental-full';
+            console.log(`[BackupHistoryModal] IncrementalBackupManager（フル）形式を検出`);
         }
         // 直接TweetWidgetSettings形式の場合
         else if ('posts' in data || 'scheduledPosts' in data) {
+            backupType = 'direct';
             console.log(`[BackupHistoryModal] 直接TweetWidgetSettings形式を検出`);
         }
         else {
-            console.warn(`[BackupHistoryModal] 不明なデータ形式`);
+            console.warn(`[BackupHistoryModal] 不明なデータ形式:`, {
+                hasType: 'type' in data,
+                type: data.type,
+                hasData: 'data' in data,
+                hasDiff: 'diff' in data,
+                topLevelKeys: Object.keys(data).slice(0, 10) // 最初の10個のキー
+            });
+            
+            // 詳細なデータサンプルをログ出力
+            if (data && typeof data === 'object') {
+                const sampleData: Record<string, string> = {};
+                for (const [key, value] of Object.entries(data)) {
+                    if (key.length > 50) continue; // 長すぎるキーはスキップ
+                    if (Array.isArray(value)) {
+                        sampleData[key] = `Array(${value.length})`;
+                    } else if (value && typeof value === 'object') {
+                        sampleData[key] = `Object{${Object.keys(value).slice(0, 3).join(',')}}`;
+                    } else {
+                        sampleData[key] = typeof value;
+                    }
+                }
+                console.warn(`[BackupHistoryModal] データサンプル:`, sampleData);
+            }
         }
         
-        // 基本的なプロパティの存在確認
+        // 差分バックアップの場合はすでに検証済み
+        if (backupType === 'incremental' && data.diff) {
+            return true;
+        }
+        
+        // フルデータの場合の検証
         const hasValidPosts = Array.isArray(targetData.posts);
         const hasValidScheduledPosts = Array.isArray(targetData.scheduledPosts);
         
         console.log(`[BackupHistoryModal] プロパティ検証:`, {
+            backupType,
             isBackupFormat,
             targetData: {
                 keys: Object.keys(targetData),
@@ -1658,17 +1763,19 @@ export class BackupHistoryModal extends BaseModal {
             otherProperties: Object.keys(targetData).filter(key => !['posts', 'scheduledPosts'].includes(key))
         });
         
+        // posts配列の存在を必須とする（scheduledPostsは空でも可）
         if (!hasValidPosts) {
-            console.warn(`[BackupHistoryModal] posts配列が無効`);
+            console.warn(`[BackupHistoryModal] posts配列が無効または存在しません`);
             return false;
         }
         
-        if (!hasValidScheduledPosts) {
-            console.warn(`[BackupHistoryModal] scheduledPosts配列が無効`);
+        // scheduledPostsは必須ではないが、存在する場合は配列である必要がある
+        if ('scheduledPosts' in targetData && !hasValidScheduledPosts) {
+            console.warn(`[BackupHistoryModal] scheduledPostsが存在するが配列ではありません`);
             return false;
         }
         
-        console.log(`[BackupHistoryModal] データ構造検証成功`);
+        console.log(`[BackupHistoryModal] データ構造検証成功 (${backupType})`);
         return true;
     }
 
@@ -1679,13 +1786,11 @@ export class BackupHistoryModal extends BaseModal {
         try {
             console.log('[BackupHistoryModal] === 差分バックアップ状況デバッグ ===');
             
-            // バックアップディレクトリの確認
-            const basePath = this.getBackupBasePath();
-            const backupDir = `${basePath}/backups`;
+            // バックアップディレクトリの確認（.obsidianディレクトリ内）
+            const backupDir = `${this.widget.app.vault.configDir}/plugins/obsidian-widget-board-plugin/backups`;
             const incrementalDir = `${backupDir}/incremental`;
             
             console.log('[BackupHistoryModal] パス情報:', {
-                basePath,
                 backupDir,
                 incrementalDir
             });
@@ -1821,28 +1926,53 @@ export class BackupHistoryModal extends BaseModal {
             totalBackups = allBackups.length;
 
             console.log(`[BackupHistoryModal] チェック対象: ${totalBackups}件のバックアップ`);
+            console.log(`[BackupHistoryModal] 世代バックアップ: ${backups.generations.length}件, 差分バックアップ: ${backups.incremental.length}件`);
 
             // 各バックアップの診断を実行
             for (const backup of allBackups) {
+                console.log(`[BackupHistoryModal] === ${backup.id} の診断開始 ===`);
                 const diagnosis = await this.performBasicDiagnosis(backup);
+                
+                console.log(`[BackupHistoryModal] ${backup.id} 診断結果:`, {
+                    fileExists: diagnosis.fileExists,
+                    fileReadable: diagnosis.fileReadable,
+                    jsonValid: diagnosis.jsonValid,
+                    dataStructureValid: diagnosis.dataStructureValid,
+                    fileSize: diagnosis.fileSize,
+                    error: diagnosis.error
+                });
                 
                 if (!diagnosis.fileExists) {
                     issues.push(`${backup.id}: ファイルが存在しません`);
                     problemFiles++;
+                    console.warn(`[BackupHistoryModal] ${backup.id}: ファイル存在エラー`);
                 } else if (!diagnosis.fileReadable) {
                     issues.push(`${backup.id}: ファイルが読み込めません`);
                     unreadableFiles++;
+                    console.warn(`[BackupHistoryModal] ${backup.id}: ファイル読み込みエラー`);
                 } else if (!diagnosis.jsonValid) {
                     issues.push(`${backup.id}: JSON解析エラー`);
                     problemFiles++;
+                    console.warn(`[BackupHistoryModal] ${backup.id}: JSON解析エラー - ${diagnosis.error}`);
                 } else if (!diagnosis.dataStructureValid) {
                     issues.push(`${backup.id}: データ構造が無効です`);
                     problemFiles++;
+                    console.warn(`[BackupHistoryModal] ${backup.id}: データ構造エラー - ${diagnosis.error}`);
                 } else if (diagnosis.fileSize === 0) {
                     issues.push(`${backup.id}: ファイルサイズが0です`);
                     problemFiles++;
+                    console.warn(`[BackupHistoryModal] ${backup.id}: ファイルサイズ0エラー`);
+                } else {
+                    console.log(`[BackupHistoryModal] ${backup.id}: 正常`);
                 }
             }
+
+            console.log(`[BackupHistoryModal] 整合性チェック完了統計:`, {
+                totalBackups,
+                problemFiles,
+                unreadableFiles,
+                successfulBackups: totalBackups - problemFiles - unreadableFiles
+            });
 
             return {
                 totalBackups,
@@ -1852,6 +1982,7 @@ export class BackupHistoryModal extends BaseModal {
             };
 
         } catch (error) {
+            console.error(`[BackupHistoryModal] 整合性チェック処理エラー:`, error);
             issues.push(`整合性チェック処理エラー: ${error instanceof Error ? error.message : String(error)}`);
             return {
                 totalBackups,

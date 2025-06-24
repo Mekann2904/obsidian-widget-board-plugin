@@ -4081,7 +4081,7 @@ body.wb-modal-open .workspace-leaf-resize-handle {
 
 .integrity-summary {
     padding: 12px;
-    background: var(--background-primary);
+    background: var(--background-secondary);
     border-radius: 4px;
     margin-bottom: 16px;
 }

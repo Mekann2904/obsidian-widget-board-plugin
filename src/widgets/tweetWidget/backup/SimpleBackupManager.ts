@@ -30,7 +30,8 @@ export class SimpleBackupManager {
     constructor(app: App, basePath: string) {
         this.app = app;
         this.basePath = basePath;
-        this.backupPath = `${basePath}/backups`;
+        // バックアップファイルを.obsidianディレクトリ内のプラグイン専用フォルダに保存
+        this.backupPath = `${app.vault.configDir}/plugins/obsidian-widget-board-plugin/backups`;
         this.config = DEFAULT_BACKUP_CONFIG;
         
         console.log('[SimpleBackupManager] 初期化完了');

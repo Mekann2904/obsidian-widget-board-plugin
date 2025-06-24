@@ -1,0 +1,131 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": 1750721731947,
+  "config": {
+    "daily": {
+      "enabled": true,
+      "retentionDays": 30,
+      "createTime": "02:00"
+    },
+    "weekly": {
+      "enabled": true,
+      "retentionWeeks": 12,
+      "dayOfWeek": 0,
+      "createTime": "02:30"
+    },
+    "monthly": {
+      "enabled": true,
+      "retentionMonths": 12,
+      "dayOfMonth": 1,
+      "createTime": "03:00"
+    },
+    "incremental": {
+      "enabled": true,
+      "maxCount": 1000,
+      "compressAfterDays": 7
+    }
+  },
+  "backups": {
+    "generations": [
+      {
+        "id": "daily_2025-06-23_1750721557133",
+        "type": "daily",
+        "filePath": ".obsidian/plugins/obsidian-widget-board-plugin/backups/generations/daily_2025-06-23_1750721557133.json",
+        "timestamp": 1750721557133,
+        "size": 8686,
+        "checksum": "1601185d",
+        "compressed": false,
+        "generation": {
+          "period": "2025-06-23"
+        }
+      },
+      {
+        "id": "weekly_2025-W4_1750721721640",
+        "type": "weekly",
+        "filePath": ".obsidian/plugins/obsidian-widget-board-plugin/backups/generations/weekly_2025-W4_1750721721640.json",
+        "timestamp": 1750721721640,
+        "size": 9353,
+        "checksum": "55bf44ac",
+        "compressed": false,
+        "generation": {
+          "period": "2025-W4"
+        }
+      },
+      {
+        "id": "monthly_2025-06_1750721721641",
+        "type": "monthly",
+        "filePath": ".obsidian/plugins/obsidian-widget-board-plugin/backups/generations/monthly_2025-06_1750721721641.json",
+        "timestamp": 1750721721641,
+        "size": 9355,
+        "checksum": "866d67a",
+        "compressed": false,
+        "generation": {
+          "period": "2025-06"
+        }
+      }
+    ],
+    "incremental": [
+      {
+        "id": "inc_1750721731943_1",
+        "type": "incremental",
+        "filePath": ".obsidian/plugins/obsidian-widget-board-plugin/backups/incremental/inc_1750721731943_1.json",
+        "timestamp": 1750721731943,
+        "size": 10024,
+        "checksum": "3fbf267d",
+        "compressed": false,
+        "incremental": {
+          "baseBackupId": "self-contained",
+          "changedPostsCount": 14,
+          "diffSize": 10024
+        }
+      },
+      {
+        "id": "inc_1750721731482_1",
+        "type": "incremental",
+        "filePath": ".obsidian/plugins/obsidian-widget-board-plugin/backups/incremental/inc_1750721731482_1.json",
+        "timestamp": 1750721731482,
+        "size": 10021,
+        "checksum": "c1ab482",
+        "compressed": false,
+        "incremental": {
+          "baseBackupId": "self-contained",
+          "changedPostsCount": 14,
+          "diffSize": 10021
+        }
+      },
+      {
+        "id": "inc_1750721722061_1",
+        "type": "incremental",
+        "filePath": ".obsidian/plugins/obsidian-widget-board-plugin/backups/incremental/inc_1750721722061_1.json",
+        "timestamp": 1750721722061,
+        "size": 9351,
+        "checksum": "4e3c0211",
+        "compressed": false,
+        "incremental": {
+          "baseBackupId": "self-contained",
+          "changedPostsCount": 13,
+          "diffSize": 9351
+        }
+      },
+      {
+        "id": "inc_1750721721638_1",
+        "type": "incremental",
+        "filePath": ".obsidian/plugins/obsidian-widget-board-plugin/backups/incremental/inc_1750721721638_1.json",
+        "timestamp": 1750721721638,
+        "size": 9348,
+        "checksum": "4cbb34a2",
+        "compressed": false,
+        "incremental": {
+          "baseBackupId": "self-contained",
+          "changedPostsCount": 13,
+          "diffSize": 9348
+        }
+      }
+    ]
+  },
+  "statistics": {
+    "totalBackups": 0,
+    "totalSize": 0,
+    "corruptedBackups": []
+  }
+}

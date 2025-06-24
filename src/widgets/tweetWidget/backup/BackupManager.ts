@@ -33,13 +33,192 @@ export class BackupManager {
     constructor(app: App, basePath: string) {
         this.app = app;
         this.basePath = basePath;
-        this.backupPath = `${basePath}/backups`;
+        // バックアップファイルを.obsidianディレクトリ内のプラグイン専用フォルダに保存
+        // Vault外に移すことでObsidianのインデックスへの影響を回避
+        this.backupPath = `${app.vault.configDir}/plugins/obsidian-widget-board-plugin/backups`;
         this.config = DEFAULT_BACKUP_CONFIG;
         
         this.generationManager = new GenerationBackupManager(app, this.basePath);
         this.incrementalManager = new IncrementalBackupManager(app, this.basePath);
         
-        console.log('[BackupManager] 初期化完了');
+        console.log('[BackupManager] 初期化完了 - バックアップパス:', this.backupPath);
+        
+        // 古いバックアップファイルの自動マイグレーション
+        this.migrateOldBackupsIfNeeded().catch(error => {
+            console.warn('[BackupManager] バックアップマイグレーションエラー:', error);
+        });
+    }
+
+    /**
+     * 古い場所のバックアップファイルを新しい場所に移行
+     */
+    private async migrateOldBackupsIfNeeded(): Promise<void> {
+        try {
+            const oldBackupPath = `${this.basePath}/backups`;
+            const oldIndexPath = `${oldBackupPath}/index.json`;
+            
+            // 古いインデックスファイルが存在するかチェック
+            const oldIndexExists = await this.app.vault.adapter.exists(oldIndexPath);
+            if (!oldIndexExists) {
+                console.log('[BackupManager] 古いバックアップファイルはありません。マイグレーション不要。');
+                return;
+            }
+            
+            console.log('[BackupManager] 古いバックアップファイルを検出。マイグレーションを開始します。');
+            
+            // 新しいバックアップディレクトリを作成
+            await BackupUtils.ensureDirectory(this.app, this.backupPath);
+            await BackupUtils.ensureDirectory(this.app, `${this.backupPath}/generations`);
+            await BackupUtils.ensureDirectory(this.app, `${this.backupPath}/incremental`);
+            
+            // 古いインデックスファイルを読み込み
+            const oldIndexContent = await this.app.vault.adapter.read(oldIndexPath);
+            const oldIndex = JSON.parse(oldIndexContent) as BackupIndex;
+            
+            let migratedCount = 0;
+            let errorCount = 0;
+            
+            // 世代バックアップファイルを移行
+            for (const backup of oldIndex.backups.generations) {
+                try {
+                    await this.migrateBackupFile(backup, oldBackupPath, 'generations');
+                    migratedCount++;
+                } catch (error) {
+                    console.warn(`[BackupManager] 世代バックアップファイル移行失敗: ${backup.id}`, error);
+                    errorCount++;
+                }
+            }
+            
+            // 差分バックアップファイルを移行
+            for (const backup of oldIndex.backups.incremental) {
+                try {
+                    await this.migrateBackupFile(backup, oldBackupPath, 'incremental');
+                    migratedCount++;
+                } catch (error) {
+                    console.warn(`[BackupManager] 差分バックアップファイル移行失敗: ${backup.id}`, error);
+                    errorCount++;
+                }
+            }
+            
+            // 新しい場所にインデックスファイルを作成（ファイルパスを更新）
+            await this.updateBackupPathsInIndex(oldIndex);
+            
+            console.log(`[BackupManager] マイグレーション完了: ${migratedCount}件成功, ${errorCount}件失敗`);
+            
+            // 古いバックアップディレクトリを削除（オプション）
+            try {
+                await this.cleanupOldBackupDirectory(oldBackupPath);
+            } catch (error) {
+                console.warn('[BackupManager] 古いバックアップディレクトリの削除に失敗:', error);
+            }
+            
+        } catch (error) {
+            console.error('[BackupManager] バックアップマイグレーションエラー:', error);
+        }
+    }
+
+    /**
+     * 個別のバックアップファイルを移行
+     */
+    private async migrateBackupFile(backup: BackupFileInfo, oldBackupPath: string, subDir: 'generations' | 'incremental'): Promise<void> {
+        // 古いファイルパスを推測
+        const possibleOldPaths = [
+            backup.filePath,
+            `${oldBackupPath}/${backup.id}.json`,
+            `${oldBackupPath}/${subDir}/${backup.id}.json`,
+            `${oldBackupPath}/${subDir}/${backup.type}/${backup.generation?.period || backup.id}.json`
+        ];
+        
+        let oldFilePath: string | null = null;
+        let fileContent: string | null = null;
+        
+        // 古いファイルを見つける
+        for (const path of possibleOldPaths) {
+            try {
+                if (await this.app.vault.adapter.exists(path)) {
+                    fileContent = await this.app.vault.adapter.read(path);
+                    oldFilePath = path;
+                    break;
+                }
+            } catch (error) {
+                // 無視して次のパスを試行
+            }
+        }
+        
+        if (!oldFilePath || !fileContent) {
+            throw new Error(`古いバックアップファイルが見つかりません: ${backup.id}`);
+        }
+        
+        // 新しいファイルパスを生成
+        let newFilePath: string;
+        if (subDir === 'incremental') {
+            newFilePath = `${this.backupPath}/incremental/${backup.id}.json`;
+        } else {
+            const backupType = backup.type || 'daily';
+            const period = backup.generation?.period || backup.id;
+            newFilePath = `${this.backupPath}/generations/${backupType}/${period}.json`;
+            
+            // ディレクトリを作成
+            await BackupUtils.ensureDirectory(this.app, `${this.backupPath}/generations/${backupType}`);
+        }
+        
+        // 新しい場所にファイルを作成
+        await this.app.vault.adapter.write(newFilePath, fileContent);
+        
+        // バックアップ情報のファイルパスを更新
+        backup.filePath = newFilePath;
+        
+        console.log(`[BackupManager] ファイル移行完了: ${oldFilePath} -> ${newFilePath}`);
+    }
+
+    /**
+     * インデックス内のバックアップファイルパスを更新して保存
+     */
+    private async updateBackupPathsInIndex(oldIndex: BackupIndex): Promise<void> {
+        // 新しいパス情報でインデックスを保存
+        await this.saveBackupIndex(oldIndex);
+    }
+
+    /**
+     * 古いバックアップディレクトリを削除
+     */
+    private async cleanupOldBackupDirectory(oldBackupPath: string): Promise<void> {
+        // 念のため、ディレクトリが空かどうかを確認してから削除
+        try {
+            const indexExists = await this.app.vault.adapter.exists(`${oldBackupPath}/index.json`);
+            if (indexExists) {
+                await this.app.vault.adapter.remove(`${oldBackupPath}/index.json`);
+            }
+            
+            // generationsディレクトリの削除を試行
+            try {
+                const generationsPath = `${oldBackupPath}/generations`;
+                const genExists = await this.app.vault.adapter.exists(generationsPath);
+                if (genExists) {
+                    await this.app.vault.adapter.remove(generationsPath);
+                }
+            } catch (error) {
+                console.warn('[BackupManager] generationsディレクトリ削除失敗:', error);
+            }
+            
+            // incrementalディレクトリの削除を試行
+            try {
+                const incrementalPath = `${oldBackupPath}/incremental`;
+                const incExists = await this.app.vault.adapter.exists(incrementalPath);
+                if (incExists) {
+                    await this.app.vault.adapter.remove(incrementalPath);
+                }
+            } catch (error) {
+                console.warn('[BackupManager] incrementalディレクトリ削除失敗:', error);
+            }
+            
+            // 最後にbackupsディレクトリ自体を削除
+            await this.app.vault.adapter.remove(oldBackupPath);
+            
+            console.log('[BackupManager] 古いバックアップディレクトリを削除しました:', oldBackupPath);
+        } catch (error) {
+            console.warn('[BackupManager] 古いバックアップディレクトリ削除時にエラー:', error);
+        }
     }
 
     private async loadBackupIndex(): Promise<BackupIndex> {

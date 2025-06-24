@@ -66,13 +66,162 @@ export class TweetWidget implements WidgetImplementation {
     getRepository(): TweetRepository { return this.repository; }
     
     /**
+     * UI強制更新（DOM完全クリア＆再構築）
+     */
+    public forceUpdateUI(): void {
+        console.log('[TweetWidget] UI強制更新開始');
+        
+        try {
+            // 更新前のDOM状態をログ出力
+            console.log('[TweetWidget] 更新前DOM状態:', {
+                hasWidgetEl: !!this.widgetEl,
+                innerHTML: this.widgetEl?.innerHTML?.substring(0, 200) || 'empty',
+                childrenCount: this.widgetEl?.children?.length || 0,
+                posts: this.store.settings.posts.length,
+                currentData: {
+                    posts: this.store.settings.posts.slice(0, 3).map((p: any) => ({ id: p.id, text: p.text.substring(0, 30) }))
+                }
+            });
+            
+            // より強力なDOM再作成: 要素自体を破棄して再作成
+            if (this.widgetEl) {
+                const parentEl = this.widgetEl.parentElement;
+                const oldClasses = Array.from(this.widgetEl.classList);
+                const oldStyles = this.widgetEl.getAttribute('style') || '';
+                
+                if (parentEl) {
+                    // 新しいDOM要素を作成
+                    const newWidgetEl = parentEl.createDiv();
+                    
+                    // 古い要素のクラスとスタイルを復元
+                    oldClasses.forEach(cls => newWidgetEl.classList.add(cls));
+                    if (oldStyles) {
+                        newWidgetEl.setAttribute('style', oldStyles);
+                    }
+                    
+                    // 古い要素を削除して新しい要素に置き換え
+                    this.widgetEl.remove();
+                    this.widgetEl = newWidgetEl;
+                    
+                    console.log('[TweetWidget] ウィジェット要素完全再作成完了');
+                } else {
+                    // 親要素がない場合は通常のクリア
+                    this.widgetEl.innerHTML = '';
+                    this.widgetEl.classList.remove('tweet-widget-loading');
+                    console.log('[TweetWidget] DOM要素通常クリア完了');
+                }
+            }
+            
+            // UI状態を完全リセット
+            this.editingPostId = null;
+            this.replyingToParentId = null;
+            this.detailPostId = null;
+            this.replyModalPost = null;
+            this.retweetModalPost = null;
+            this.retweetListPost = null;
+            this.attachedFiles = [];
+            
+            // UIインスタンスを再作成
+            this.ui = new TweetWidgetUI(this, this.widgetEl);
+            console.log('[TweetWidget] UIインスタンス再作成完了');
+            
+            // データ再計算
+            this.recalculateQuoteCounts();
+            
+            // 強制レンダリング
+            console.log('[TweetWidget] レンダリング前データ確認:', {
+                postsInStore: this.store.settings.posts.length,
+                postsById: this.postsById.size,
+                samplePosts: this.store.settings.posts.slice(0, 2).map((p: any) => ({ id: p.id, text: p.text.substring(0, 20) }))
+            });
+            
+            this.ui.render();
+            console.log('[TweetWidget] 強制レンダリング完了');
+            
+            // レンダリング後のDOM状態を確認
+            setTimeout(() => {
+                console.log('[TweetWidget] レンダリング後DOM状態:', {
+                    innerHTML: this.widgetEl?.innerHTML?.substring(0, 200) || 'empty',
+                    childrenCount: this.widgetEl?.children?.length || 0,
+                    hasPostList: !!this.widgetEl?.querySelector('.tweet-list-main'),
+                    hasPosts: !!this.widgetEl?.querySelector('.tweet-post'),
+                    firstPostText: this.widgetEl?.querySelector('.tweet-post .tweet-content')?.textContent?.substring(0, 30) || 'none'
+                });
+            }, 10);
+            
+            // 少し待ってからもう一度レンダリング
+            setTimeout(() => {
+                console.log('[TweetWidget] 遅延レンダリング実行');
+                this.ui.render();
+                
+                // 再度DOM確認
+                setTimeout(() => {
+                    console.log('[TweetWidget] 遅延レンダリング後DOM状態:', {
+                        innerHTML: this.widgetEl?.innerHTML?.substring(0, 200) || 'empty',
+                        childrenCount: this.widgetEl?.children?.length || 0,
+                        postsVisible: this.widgetEl?.querySelectorAll('.tweet-post')?.length || 0
+                    });
+                }, 10);
+            }, 50);
+            
+            // さらにもう一度（念のため）
+            setTimeout(() => {
+                console.log('[TweetWidget] 追加遅延レンダリング実行');
+                this.ui.render();
+                
+                // 最終確認
+                setTimeout(() => {
+                    console.log('[TweetWidget] 最終DOM状態:', {
+                        innerHTML: this.widgetEl?.innerHTML?.substring(0, 200) || 'empty',
+                        childrenCount: this.widgetEl?.children?.length || 0,
+                        postsVisible: this.widgetEl?.querySelectorAll('.tweet-post')?.length || 0,
+                        dataStatus: {
+                            postsInStore: this.store.settings.posts.length,
+                            postsById: this.postsById.size
+                        }
+                    });
+                }, 10);
+            }, 200);
+            
+            console.log('[TweetWidget] UI強制更新完了');
+            
+        } catch (error) {
+            console.error('[TweetWidget] UI強制更新エラー:', error);
+            // フォールバック: 通常のレンダリング
+            this.ui?.render();
+        }
+    }
+
+    /**
      * データを再読み込み（履歴復元後など）
      */
     public async reloadTweetData(): Promise<void> {
-        const settings = await this.repository.load(this.plugin.settings.language || 'ja');
-        this.store.updateSettings(settings);
-        this.recalculateQuoteCounts();
-        this.ui.render();
+        try {
+            console.log('[TweetWidget] データ再読み込み開始 - tweets.jsonから読み込み');
+            
+            // tweets.jsonから直接データを読み込み
+            const settings = await this.repository.load(this.plugin.settings.language || 'ja');
+            
+            console.log('[TweetWidget] データ読み込み完了:', {
+                posts: settings.posts?.length || 0,
+                scheduledPosts: settings.scheduledPosts?.length || 0
+            });
+            
+            // ストアを完全に新しいデータで更新
+            this.store.replaceAllData(settings);
+            
+            // UI強制更新（DOM完全クリア＆再構築）
+            this.forceUpdateUI();
+            
+            console.log('[TweetWidget] データ再読み込み完了');
+            
+        } catch (error) {
+            console.error('[TweetWidget] データ再読み込みエラー:', error);
+            // エラーの場合は通常のロードにフォールバック
+            const settings = await this.repository.load(this.plugin.settings.language || 'ja');
+            this.store.replaceAllData(settings);
+            this.forceUpdateUI();
+        }
     }
 
     create(config: WidgetConfig, app: App, plugin: WidgetBoardPlugin, preloadBundle?: unknown): HTMLElement {
@@ -102,7 +251,10 @@ export class TweetWidget implements WidgetImplementation {
     private async initialize() {
         const dbPath = this.getTweetDbPath();
         this.repository = new TweetRepository(this.app, dbPath);
+        
+        // tweets.jsonからデータを読み込み
         const initialSettings = await this.repository.load(this.plugin.settings.language || 'ja');
+        
         this.store = new TweetStore(initialSettings);
         
         // データ変更リスナーを追加（自動保存・バックアップ）
@@ -154,9 +306,9 @@ export class TweetWidget implements WidgetImplementation {
             // update path in case settings changed while widget is open
             this.repository.setPath(this.getTweetDbPath());
             try {
-                console.log('[TweetWidget] データ保存開始');
+                console.log('[TweetWidget] tweets.jsonデータ保存開始');
                 await this.repository.save(this.store.settings, this.plugin.settings.language || 'ja');
-                console.log('[TweetWidget] データ保存完了 - バックアップも自動作成済み');
+                console.log('[TweetWidget] tweets.jsonデータ保存完了 - バックアップも自動作成済み');
             } catch (error) {
                 console.error('[TweetWidget] データ保存エラー:', error);
             }
@@ -180,9 +332,9 @@ export class TweetWidget implements WidgetImplementation {
         this.repository.setPath(this.getTweetDbPath());
         
         try {
-            console.log(`[TweetWidget] 即座データ保存開始 - ${reason}`);
+            console.log(`[TweetWidget] tweets.json即座保存開始 - ${reason}`);
             await this.repository.save(this.store.settings, this.plugin.settings.language || 'ja', reason);
-            console.log(`[TweetWidget] 即座データ保存完了 - 差分バックアップも自動作成済み`);
+            console.log(`[TweetWidget] tweets.json即座保存完了 - 差分バックアップも自動作成済み`);
         } catch (error) {
             console.error(`[TweetWidget] 即座データ保存エラー (${reason}):`, error);
         }
@@ -663,14 +815,36 @@ export class TweetWidget implements WidgetImplementation {
     }
 
     public getFilteredPosts(): TweetWidgetPost[] {
+        console.log('[TweetWidget] getFilteredPosts() 開始');
+        console.log('[TweetWidget] store.settings.posts:', {
+            total: this.store.settings.posts.length,
+            samples: this.store.settings.posts.slice(0, 3).map(p => ({
+                id: p.id,
+                text: p.text.substring(0, 30),
+                deleted: p.deleted,
+                bookmark: p.bookmark
+            }))
+        });
+        
         let posts = this.store.settings.posts;
+        console.log('[TweetWidget] currentFilter:', this.currentFilter);
+        
         switch (this.currentFilter) {
-            case 'all': break;
-            case 'deleted': posts = posts.filter(t => t.deleted); break;
-            case 'bookmark': posts = posts.filter(t => t.bookmark); break;
+            case 'all': 
+                console.log('[TweetWidget] フィルター: all (全件)');
+                break;
+            case 'deleted': 
+                posts = posts.filter(t => t.deleted); 
+                console.log('[TweetWidget] フィルター: deleted (' + posts.length + '件)');
+                break;
+            case 'bookmark': 
+                posts = posts.filter(t => t.bookmark); 
+                console.log('[TweetWidget] フィルター: bookmark (' + posts.length + '件)');
+                break;
             case 'active':
             default:
                 posts = posts.filter(t => !t.deleted);
+                console.log('[TweetWidget] フィルター: active (削除されていない', posts.length + '件)');
         }
         if (this.currentPeriod && this.currentPeriod !== 'all') {
             const now = Date.now();
@@ -695,6 +869,16 @@ export class TweetWidget implements WidgetImplementation {
             }
             if (ms > 0 && this.currentPeriod !== 'today') posts = posts.filter(p => now - p.created < ms);
         }
+        
+        console.log('[TweetWidget] getFilteredPosts() 最終結果:', {
+            finalCount: posts.length,
+            finalSamples: posts.slice(0, 3).map(p => ({
+                id: p.id,
+                text: p.text.substring(0, 30),
+                created: new Date(p.created).toLocaleString()
+            }))
+        });
+        
         return posts;
     }
     
