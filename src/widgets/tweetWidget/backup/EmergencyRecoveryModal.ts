@@ -304,7 +304,7 @@ export class EmergencyRecoveryModal extends BaseModal {
         optionEl.style.cssText = `
             margin-bottom: 16px;
             padding: 16px;
-            border: 2px solid ${isDefault ? 'var(--interactive-accent)' : 'var(--background-modifier-border)'};
+            border: 2px solid ${isDefault ? 'var(--background-modifier-border)' : 'var(--background-modifier-border)'};
             border-radius: 8px;
             background: var(--background-primary);
             cursor: pointer;
@@ -321,7 +321,7 @@ export class EmergencyRecoveryModal extends BaseModal {
 
             // 現在の選択を設定
             optionEl.classList.add('selected');
-            optionEl.style.borderColor = 'var(--interactive-accent)';
+            optionEl.style.borderColor = 'var(--background-modifier-border)';
             this.selectedOption = option;
         };
 
@@ -478,7 +478,7 @@ export class EmergencyRecoveryModal extends BaseModal {
 
             const btnColor = this.selectedOption.severity === 'dangerous' ? 
                 'background: var(--text-error); color: white;' :
-                'background: var(--interactive-accent); color: var(--text-on-accent);';
+                'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
 
             executeBtn.style.cssText = buttonStyle + btnColor;
             executeBtn.onclick = () => this.executeRecovery();

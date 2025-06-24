@@ -79,7 +79,7 @@ export class BackupChainVisualization extends BaseModal {
         header.style.cssText = `
             padding: 20px 24px;
             border-bottom: 1px solid var(--background-modifier-border);
-            background: linear-gradient(135deg, var(--background-secondary) 0%, var(--background-primary) 100%);
+            background: var(--background-secondary);
             flex-shrink: 0;
         `;
 
@@ -2610,7 +2610,8 @@ export class BackupChainVisualization extends BaseModal {
         svg.style.cssText = `
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background: var(--background-secondary);
+            border: 1px solid var(--background-modifier-border);
             border-radius: 8px;
         `;
 
@@ -2627,11 +2628,11 @@ export class BackupChainVisualization extends BaseModal {
         
         const stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
         stop1.setAttribute('offset', '0%');
-        stop1.setAttribute('stop-color', '#4CAF50');
+        stop1.setAttribute('stop-color', 'var(--text-muted)');
         
         const stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
         stop2.setAttribute('offset', '100%');
-        stop2.setAttribute('stop-color', '#81C784');
+        stop2.setAttribute('stop-color', 'var(--text-muted)');
         
         mainGradient.appendChild(stop1);
         mainGradient.appendChild(stop2);
@@ -2646,11 +2647,11 @@ export class BackupChainVisualization extends BaseModal {
         
         const diffStop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
         diffStop1.setAttribute('offset', '0%');
-        diffStop1.setAttribute('stop-color', '#2196F3');
+        diffStop1.setAttribute('stop-color', 'var(--text-muted)');
         
         const diffStop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
         diffStop2.setAttribute('offset', '100%');
-        diffStop2.setAttribute('stop-color', '#64B5F6');
+        diffStop2.setAttribute('stop-color', 'var(--text-muted)');
         
         diffGradient.appendChild(diffStop1);
         diffGradient.appendChild(diffStop2);

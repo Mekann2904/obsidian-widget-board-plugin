@@ -139,15 +139,20 @@ export class BackupHistoryModal extends BaseModal {
         // アイコン
         const icon = this.createElement({
             tagName: 'div',
-            textContent: '📦',
             className: 'empty-icon'
         });
 
         icon.style.cssText = `
             font-size: 64px;
             margin-bottom: 24px;
-            opacity: 0.6;
+            opacity: 0.3;
+            display: flex;
+            justify-content: center;
+            color: var(--text-muted);
         `;
+        
+        // シンプルなアイコン表示
+        icon.textContent = '■';
 
         // メインメッセージ
         const title = this.createElement({
@@ -188,9 +193,9 @@ export class BackupHistoryModal extends BaseModal {
             padding: 12px 24px;
             font-size: 16px;
             border-radius: 6px;
-            background: var(--interactive-accent);
-            color: var(--text-on-accent);
-            border: none;
+            background: var(--background-secondary);
+            color: var(--text-normal);
+            border: 1px solid var(--background-modifier-border);
             cursor: pointer;
             margin-bottom: 16px;
         `;
@@ -450,8 +455,8 @@ export class BackupHistoryModal extends BaseModal {
             
             if (isActive) {
                 tab.classList.add('active');
-                (tab as HTMLElement).style.color = 'var(--interactive-accent)';
-                (tab as HTMLElement).style.borderBottomColor = 'var(--interactive-accent)';
+                            (tab as HTMLElement).style.color = 'var(--text-normal)';
+            (tab as HTMLElement).style.borderBottomColor = 'var(--background-modifier-border)';
             } else {
                 tab.classList.remove('active');
                 (tab as HTMLElement).style.color = 'var(--text-muted)';
@@ -495,8 +500,8 @@ export class BackupHistoryModal extends BaseModal {
         `;
 
         const activeTabStyle = `
-            color: var(--interactive-accent);
-            border-bottom-color: var(--interactive-accent);
+            color: var(--text-normal);
+            border-bottom-color: var(--background-modifier-border);
         `;
 
         generationTab.style.cssText = tabButtonStyle + (this.currentTab === 'generation' ? activeTabStyle : '');
@@ -561,7 +566,7 @@ export class BackupHistoryModal extends BaseModal {
             className: 'footer-button manual-backup-btn'
         }) as HTMLButtonElement;
 
-        manualBackupBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent);';
+        manualBackupBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
         manualBackupBtn.onclick = () => this.createManualBackup();
 
         // バックアップ可視化ボタン
@@ -581,7 +586,7 @@ export class BackupHistoryModal extends BaseModal {
             className: 'footer-button test-restore-btn'
         }) as HTMLButtonElement;
 
-        testRestoreBtn.style.cssText = buttonStyle + 'background: var(--color-orange); color: var(--text-on-accent);';
+        testRestoreBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
         testRestoreBtn.onclick = () => this.testRestore();
 
         // 整合性チェックボタン
@@ -591,7 +596,7 @@ export class BackupHistoryModal extends BaseModal {
             className: 'footer-button integrity-check-btn'
         }) as HTMLButtonElement;
 
-        integrityCheckBtn.style.cssText = buttonStyle + 'background: var(--color-purple); color: var(--text-on-accent);';
+        integrityCheckBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
         integrityCheckBtn.onclick = () => this.checkIntegrity();
 
         // 差分バックアップテストボタン（デバッグ用）
@@ -601,7 +606,7 @@ export class BackupHistoryModal extends BaseModal {
             className: 'footer-button test-incremental-btn'
         }) as HTMLButtonElement;
 
-        testIncrementalBtn.style.cssText = buttonStyle + 'background: var(--color-green); color: var(--text-on-accent);';
+        testIncrementalBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
         testIncrementalBtn.onclick = () => this.testIncrementalBackup();
 
         leftButtons.appendChild(manualBackupBtn);
@@ -1191,7 +1196,7 @@ export class BackupHistoryModal extends BaseModal {
             className: 'backup-action-btn checkout-btn'
         }) as HTMLButtonElement;
 
-        checkoutBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent);';
+        checkoutBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
         checkoutBtn.onclick = () => this.handleCheckout(backup);
 
         const diagnoseBtn = this.createElement({
@@ -1200,7 +1205,7 @@ export class BackupHistoryModal extends BaseModal {
             className: 'backup-action-btn diagnose-btn'
         }) as HTMLButtonElement;
 
-        diagnoseBtn.style.cssText = buttonStyle + 'background: var(--color-orange); color: var(--text-on-accent);';
+        diagnoseBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
         diagnoseBtn.onclick = () => this.handleDiagnose(backup);
 
         const detailBtn = this.createElement({
@@ -1290,7 +1295,7 @@ export class BackupHistoryModal extends BaseModal {
             className: 'backup-action-btn preview-btn'
         }) as HTMLButtonElement;
 
-        previewBtn.style.cssText = buttonStyle + 'background: var(--color-blue); color: var(--text-on-accent); margin-right: 4px;';
+        previewBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border); margin-right: 4px;';
         previewBtn.onclick = () => this.handlePreview(backup);
 
         const checkoutBtn = this.createElement({
@@ -1299,7 +1304,7 @@ export class BackupHistoryModal extends BaseModal {
             className: 'backup-action-btn checkout-btn'
         }) as HTMLButtonElement;
 
-        checkoutBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent); margin-right: 4px;';
+        checkoutBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border); margin-right: 4px;';
         checkoutBtn.onclick = () => this.handleCheckout(backup);
 
         const diagnoseBtn = this.createElement({
@@ -1308,7 +1313,7 @@ export class BackupHistoryModal extends BaseModal {
             className: 'backup-action-btn diagnose-btn'
         }) as HTMLButtonElement;
 
-        diagnoseBtn.style.cssText = buttonStyle + 'background: var(--color-orange); color: var(--text-on-accent);';
+        diagnoseBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
         diagnoseBtn.onclick = () => this.handleDiagnose(backup);
 
         const detailBtn = this.createElement({
@@ -1335,11 +1340,11 @@ export class BackupHistoryModal extends BaseModal {
 
     private getTypeIcon(type: string): string {
         switch (type) {
-            case 'daily': return '📅';
-            case 'weekly': return '📆';
-            case 'monthly': return '🗓️';
-            case 'manual': return '👤';
-            default: return '📄';
+            case 'daily': return '□';
+            case 'weekly': return '▫';
+            case 'monthly': return '▣';
+            case 'manual': return '●';
+            default: return '◈';
         }
     }
 
@@ -1893,7 +1898,7 @@ export class BackupHistoryModal extends BaseModal {
                     message += `${index + 1}. ${issue}\n`;
                 });
             } else {
-                message += `\n✅ 問題は検出されませんでした\n`;
+                message += `\n✓ 問題は検出されませんでした\n`;
             }
             
             alert(message);

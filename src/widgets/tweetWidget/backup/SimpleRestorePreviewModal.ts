@@ -115,7 +115,7 @@ export class SimpleRestorePreviewModal extends Modal {
         });
 
         infoDiv.createDiv({ 
-            text: `🗓️ 作成日時: ${backupDate}`,
+            text: `• 作成日時: ${backupDate}`,
             cls: 'info-item'
         });
 
@@ -157,18 +157,18 @@ export class SimpleRestorePreviewModal extends Modal {
         const currentScheduled = this.currentData.scheduledPosts?.length || 0;
 
         currentDiv.createDiv({ 
-            text: `📝 現在の投稿数: ${currentPosts}件`,
+            text: `• 現在の投稿数: ${currentPosts}件`,
             cls: 'current-item'
         });
 
         currentDiv.createDiv({ 
-            text: `⏰ スケジュール投稿: ${currentScheduled}件`,
+            text: `• スケジュール投稿: ${currentScheduled}件`,
             cls: 'current-item'
         });
 
         if (this.currentData.userName) {
             currentDiv.createDiv({ 
-                text: `👤 ユーザー: ${this.currentData.userName}`,
+                text: `• ユーザー: ${this.currentData.userName}`,
                 cls: 'current-item'
             });
         }
@@ -187,18 +187,18 @@ export class SimpleRestorePreviewModal extends Modal {
     private renderWarnings(): void {
         const warningDiv = this.contentEl.createDiv({ cls: 'restore-warnings' });
         warningDiv.style.cssText = `
-            background: #ffeaa7;
-            border: 1px solid #fdcb6e;
+            background: var(--background-secondary);
+            border: 1px solid var(--background-modifier-border);
             border-radius: 8px;
             padding: 16px;
             margin-bottom: 20px;
         `;
 
-        const warningTitle = warningDiv.createEl('h3', { text: '⚠️ 重要な注意事項' });
+        const warningTitle = warningDiv.createEl('h3', { text: '⚠ 重要な注意事項' });
         warningTitle.style.cssText = `
             margin: 0 0 12px 0;
             font-size: 16px;
-            color: #d63031;
+            color: var(--text-normal);
         `;
 
         const warnings = [
@@ -213,7 +213,7 @@ export class SimpleRestorePreviewModal extends Modal {
             warningItem.style.cssText = `
                 margin: 6px 0;
                 font-size: 14px;
-                color: #2d3436;
+                color: var(--text-muted);
                 padding-left: 8px;
             `;
         });
@@ -267,10 +267,10 @@ export class SimpleRestorePreviewModal extends Modal {
         const confirmBtn = rightDiv.createEl('button', { text: '復元を実行' });
         confirmBtn.style.cssText = `
             padding: 8px 16px;
-            border: none;
+            border: 1px solid var(--background-modifier-border);
             border-radius: 4px;
-            background: var(--interactive-accent);
-            color: var(--text-on-accent);
+            background: var(--background-secondary);
+            color: var(--text-normal);
             cursor: pointer;
             font-weight: 500;
         `;
@@ -292,8 +292,9 @@ export class SimpleRestorePreviewModal extends Modal {
                     cls: 'restore-error'
                 });
                 errorDiv.style.cssText = `
-                    color: #d63031;
-                    background: #ffeaa7;
+                    color: var(--text-error);
+                    background: var(--background-secondary);
+                    border: 1px solid var(--background-modifier-border);
                     padding: 8px;
                     border-radius: 4px;
                     margin-top: 12px;
@@ -311,10 +312,10 @@ export class SimpleRestorePreviewModal extends Modal {
         };
 
         confirmBtn.onmouseenter = () => {
-            confirmBtn.style.background = 'var(--interactive-accent-hover)';
+            confirmBtn.style.background = 'var(--background-modifier-hover)';
         };
         confirmBtn.onmouseleave = () => {
-            confirmBtn.style.background = 'var(--interactive-accent)';
+            confirmBtn.style.background = 'var(--background-secondary)';
         };
     }
 

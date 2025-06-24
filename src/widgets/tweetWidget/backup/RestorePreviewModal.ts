@@ -294,7 +294,7 @@ export class RestorePreviewModal extends BaseModal {
 
         const errorTitle = this.createElement({
             tagName: 'h3',
-            textContent: '❌ エラーが発生しました',
+            textContent: '✗ エラーが発生しました',
             className: 'error-title'
         });
 
@@ -657,7 +657,7 @@ export class RestorePreviewModal extends BaseModal {
 
             const title = this.createElement({
                 tagName: 'h4',
-                textContent: '✅ データに変更はありません',
+                textContent: '✓ データに変更はありません',
                 className: 'no-changes-title'
             });
 
@@ -702,7 +702,7 @@ export class RestorePreviewModal extends BaseModal {
 
         const title = this.createElement({
             tagName: 'h4',
-            textContent: '⚠️ 復元に関する注意事項',
+            textContent: '⚠ 復元に関する注意事項',
             className: 'warning-title'
         });
 
@@ -770,7 +770,7 @@ export class RestorePreviewModal extends BaseModal {
                 className: 'backup-and-restore-btn'
             }) as HTMLButtonElement;
 
-            backupBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent); margin-right: 12px;';
+            backupBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border); margin-right: 12px;';
             backupBtn.onclick = () => {
                 console.log('[RestorePreviewModal] backup-and-restore-btn クリック');
                 this.confirmRestore(true);
@@ -782,7 +782,7 @@ export class RestorePreviewModal extends BaseModal {
                 className: 'direct-restore-btn'
             }) as HTMLButtonElement;
 
-            directBtn.style.cssText = buttonStyle + 'background: var(--text-warning); color: var(--text-on-accent);';
+            directBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
             directBtn.onclick = () => {
                 console.log('[RestorePreviewModal] direct-restore-btn クリック');
                 this.confirmRestore(false);
@@ -798,7 +798,7 @@ export class RestorePreviewModal extends BaseModal {
                 className: 'test-preview-btn'
             }) as HTMLButtonElement;
 
-            testBtn.style.cssText = buttonStyle + 'background: var(--interactive-accent); color: var(--text-on-accent);';
+            testBtn.style.cssText = buttonStyle + 'background: var(--background-secondary); color: var(--text-normal); border: 1px solid var(--background-modifier-border);';
             testBtn.onclick = () => {
                 // 既存のコンテンツをクリア
                 this.contentEl.innerHTML = '';

@@ -307,8 +307,9 @@ export class ManualBackupModal extends BaseModal {
             padding: 8px 16px;
             border: none;
             border-radius: 6px;
-            background: var(--interactive-accent);
-            color: var(--text-on-accent);
+            background: var(--background-secondary);
+            color: var(--text-normal);
+            border: 1px solid var(--background-modifier-border);
             cursor: pointer;
             font-weight: bold;
         `;

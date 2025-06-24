@@ -728,9 +728,9 @@ export class BackupManager {
             for (const backup of backups.generations) {
                 const result = await this.checkBackupIntegrity(backup);
                 if (result.success) {
-                    log(`✅ バックアップOK: ${backup.id}`);
+                    log(`✓ バックアップOK: ${backup.id}`);
                 } else {
-                    log(`❌ バックアップ破損: ${backup.id} - ${result.error}`);
+                    log(`✗ バックアップ破損: ${backup.id} - ${result.error}`);
                 }
                 results.push(result);
             }
@@ -738,9 +738,9 @@ export class BackupManager {
             for (const backup of backups.incremental) {
                 const result = await this.checkBackupIntegrity(backup);
                 if (result.success) {
-                    log(`✅ バックアップOK: ${backup.id}`);
+                    log(`✓ バックアップOK: ${backup.id}`);
                 } else {
-                    log(`❌ バックアップ破損: ${backup.id} - ${result.error}`);
+                    log(`✗ バックアップ破損: ${backup.id} - ${result.error}`);
                 }
                 results.push(result);
             }
